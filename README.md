@@ -32,7 +32,7 @@ You must have Node.js and npm installed on your system.
 1. Clone the repository to your local machine:
 
     ```bash
-    git clone [https://github.com/pagopa/wallet-conformance-test](https://github.com/pagopa/wallet-conformance-test)
+    git clone https://github.com/pagopa/wallet-conformance-test
     ```
 
 2. Navigate into the project directory:
@@ -57,13 +57,17 @@ If you prefer using Docker, you can pull the official image from the GitHub Cont
 
 Pull the latest image with the following command:
 
-    docker pull ghcr.io/pagopa/wallet-conformance-test:latest
+```bash
+docker pull ghcr.io/pagopa/wallet-conformance-test:latest
+```
 
 ### Build Locally
 
 Alternatively, you can build the Docker image from the source code:
 
-    docker build --tag pagopa/wallet-conformance-test:latest .
+```bash
+docker build --tag pagopa/wallet-conformance-test:latest .
+```
 
 ### Run Container
 
@@ -71,12 +75,15 @@ To run the tests, create a local directory (e.g., data) to store configuration a
 
 1. Create a directory for your data
 
-    mkdir data
+```bash
+mkdir data
+```
 
 2. Run the container
 
-    docker run -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
-
+```bash
+docker run -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
+```
 
 Replace [COMMAND] with the specific test command you want to run (e.g., test:issuing).
 
