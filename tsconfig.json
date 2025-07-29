@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    // --- Project Settings ---
+    "target": "ES2022", // Compile to a modern ECMAScript version
+    "module": "NodeNext", // Use the modern Node.js module system
+    "moduleResolution": "NodeNext", // How modules get resolved
+    "outDir": "./dist", // Where to output compiled JavaScript
+    "rootDir": "./src", // The root directory of your source files
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    // --- Type Checking ---
+    "strict": true, // Enable all strict type-checking options
+    "noUncheckedIndexedAccess": true, // Adds 'undefined' to any un-checked index access
+
+    // --- Interoperability ---
+    "esModuleInterop": true, // Allows default imports from CommonJS modules
+    "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file.
+
+    // --- Completeness ---
+    "skipLibCheck": true // Skip type checking of all declaration files (*.d.ts).
+  },
+  "exclude": ["node_modules", "dist"] // Which files to exclude
+}
