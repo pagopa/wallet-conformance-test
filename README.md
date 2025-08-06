@@ -47,7 +47,24 @@ You must have Node.js and npm installed on your system.
     pnpm install -g
     ```
 
-This will make the wallet-conformance-test command available system-wide.
+This will make the `wallet-conformance-test` command available system-wide. You can use this command or `pnpm` to launch test as described below.
+
+
+
+### Command not found? 🤔
+If you encounter an issue where the `wallet-conformance-test` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
+
+2. Make the script executable:
+
+    ```bash
+    chmod +x ./bin/wallet-conformance-test
+    ```
+
+3. Create a global symbolic link to the command::
+
+    ```bash
+    pnpm link --global
+    ```
 
 ## 🐳 Docker Usage
 
@@ -160,3 +177,4 @@ Please see the CONTRIBUTING.md file for more details on our code of conduct and 
 
 ## ⚖️ License
 Distributed under the MIT License. See LICENSE.md for more information.
+Tool for the automated conformance testing of services integrating with the Italian IT Wallet ecosystem.
