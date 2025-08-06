@@ -1,0 +1,13 @@
+#!/usr/bin/env node
+
+const { execSync } = require('child_process');
+
+const args = process.argv.slice(2);
+
+if (args[0] === 'test:issuing') {
+  execSync('pnpm test:issuing', { stdio: 'inherit' });
+} if (args[0] === 'test:presentation') {
+  execSync('pnpm test:presentation', { stdio: 'inherit' });
+} else {
+  console.log('Command not found:', args[0]);
+}

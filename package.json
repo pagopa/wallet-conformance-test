@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "wallet-conformance-test": "./bin/wallet-conformance-test"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest",
