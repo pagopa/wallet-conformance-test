@@ -3,20 +3,31 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "files": [
+    "config.ini"
+  ],
   "bin": {
     "wallet-conformance-test": "./bin/wallet-conformance-test"
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest",
+    "test:issuing": "vitest --config vitest.issue.config.mjs",
     "test:watch": "vitest --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@pagopa/io-wallet-oid-federation": "^0.2.0",
+    "ini": "^5.0.0",
+    "jose": "^6.1.0",
+    "zod": "^4.1.5"
   }
 }
