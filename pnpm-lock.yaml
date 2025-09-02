@@ -7,7 +7,23 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@pagopa/io-wallet-oid-federation':
+        specifier: link:../io-wallet-sdk/packages/oid-federation
+        version: link:../io-wallet-sdk/packages/oid-federation
+      ini:
+        specifier: ^5.0.0
+        version: 5.0.0
+      jose:
+        specifier: ^6.1.0
+        version: 6.1.0
+      zod:
+        specifier: ^4.1.5
+        version: 4.1.5
     devDependencies:
+      '@types/ini':
+        specifier: ^4.1.1
+        version: 4.1.1
       '@types/node':
         specifier: ^24.1.0
         version: 24.1.0
@@ -288,6 +304,9 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
+  '@types/ini@4.1.1':
+    resolution: {integrity: sha512-MIyNUZipBTbyUNnhvuXJTY7B6qNI78meck9Jbv3wk0OgNwRyOOVEKDutAkOs1snB/tx0FafyR6/SN4Ps0hZPeg==}
+
   '@types/node@24.1.0':
     resolution: {integrity: sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==}
 
@@ -376,6 +395,13 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  ini@5.0.0:
+    resolution: {integrity: sha512-+N0ngpO3e7cRUWOJAS7qw0IZIVc6XPrW4MlFBdD066F2L4k1L6ker3hLqSq7iXxU5tgS4WGkIUElWn5vogAEnw==}
+    engines: {node: ^18.17.0 || >=20.5.0}
+
+  jose@6.1.0:
+    resolution: {integrity: sha512-TTQJyoEoKcC1lscpVDCSsVgYzUDg/0Bt3WE//WiTPK6uOCQC2KZS4MpugbMWt/zyjkopgZoXhZuCi00gLudfUA==}
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
@@ -541,6 +567,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  zod@4.1.5:
+    resolution: {integrity: sha512-rcUUZqlLJgBC33IT3PNMgsCq6TzLQEG/Ei/KTCU0PedSWRMAXoOUN+4t/0H+Q8bdnLPdqUYnvboJT0bn/229qg==}
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.25.8':
@@ -691,6 +720,8 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
+  '@types/ini@4.1.1': {}
+
   '@types/node@24.1.0':
     dependencies:
       undici-types: 7.8.0
@@ -800,6 +831,10 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  ini@5.0.0: {}
+
+  jose@6.1.0: {}
 
   js-tokens@9.0.1: {}
 
@@ -962,3 +997,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  zod@4.1.5: {}
