@@ -1,8 +1,11 @@
 {
-  "name": "wallet-conformance-test",
   "version": "1.0.0",
+  "name": "wallet-conformance-test",
   "description": "",
   "main": "index.js",
+  "files": [
+    "config.ini"
+  ],
   "bin": {
     "wallet-conformance-test": "./bin/wallet-conformance-test"
   },
@@ -15,8 +18,15 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@openid4vc/oauth2": "0.2.0",
+    "@pagopa/io-wallet-oid4vci": "link:../io-wallet-sdk/packages/oid4vci/dist",
+    "ini": "^5.0.0",
+    "zod": "^4.1.5"
   }
 }
