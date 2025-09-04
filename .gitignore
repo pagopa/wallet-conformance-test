@@ -1,0 +1,43 @@
+# Dependency directories
+# pnpm uses a virtual store, but this directory still contains links and should be ignored.
+node_modules
+
+# Build output
+# This is the directory where TypeScript compiles your code.
+dist
+
+# Logs
+# Any log files generated during development or by package managers.
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Test runner cache and reports
+# Vitest and other test runners create cache and coverage folders.
+.vitest-cache
+coverage
+
+# Environment variables
+# Never commit environment files containing sensitive keys.
+.env
+.env.local
+.env.*.local
+
+# IDE and editor directories
+# These are specific to your local development environment.
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System files
+# System-specific files that should not be in the repository.
+.DS_Store
+Thumbs.db
