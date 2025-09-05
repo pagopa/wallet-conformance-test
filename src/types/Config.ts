@@ -11,4 +11,7 @@ const configSchema = z.object({
 	})
 });
 
-export type Config = z.infer<typeof configSchema>
+/**
+ * Represents the configuration for the wallet conformance test.
+ */
+export type Config = z.infer<typeof configSchema>;
