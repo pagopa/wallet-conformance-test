@@ -26,6 +26,9 @@ importers:
       ksuid:
         specifier: ^3.0.0
         version: 3.0.0
+      ts-log:
+        specifier: ^2.2.7
+        version: 2.2.7
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -1113,6 +1116,9 @@ packages:
     engines: {node: '>=18.12'}
     peerDependencies:
       typescript: '>=4.8.4'
+
+  ts-log@2.2.7:
+    resolution: {integrity: sha512-320x5Ggei84AxzlXp91QkIGSw5wgaLT6GeAH0KsqDmRZdVWW2OiSeVvElVoatk3f7nicwXlElXsoFkARiGE2yg==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -2236,6 +2242,8 @@ snapshots:
   ts-api-utils@2.1.0(typescript@5.8.3):
     dependencies:
       typescript: 5.8.3
+
+  ts-log@2.2.7: {}
 
   type-check@0.4.0:
     dependencies:
