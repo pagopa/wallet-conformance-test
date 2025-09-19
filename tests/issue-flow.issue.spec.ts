@@ -1,10 +1,15 @@
 import { describe, expect, test } from "vitest";
+import { openSync, writeFileSync } from "node:fs";
 
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
+import { ValidationError } from "@openid4vc/utils";
+import {
+	itWalletEntityStatementClaimsSchema,
+	parseWithErrorHandling,
+} from "@pagopa/io-wallet-oid-federation";
 import { decodeJwt } from "jose";
 
-import { fetchWithRetries, loadConfig } from "@/logic";
-import { Log } from "@/types/Logger";
+import { createLogger, fetchWithRetries, loadConfig } from "@/logic";
+import { createConsola } from "consola";
 
 describe(
 	"Issue Flow Test",
@@ -13,22 +18,32 @@ describe(
 	 * from the issuer's well-known endpoint. It ensures that the response is valid
 	 * and conforms to the expected schema.
 	 */
-	() => {
-		const log = new Log();
-		log.info("Setting Up Wallet conformance Tests");
+	async () => {
+		const baseLog = createLogger();
+		const setupLog = baseLog.withTag("SETUP");
 
-		log.info("Loading Configuration...");
+		setupLog.info("Setting Up Wallet conformance Tests");
+		setupLog.info("Loading Configuration...");
 		const config = loadConfig("./config.ini");
-		log.info("Configuration Loaded", {
-			issuanceUrl: config.issuance.url,
+
+		baseLog.setLogOptions({
+			level: config.logging.log_level,
+			format: config.logging.log_format,
+			path: config.logging.log_file
+		});
+
+		setupLog.info("Configuration Loaded:\n", {
 			credentialsDir: config.wallet.credentials_storage_path,
+			issuanceUrl: config.issuance.url,
 			maxRetries: config.network.max_retries,
 			timeout: `${config.network.timeout}s`,
 			userAgent: config.network.user_agent,
 		});
 
 		test("Metadata Discovery", async () => {
-			log.info("ISS-003 Discovery test started");
+			const log = baseLog.withTag("ISS-003");
+
+			log.start("ISS-003 Discovery test started");
 			const metadataUrl = `${config.issuance.url}/.well-known/openid-federation`;
 
 			log.info("Discoverying issuer's metadata...");
@@ -48,24 +63,31 @@ describe(
 
 			log.info("Parsing response body as JWT...");
 			const decodedData = decodeJwt(data);
+			log.debug(decodedData);
 
 			try {
-				log.info("Validating response format...")
-				const parsedData = itWalletEntityStatementClaimsSchema
-					.parse(decodedData);
+				log.info("Validating response format...");
+				parseWithErrorHandling(
+					itWalletEntityStatementClaimsSchema,
+					decodedData,
+					"Error validating metadata"
+				);
 
-				log.info(`Obtained response: ${JSON.stringify(parsedData, null, 4)}`);
-				log.info("ISS-003 Discovery test completed ✅");
+				log.info(`Response matches the required format`);
+				log.success("ISS-003 Discovery test completed ✅");
 			} catch(err: any) {
-				if (err.name === "ZodError") {
-					log.error("❌ Schema validation failed", err.errors);
+				if (err instanceof ValidationError) {
+					log.error("Schema validation failed");
+					expect.soft(
+						err.message.replace(": ", ":\n\t")
+						.replace(/,([A-Za-z])/g, "\n\t$1")
+					).toBeNull();
 				} else {
-					log.error("❌ Unexpected error during parsing", { error: err.message });
+					log.error("Unexpected error during parsing");
+					expect.soft(err).toBeNull();
 				}
 				
-				log.error("ISS-003 Discovery test failed ❌");
-
-				throw err;
+				log.error("ISS-003 Discovery test failed");
 			}
 		});
 	}
