@@ -12,11 +12,11 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       '@openid4vc/oauth2':
-        specifier: 0.2.0
+        specifier: ^0.2.0
         version: 0.2.0(typescript@5.8.3)
       '@pagopa/io-wallet-oid4vci':
-        specifier: link:../io-wallet-sdk/packages/oid4vci
-        version: link:../io-wallet-sdk/packages/oid4vci
+        specifier: ^0.3.0
+        version: 0.3.0(typescript@5.8.3)
       ini:
         specifier: ^5.0.0
         version: 5.0.0
@@ -210,8 +210,20 @@ packages:
   '@openid4vc/oauth2@0.2.0':
     resolution: {integrity: sha512-++omnAoP/niDVhQp2nScNVjXzANX4d86IihmEJHfTHD8JFK+CZA/K0Ctk8yAXxfqY87bUy78Ve01Qqrn+Nw8eA==}
 
+  '@openid4vc/oauth2@0.3.0-alpha-20250513122832':
+    resolution: {integrity: sha512-hiTFDm8NNiaOR9Yu1tvJ6pBSj56eDWni5si55oJw6W5ZbHcLZRVk4ejBVb91D5r/zjAFvsgSg2by+OSdSj7F/A==}
+
+  '@openid4vc/openid4vci@0.3.0-alpha-20250513122832':
+    resolution: {integrity: sha512-lInvFMm0oEH0ys7UbYqNfgVrDY8Bq6nSAkMK77bRcmeqV7YJOzLlLeU16PR3XPjURvIwyXBBiKSknRvwAMBzSg==}
+
   '@openid4vc/utils@0.2.0':
     resolution: {integrity: sha512-CvZxy9eH8582Yb/gzc+XPiaQIbC7Y0IT3F14szGS++o6373dUN12KZQzey4hoRrVO92D04vCXyJY9xctw4zgMw==}
+
+  '@openid4vc/utils@0.3.0-alpha-20250513122832':
+    resolution: {integrity: sha512-0QR3rRyc4nXD7Zowh7viR/icmB+0hkgGV4JXV/WpVgS+Vq64MUCtNPyqBVmt0rFcQs8GvsqlRY04OjXbEKd3FQ==}
+
+  '@pagopa/io-wallet-oid4vci@0.3.0':
+    resolution: {integrity: sha512-dnztKx9DLCVyJxnPZhk5pVPUs4bi/cvveGS6BMLgKK1l10oKTX41+PeJLVTmxJy/ud/taIUG1JrgGsQprrckOA==}
 
   '@rollup/rollup-android-arm-eabi@4.46.1':
     resolution: {integrity: sha512-oENme6QxtLCqjChRUUo3S6X8hjCXnWmJWnedD7VbGML5GUtaOtAyx+fEEXnBXVf0CBZApMQU0Idwi0FmyxzQhw==}
@@ -721,10 +733,36 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  '@openid4vc/oauth2@0.3.0-alpha-20250513122832':
+    dependencies:
+      '@openid4vc/utils': 0.3.0-alpha-20250513122832
+      zod: 3.25.76
+
+  '@openid4vc/openid4vci@0.3.0-alpha-20250513122832':
+    dependencies:
+      '@openid4vc/oauth2': 0.3.0-alpha-20250513122832
+      '@openid4vc/utils': 0.3.0-alpha-20250513122832
+      zod: 3.25.76
+
   '@openid4vc/utils@0.2.0(typescript@5.8.3)':
     dependencies:
       buffer: 6.0.3
       valibot: 0.42.1(typescript@5.8.3)
+    transitivePeerDependencies:
+      - typescript
+
+  '@openid4vc/utils@0.3.0-alpha-20250513122832':
+    dependencies:
+      buffer: 6.0.3
+      zod: 3.25.76
+
+  '@pagopa/io-wallet-oid4vci@0.3.0(typescript@5.8.3)':
+    dependencies:
+      '@openid-federation/core': 0.2.0
+      '@openid4vc/oauth2': 0.3.0-alpha-20250513122832
+      '@openid4vc/openid4vci': 0.3.0-alpha-20250513122832
+      '@openid4vc/utils': 0.2.0(typescript@5.8.3)
+      zod: 3.25.76
     transitivePeerDependencies:
       - typescript
 

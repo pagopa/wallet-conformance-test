@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:unit": "vitest --config vitest.unit.config.mjs"
   },
   "keywords": [],
   "author": "",
@@ -25,8 +26,8 @@
   },
   "dependencies": {
     "@openid-federation/core": "^0.2.0",
-    "@openid4vc/oauth2": "0.2.0",
-    "@pagopa/io-wallet-oid4vci": "link:../io-wallet-sdk/packages/oid4vci",
+    "@openid4vc/oauth2": "^0.2.0",
+    "@pagopa/io-wallet-oid4vci": "^0.3.0",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "ksuid": "^3.0.0",

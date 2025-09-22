@@ -29,7 +29,7 @@ export async function generateKey(
 		}
 	);
 	const priv = await exportJWK(keyPair.privateKey);
-	const pub = await exportJWK(keyPair.privateKey);
+	const pub = await exportJWK(keyPair.publicKey);
 	
 	const kid = KSUID.randomSync().string;
 	const exportedPair: KeyPair = {
