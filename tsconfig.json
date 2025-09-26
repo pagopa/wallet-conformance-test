@@ -5,9 +5,10 @@
     "module": "NodeNext", // Use the modern Node.js module system
     "moduleResolution": "NodeNext", // How modules get resolved
     "outDir": "./dist", // Where to output compiled JavaScript
+    "rootDir": ".", // The root directory of your source files
     "paths": {
       "@/*": ["./src/*"],
-      "tests/*": ["./tests/*"],
+      "tests/*": ["./tests/*"]
     },
 
     // --- Type Checking ---
