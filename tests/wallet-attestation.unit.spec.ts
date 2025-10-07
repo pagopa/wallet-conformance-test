@@ -10,14 +10,16 @@ describe("Wallet Attestation Unit Test", () => {
 	const walletId = "wallet_cli_instance";
 	const walletName = "CEN TC Wallet CLI";
 	const issuer = "https://wallet-provider.example.it";
-	const storage = "./data/wallet_attestations";
-	const credentials = "./data/credentials";
-	const backup = "./data/backup";
+	const storage = "data/wallet_attestations";
+	const credentials = "data/credentials";
+	const backup = "data/backup";
 	const attestationPath = `${storage}/${walletId}`;
 
-	rmSync(attestationPath);
-
 	test("New Wallet Attestation", async () => {
+		try {
+			rmSync(attestationPath);
+		} catch (e) {}
+
 		const attestation = await loadAttestation({
 			wallet_id: walletId,
 			wallet_name: walletName,
@@ -48,19 +50,19 @@ describe("Wallet Attestation Unit Test", () => {
 	});
 
 	test("Load Wallet Attestation", async () => {
-		const attestation = readFileSync(attestationPath, "utf-8");
+		const attestation = readFileSync(`tests/${attestationPath}`, "utf-8");
 
 		expect(await loadAttestation({
 			wallet_id: walletId,
 			wallet_name: walletName,
 			wallet_provider_base_url: issuer,
-			wallet_attestations_storage_path: storage,
-			credentials_storage_path: credentials,
-			backup_storage_path: backup
+			wallet_attestations_storage_path: `tests/${storage}`,
+			credentials_storage_path: `tests/${credentials}`,
+			backup_storage_path: `tests/${backup}`
 		})).toBe(attestation);
 
-		const providerKeyPair = readFileSync("./data/backup/wallet_provider_jwks", "utf-8");
-		const unitKeyPair = readFileSync("./data/backup/wallet_unit_jwks", "utf-8");
+		const providerKeyPair = readFileSync(`tests/${backup}/wallet_provider_jwks`, "utf-8");
+		const unitKeyPair = readFileSync(`tests/${backup}/wallet_unit_jwks`, "utf-8");
 		const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
 		const unitJWK: JWK = JSON.parse(unitKeyPair).publicKey;
 		const providerKey = await importJWK(providerJWK, "ES256");

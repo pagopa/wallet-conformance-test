@@ -2,13 +2,12 @@ import { writeFileSync } from "node:fs";
 
 import {
 	type JsonWebKey,
-	type JsonWebKeySet,
 	jsonWebKeySchema
 } from '@openid-federation/core';
 import type { JwtSigner } from "@openid4vc/oauth2";
 import KSUID from "ksuid";
 
-import { KeyPair } from "@/types";
+import { KeyPair, TokenClaims, tokenClaimsSchema } from "@/types";
 import { exportJWK, generateKeyPair } from "jose";
 
 /**
@@ -68,9 +67,9 @@ function jwkFromTrustChain(
 	
 	if (!payload) throw new TypeError("malformed jwt in trust chain");
 	
-	const claims = JSON.parse(
-		Buffer.from(payload, "base64url").toString()
-	) as {jwks: JsonWebKeySet};
+	const claims: TokenClaims = tokenClaimsSchema.parse(
+		JSON.parse(Buffer.from(payload, "base64url").toString())
+	);
 	const federationJwk = claims.jwks.keys.find(
 		(key: JsonWebKey) => key.kid === signerKid,
 	);
@@ -88,19 +87,18 @@ function jwkFromTrustChain(
  * @throws An error if the signer method is not supported.
  */
 export function jwkFromSigner(signer: JwtSigner): JsonWebKey {
-	let jwk: JsonWebKey;
 	if (signer.method === "did") {		
 		const didUrl = signer.didUrl.split("#")[0];
 
 		if (!didUrl) throw new Error("missing did JWT");
-		jwk = JSON.parse(
-			Buffer.from(
+		return jsonWebKeySchema.parse(
+			JSON.parse(Buffer.from(
 				didUrl.replace("did:jwk:", ""),
 				"base64url"
-			).toString()
+			).toString())
 		);
 	} else if (signer.method === "jwk")
-		jwk = jsonWebKeySchema.parse(signer.publicJwk);
+		return jsonWebKeySchema.parse(signer.publicJwk);
 	else if (signer.method as string === "federation") {
 		const {
 			trustChain: trustChain,
@@ -108,11 +106,9 @@ export function jwkFromSigner(signer: JwtSigner): JsonWebKey {
 		} = signer as { trustChain: string[], kid: string};
 
 		if (trustChain.length > 0)
-			jwk = jwkFromTrustChain(trustChain, kid);
+			return jwkFromTrustChain(trustChain, kid);
 		else
 			throw new Error("trust chain not found");
 	} else
 		throw new Error("signer method not supported");
-
-	return jwk;
 }

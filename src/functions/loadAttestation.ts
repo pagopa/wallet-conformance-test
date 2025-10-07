@@ -24,10 +24,9 @@ export async function loadAttestation(
 	wallet: Config["wallet"]
 ): Promise<string> {
 	const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
-	let attestation: string;
 
 	try {
-		attestation = readFileSync(attestationPath, "utf-8");
+		return readFileSync(attestationPath, "utf-8");
 	} catch {
 		console.info("missing wallet attestation: generating a new one");
 
@@ -68,14 +67,14 @@ export async function loadAttestation(
 			signJwt: signJwtCallback([ providerKeyPair.privateKey ])
 		};
 		const provider = new ItWalletProvider({ callbacks });
-		attestation = await provider.createItWalletAttestationJwt(
+		const attestation = await provider.createItWalletAttestationJwt(
 			attestationOptions
 		);
 		writeFileSync(
 			attestationPath,
 			attestation
 		);
-	}
 
-	return attestation;
+		return attestation;
+	}
 }
