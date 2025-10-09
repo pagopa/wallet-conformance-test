@@ -16,9 +16,7 @@ describe("Wallet Attestation Unit Test", () => {
 	const attestationPath = `${storage}/${walletId}`;
 
 	test("New Wallet Attestation", async () => {
-		try {
-			rmSync(attestationPath);
-		} catch (e) {}
+		rmSync(attestationPath, { force: true });
 
 		const attestation = await loadAttestation({
 			wallet_id: walletId,
