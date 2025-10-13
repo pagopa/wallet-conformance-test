@@ -75,24 +75,26 @@ function jwkFromTrustChain(
  * @throws An error if the signer method is not supported.
  */
 export function jwkFromSigner(signer: JwtSigner): JsonWebKey {
-  if (signer.method === "did") {
-    const didUrl = signer.didUrl.split("#")[0];
+  const { didUrl, kid, trustChain } = signer;
+  let didJwk: string;
 
-    if (!didUrl) throw new Error("missing did JWT");
-    return jsonWebKeySchema.parse(
-      JSON.parse(
-        Buffer.from(didUrl.replace("did:jwk:", ""), "base64url").toString(),
-      ),
-    );
-  } else if (signer.method === "jwk")
-    return jsonWebKeySchema.parse(signer.publicJwk);
-  else if ((signer.method as string) === "federation") {
-    const { kid: kid, trustChain: trustChain } = signer as {
-      kid: string;
-      trustChain: string[];
-    };
+  switch (signer.method) {
+    case "did":
+      if (!didUrl) throw new Error("missing did JWK");
 
-    if (trustChain.length > 0) return jwkFromTrustChain(trustChain, kid);
-    else throw new Error("trust chain not found");
-  } else throw new Error("signer method not supported");
+      didJwk = didUrl.split("#")[0]?.replace("did:jwk:", "");
+      if (!didJwk) throw new Error(`malformed did JWK: "${didUrl}"`);
+
+      return jsonWebKeySchema.parse(
+        JSON.parse(Buffer.from(didJwk, "base64url").toString()),
+      );
+    case "jwk":
+      return jsonWebKeySchema.parse(signer.publicJwk);
+    case "federation":
+      if (trustChain && trustChain.length > 0)
+        return jwkFromTrustChain(trustChain, kid);
+      else throw new Error("missing signer's trust chain");
+    default:
+      throw new Error(`signer method "${signer.method}" not supported`);
+  }
 }

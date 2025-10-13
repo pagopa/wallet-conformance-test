@@ -8,6 +8,7 @@ import {
 import { SignJWT } from "jose";
 import { readFileSync, writeFileSync } from "node:fs";
 
+/* eslint-disable no-console */
 /**
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
@@ -21,8 +22,14 @@ export async function loadAttestation(
   const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
 
   try {
+    console.debug("wallet attestation found and loaded");
+
     return readFileSync(attestationPath, "utf-8");
   } catch {
+    console.debug(
+      `missing wallet attestation in ${attestationPath}: generating new one`,
+    );
+
     const providerKeyPair = await generateKey(
       `${wallet.backup_storage_path}/wallet_provider_jwks`,
     );
@@ -51,9 +58,11 @@ export async function loadAttestation(
     const callbacks = getCallbacks(providerKeyPair.privateKey);
     const provider = new ItWalletProvider(callbacks);
     const attestation =
-      await provider.createItWalletAttestationJwt(attestationOptions);
-    writeFileSync(attestationPath, attestation);
+      provider.createItWalletAttestationJwt(attestationOptions);
+    writeFileSync(attestationPath, await attestation);
 
+    console.debug("new wallet attestation created and ready for use");
     return attestation;
   }
 }
+/* eslint-enable no-console */
