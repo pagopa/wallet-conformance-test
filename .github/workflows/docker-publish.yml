@@ -1,0 +1,26 @@
+name: Docker Image Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-publish.yml'
+      - 'src/**'
+      - 'tests/**'
+      - 'bin/**'
+      - 'config.ini'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vitest.**ts'
+
+jobs:
+  docker_image_build:
+    uses: pagopa/dx/.github/workflows/docker_image_build.yaml@main
+    name: Docker Image Build
+    with:
+      docker_image_name: "wallet-conformance-test"
+      image_description: "Tool for the automated conformance testing of services integrating with the Italian IT Wallet ecosystem"
+      image_authors: "Wallet Team"
+      build_platforms: "linux/amd64,linux/arm64"
