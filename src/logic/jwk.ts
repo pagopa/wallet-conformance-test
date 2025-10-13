@@ -2,6 +2,7 @@ import type { JwtSigner } from "@openid4vc/oauth2";
 
 import { KeyPair, TokenClaims, tokenClaimsSchema } from "@/types";
 import { type JsonWebKey, jsonWebKeySchema } from "@openid-federation/core";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
 import { exportJWK, generateKeyPair } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
@@ -55,7 +56,8 @@ function jwkFromTrustChain(
 
   if (!payload) throw new TypeError("malformed jwt in trust chain");
 
-  const claims: TokenClaims = tokenClaimsSchema.parse(
+  const claims: TokenClaims = parseWithErrorHandling(
+    tokenClaimsSchema,
     JSON.parse(Buffer.from(payload, "base64url").toString()),
   );
   const federationJwk = claims.jwks.keys.find(
@@ -80,16 +82,23 @@ export function jwkFromSigner(signer: JwtSigner): JsonWebKey {
 
   switch (signer.method) {
     case "did":
-      if (!didUrl) throw new Error("missing did JWK");
+      if (!didUrl) throw new Error("missing DID JWK");
 
       didJwk = didUrl.split("#")[0]?.replace("did:jwk:", "");
-      if (!didJwk) throw new Error(`malformed did JWK: "${didUrl}"`);
+      if (!didJwk || didJwk.length < 1)
+        throw new Error(`malformed JWK in DID: "${didUrl}"`);
 
-      return jsonWebKeySchema.parse(
+      return parseWithErrorHandling(
+        jsonWebKeySchema,
         JSON.parse(Buffer.from(didJwk, "base64url").toString()),
+        "malformed signer's JWK in DID",
       );
     case "jwk":
-      return jsonWebKeySchema.parse(signer.publicJwk);
+      return parseWithErrorHandling(
+        jsonWebKeySchema,
+        signer.publicJwk,
+        "malformed signer's JWK",
+      );
     case "federation":
       if (trustChain && trustChain.length > 0)
         return jwkFromTrustChain(trustChain, kid);

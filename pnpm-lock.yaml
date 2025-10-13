@@ -17,6 +17,9 @@ importers:
       '@openid4vc/openid4vci':
         specifier: ^0.3.0-alpha-20250224151429
         version: 0.3.0-alpha-20250513122832
+      '@pagopa/io-wallet-oid-federation':
+        specifier: ^0.3.0
+        version: 0.3.0(typescript@5.8.3)
       '@pagopa/io-wallet-oid4vci':
         specifier: ^0.3.0
         version: 0.3.0(typescript@5.8.3)
@@ -307,6 +310,9 @@ packages:
     resolution: {integrity: sha512-2X32BElb8+K/7l58kLLWqwiLnOTaOq7deHCi0kjoedlwrGnRbLGj0lA4Eh/jC7eiAIGZhL6iudx2adbZ8Gfgvg==}
     peerDependencies:
       eslint: ^8.57.0
+
+  '@pagopa/io-wallet-oid-federation@0.3.0':
+    resolution: {integrity: sha512-6SudbmOF4i8+rSdxtsxK2+5twDt7aQRpBZy0/4op1gJxiPPImWNieyBwXH91yayPQtqBTzXYHgiRLUBxhN9Otg==}
 
   '@pagopa/io-wallet-oid4vci@0.3.0':
     resolution: {integrity: sha512-dnztKx9DLCVyJxnPZhk5pVPUs4bi/cvveGS6BMLgKK1l10oKTX41+PeJLVTmxJy/ud/taIUG1JrgGsQprrckOA==}
@@ -1467,6 +1473,14 @@ snapshots:
       - svelte-eslint-parser
       - vitest
       - vue-eslint-parser
+
+  '@pagopa/io-wallet-oid-federation@0.3.0(typescript@5.8.3)':
+    dependencies:
+      '@openid-federation/core': 0.2.0
+      '@openid4vc/utils': 0.2.0(typescript@5.8.3)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - typescript
 
   '@pagopa/io-wallet-oid4vci@0.3.0(typescript@5.8.3)':
     dependencies:

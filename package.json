@@ -40,6 +40,7 @@
     "@openid-federation/core": "^0.2.0",
     "@openid4vc/oauth2": "^0.2.0",
     "@openid4vc/openid4vci": "^0.3.0-alpha-20250224151429",
+    "@pagopa/io-wallet-oid-federation": "^0.3.0",
     "@pagopa/io-wallet-oid4vci": "^0.3.0",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
