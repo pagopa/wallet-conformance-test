@@ -1,3 +1,3 @@
-export * from './Config';
-export * from './KeyPair';
-export * from './TokenClaims';
+export * from "./Config";
+export * from "./KeyPair";
+export * from "./TokenClaims";

@@ -1,10 +1,10 @@
 import type {
-	Jwk,
-	SignJwtCallback,
-	VerifyJwtCallback
+  Jwk,
+  SignJwtCallback,
+  VerifyJwtCallback,
 } from "@openid4vc/oauth2";
-import { type JsonWebKey } from '@openid-federation/core';
-import { type JWK, importJWK, SignJWT, jwtVerify } from "jose";
+
+import { type JWK, SignJWT, importJWK, jwtVerify } from "jose";
 
 import { jwkFromSigner } from "./jwk";
 
@@ -15,23 +15,24 @@ import { jwkFromSigner } from "./jwk";
  * @returns A callback function that can be used to sign JWTs.
  */
 export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
-	return async (signer, { header, payload }) => {
-		const publicJwk = jwkFromSigner(signer);
-		const privateJwk = privateJwks
-			.find(jwkPrv => jwkPrv.kid === publicJwk.kid);
+  return async (signer, { header, payload }) => {
+    const publicJwk = jwkFromSigner(signer);
+    const privateJwk = privateJwks.find(
+      (jwkPrv) => jwkPrv.kid === publicJwk.kid,
+    );
 
-		if (!privateJwk)
-			throw new Error(
-				`No private key available for \n${JSON.stringify(publicJwk)}`,
-			);
+    if (!privateJwk)
+      throw new Error(
+        `No private key available for \n${JSON.stringify(publicJwk)}`,
+      );
 
-		const key = await importJWK(privateJwk as JWK, signer.alg);
+    const key = await importJWK(privateJwk as JWK, signer.alg);
 
-		return {
-			jwt: await new SignJWT(payload).setProtectedHeader(header).sign(key),
-			signerJwk: publicJwk as Jwk,
-		};
-	};
+    return {
+      jwt: await new SignJWT(payload).setProtectedHeader(header).sign(key),
+      signerJwk: publicJwk as Jwk,
+    };
+  };
 }
 
 /**
@@ -42,19 +43,19 @@ export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
  * @returns A promise that resolves to an object containing the verification result.
  */
 export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-	const publicJwk = jwkFromSigner(signer);
-	const key = await importJWK(publicJwk as JWK, signer.alg);
-	
-	try {
-		await jwtVerify(jwt.compact, key);
+  const publicJwk = jwkFromSigner(signer);
+  const key = await importJWK(publicJwk as JWK, signer.alg);
 
-		return {
-			signerJwk: publicJwk as Jwk,
-			verified: true,
-		};
-	} catch(e) {
-		return {
-			verified: false,
-		};
-	}
-}
+  try {
+    await jwtVerify(jwt.compact, key);
+
+    return {
+      signerJwk: publicJwk as Jwk,
+      verified: true,
+    };
+  } catch {
+    return {
+      verified: false,
+    };
+  }
+};
