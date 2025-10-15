@@ -7,10 +7,13 @@ import { Config } from "@/types";
 
 test("Mocked Credentials Validation", () => {
         const textConfig = readFileSync("config.ini", "utf-8");
+        const publicKey = JSON.parse(
+            readFileSync("tests/data/backup/issuer_jwk.pub", "utf-8")
+        );
         const config = parse(textConfig) as Config;
         const types: string[] = []
 
-        for (const type in config) {
+        for (const type in config.issuance.credentials.types) {
             const issuerHasType = config.issuance.credentials.types[type]?.
                 find(t => t === config.issuance.url)
 
@@ -19,10 +22,10 @@ test("Mocked Credentials Validation", () => {
         }
 
         loadCredentials(
-            "data/credentials",
+            "tests/data/credentials",
             types,
             publicKey,
-            config.trust.ca_cert_path
+            "tests/data/certs/cert.pem"
         );
     }
 );
