@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 
-import { Verifier } from "@auth0/mdl";
+import { DeviceResponse, Verifier, parse } from "@auth0/mdl";
 import { SDJwt, SDJwtInstance } from "@sd-jwt/core";
 import { ES256, digest, generateSalt } from "@sd-jwt/crypto-nodejs";
 
@@ -18,7 +18,7 @@ import { ES256, digest, generateSalt } from "@sd-jwt/crypto-nodejs";
 export async  function loadCredentials(
 	path: string,
 	types: string[],
-	publicKey: JsonWebKey,
+	issuerKey: JsonWebKey,
 	caCertPath: string
 ): Promise<Record<string, string | ArrayBuffer>> {
 	const files = readdirSync(path);
@@ -32,7 +32,6 @@ export async  function loadCredentials(
 			continue;
 		}
 
-		
 		// First, attempt to verify the credential as a SD-JWT
 		try {
 			const credential = readFileSync(`${path}/${file}`, "utf-8");
@@ -42,7 +41,7 @@ export async  function loadCredentials(
 	
 			// Mock signer as it's not needed for verification
 			const signer = () => "";
-			const verifier = await ES256.getVerifier(publicKey);
+			const verifier = await ES256.getVerifier(issuerKey);
 			
 			const sdjwt = new SDJwtInstance({
 				signer,
@@ -53,7 +52,7 @@ export async  function loadCredentials(
 			});
 
 			// If validation is successful, add it to the credentials record
-			if (!await sdjwt.validate(jwt["encoded"]))
+			if (!await sdjwt.verify(jwt["encoded"]))
 				throw new Error("credential validation failed");
 
 			credentials[fileName] = credential;
@@ -67,15 +66,16 @@ export async  function loadCredentials(
 		try {
 			const credential = readFileSync(`${path}/${file}`);
 			const cert = readFileSync(caCertPath, "utf-8");
-			const verifier = new Verifier([cert]);
-			await verifier.verify(credential);
+			const MDoc = parse(credential)
+			console.log(JSON.stringify(MDoc, null, 4))
+			// await verifier.verify(deviceResponseMDoc.encode());
 
 			// If validation is successful, add it to the credentials record
 			credentials[fileName] = credential.buffer;
 		} catch(e) {
 			throw e
-			const err = e as Error
-			console.error(`${file} was not a valid mdoc credential: ${err.message}`);
+			// const err = e as Error
+			// throw new Error(`${file} was not a valid mdoc credential: ${err.message}`)
 		}
 	}
 

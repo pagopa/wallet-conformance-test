@@ -7,7 +7,7 @@ import { Config } from "@/types";
 
 test("Mocked Credentials Validation", () => {
         const textConfig = readFileSync("config.ini", "utf-8");
-        const publicKey = JSON.parse(
+        const issuerKey = JSON.parse(
             readFileSync("tests/data/backup/issuer_jwk.pub", "utf-8")
         );
         const config = parse(textConfig) as Config;
@@ -24,7 +24,7 @@ test("Mocked Credentials Validation", () => {
         loadCredentials(
             "tests/data/credentials",
             types,
-            publicKey,
+            issuerKey,
             "tests/data/certs/cert.pem"
         );
     }
