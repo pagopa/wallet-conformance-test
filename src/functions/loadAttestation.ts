@@ -1,14 +1,14 @@
-import type { Config } from "@/types";
-
-import { generateKey, getCallbacks } from "@/logic";
 import {
-  ItWalletProvider,
   WalletAttestationOptions,
+  WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
 import { SignJWT } from "jose";
 import { readFileSync, writeFileSync } from "node:fs";
 
-/* eslint-disable no-console */
+import type { AttestationResponse, Config } from "@/types";
+
+import { generateKey, partialCallbacks, signJwtCallback } from "@/logic";
+
 /**
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
@@ -18,18 +18,15 @@ import { readFileSync, writeFileSync } from "node:fs";
  */
 export async function loadAttestation(
   wallet: Config["wallet"],
-): Promise<string> {
+): Promise<AttestationResponse> {
   const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
 
   try {
-    console.debug("wallet attestation found and loaded");
-
-    return readFileSync(attestationPath, "utf-8");
+    return {
+      attestation: readFileSync(attestationPath, "utf-8"),
+      created: false,
+    };
   } catch {
-    console.debug(
-      `missing wallet attestation in ${attestationPath}: generating new one`,
-    );
-
     const providerKeyPair = await generateKey(
       `${wallet.backup_storage_path}/wallet_provider_jwks`,
     );
@@ -45,6 +42,12 @@ export async function loadAttestation(
       .setProtectedHeader({ alg: "ES256" })
       .sign(providerKeyPair.privateKey);
 
+    if (!providerKeyPair.privateKey.kid)
+      throw new Error("invalid key pair: kid missing");
+
+    if (providerKeyPair.privateKey.kid !== providerKeyPair.publicKey.kid)
+      throw new Error("invalid key pair: kid does not match");
+
     const attestationOptions: WalletAttestationOptions = {
       dpopJwkPublic: unitKeyPair.publicKey,
       issuer: wallet.wallet_provider_base_url,
@@ -55,14 +58,18 @@ export async function loadAttestation(
       walletLink: `${wallet.wallet_provider_base_url}/wallet`,
       walletName: wallet.wallet_name,
     };
-    const callbacks = getCallbacks(providerKeyPair.privateKey);
-    const provider = new ItWalletProvider(callbacks);
+    const callbacks = {
+      ...partialCallbacks,
+      signJwt: signJwtCallback([providerKeyPair.privateKey]),
+    };
+    const provider = new WalletProvider({ callbacks });
     const attestation =
-      provider.createItWalletAttestationJwt(attestationOptions);
-    writeFileSync(attestationPath, await attestation);
+      await provider.createItWalletAttestationJwt(attestationOptions);
+    writeFileSync(attestationPath, attestation);
 
-    console.debug("new wallet attestation created and ready for use");
-    return attestation;
+    return {
+      attestation,
+      created: true,
+    };
   }
 }
-/* eslint-enable no-console */

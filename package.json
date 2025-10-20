@@ -15,10 +15,10 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:unit": "vitest --config vitest.unit.config.mjs",
-    "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "format:check": "prettier --check \"src/**/*.{js,ts}\"",
-    "lint": "eslint --fix \"src/**/*.{js,ts}\"",
-    "lint:check": "eslint \"src/**/*.{js,ts}\"",
+    "format": "prettier --write \"{src,tests}/**/*.{js,ts}\"",
+    "format:check": "prettier --check \"{src,tests}/**/*.{js,ts}\"",
+    "lint": "eslint --fix \"{src,tests}/**/*.{js,ts}\"",
+    "lint:check": "eslint \"{src,tests}/**/*.{js,ts}\"",
     "pre-commit": "pnpm format && pnpm lint",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test"
@@ -27,7 +27,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@pagopa/eslint-config": "^4.0.1",
+    "@pagopa/eslint-config": "^5.0.1",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
     "eslint": "^9.36.0",
@@ -37,11 +37,9 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@openid-federation/core": "^0.2.0",
-    "@openid4vc/oauth2": "^0.2.0",
-    "@openid4vc/openid4vci": "^0.3.0-alpha-20250224151429",
-    "@pagopa/io-wallet-oid-federation": "^0.3.0",
-    "@pagopa/io-wallet-oid4vci": "^0.3.0",
+    "@pagopa/io-wallet-oauth2": "^0.4.2",
+    "@pagopa/io-wallet-oid-federation": "^0.4.2",
+    "@pagopa/io-wallet-oid4vci": "^0.4.2",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "ksuid": "^3.0.0",

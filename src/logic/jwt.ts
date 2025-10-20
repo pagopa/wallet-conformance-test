@@ -2,11 +2,11 @@ import type {
   Jwk,
   SignJwtCallback,
   VerifyJwtCallback,
-} from "@openid4vc/oauth2";
+} from "@pagopa/io-wallet-oauth2";
 
-import { type JWK, SignJWT, importJWK, jwtVerify } from "jose";
+import { importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
-import { jwkFromSigner } from "./jwk";
+import { jwkFromSigner } from ".";
 
 /**
  * Creates a callback function for signing JWTs.

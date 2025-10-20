@@ -1,4 +1,4 @@
-import { JWK } from "jose";
+import { Jwk } from "@pagopa/io-wallet-oauth2";
 
 /**
  * Represents a cryptographic key pair, containing a private and a public key
@@ -8,9 +8,9 @@ export interface KeyPair {
   /**
    * The private key in JWK format.
    */
-  privateKey: JWK;
+  privateKey: Jwk;
   /**
    * The public key in JWK format.
    */
-  publicKey: JWK;
+  publicKey: Jwk;
 }
