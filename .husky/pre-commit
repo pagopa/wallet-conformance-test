@@ -1,0 +1,3 @@
+echo "🪝 Running pre-commit hook."
+pnpm pre-commit
+echo "🪝 Done."

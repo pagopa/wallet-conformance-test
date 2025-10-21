@@ -1,22 +1,48 @@
 {
-  "name": "wallet-conformance-test",
   "version": "1.0.0",
+  "name": "wallet-conformance-test",
   "description": "",
   "main": "index.js",
+  "files": [
+    "config.ini"
+  ],
   "bin": {
     "wallet-conformance-test": "./bin/wallet-conformance-test"
   },
   "scripts": {
     "build": "tsc",
+    "types:check": "tsc --noEmit",
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:unit": "vitest --config vitest.unit.config.mjs",
+    "format": "prettier --write \"{src,tests}/**/*.{js,ts}\"",
+    "format:check": "prettier --check \"{src,tests}/**/*.{js,ts}\"",
+    "lint": "eslint --fix \"{src,tests}/**/*.{js,ts}\"",
+    "lint:check": "eslint \"{src,tests}/**/*.{js,ts}\"",
+    "pre-commit": "pnpm format && pnpm lint",
+    "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
+    "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@pagopa/eslint-config": "^5.0.1",
+    "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
+    "eslint": "^9.38.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.6.2",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@pagopa/io-wallet-oauth2": "^0.4.2",
+    "@pagopa/io-wallet-oid-federation": "^0.4.2",
+    "@pagopa/io-wallet-oid4vci": "^0.4.2",
+    "ini": "^5.0.0",
+    "jose": "^6.1.0",
+    "ksuid": "^3.0.0",
+    "zod": "^4.1.5"
   }
 }
