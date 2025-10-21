@@ -1,12 +1,12 @@
 import { CallbackContext } from "@pagopa/io-wallet-oauth2";
-import { createHash, randomBytes } from "node:crypto";
+import { BinaryLike, createHash, randomBytes } from "node:crypto";
 
 import { verifyJwt } from ".";
 
 export const partialCallbacks: Partial<CallbackContext> = {
   fetch,
-  generateRandom: (bytes) => randomBytes(bytes),
-  hash: (data, alg) =>
+  generateRandom: randomBytes,
+  hash: (data: BinaryLike, alg: string) =>
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };

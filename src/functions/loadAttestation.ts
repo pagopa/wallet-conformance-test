@@ -3,7 +3,7 @@ import {
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
 import { SignJWT } from "jose";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";
 
@@ -20,6 +20,23 @@ export async function loadAttestation(
   wallet: Config["wallet"],
 ): Promise<AttestationResponse> {
   const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
+
+  try {
+    if (!existsSync(wallet.wallet_attestations_storage_path))
+      mkdirSync(wallet.wallet_attestations_storage_path, {
+        recursive: true,
+      });
+
+    if (!existsSync(wallet.backup_storage_path))
+      mkdirSync(wallet.backup_storage_path, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories: ${err.message}`,
+    );
+  }
 
   try {
     return {
