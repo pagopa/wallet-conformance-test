@@ -6,8 +6,11 @@ import { expect, test } from "vitest";
 import { loadCredentials } from "@/functions";
 import { Config } from "@/types";
 
-test("Mocked Credentials Validation", async () => {
+test("Mocked Credentials Validation", () => {
   const textConfig = readFileSync("config.ini", "utf-8");
+  const issuerKey = JSON.parse(
+    readFileSync("tests/data/backup/issuer_jwk.pub", "utf-8"),
+  );
   const config = parse(textConfig) as Config;
   const types: string[] = [];
 
