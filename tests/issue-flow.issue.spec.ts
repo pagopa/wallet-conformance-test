@@ -40,19 +40,19 @@ describe(
 			userAgent: config.network.user_agent,
 		});
 
-		test("Metadata Discovery", async () => {
-			const log = baseLog.withTag("ISS-003");
+  test("ISS-003: Metadata Discovery should return valid entity metadata statement", async () => {
+    const log = baseLog.withTag("ISS-003");
 
 			log.start("ISS-003 Discovery test started");
 			const metadataUrl = `${config.issuance.url}/.well-known/openid-federation`;
 
-			log.info("Discoverying issuer's metadata...");
-			const metadata = await fetchWithRetries(
-				metadataUrl,
-				config.network,
-				log,
-				`Fetching metadata from ${metadataUrl}`
-			);
+    log.info("Discoverying issuer's metadata...");
+    log.info(`Fetching metadata from ${metadataUrl}`);
+    const res = await fetchWithRetries(metadataUrl, config.network);
+    log.info(
+      `Request completed wih status ${res.response.status} after ${res.attempts} attempts`,
+    );
+    const metadata = res.response;
 
 			log.info("Asserting response status...");
 			expect(metadata.status).toBe(200);

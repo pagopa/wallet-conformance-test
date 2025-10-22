@@ -16,6 +16,33 @@ export const partialCallbacks: Partial<CallbackContext> = {
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };
+import { Config, configSchema } from "@/types";
+import { FetchWithRetriesResponse } from "@/types/FetchWithRetriesResponse";
+
+export async function fetchWithRetries(
+  url: Request | string | URL,
+  network: Config["network"],
+): Promise<FetchWithRetriesResponse> {
+  for (let attempts = 0; attempts < network.max_retries; attempts++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": network.user_agent,
+        },
+        method: "GET",
+        signal: AbortSignal.timeout(network.timeout * 1000),
+      });
+
+      return { attempts, response };
+    } catch (e) {
+      const err = e as Error;
+      if (err.name === "TimeoutError")
+        throw new Error(`Request timed out: aborting`);
+    }
+  }
+
+  throw new Error(`Request failed with no retries left: aborting`);
+}
 
 /**
  * Loads and parses the configuration from a specified INI file.
@@ -25,56 +52,7 @@ export const partialCallbacks: Partial<CallbackContext> = {
  */
 export function loadConfig(fileName: string): Config {
   const textConfig = readFileSync(fileName, "utf-8");
+  const parsed = configSchema.parse(parse(textConfig));
 
-  return parse(textConfig) as Config;
-}
-
-export async function fetchWithRetries(
-	url: string | URL | Request,
-	network: Config["network"],
-	log: Logger,
-	message: string = `Fetching data from ${url}`,
-) {
-	let retries = network.max_retries;
-
-	log.info(message);
-
-	let res: Response;
-	try {
-		res = await fetch(
-			url,
-			{
-				method: "GET",
-				headers: {
-					"User-Agent": network.user_agent,
-				},
-				signal: AbortSignal.timeout(network.timeout * 1000)
-			}
-		);
-	} catch (err: any) {
-		if (err.name === "TimeoutError") {
-			log.error(`Request timed out: aborting`);
-			throw err;
-		}
-
-		if (retries-- <= 0) {
-			log.error(`Request failed with no retries left: aborting`);
-			throw err;
-		}
-
-		log.warn(`Request failed: ${retries} retries left`);
-		res = await fetchWithRetries(
-			url, 
-			{
-				...network,
-				max_retries: retries
-			},
-			log,
-			message
-		);
-	}
-
-	log.info(`Request completed wih status ${res.status}`);
-	
-	return res;
+  return parsed;
 }
