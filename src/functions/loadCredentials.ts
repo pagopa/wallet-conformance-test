@@ -1,8 +1,12 @@
 import { parse } from "@auth0/mdl";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { Credential } from "@/types";
 import { SDJwt } from "@sd-jwt/core";
+import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { readdirSync, readFileSync } from "node:fs";
+
+import { validateSdJwt } from "@/logic";
+import { Credential, SdJwtException } from "@/types";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -18,6 +22,8 @@ import { SDJwt } from "@sd-jwt/core";
 export async function loadCredentials(
   path: string,
   types: string[],
+  issuerKey: Jwk,
+  caCertPath: string,
 ): Promise<Record<string, Credential>> {
   const files = readdirSync(path);
   const credentials: Record<string, Credential> = {};
@@ -32,10 +38,20 @@ export async function loadCredentials(
       continue;
     }
 
-    // First, attempt to parse the credential as a SD-JWT
+    // First, attempt to verify the credential as a SD-JWT
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const jwt = await SDJwt.extractJwt(credential);
+      const jwt = await validateSdJwt(credential, fileName, issuerKey);
+
+      for (const name in credentials) {
+        if (
+          credentials[name]?.typ === "dc+sd-jwt" &&
+          jwt.payload.sub === credentials[name]?.credential.sub
+        )
+          throw new SdJwtException(
+            `duplicate 'sub' found between credentials ${name} and ${fileName}`,
+          );
+      }
 
       credentials[fileName] = {
         credential: jwt,
@@ -43,25 +59,31 @@ export async function loadCredentials(
       };
       continue; // Move to the next file
     } catch (e) {
+      if (e instanceof SdJwtException) throw e;
+
       const err = e as Error;
       console.error(
         `${file} was not a valid sd-jwt credential: ${err.message}`,
       );
     }
 
-    // If SD-JWT verification fails, attempt to parse it as an MDOC
+    // If SD-JWT verification fails, attempt to verify it as an MDOC
     try {
       const credential = readFileSync(`${path}/${file}`);
+      const cert = readFileSync(caCertPath, "utf-8");
       const mdoc = parse(credential);
+      console.log(JSON.stringify(mdoc, null, 4));
+      // await verifier.verify(deviceResponseMDoc.encode());
 
       // If validation is successful, add it to the credentials record
       credentials[fileName] = {
         credential: mdoc,
-        typ: "mso_mdoc",
+        typ: "mdoc",
       };
     } catch (e) {
-      const err = e as Error
-      console.error(`${file} was not a valid mdoc credential: ${err.message}`)
+      throw e;
+      // const err = e as Error
+      // throw new Error(`${file} was not a valid mdoc credential: ${err.message}`)
     }
   }
 

@@ -1,8 +1,6 @@
-import { MDoc } from "@auth0/mdl";
-import { Jwt } from "@sd-jwt/core";
-
+import { SdJwt } from ".";
 
 export interface Credential {
-  credential: MDoc | Jwt;
+  credential: any | SdJwt;
   typ: string;
 }
