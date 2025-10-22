@@ -38,15 +38,14 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@openid4vc/utils": "^0.2.0",
     "@pagopa/io-wallet-oauth2": "^0.4.2",
     "@pagopa/io-wallet-oid-federation": "^0.4.2",
     "@pagopa/io-wallet-oid4vci": "^0.4.2",
+    "consola": "^3.4.2",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "ksuid": "^3.0.0",
-    "jose": "^6.1.0",
-    "zod": "^3.24.2",
-    "ts-log": "^2.2.7",
-    "consola": "^3.4.2"
+    "zod": "^3.24.2"
   }
 }

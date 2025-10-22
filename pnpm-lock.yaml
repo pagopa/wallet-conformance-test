@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@openid4vc/utils':
+        specifier: ^0.2.0
+        version: 0.2.0(typescript@5.8.3)
       '@pagopa/io-wallet-oauth2':
         specifier: ^0.4.2
         version: 0.4.2
@@ -29,9 +32,6 @@ importers:
       ksuid:
         specifier: ^3.0.0
         version: 3.0.0
-      ts-log:
-        specifier: ^2.2.7
-        version: 2.2.7
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -300,6 +300,9 @@ packages:
 
   '@openid4vc/openid4vci@0.3.0-alpha-20250714110838':
     resolution: {integrity: sha512-Q6xCzapjacrmB2Tjk7rNrGsJbjTIVVIKn9ZvFZflfo8Imi18MXDLFmwQAyplwUMWIPy5J1AQ0nMeZNPdpWCTkQ==}
+
+  '@openid4vc/utils@0.2.0':
+    resolution: {integrity: sha512-CvZxy9eH8582Yb/gzc+XPiaQIbC7Y0IT3F14szGS++o6373dUN12KZQzey4hoRrVO92D04vCXyJY9xctw4zgMw==}
 
   '@openid4vc/utils@0.3.0-alpha-20250714110838':
     resolution: {integrity: sha512-10TCSw/AMtgD4AIUob6kkFg6UdRv5kEYHovLJnfi5MHt4KdxSfSGfu2zc1cxJlKaBEg7su1BKiAT9j9WDmxSrA==}
@@ -1124,9 +1127,6 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
-  ts-log@2.2.7:
-    resolution: {integrity: sha512-320x5Ggei84AxzlXp91QkIGSw5wgaLT6GeAH0KsqDmRZdVWW2OiSeVvElVoatk3f7nicwXlElXsoFkARiGE2yg==}
-
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -1148,6 +1148,14 @@ packages:
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+  valibot@0.42.1:
+    resolution: {integrity: sha512-3keXV29Ar5b//Hqi4MbSdV7lfVp6zuYLZuA9V1PvQUsXqogr+u5lvLPLk3A4f74VUXDnf/JfWMN6sB+koJ/FFw==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -1411,6 +1419,13 @@ snapshots:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
       zod: 3.25.76
+
+  '@openid4vc/utils@0.2.0(typescript@5.8.3)':
+    dependencies:
+      buffer: 6.0.3
+      valibot: 0.42.1(typescript@5.8.3)
+    transitivePeerDependencies:
+      - typescript
 
   '@openid4vc/utils@0.3.0-alpha-20250714110838':
     dependencies:
@@ -2252,8 +2267,6 @@ snapshots:
     dependencies:
       typescript: 5.8.3
 
-  ts-log@2.2.7: {}
-
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
@@ -2276,6 +2289,10 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  valibot@0.42.1(typescript@5.8.3):
+    optionalDependencies:
+      typescript: 5.8.3
 
   vite-node@3.2.4(@types/node@24.1.0):
     dependencies:

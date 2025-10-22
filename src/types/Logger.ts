@@ -1,14 +1,14 @@
-import { ConsolaInstance } from "consola"
-
-export type SetLogOptionsCallback = (
-	this: ConsolaInstance,
-	options: {
-		level?: string,
-		format?: string,
-		path?: string
-	}
-) => void;
+import { ConsolaInstance } from "consola";
 
 export type Logger = ConsolaInstance & {
-	setLogOptions: SetLogOptionsCallback
-}
+  setLogOptions: SetLogOptionsCallback;
+};
+
+export type SetLogOptionsCallback = (
+  this: ConsolaInstance,
+  options: {
+    format?: string;
+    level?: string;
+    path?: string;
+  },
+) => void;

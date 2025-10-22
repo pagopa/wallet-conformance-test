@@ -3,10 +3,6 @@ import { parse } from "ini";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { Logger } from "ts-log";
-
-import { Config } from "@/types";
-
 import { verifyJwt } from ".";
 
 export const partialCallbacks: Partial<CallbackContext> = {
