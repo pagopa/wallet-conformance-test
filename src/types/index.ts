@@ -5,3 +5,5 @@ export * from "./fetch-with-retries-response";
 export * from "./key-pair";
 export * from "./logger";
 export * from "./mdoc";
+export * from "./sd-jwt";
+export * from "./sd-jwt-exception";
