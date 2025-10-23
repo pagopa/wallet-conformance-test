@@ -1,9 +1,9 @@
-import { ValidationError } from "@openid4vc/utils";
+import { decodeJwt } from "@pagopa/io-wallet-oauth2";
 import {
   itWalletEntityStatementClaimsSchema,
   parseWithErrorHandling,
 } from "@pagopa/io-wallet-oid-federation";
-import { decodeJwt } from "jose";
+import { ValidationError } from "@pagopa/io-wallet-utils";
 import { describe, expect, test } from "vitest";
 
 import { createLogger, fetchWithRetries, loadConfig } from "@/logic";
@@ -56,7 +56,7 @@ describe("Issue Flow Test" /**
     expect(data).not.toBeUndefined();
 
     log.info("Parsing response body as JWT...");
-    const decodedData = decodeJwt(data);
+    const decodedData = decodeJwt({ jwt: data });
     log.debug(decodedData);
 
     try {
