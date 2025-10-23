@@ -1,16 +1,16 @@
 import {
-  ConsolaInstance,
+  ConsolaOptions,
   ConsolaReporter,
   createConsola,
   LogObject,
 } from "consola";
-import { openSync, writeFileSync } from "node:fs";
+import { openSync, writeFile, writeFileSync } from "node:fs";
+import { stdout } from "node:process";
 
 import { Logger } from "@/types/Logger";
 
 export function createLogger(): Logger {
-  const log = createConsola({
-    fancy: true,
+  return newLogger({
     formatOptions: {
       colors: true,
       columns: 20,
@@ -18,8 +18,6 @@ export function createLogger(): Logger {
     },
     level: 3,
   });
-
-  return Object.assign(log, { setLogOptions: setLogOptionsCallback });
 }
 
 function levelCode(level: string): number {
@@ -40,8 +38,22 @@ function levelCode(level: string): number {
   }
 }
 
-function setLogOptionsCallback(
-  this: ConsolaInstance,
+function newLogger(options?: Partial<ConsolaOptions>): Logger {
+  return Object.assign(createConsola({ ...options, fancy: true }), {
+    nl,
+    setLogOptions,
+    withTag,
+  });
+}
+
+function nl() {
+  writeFile(stdout.fd, "\n", (err) => {
+    if (err) throw err;
+  });
+}
+
+function setLogOptions(
+  this: Logger,
   options: { format?: string; level?: string; path?: string },
 ) {
   const reporters: ConsolaReporter[] = [];
@@ -61,7 +73,9 @@ function setLogOptionsCallback(
 
     reporters.push({
       log: (logObj) => {
-        console.log(formatLog(logObj));
+        writeFile(stdout.fd, `${formatLog(logObj)}\n`, (err) => {
+          if (err) throw err;
+        });
       },
     });
   }
@@ -80,4 +94,22 @@ function setLogOptionsCallback(
     }
 
   if (reporters.length > 0) this.setReporters(reporters);
+}
+
+function withTag(this: Logger, tag: string): Logger {
+  const log = createConsola({
+    ...this.options,
+    defaults: {
+      ...this.options?.defaults,
+      tag: this.options?.defaults.tag
+        ? this.options.defaults.tag + "|" + tag
+        : tag,
+    },
+  });
+
+  return Object.assign(log, {
+    nl,
+    setLogOptions,
+    withTag,
+  });
 }

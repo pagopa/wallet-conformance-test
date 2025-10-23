@@ -1,4 +1,6 @@
-import { CallbackContext } from "@pagopa/io-wallet-oauth2";
+import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
+
+import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
 import { parse } from "ini";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -48,7 +50,7 @@ export async function fetchWithRetries(
  */
 export function loadConfig(fileName: string): Config {
   const textConfig = readFileSync(fileName, "utf-8");
-  const parsed = configSchema.parse(parse(textConfig));
+  const parsed = parseWithErrorHandling(configSchema, parse(textConfig));
 
   return parsed;
 }

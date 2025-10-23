@@ -1,7 +1,7 @@
+import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { Jwk } from "@pagopa/io-wallet-oauth2";
 
 import type { KeyPair } from "@/types";
 
