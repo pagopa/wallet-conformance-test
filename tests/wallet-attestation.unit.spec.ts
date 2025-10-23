@@ -1,4 +1,5 @@
-import { importJWK, JWK, jwtVerify } from "jose";
+import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
@@ -35,7 +36,7 @@ describe("Wallet Attestation Unit Test", () => {
     );
     const unitKeyPair = readFileSync(`${backup}/wallet_unit_jwks`, "utf-8");
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
-    const unitJWK: JWK = JSON.parse(unitKeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
     const providerKey = await importJWK(providerJWK, "ES256");
     const jwt = await jwtVerify(response.attestation, providerKey);
 
@@ -43,7 +44,7 @@ describe("Wallet Attestation Unit Test", () => {
     expect(jwt.protectedHeader.alg).toBe("ES256");
     expect(jwt.protectedHeader.kid).toBe(providerJWK.kid);
 
-    expect((jwt.payload.cnf as { jwk: JWK }).jwk).toStrictEqual(unitJWK);
+    expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
     expect(jwt.payload.iss).toBe(issuer);
     expect(jwt.payload.sub).toBe(unitJWK.kid);
     expect(jwt.payload.wallet_link).toBe(`${issuer}/wallet`);
@@ -72,12 +73,12 @@ describe("Wallet Attestation Unit Test", () => {
       "utf-8",
     );
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
-    const unitJWK: JWK = JSON.parse(unitKeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
     const providerKey = await importJWK(providerJWK, "ES256");
     const jwt = await jwtVerify(attestation, providerKey);
 
     expect(providerJWK.kid).toBe(jwt.protectedHeader.kid);
-    expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: JWK }).jwk);
+    expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: Jwk }).jwk);
     expect(unitJWK.kid).toBe(jwt.payload.sub);
   });
 });
