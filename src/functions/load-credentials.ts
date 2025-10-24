@@ -1,9 +1,10 @@
 import { SDJwt } from "@sd-jwt/core";
 import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { ValidationError } from "@pagopa/io-wallet-utils";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { parseMdoc, validateSdJwt } from "@/logic";
-import { Credential, SdJwtException } from "@/types";
+import { Credential, VerificationError } from "@/types";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -18,7 +19,7 @@ export async function loadCredentials(
   path: string,
   types: string[],
   issuerKey: Jwk,
-  caCertPath: string,
+  // caCertPath: string,
   onIgnoreError: (msg: string) => void,
 ): Promise<Record<string, Credential>> {
   const files = readdirSync(path);
@@ -41,10 +42,10 @@ export async function loadCredentials(
       for (const name in credentials) {
         if (
           credentials[name]?.typ === "dc+sd-jwt" &&
-          jwt.payload.sub === credentials[name]?.credential.sub
+          jwt.payload.sub === credentials[name]?.credential.payload.sub
         )
-          throw new SdJwtException(
-            `duplicate 'sub' found between credentials ${name} and ${file}`,
+          throw new VerificationError(
+            `duplicate 'sub' found between credentials ${name} and ${fileName}`,
           );
       }
 
@@ -54,7 +55,8 @@ export async function loadCredentials(
       };
       continue; // Move to the next file
     } catch (e) {
-      if (e instanceof SdJwtException) throw e;
+      if (e instanceof VerificationError || e instanceof ValidationError)
+        throw e;
 
       const err = e as Error;
       onIgnoreError(
@@ -70,7 +72,7 @@ export async function loadCredentials(
       // If validation is successful, add it to the credentials record
       credentials[file] = {
         credential: mdoc,
-        typ: "mdoc",
+        typ: "mso_mdoc",
       };
     } catch (e) {
       const err = e as Error;

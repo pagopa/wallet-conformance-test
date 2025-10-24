@@ -10,20 +10,20 @@ export const sdJwtHeader = z.object({
   x5c: z.string().optional(),
 });
 
-export const sdJwtPayload = z.looseObject({
+export const sdJwtPayload = z.object({
   _sd: z.array(z.string()),
-  _sd_alg: z.string(),
+  _sd_alg: z.literal("sha-256"), // .or(z.literal("sha-384")).or(z.literal("sha-512")).default("sha-256"),
   cnf: z.object({ jwk: JWK }),
-  exp: z.uint32(),
-  iat: z.uint32(),
-  iss: z.url(),
+  exp: z.number().int().nonnegative(),
+  iat: z.number().int().nonnegative(),
+  iss: z.string().url(),
   issuing_authority: z.string(),
-  issuing_country: z.string().length(2).uppercase(),
-  nbf: z.uint32().optional(),
+  issuing_country: z.string().length(2).toUpperCase(),
+  nbf: z.number().int().nonnegative().optional(),
   status: z
     .object({
-      idx: z.uint32(),
-      uri: z.url(),
+      idx: z.number().int().nonnegative(),
+      uri: z.string().url(),
     })
     .or(
       z.object({
@@ -32,7 +32,7 @@ export const sdJwtPayload = z.looseObject({
     )
     .optional(),
   sub: z.string(),
-  vct: z.url({ protocol: /https/ }),
+  vct: z.string().url().startsWith("https"),
   "vct#integrity": z.string(),
   verification: z.object({
     assurance_level: z.string(),
@@ -42,11 +42,11 @@ export const sdJwtPayload = z.looseObject({
           date_of_issuing: z.date(),
           reference_number: z.number(),
           type: z.literal("digital_attestation"),
-          voucher: z.looseObject({
+          voucher: z.object({
             organization: z.string(),
           }),
         }),
-        time: z.uint32(),
+        time: z.number().int().nonnegative(),
         type: z.literal("vouch"),
       }),
     ),
