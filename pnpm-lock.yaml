@@ -20,6 +20,9 @@ importers:
       '@pagopa/io-wallet-oid4vci':
         specifier: ^0.4.2
         version: 0.4.2
+      '@pagopa/io-wallet-utils':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@sd-jwt/core':
         specifier: ^0.15.0
         version: 0.15.0
@@ -36,8 +39,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       zod:
-        specifier: ^4.1.11
-        version: 4.1.11
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       '@pagopa/eslint-config':
         specifier: ^5.0.1
@@ -1411,9 +1414,6 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.11:
-    resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
-
 snapshots:
 
   '@auth0/mdl@3.0.0':
@@ -2780,5 +2780,3 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@3.25.76: {}
-
-  zod@4.1.11: {}
