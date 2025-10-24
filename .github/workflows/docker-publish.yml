@@ -16,12 +16,35 @@ on:
       - 'pnpm-lock.yaml'
       - 'vitest.**ts'
 
+
+concurrency:
+  group: ${{ github.workflow }}-cd
+  cancel-in-progress: true
+
 jobs:
-  docker_image_build:
-    uses: pagopa/dx/.github/workflows/docker_image_build.yaml@main
-    name: Docker Image Build
-    with:
-      docker_image_name: "wallet-conformance-test"
-      image_description: "Tool for the automated conformance testing of services integrating with the Italian IT Wallet ecosystem"
-      image_authors: "Wallet Team"
-      build_platforms: "linux/amd64,linux/arm64"
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      packages: write
+
+    steps:
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        name: Checkout
+
+      - name: Docker Build
+        uses: pagopa/dx/.github/actions/docker-build-push@main
+        with:
+          dockerfile_path: "./Dockerfile"
+          dockerfile_context: "."
+          docker_image_description: "Tool for the automated conformance testing of services integrating with the Italian IT Wallet ecosystem"
+          docker_image_authors: "Wallet Team"
+          build_platforms: "linux/amd64,linux/arm64"
+          push_to_registry: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
