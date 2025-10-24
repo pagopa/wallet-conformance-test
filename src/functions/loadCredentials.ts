@@ -1,8 +1,8 @@
+import { parse } from "@auth0/mdl";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { DeviceResponse, Verifier, parse } from "@auth0/mdl";
-import { SDJwt, SDJwtInstance } from "@sd-jwt/core";
-import { ES256, digest, generateSalt } from "@sd-jwt/crypto-nodejs";
+import { Credential } from "@/types";
+import { SDJwt } from "@sd-jwt/core";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -15,69 +15,55 @@ import { ES256, digest, generateSalt } from "@sd-jwt/crypto-nodejs";
  * @returns A promise that resolves to a record object where keys are the credential filenames
  *          and values are the credential data (string for SD-JWT, ArrayBuffer for MDOC).
  */
-export async  function loadCredentials(
-	path: string,
-	types: string[],
-	issuerKey: JsonWebKey,
-	caCertPath: string
-): Promise<Record<string, string | ArrayBuffer>> {
-	const files = readdirSync(path);
-	const credentials: Record<string, string | ArrayBuffer> = {};
+export async function loadCredentials(
+  path: string,
+  types: string[],
+): Promise<Record<string, Credential>> {
+  const files = readdirSync(path);
+  const credentials: Record<string, Credential> = {};
 
-	for (const file of files) {
-		const fileName = file.split("/").pop();
-		// Skip if the file is not a recognized credential type
-		if (!fileName || !types.find(name => name === fileName)){
-			console.error(`current issuer does not support ${fileName} credential type`);
-			continue;
-		}
+  for (const file of files) {
+    const fileName = file.split("/").pop();
+    // Skip if the file is not a recognized credential type
+    if (!fileName || !types.find((name) => name === fileName)) {
+      console.error(
+        `current issuer does not support ${fileName} credential type`,
+      );
+      continue;
+    }
 
-		// First, attempt to verify the credential as a SD-JWT
-		try {
-			const credential = readFileSync(`${path}/${file}`, "utf-8");
-			const jwt = await SDJwt.extractJwt(credential);
-			if (!jwt.payload || !jwt.payload["_sd_alg"])
-				throw new Error("credential parsing failed");
-	
-			// Mock signer as it's not needed for verification
-			const signer = () => "";
-			const verifier = await ES256.getVerifier(issuerKey);
-			
-			const sdjwt = new SDJwtInstance({
-				signer,
-				signAlg: jwt.payload["_sd_alg"] as string,
-				verifier,
-				hasher: digest,
-				saltGenerator: generateSalt
-			});
+    // First, attempt to parse the credential as a SD-JWT
+    try {
+      const credential = readFileSync(`${path}/${file}`, "utf-8");
+      const jwt = await SDJwt.extractJwt(credential);
 
-			// If validation is successful, add it to the credentials record
-			if (!await sdjwt.verify(jwt["encoded"]))
-				throw new Error("credential validation failed");
+      credentials[fileName] = {
+        credential: jwt,
+        typ: "dc+sd-jwt",
+      };
+      continue; // Move to the next file
+    } catch (e) {
+      const err = e as Error;
+      console.error(
+        `${file} was not a valid sd-jwt credential: ${err.message}`,
+      );
+    }
 
-			credentials[fileName] = credential;
-			continue; // Move to the next file
-		} catch(e) {
-			const err = e as Error
-			console.error(`${file} was not a valid sd-jwt credential: ${err.message}`);
-		}
-		
-		// If SD-JWT verification fails, attempt to verify it as an MDOC
-		try {
-			const credential = readFileSync(`${path}/${file}`);
-			const cert = readFileSync(caCertPath, "utf-8");
-			const MDoc = parse(credential)
-			console.log(JSON.stringify(MDoc, null, 4))
-			// await verifier.verify(deviceResponseMDoc.encode());
+    // If SD-JWT verification fails, attempt to parse it as an MDOC
+    try {
+      const credential = readFileSync(`${path}/${file}`);
+      const mdoc = parse(credential);
 
-			// If validation is successful, add it to the credentials record
-			credentials[fileName] = credential.buffer;
-		} catch(e) {
-			throw e
-			// const err = e as Error
-			// throw new Error(`${file} was not a valid mdoc credential: ${err.message}`)
-		}
-	}
+      // If validation is successful, add it to the credentials record
+      credentials[fileName] = {
+        credential: mdoc,
+        typ: "mso_mdoc",
+      };
+    } catch (e) {
+      const err = e as Error
+      console.error(`${file} was not a valid mdoc credential: ${err.message}`)
+    }
+  }
 
-	return credentials;
+  return credentials;
 }
