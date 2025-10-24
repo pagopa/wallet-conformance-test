@@ -1,7 +1,14 @@
 import { MDoc } from "@auth0/mdl";
-import { Jwt } from "@sd-jwt/core";
+import { SdJwt } from ".";
 
-export interface Credential {
-  credential: Jwt | MDoc;
-  typ: string;
+export type Credential = MdocCredential | SdJwtCredential;
+
+interface MdocCredential {
+  credential: MDoc;
+  typ: "mso_mdoc";
+}
+
+interface SdJwtCredential {
+  credential: SdJwt;
+  typ: "dc+sd-jwt";
 }

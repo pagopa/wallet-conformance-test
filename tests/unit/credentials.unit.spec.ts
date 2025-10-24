@@ -6,7 +6,7 @@ import { expect, test } from "vitest";
 import { loadCredentials } from "@/functions";
 import { Config } from "@/types";
 
-test("Mocked Credentials Validation", () => {
+test("Mocked Credentials Validation", async () => {
   const textConfig = readFileSync("config.ini", "utf-8");
   const issuerKey = JSON.parse(
     readFileSync("tests/data/backup/issuer_jwk.pub", "utf-8"),
@@ -21,11 +21,22 @@ test("Mocked Credentials Validation", () => {
       (t) => t === config.issuance.url,
     );
 
-    if (issuerHasType) types.push(type);
+    if (
+      config.issuance.credentials.types[type].find(
+        (t) => t === config.issuance.url,
+      )
+    )
+      types.push(type);
   }
 
   try {
-    await loadCredentials("tests/data/credentials", types, console.error);
+    await loadCredentials(
+      "tests/data/credentials",
+      types,
+      issuerKey,
+	  console.error,
+      // "tests/data/certs/cert.pem",
+    );
   } catch (e) {
     if (e instanceof ValidationError) {
       const msg = e.message
