@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "dev:server": "ts-node -r tsconfig-paths/register src/trust-anchor/server.ts",
     "types:check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",
@@ -29,11 +30,14 @@
   "license": "ISC",
   "devDependencies": {
     "@pagopa/eslint-config": "^5.0.1",
+    "@types/express": "^5.0.3",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
     "eslint": "^9.38.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },
@@ -42,6 +46,7 @@
     "@pagopa/io-wallet-oid-federation": "^0.4.2",
     "@pagopa/io-wallet-oid4vci": "^0.4.2",
     "@pagopa/io-wallet-utils": "^0.4.2",
+    "express": "^5.1.0",
     "consola": "^3.4.2",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
