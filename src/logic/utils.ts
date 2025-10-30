@@ -3,9 +3,14 @@ import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
 import { parse } from "ini";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync } from "node:fs";
 
+import path from "path";
 import { verifyJwt } from ".";
+import { generateKey } from "../logic/jwk";
+import { KeyPair } from "../types";
+import { Config, configSchema } from "@/types";
+import { FetchWithRetriesResponse } from "@/types/FetchWithRetriesResponse";
 
 export const partialCallbacks: Partial<CallbackContext> = {
   fetch,
@@ -14,8 +19,6 @@ export const partialCallbacks: Partial<CallbackContext> = {
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };
-import { Config, configSchema } from "@/types";
-import { FetchWithRetriesResponse } from "@/types/FetchWithRetriesResponse";
 
 export async function fetchWithRetries(
   url: Request | string | URL,
@@ -53,4 +56,56 @@ export function loadConfig(fileName: string): Config {
   const parsed = parseWithErrorHandling(configSchema, parse(textConfig));
 
   return parsed;
+}
+
+/**
+ *  Loads a JSON file from the dumps directory.
+ * @param fileName The name of the JSON file to load.
+ * @returns The parsed JSON object or an error message.
+ */
+export const loadJsonDumps = (fileName: string) => {
+  const dumpsDir = path.resolve(process.cwd(), "./dumps");
+  
+  const filePath = path.join(dumpsDir, fileName);
+  if (!existsSync(filePath)) {
+    return { error: `File ${fileName} not found` };
+  }
+  const raw = readFileSync(filePath, "utf-8");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { error: `Invalid JSON in ${fileName}` };
+  }
+}
+
+/**
+ * Loads or generates JWKS for the federation trust anchor.
+ * @param federationTrustAnchorsJwksPath 
+ * @returns 
+ */
+export async function loadJwks(
+  jwksPath: string,
+): Promise<KeyPair> {
+
+  try {
+    if (!existsSync(jwksPath))
+      mkdirSync(jwksPath, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories ${jwksPath}: ${err.message}`,
+    );
+  }
+
+  try {
+    const jwksData = readFileSync(
+      `${jwksPath}`,
+      "utf-8",
+    );
+    return JSON.parse(jwksData) as KeyPair;
+  } catch {
+    return await generateKey(`${jwksPath}`);
+  }
 }

@@ -1,0 +1,20 @@
+{
+    "authority_hints": [],
+    "sub": "http://127.0.0.1:3001",
+    "iss": "http://127.0.0.1:3001",
+    "metadata": {
+      "federation_entity": {
+        "contacts": [
+          "info@pagopa.it"
+        ],
+        "federation_fetch_endpoint": "http://127.0.0.1:3001/fetch",
+        "federation_resolve_endpoint": "http://127.0.0.1:3001/resolve",
+        "federation_trust_mark_status_endpoint": "http://127.0.0.1:3001/trust_mark_status",
+        "homepage_uri": "http://127.0.0.1:3001",
+        "organization_name": "Trust Anchor - Wallet interop lab",
+        "policy_uri": "http://127.0.0.1:3001/en/website/legal-information",
+        "logo_uri": "http://127.0.0.1:3001/static/svg/pagopa-logo-c-lb.svg",
+        "federation_list_endpoint": "http://127.0.0.1:3001/list"
+      }
+    }
+  }
