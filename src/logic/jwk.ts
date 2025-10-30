@@ -2,15 +2,15 @@ import type { JwtSigner } from "@pagopa/io-wallet-oauth2";
 
 import { Jwk } from "@pagopa/io-wallet-oauth2";
 import {
-  JWK,
-  JWKS,
+  jsonWebKeySchema,
+  jsonWebKeySetSchema,
   parseWithErrorHandling,
 } from "@pagopa/io-wallet-oid-federation";
 import { exportJWK, generateKeyPair } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
-import { KeyPair } from "@/types";
+import { KeyPair, KeyPairJwk } from "@/types";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve),
@@ -29,14 +29,14 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
 
   const kid = KSUID.randomSync().string;
   const exportedPair: KeyPair = {
-    privateKey: parseWithErrorHandling(JWK, {
+    privateKey: parseWithErrorHandling(jsonWebKeySchema, {
       kid: kid,
       ...priv,
-    }),
-    publicKey: parseWithErrorHandling(JWK, {
+    }) as KeyPairJwk,
+    publicKey: parseWithErrorHandling(jsonWebKeySchema, {
       kid: kid,
       ...pub,
-    }),
+    }) as KeyPairJwk,
   };
   writeFileSync(fileName, JSON.stringify(exportedPair));
 
@@ -67,13 +67,13 @@ export function jwkFromSigner(signer: JwtSigner): Jwk {
         throw new Error(`malformed JWK in DID: "${didUrl}"`);
 
       return parseWithErrorHandling(
-        JWK,
+        jsonWebKeySchema,
         JSON.parse(Buffer.from(didJwk, "base64url").toString()),
         "malformed signer's JWK in DID",
       );
     case "jwk":
       return parseWithErrorHandling(
-        JWK,
+        jsonWebKeySchema,
         signer.publicJwk,
         "malformed signer's JWK",
       );
@@ -103,7 +103,7 @@ function jwkFromTrustChain(trustChains: string[], signerKid: string): Jwk {
   if (!payload) throw new TypeError("malformed jwt in trust chain");
 
   const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
-  const jwks = parseWithErrorHandling(JWKS, claims.jwks);
+  const jwks = parseWithErrorHandling(jsonWebKeySetSchema, claims.jwks);
   const federationJwk = jwks.keys.find((key: Jwk) => key.kid === signerKid);
 
   if (!federationJwk) throw new Error("key not found in trust chain");
