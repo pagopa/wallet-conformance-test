@@ -72,7 +72,7 @@ export const loadJsonDumps = (
 
   const filePath = path.join(dumpsDir, fileName);
   if (!existsSync(filePath)) {
-    return { error: `File ${fileName} not found` };
+    throw new Error(`File ${fileName} not found`);
   }
   try {
     // Read the file and replace placeholders
@@ -92,7 +92,7 @@ export const loadJsonDumps = (
 
     return JSON.parse(raw);
   } catch {
-    return { error: `Missing file or invalid JSON in ${fileName}` };
+    throw new Error(`Missing file or invalid JSON in ${fileName}`);
   }
 };
 
