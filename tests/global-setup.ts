@@ -18,10 +18,12 @@ export default async function setup() {
   });
 
   // teardown
-  return new Promise<void>((resolve) => {
-    server.close(() => {
-      baseLog.info("[globalSetup] Trust anchor stopped");
-      resolve();
+  return async () => {
+    await new Promise<void>((resolve) => {
+      server.close(() => {
+        baseLog.info("[globalSetup] Trust anchor stopped");
+        resolve();
+      });
     });
-  });
+  };
 }
