@@ -5,12 +5,12 @@ import {
   jsonWebKeySchema,
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
 import { KeyPair, KeyPairJwk } from "@/types";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve),

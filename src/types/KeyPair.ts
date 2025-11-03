@@ -1,7 +1,5 @@
 import { Jwk } from "@pagopa/io-wallet-oauth2";
 
-export type KeyPairJwk = Jwk & { kid: string } & { kty: "EC" | "RSA" };
-
 /**
  * Represents a cryptographic key pair, containing a private and a public key
  * in JWK format.
@@ -16,3 +14,5 @@ export interface KeyPair {
    */
   publicKey: KeyPairJwk;
 }
+
+export type KeyPairJwk = Jwk & { kid: string } & { kty: "EC" | "RSA" };

@@ -1,6 +1,8 @@
-import { createLogger } from "@/logic/logs";
-import { createServer } from "../src/trust-anchor/server";
 import type { Server } from "http";
+
+import { createLogger } from "@/logic/logs";
+
+import { createServer } from "../src/trust-anchor/server";
 
 let server: Server;
 
@@ -10,7 +12,9 @@ export default async function setup() {
   const baseLog = createLogger();
 
   server = app.listen(port, () => {
-    baseLog.info(`[globalSetup] Trust anchor server running at http://localhost:${port}`);
+    baseLog.info(
+      `[globalSetup] Trust anchor server running at http://localhost:${port}`,
+    );
   });
 
   // teardown

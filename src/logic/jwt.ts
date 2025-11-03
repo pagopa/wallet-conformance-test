@@ -4,11 +4,11 @@ import type {
   VerifyJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 
+import { SignCallback } from "@pagopa/io-wallet-oid-federation";
+import { encodeToBase64Url } from "@pagopa/io-wallet-utils";
 import { CompactSign, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
 import { jwkFromSigner } from ".";
-import { SignCallback } from "@pagopa/io-wallet-oid-federation";
-import { encodeToBase64Url } from "@pagopa/io-wallet-utils";
 
 /**
  * Creates a callback function for signing JWTs.
