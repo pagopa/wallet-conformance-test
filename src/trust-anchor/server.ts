@@ -34,7 +34,6 @@ if (require.main === module) {
     console.log(
       `[Trust Anchor] Server started
       PID: ${process.pid}
-      Environment: ${process.env.NODE_ENV || "development"}
       URL: http://localhost:${port}
       Endpoints:
       GET  /.well-known/openid-federation

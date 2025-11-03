@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev:server": "ts-node -r tsconfig-paths/register src/trust-anchor/server.ts",
+    "ta:server": "ts-node -r tsconfig-paths/register src/trust-anchor/server.ts",
     "types:check": "tsc --noEmit",
     "test": "vitest",
     "test:watch": "vitest --watch",

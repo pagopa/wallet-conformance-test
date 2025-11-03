@@ -164,6 +164,27 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 - Non-Executable Cases: Tests that were skipped and why.
 - Additional Data: Verbose logs and other debugging information.
 
+## 🔐 Trust Anchor Server
+The tool provides a **local Trust Anchor server** for testing purposes. This server is a core component that provides OpenID Federation metadata for testing federation-based wallet interactions. It serves as the root of trust in the federation hierarchy.
+
+### Automatic Startup
+
+The Trust Anchor server **automatically starts when you run tests**. The global test setup handles the server lifecycle:
+- Starts the server on `http://localhost:3001` before tests begin
+- Stops the server after all tests complete
+
+No manual intervention is required when running test suites.
+
+### Manual Startup
+
+If you need to run the Trust Anchor server independently (e.g., for development or debugging), you can start it manually:
+
+```bash
+pnpm ta:server
+```
+
+The server will start on port `3001` by default.
+
 ## 🤝 Contributing
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
 
