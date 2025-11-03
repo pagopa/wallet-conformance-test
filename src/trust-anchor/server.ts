@@ -38,11 +38,6 @@ if (require.main === module) {
       URL: http://localhost:${port}
       Endpoints:
       GET  /.well-known/openid-federation
-      GET  /list
-      GET  /fetch
-      POST /status
-      GET  /historical-jwks
-      GET  /federation_subordinate_events_endpoint
       Started: ${new Date().toISOString()}`,
     );
   });

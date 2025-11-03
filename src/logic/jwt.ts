@@ -5,7 +5,6 @@ import type {
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
-import { encodeToBase64Url } from "@pagopa/io-wallet-utils";
 import { CompactSign, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
 import { jwkFromSigner } from ".";
@@ -60,10 +59,11 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
   }
   const signatureBase64Url = parts[2];
   if (!signatureBase64Url) {
-    throw new Error("JWS compact format is not present");
+    throw new Error("Invalid JWS format: signature part is empty");
   }
-  const signatureBase64 = encodeToBase64Url(signatureBase64Url);
-  const signatureBytes = new Uint8Array(Buffer.from(signatureBase64, "base64"));
+  const signatureBytes = new Uint8Array(
+    Buffer.from(signatureBase64Url, "base64"),
+  );
 
   return signatureBytes;
 };

@@ -49,8 +49,8 @@ export interface createTrustAnchorMetadataOptions {
 
 /**
  * Creates the trust anchor federation metadata JWT.
- * ..param federationTrustAnchorsJwksPath Path to the folder containing the trust anchor JWKS files.
- * ..returns The signed federation metadata JWT as a string.
+ * @param federationTrustAnchorsJwksPath Path to the folder containing the trust anchor JWKS files.
+ * @returns The signed federation metadata JWT as a string.
  */
 export const createTrustAnchorMetadata = async (
   options: createTrustAnchorMetadataOptions,
