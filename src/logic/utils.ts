@@ -98,8 +98,9 @@ export const loadJsonDumps = (
 
 /**
  * Loads or generates JWKS for the federation trust anchor.
- * @param federationTrustAnchorsJwksPath
- * @returns
+ * @param jwksPath The directory path where JWKS files are stored.
+ * @param filename The name of the JWKS file to load or create.
+ * @returns A promise that resolves to the loaded or generated KeyPair.
  */
 export async function loadJwks(
   jwksPath: string,
