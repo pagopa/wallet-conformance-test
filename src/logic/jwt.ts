@@ -62,7 +62,7 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
     throw new Error("Invalid JWS format: signature part is empty");
   }
   const signatureBytes = new Uint8Array(
-    Buffer.from(signatureBase64Url, "base64"),
+    Buffer.from(signatureBase64Url, "base64url"),
   );
 
   return signatureBytes;
