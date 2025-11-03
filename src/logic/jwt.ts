@@ -59,6 +59,9 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
     throw new Error("JWS compact format is not valid");
   }
   const signatureBase64Url = parts[2];
+  if (!signatureBase64Url) {
+    throw new Error("JWS compact format is not present");
+  }
   const signatureBase64 = encodeToBase64Url(signatureBase64Url);
   const signatureBytes = new Uint8Array(Buffer.from(signatureBase64, "base64"));
 

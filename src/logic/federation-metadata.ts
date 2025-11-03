@@ -5,7 +5,7 @@ import {
   createItWalletEntityConfiguration, 
   ItWalletEntityConfigurationClaimsOptions, 
   SignCallback 
-} from "../../../io-wallet-sdk/packages/oid-federation/dist";
+} from "@pagopa/io-wallet-oid-federation";
 import { loadJsonDumps, loadJwks } from "./utils";
 import { Config } from "@/types/Config";
 
@@ -53,10 +53,11 @@ export interface createTrustAnchorMetadataOptions {
  * ..returns The signed federation metadata JWT as a string.
  */
 export const createTrustAnchorMetadata = async (options: createTrustAnchorMetadataOptions) : Promise<string> => {
-    const claims = {
-      ...loadJsonDumps("federation_metadata.json"),
-      ...(options.iss ? { iss: options.iss } : {})
-    };
-    const jwks = await loadJwks(options.federationTrustAnchorsJwksPath);
-    return await createFederationMetadata({ claims, jwks });
+  const placeholders = {
+    trust_anchor_base_url: "https://127.0.0.1:3001",
+    iss: options.iss || "https://127.0.0.1:3001",
+  };
+  const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
+  const jwks = await loadJwks(options.federationTrustAnchorsJwksPath, "trust_anchor_jwks");
+  return await createFederationMetadata({ claims, jwks });
 }
