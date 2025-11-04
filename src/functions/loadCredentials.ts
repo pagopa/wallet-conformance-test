@@ -1,9 +1,8 @@
-import { parse } from "@auth0/mdl";
 import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { validateSdJwt } from "@/logic";
+import { validateMdoc, validateSdJwt } from "@/logic";
 import { Credential, VerificationError } from "@/types";
 
 /**
@@ -37,20 +36,17 @@ export async function loadCredentials(
     // First, attempt to verify the credential as a SD-JWT
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const jwt = await validateSdJwt(credential, file, issuerKey);
+      const jwt = await validateSdJwt(credential, issuerKey);
 
-      for (const name in credentials) {
-        if (
-          credentials[name]?.typ === "dc+sd-jwt" &&
-          jwt.payload.sub === credentials[name]?.credential.payload.sub
-        )
+      for (const name in credentials)
+        if (credentials[name]?.subs.includes(jwt.payload.sub))
           throw new VerificationError(
-            `duplicate 'sub' found between credentials ${name} and ${fileName}`,
+            `duplicate 'sub' found between credentials ${name} and ${file}`,
           );
-      }
 
       credentials[file] = {
         credential: jwt,
+        subs: [jwt.payload.sub],
         typ: "dc+sd-jwt",
       };
       continue; // Move to the next file
@@ -67,14 +63,18 @@ export async function loadCredentials(
     // If SD-JWT verification fails, attempt to verify it as an MDOC
     try {
       const credential = readFileSync(`${path}/${file}`);
-      // const cert = readFileSync(caCertPath, "utf-8");
-      const mdoc = parse(credential);
-      console.log(mdoc.documents[0]?.issuerSigned.issuerAuth.payload.buffer);
-      // await verifier.verify(deviceResponseMDoc.encode());
+      const mdoc = await validateMdoc(credential, issuerKey);
+
+      for (const name in credentials)
+        if (credentials[name]?.subs.find((sub) => mdoc.subs.includes(sub)))
+          throw new VerificationError(
+            `duplicate 'sub' found between credentials ${name} and ${file}`,
+          );
 
       // If validation is successful, add it to the credentials record
       credentials[file] = {
-        credential: mdoc,
+        credential: mdoc.document,
+        subs: mdoc.subs,
         typ: "mso_mdoc",
       };
     } catch (e) {
