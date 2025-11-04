@@ -5,15 +5,11 @@ import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 
 import { sdJwt, VerificationError } from "@/types";
 
-export async function validateSdJwt(
-  credential: string,
-  name: string,
-  issuerKey: Jwk,
-) {
+export async function validateSdJwt(credential: string, issuerKey: Jwk) {
   const jwt = parseWithErrorHandling(
     sdJwt,
     await SDJwt.extractJwt(credential),
-    `Error validating sdJwt ${name}`,
+    "Error validating sdJwt",
   );
 
   // Mock signer as it's not needed for verification
@@ -30,9 +26,7 @@ export async function validateSdJwt(
 
   // If validation is successful, add it to the credentials record
   if (!(await sdjwt.verify(jwt.encoded)))
-    throw new VerificationError(
-      `signature verification for credential ${name} failed`,
-    );
+    throw new VerificationError("signature verification for credential failed");
 
   return jwt;
 }
