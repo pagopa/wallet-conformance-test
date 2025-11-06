@@ -29,6 +29,9 @@ importers:
       '@sd-jwt/crypto-nodejs':
         specifier: ^0.15.0
         version: 0.15.0
+      cbor:
+        specifier: ^10.0.11
+        version: 10.0.11
       consola:
         specifier: ^3.4.2
         version: 3.4.2
@@ -748,6 +751,10 @@ packages:
   cbor-x@1.6.0:
     resolution: {integrity: sha512-0kareyRwHSkL6ws5VXHEf8uY1liitysCVJjlmhaLG+IXLqhSaOO+t63coaso7yjwEzWZzLy8fJo06gZDVQM9Qg==}
 
+  cbor@10.0.11:
+    resolution: {integrity: sha512-vIwORDd/WyB8Nc23o2zNN5RrtFGlR6Fca61TtjkUXueI3Jf2DOZDl1zsshvBntZ3wZHBM9ztjnkXSmzQDaq3WA==}
+    engines: {node: '>=20'}
+
   chai@5.3.3:
     resolution: {integrity: sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==}
     engines: {node: '>=18'}
@@ -1086,6 +1093,10 @@ packages:
   node-gyp-build-optional-packages@5.1.1:
     resolution: {integrity: sha512-+P72GAjVAbTxjjwUmwjVrqrdZROD4nf8KgpBoDxqXXTiYZZt/ud60dE5yvCSr9lRO8e8yv6kgJIC0K0PfZFVQw==}
     hasBin: true
+
+  nofilter@3.1.0:
+    resolution: {integrity: sha512-l2NNj07e9afPnhAhvgVrCD/oy2Ai1yfLpuo3EpiO1jFTsB4sFz6oIfAfSZyQzVpkZQ9xS8ZS5g1jCBgq4Hwo0g==}
+    engines: {node: '>=12.19'}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -2101,6 +2112,10 @@ snapshots:
     optionalDependencies:
       cbor-extract: 2.2.0
 
+  cbor@10.0.11:
+    dependencies:
+      nofilter: 3.1.0
+
   chai@5.3.3:
     dependencies:
       assertion-error: 2.0.1
@@ -2438,6 +2453,8 @@ snapshots:
     dependencies:
       detect-libc: 2.1.2
     optional: true
+
+  nofilter@3.1.0: {}
 
   optionator@0.9.4:
     dependencies:
