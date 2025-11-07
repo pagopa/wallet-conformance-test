@@ -1,3 +1,4 @@
+import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { describe, expect, it } from "vitest";
 
@@ -35,6 +36,22 @@ describe("validateMdoc", () => {
   it("should throw an error for an invalid mdoc", async () => {
     const credential = Buffer.from("invalid-credential");
     await expect(validateMdoc(credential)).rejects.toThrow();
+  });
+});
+
+describe("validateSdJwt", () => {
+  it("should successfully validate a correct sd-jwt", async () => {
+    const credential = readFileSync(
+      "tests/data/credentials/dc_sd_jwt_PersonIdentificationData",
+      "utf-8",
+    );
+    const jwt = await validateSdJwt(credential);
+    expect(jwt).toBeDefined();
+  });
+
+  it("should throw an error for an invalid sd-jwt", async () => {
+    const credential = "invalid-credential";
+    await expect(validateSdJwt(credential)).rejects.toThrow();
   });
 });
 
