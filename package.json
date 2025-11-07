@@ -13,7 +13,7 @@
     "build": "tsc",
     "ta:server": "ts-node -r tsconfig-paths/register src/trust-anchor/server.ts",
     "types:check": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:unit": "vitest --config vitest.unit.config.mjs",
     "format": "prettier --write \"{src,tests}/**/*.{js,ts}\"",
@@ -23,7 +23,7 @@
     "pre-commit": "pnpm format && pnpm lint",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
-    "test:issuing": "vitest --config vitest.issue.config.mjs"
+    "test:issuing": "vitest run --config vitest.issue.config.mjs"
   },
   "keywords": [],
   "author": "",

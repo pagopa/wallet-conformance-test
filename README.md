@@ -70,21 +70,31 @@ If you encounter an issue where the `wallet-conformance-test` command is not ava
 
 If you prefer using Docker, you can pull the official image from the GitHub Container Registry or build it locally.
 
-### Pull from Registry
+### Build image
 
-Pull the latest image with the following command:
+ 1. Pull the latest image with the following command:
 
-```bash
-docker pull ghcr.io/pagopa/wallet-conformance-test:latest
-```
+    ```bash
+    docker pull ghcr.io/pagopa/wallet-conformance-test:latest
+    ```
 
-### Build Locally
+    Alternatively, you can build the Docker image from the source code:
 
-Alternatively, you can build the Docker image from the source code:
+    ```bash
+    docker build --tag pagopa/wallet-conformance-test:latest .
+    ```
 
-```bash
-docker build --tag pagopa/wallet-conformance-test:latest .
-```
+2. Run the CLI for example to start issuing test:
+
+    ```bash
+    docker run --rm wallet-conformance-test:latest test:issuing
+    ```
+
+3. If you want to mount a local folder for data or configuration (as suggested in the README):
+
+    ```bash
+    docker run --rm -v "$(pwd)/data:/wallet-conformance-test/data" wallet-conformance-test:latest [COMMAND]
+    ```
 
 ### Run Container
 
