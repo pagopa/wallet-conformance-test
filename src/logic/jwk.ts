@@ -1,11 +1,9 @@
-import type { JwtSigner } from "@pagopa/io-wallet-oauth2";
-
-import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
-  JWK,
-  JWKS,
-  parseWithErrorHandling,
+  jsonWebKeySchema as JWK,
+  jsonWebKeySetSchema as JWKS,
 } from "@pagopa/io-wallet-oid-federation";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";

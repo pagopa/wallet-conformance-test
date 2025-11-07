@@ -1,6 +1,6 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { parse } from "ini";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";

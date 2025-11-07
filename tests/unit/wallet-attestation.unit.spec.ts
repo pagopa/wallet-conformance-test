@@ -11,9 +11,9 @@ describe("Wallet Attestation Unit Test", () => {
   const walletId = "wallet_cli_instance";
   const walletName = "CEN TC Wallet CLI";
   const issuer = "https://wallet-provider.example.it";
-  const storage = "data/wallet_attestations";
-  const credentials = "data/credentials";
-  const backup = "data/backup";
+  const storage = "mocked-data/wallet_attestations";
+  const credentials = "mocked-data/credentials";
+  const backup = "mocked-data/backup";
   const attestationPath = `${storage}/${walletId}`;
 
   test("New Wallet Attestation", async () => {

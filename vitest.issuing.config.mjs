@@ -10,6 +10,6 @@ export default defineConfig({
   },
   test: {
     exclude: configDefaults.exclude,
-    include: ["**/*.issue.spec.ts"],
+    include: ["**/*.issuing.spec.ts"],
   },
 });
