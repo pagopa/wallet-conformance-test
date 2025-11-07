@@ -1,8 +1,7 @@
 import {
   itWalletEntityStatementClaimsSchema,
-  parseWithErrorHandling,
 } from "@pagopa/io-wallet-oid-federation";
-import { ValidationError } from "@pagopa/io-wallet-utils";
+import { parseWithErrorHandling, ValidationError } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 import { describe, expect, test } from "vitest";
 
