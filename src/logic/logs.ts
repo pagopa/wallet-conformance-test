@@ -42,18 +42,10 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
   return Object.assign(createConsola({ ...options, fancy: true }), {
     nl,
     setLogOptions,
-    withTag,
-    testFailed,
     testCompleted,
+    testFailed,
+    withTag,
   });
-}
-
-function testFailed(this: Logger) {
-  this.error("Test failed ❌")
-}
-
-function testCompleted(this: Logger) {
-  this.success("Test completed ✅")
 }
 
 function nl() {
@@ -106,6 +98,14 @@ function setLogOptions(
   if (reporters.length > 0) this.setReporters(reporters);
 }
 
+function testCompleted(this: Logger) {
+  this.success("Test completed ✅");
+}
+
+function testFailed(this: Logger) {
+  this.error("Test failed ❌");
+}
+
 function withTag(this: Logger, tag: string): Logger {
   const log = createConsola({
     ...this.options,
@@ -120,8 +120,8 @@ function withTag(this: Logger, tag: string): Logger {
   return Object.assign(log, {
     nl,
     setLogOptions,
-    withTag,
     testCompleted,
     testFailed,
+    withTag,
   });
 }

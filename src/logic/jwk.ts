@@ -1,5 +1,6 @@
-import { Jwk , type JwtSigner } from "@pagopa/io-wallet-oauth2";
-import {  jsonWebKeySchema as JWK,
+import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
+import {
+  jsonWebKeySchema as JWK,
   jsonWebKeySetSchema as JWKS,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
