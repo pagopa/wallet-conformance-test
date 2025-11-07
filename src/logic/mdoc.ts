@@ -1,6 +1,6 @@
 import { IssuerSignedDocument, MDLParseError } from "@auth0/mdl";
 import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { decode } from "cbor";
 

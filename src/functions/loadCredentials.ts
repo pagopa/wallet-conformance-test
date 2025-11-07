@@ -1,10 +1,9 @@
-import { parseWithErrorHandling } from "@pagopa/io-wallet-oid-federation";
+import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { ValidationError } from "@pagopa/io-wallet-utils";
-import { SDJwt } from "@sd-jwt/core";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { validateMdoc } from "@/logic";
-import { Credential, sdJwtSchema, VerificationError } from "@/types";
+import { validateMdoc, validateSdJwt } from "@/logic";
+import { Credential, VerificationError } from "@/types";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -35,12 +34,7 @@ export async function loadCredentials(
     // First, attempt to verify the credential as a SD-JWT
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      console.log(await SDJwt.extractJwt(credential));
-      const jwt = parseWithErrorHandling(
-        sdJwtSchema,
-        await SDJwt.extractJwt(credential),
-        "Error validating sdJwt",
-      );
+      const jwt = await validateSdJwt(credential);
 
       for (const name in credentials)
         if (credentials[name]?.subs.includes(jwt.payload.sub))

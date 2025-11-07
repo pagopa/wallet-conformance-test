@@ -1,4 +1,4 @@
-import { JWK } from "@pagopa/io-wallet-oid-federation";
+import { jsonWebKeySchema as JWK } from "@pagopa/io-wallet-oid-federation";
 import { z } from "zod";
 
 export const sdJwtHeaderSchema = z.object({
