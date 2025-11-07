@@ -1,5 +1,5 @@
-import { FetchMetadataOptions } from "./step/issuing/fetch-metadata-step";
-import { PushedAuthorizationRequestOptions } from "./step/issuing/pushed-authorization-request-step";
+import { FetchMetadataOptions } from "./step/issuance/fetch-metadata-step";
+import { PushedAuthorizationRequestOptions } from "./step/issuance/pushed-authorization-request-step";
 
 /**
  * Configuration for credential issuance

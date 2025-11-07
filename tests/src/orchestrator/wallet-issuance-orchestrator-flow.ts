@@ -4,13 +4,13 @@ import {
   FetchMetadataStepResponse,
   FetchMetadataStep,
   FetchMetadataOptions,
-} from "../step/issuing/fetch-metadata-step";
+} from "../step/issuance/fetch-metadata-step";
 import {
   PushedAuthorizationRequestOptions,
   PushedAuthorizationRequestStepOptions,
   PushedAuthorizationRequestStep,
   PushedAuthorizationRequestResponse,
-} from "../step/issuing/pushed-authorization-request-step";
+} from "../step/issuance/pushed-authorization-request-step";
 import { partialCallbacks } from "@/logic/utils";
 import {
   ItWalletEntityStatementClaims,
