@@ -43,7 +43,17 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
     nl,
     setLogOptions,
     withTag,
+    testFailed,
+    testCompleted,
   });
+}
+
+function testFailed(this: Logger) {
+  this.error("Test failed ❌")
+}
+
+function testCompleted(this: Logger) {
+  this.success("Test completed ✅")
 }
 
 function nl() {
@@ -111,5 +121,7 @@ function withTag(this: Logger, tag: string): Logger {
     nl,
     setLogOptions,
     withTag,
+    testCompleted,
+    testFailed,
   });
 }
