@@ -41,7 +41,7 @@ export class WalletIssuanceOrchestratorFlow {
   private testName: string;
 
   private fetchMetadataStep: FetchMetadataStep;
-  private sendParStep: PushedAuthorizationRequestStep;
+  private pushedAuthorizationRequestStep: PushedAuthorizationRequestStep;
 
   constructor(testName: string) {
     this.testName = testName;
@@ -70,7 +70,7 @@ export class WalletIssuanceOrchestratorFlow {
     );
 
     this.fetchMetadataStep = new FetchMetadataStep(this.config, this.log);
-    this.sendParStep = new PushedAuthorizationRequestStep(
+    this.pushedAuthorizationRequestStep = new PushedAuthorizationRequestStep(
       this.config,
       this.log,
     );
@@ -91,7 +91,7 @@ export class WalletIssuanceOrchestratorFlow {
   async pushedAuthorizationRequest(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
-    const result = await this.sendParStep.run(options);
+    const result = await this.pushedAuthorizationRequestStep.run(options);
     if (!result.success) throw result.error;
     return result;
   }
