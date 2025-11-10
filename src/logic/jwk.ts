@@ -1,9 +1,7 @@
-import type { JwtSigner } from "@pagopa/io-wallet-oauth2";
-
-import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
-  jsonWebKeySchema,
-  jsonWebKeySetSchema,
+  jsonWebKeySchema as JWK,
+  jsonWebKeySetSchema as JWKS,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair } from "jose";
@@ -29,11 +27,11 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
 
   const kid = KSUID.randomSync().string;
   const exportedPair: KeyPair = {
-    privateKey: parseWithErrorHandling(jsonWebKeySchema, {
+    privateKey: parseWithErrorHandling(JWK, {
       kid: kid,
       ...priv,
     }) as KeyPairJwk,
-    publicKey: parseWithErrorHandling(jsonWebKeySchema, {
+    publicKey: parseWithErrorHandling(JWK, {
       kid: kid,
       ...pub,
     }) as KeyPairJwk,
@@ -67,13 +65,13 @@ export function jwkFromSigner(signer: JwtSigner): Jwk {
         throw new Error(`malformed JWK in DID: "${didUrl}"`);
 
       return parseWithErrorHandling(
-        jsonWebKeySchema,
+        JWK,
         JSON.parse(Buffer.from(didJwk, "base64url").toString()),
         "malformed signer's JWK in DID",
       );
     case "jwk":
       return parseWithErrorHandling(
-        jsonWebKeySchema,
+        JWK,
         signer.publicJwk,
         "malformed signer's JWK",
       );
@@ -103,7 +101,7 @@ function jwkFromTrustChain(trustChains: string[], signerKid: string): Jwk {
   if (!payload) throw new TypeError("malformed jwt in trust chain");
 
   const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
-  const jwks = parseWithErrorHandling(jsonWebKeySetSchema, claims.jwks);
+  const jwks = parseWithErrorHandling(JWKS, claims.jwks);
   const federationJwk = jwks.keys.find((key: Jwk) => key.kid === signerKid);
 
   if (!federationJwk) throw new Error("key not found in trust chain");

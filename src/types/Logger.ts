@@ -6,6 +6,8 @@ export type Logger = Omit<
 > & {
   nl: () => void;
   setLogOptions: SetLogOptionsCallback;
+  testCompleted: () => void;
+  testFailed: () => void;
   withTag: (tag: string) => Logger;
 };
 

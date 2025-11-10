@@ -23,7 +23,7 @@
     "pre-commit": "pnpm format && pnpm lint",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
-    "test:issuing": "vitest run --config vitest.issue.config.mjs"
+    "test:issuing": "vitest run --config vitest.issuing.config.mjs"
   },
   "keywords": [],
   "author": "",
@@ -42,10 +42,10 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@pagopa/io-wallet-oauth2": "^0.5.0",
-    "@pagopa/io-wallet-oid-federation": "^0.5.0",
-    "@pagopa/io-wallet-oid4vci": "^0.5.0",
-    "@pagopa/io-wallet-utils": "^0.5.0",
+    "@pagopa/io-wallet-oauth2": "^0.6.0",
+    "@pagopa/io-wallet-oid-federation": "^0.6.0",
+    "@pagopa/io-wallet-oid4vci": "^0.6.0",
+    "@pagopa/io-wallet-utils": "^0.6.0",
     "express": "^5.1.0",
     "consola": "^3.4.2",
     "ini": "^5.0.0",
