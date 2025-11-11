@@ -17,10 +17,7 @@ import { registerTest } from "./config/issuance-test-registry";
 const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
 
 const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
-  credentialConfiguration: {
-    id: "dc_sd_jwt_DrivingLicense",
-    scope: "DrivingLicense",
-  },
+  credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
   testName: "Happy Flow mDL Test",
 });
 
@@ -29,10 +26,7 @@ const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
  
 const failedMetadataConfig = IssuerTestConfiguration.createCustom({
   testName: "Failed Metadata Fetch Test",
-  credentialConfiguration: {
-    id: "dc_sd_jwt_PersonIdentificationData",
-    scope: "PersonIdentificationData",
-  },
+  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
   fetchMetadataOptions: {
     wellKnownPath: "/.well-known/invalid-path",
   },

@@ -2,28 +2,13 @@ import { FetchMetadataOptions } from "@/step/issuance/fetch-metadata-step";
 import { PushedAuthorizationRequestOptions } from "@/step/issuance/pushed-authorization-request-step";
 
 /**
- * Configuration for credential issuance
- */
-export interface CredentialConfiguration {
-  /**
-   * The credential configuration ID as defined by the issuer
-   */
-  id: string;
-
-  /**
-   * The scope to request for this credential
-   */
-  scope: string;
-}
-
-/**
  * Configuration class for Issuer conformance tests
  */
 export class IssuerTestConfiguration {
   /**
-   * Credential configuration to use in the test
+   * Credential configuration id to use in the test
    */
-  public readonly credentialConfiguration: CredentialConfiguration;
+  public readonly credentialConfigurationId: string;
 
   /**
    * Optional fetch metadata options
@@ -41,13 +26,13 @@ export class IssuerTestConfiguration {
   public readonly testName: string;
 
   constructor(config: {
-    credentialConfiguration: CredentialConfiguration;
+    credentialConfigurationId: string;
     fetchMetadataOptions?: FetchMetadataOptions;
     pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
     testName: string;
   }) {
     this.testName = config.testName;
-    this.credentialConfiguration = config.credentialConfiguration;
+    this.credentialConfigurationId = config.credentialConfigurationId;
     this.fetchMetadataOptions = config.fetchMetadataOptions;
     this.pushedAuthorizationRequestOptions =
       config.pushedAuthorizationRequestOptions;
@@ -57,7 +42,7 @@ export class IssuerTestConfiguration {
    * Create a custom configuration
    */
   static createCustom(config: {
-    credentialConfiguration: CredentialConfiguration;
+    credentialConfigurationId: string;
     fetchMetadataOptions?: FetchMetadataOptions;
     pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
     testName: string;
@@ -70,10 +55,7 @@ export class IssuerTestConfiguration {
    */
   static createDefault(): IssuerTestConfiguration {
     return new IssuerTestConfiguration({
-      credentialConfiguration: {
-        id: "dc_sd_jwt_PersonIdentificationData",
-        scope: "PersonIdentificationData",
-      },
+      credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       testName: "Issuance Happy Flow",
     });
   }
@@ -83,7 +65,7 @@ export class IssuerTestConfiguration {
    */
   toRunOptions() {
     return {
-      credentialConfiguration: this.credentialConfiguration,
+      credentialConfigurationId: this.credentialConfigurationId,
       fetchMetadataOptions: this.fetchMetadataOptions,
       pushedAuthorizationRequestOptions: this.pushedAuthorizationRequestOptions,
       testName: this.testName,

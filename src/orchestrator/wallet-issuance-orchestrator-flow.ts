@@ -27,10 +27,7 @@ import {
 import { Config } from "@/types";
 
 export interface WalletIssuanceOrchestratorFlowRunOptions {
-  credentialConfiguration: {
-    id: string;
-    scope: string;
-  };
+  credentialConfigurationId: string;
   fetchMetadataOptions?: FetchMetadataOptions;
   pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
   testName: string;
@@ -144,7 +141,7 @@ export class WalletIssuanceOrchestratorFlow {
       //   audience: this.config.issuance.url,
       //   authorization_details: [{
       //     type: "openid_credential",
-      //     credential_configuration_id: options.credentialConfiguration.id,
+      //     credential_configuration_id: options.credentialConfigurationId,
       //   }],
       //   callbacks: callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
       //   codeChallengeMethodsSupported: ["S256"],
