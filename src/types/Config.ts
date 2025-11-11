@@ -6,8 +6,8 @@ import { z } from "zod";
 export const configSchema = z.object({
   issuance: z.object({
     credentials: z.object({
-			types: z.record(z.string(), z.array(z.string()))
-		}),
+      types: z.record(z.string(), z.array(z.string())),
+    }),
     url: z.string().url(),
   }),
   logging: z.object({
