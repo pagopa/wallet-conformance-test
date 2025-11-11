@@ -22,10 +22,12 @@ test("Mocked Credentials Validation", async () => {
   }
 
   try {
-    await loadCredentials("tests/data/credentials", types);
+    await loadCredentials("tests/data/credentials", types, console.error);
   } catch (e) {
     if (e instanceof ValidationError) {
-      const msg = e.message.replace(": ", ":\n\t").replace(/,([A-Za-z])/g, "\n\t$1");
+      const msg = e.message
+        .replace(": ", ":\n\t")
+        .replace(/,([A-Za-z])/g, "\n\t$1");
       expect.fail(`Schema validation failed: ${msg}`);
     } else throw e;
   }

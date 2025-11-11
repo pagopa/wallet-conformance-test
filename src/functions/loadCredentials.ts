@@ -16,6 +16,7 @@ import { Credential } from "@/types";
 export async function loadCredentials(
   path: string,
   types: string[],
+  onIgnoreError: (msg: string) => void,
 ): Promise<Record<string, Credential>> {
   const files = readdirSync(path);
   const credentials: Record<string, Credential> = {};
@@ -23,7 +24,7 @@ export async function loadCredentials(
   for (const file of files) {
     // Skip if the file is not a recognized credential type
     if (!file || !types.find((name) => name === file)) {
-      console.error(
+      onIgnoreError(
         `current issuer does not support ${file}'s credential type`,
       );
       continue;
@@ -41,7 +42,7 @@ export async function loadCredentials(
       continue; // Move to the next file
     } catch (e) {
       const err = e as Error;
-      console.error(
+      onIgnoreError(
         `${file} was not a valid sd-jwt credential: ${err.message}`,
       );
     }
@@ -58,7 +59,7 @@ export async function loadCredentials(
       };
     } catch (e) {
       const err = e as Error;
-      console.error(`${file} was not a valid mdoc credential: ${err.message}`);
+      onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);
     }
   }
 
