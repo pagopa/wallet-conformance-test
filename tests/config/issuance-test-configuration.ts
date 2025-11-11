@@ -1,10 +1,10 @@
 import {
   FetchMetadataOptions,
-  FetchMetadataStep,
+  FetchMetadataDefaultStep,
 } from "@/step/issuance/fetch-metadata-step";
 import {
   PushedAuthorizationRequestOptions,
-  PushedAuthorizationRequestStep,
+  PushedAuthorizationRequestDefaultStep,
 } from "@/step/issuance/pushed-authorization-request-step";
 
 /**
@@ -14,12 +14,12 @@ export class IssuerTestConfiguration {
   public readonly credentialConfigurationId: string;
   public readonly fetchMetadata?: {
     options?: FetchMetadataOptions;
-    stepClass: typeof FetchMetadataStep;
+    stepClass: typeof FetchMetadataDefaultStep;
   };
 
   public readonly pushedAuthorizationRequest?: {
     options?: PushedAuthorizationRequestOptions;
-    stepClass: typeof PushedAuthorizationRequestStep;
+    stepClass: typeof PushedAuthorizationRequestDefaultStep;
   };
 
   public readonly testName: string;
@@ -28,11 +28,11 @@ export class IssuerTestConfiguration {
     credentialConfigurationId: string;
     fetchMetadata?: {
       options?: FetchMetadataOptions;
-      stepClass?: typeof FetchMetadataStep;
+      stepClass?: typeof FetchMetadataDefaultStep;
     };
     pushedAuthorizationRequest?: {
       options?: PushedAuthorizationRequestOptions;
-      stepClass?: typeof PushedAuthorizationRequestStep;
+      stepClass?: typeof PushedAuthorizationRequestDefaultStep;
     };
     testName: string;
   }) {
@@ -41,13 +41,13 @@ export class IssuerTestConfiguration {
 
     this.fetchMetadata = {
       options: config.fetchMetadata?.options,
-      stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataStep,
+      stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataDefaultStep,
     };
     this.pushedAuthorizationRequest = {
       options: config.pushedAuthorizationRequest?.options,
       stepClass:
         config.pushedAuthorizationRequest?.stepClass ??
-        PushedAuthorizationRequestStep,
+        PushedAuthorizationRequestDefaultStep,
     };
   }
 
@@ -61,10 +61,10 @@ export class IssuerTestConfiguration {
     return new IssuerTestConfiguration({
       credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       fetchMetadata: {
-        stepClass: FetchMetadataStep,
+        stepClass: FetchMetadataDefaultStep,
       },
       pushedAuthorizationRequest: {
-        stepClass: PushedAuthorizationRequestStep,
+        stepClass: PushedAuthorizationRequestDefaultStep,
       },
       testName: "Issuance Happy Flow",
     });

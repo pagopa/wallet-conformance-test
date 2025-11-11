@@ -51,7 +51,7 @@ export type PushedAuthorizationRequestStepOptions =
     pushedAuthorizationRequestEndpoint: string;
   };
 
-export class PushedAuthorizationRequestStep extends StepFlow {
+export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   tag = "PUSHED_AUTHORIZATION_REQUEST";
 
   async run(

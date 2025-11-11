@@ -37,15 +37,14 @@ const failedMetadataConfig = IssuerTestConfiguration.createCustom({
 
 /**
  * Example: Alternative Step Configuration - Return hardcoded entity metadata
- 
 
-import { FetchMetadataHardCodedEntityStep } from "@/step/issuance/fetch-metadata-hardcoded-entity-step";
+import { FetchMetadataHardcodedStep } from "@/step/issuance/fetch-metadata-hardcoded-step";
 
-const failedMetadataConfig = IssuerTestConfiguration.createCustom({
-  testName: "Failed Metadata Fetch Test",
+const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
+  testName: "Hardcoded Metadata Fetch Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
   fetchMetadata: {
-    stepClass: FetchMetadataHardCodedEntityStep,
+    stepClass: FetchMetadataHardcodedStep,
   },
 });
 */

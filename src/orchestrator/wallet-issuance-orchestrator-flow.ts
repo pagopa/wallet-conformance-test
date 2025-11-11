@@ -16,24 +16,24 @@ import { loadConfig } from "@/logic/utils";
 import { partialCallbacks } from "@/logic/utils";
 import {
   FetchMetadataOptions,
-  FetchMetadataStep,
+  FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
 } from "@/step/issuance/fetch-metadata-step";
 import {
   PushedAuthorizationRequestOptions,
   PushedAuthorizationRequestResponse,
-  PushedAuthorizationRequestStep,
+  PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestStepOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private config: Config;
-  private fetchMetadataStep: FetchMetadataStep;
+  private fetchMetadataStep: FetchMetadataDefaultStep;
   private issuanceConfig: IssuerTestConfiguration;
 
   private log = createLogger();
-  private pushedAuthorizationRequestStep: PushedAuthorizationRequestStep;
+  private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
 
   constructor(issuanceConfig: IssuerTestConfiguration) {
     this.issuanceConfig = issuanceConfig;
@@ -63,7 +63,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     this.fetchMetadataStep = issuanceConfig.fetchMetadata?.stepClass
       ? new issuanceConfig.fetchMetadata.stepClass(this.config, this.log)
-      : new FetchMetadataStep(this.config, this.log);
+      : new FetchMetadataDefaultStep(this.config, this.log);
 
     this.pushedAuthorizationRequestStep = issuanceConfig
       .pushedAuthorizationRequest?.stepClass
@@ -71,7 +71,7 @@ export class WalletIssuanceOrchestratorFlow {
           this.config,
           this.log,
         )
-      : new PushedAuthorizationRequestStep(this.config, this.log);
+      : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {

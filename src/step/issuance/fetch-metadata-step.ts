@@ -45,7 +45,7 @@ export type FetchMetadataStepResponse = StepResult & {
  * If the entity statement claims are successfully parsed, the response field also contains:
  * - entityStatementClaims: The parsed claims from the entity statement JWT.
  */
-export class FetchMetadataStep extends StepFlow {
+export class FetchMetadataDefaultStep extends StepFlow {
   tag = "FETCH METADATA";
 
   async run(options: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
