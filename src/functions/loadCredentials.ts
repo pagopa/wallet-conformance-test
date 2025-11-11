@@ -1,8 +1,8 @@
 import { parse } from "@auth0/mdl";
+import { SDJwt } from "@sd-jwt/core";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { Credential } from "@/types";
-import { SDJwt } from "@sd-jwt/core";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -10,10 +10,8 @@ import { SDJwt } from "@sd-jwt/core";
  *
  * @param path - The directory path where credential files are located.
  * @param types - An array of credential type names, used to filter and identify credentials.
- * @param publicKey - The public key (in JWK format) used for verifying SD-JWT signatures.
- * @param caCertPath - The file path to the Certificate Authority (CA) certificate for verifying MDOC credentials.
  * @returns A promise that resolves to a record object where keys are the credential filenames
- *          and values are the credential data (string for SD-JWT, ArrayBuffer for MDOC).
+ *          and values are the credential data (content of SD-JWT or MDOC).
  */
 export async function loadCredentials(
   path: string,
@@ -23,11 +21,10 @@ export async function loadCredentials(
   const credentials: Record<string, Credential> = {};
 
   for (const file of files) {
-    const fileName = file.split("/").pop();
     // Skip if the file is not a recognized credential type
-    if (!fileName || !types.find((name) => name === fileName)) {
+    if (!file || !types.find((name) => name === file)) {
       console.error(
-        `current issuer does not support ${fileName} credential type`,
+        `current issuer does not support ${file}'s credential type`,
       );
       continue;
     }
@@ -37,7 +34,7 @@ export async function loadCredentials(
       const credential = readFileSync(`${path}/${file}`, "utf-8");
       const jwt = await SDJwt.extractJwt(credential);
 
-      credentials[fileName] = {
+      credentials[file] = {
         credential: jwt,
         typ: "dc+sd-jwt",
       };
@@ -55,13 +52,13 @@ export async function loadCredentials(
       const mdoc = parse(credential);
 
       // If validation is successful, add it to the credentials record
-      credentials[fileName] = {
+      credentials[file] = {
         credential: mdoc,
         typ: "mso_mdoc",
       };
     } catch (e) {
-      const err = e as Error
-      console.error(`${file} was not a valid mdoc credential: ${err.message}`)
+      const err = e as Error;
+      console.error(`${file} was not a valid mdoc credential: ${err.message}`);
     }
   }
 
