@@ -57,11 +57,11 @@ export class PushedAuthorizationRequestStep extends StepFlow {
   async run(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
-    const log = this.log.withTag(this.tag);
-
-    log.info(`Starting PushedAuthorizationRequest Step`);
-
     return this.execute<PushedAuthorizationRequestExecuteResponse>(async () => {
+      const log = this.log.withTag(this.tag);
+
+      log.info(`Starting PushedAuthorizationRequest Step`);
+
       log.info(
         `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
       );

@@ -7,6 +7,7 @@ import {
   ItWalletEntityStatementClaims,
   itWalletEntityStatementClaimsSchema,
 } from "@pagopa/io-wallet-oid-federation";
+import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
 import { signJwtCallback } from "@/logic/jwt";
@@ -26,24 +27,17 @@ import {
 } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
-export interface WalletIssuanceOrchestratorFlowRunOptions {
-  credentialConfigurationId: string;
-  fetchMetadataOptions?: FetchMetadataOptions;
-  pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
-  testName: string;
-}
-
 export class WalletIssuanceOrchestratorFlow {
   private config: Config;
   private fetchMetadataStep: FetchMetadataStep;
+  private issuanceConfig: IssuerTestConfiguration;
+
   private log = createLogger();
-
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestStep;
-  private testName: string;
 
-  constructor(testName: string) {
-    this.testName = testName;
-    this.log = this.log.withTag(this.testName);
+  constructor(issuanceConfig: IssuerTestConfiguration) {
+    this.issuanceConfig = issuanceConfig;
+    this.log = this.log.withTag(this.issuanceConfig.testName);
 
     this.config = loadConfig("./config.ini");
 
@@ -67,47 +61,37 @@ export class WalletIssuanceOrchestratorFlow {
       }),
     );
 
-    this.fetchMetadataStep = new FetchMetadataStep(this.config, this.log);
-    this.pushedAuthorizationRequestStep = new PushedAuthorizationRequestStep(
-      this.config,
-      this.log,
-    );
-  }
+    this.fetchMetadataStep = issuanceConfig.fetchMetadata?.stepClass
+      ? new issuanceConfig.fetchMetadata.stepClass(this.config, this.log)
+      : new FetchMetadataStep(this.config, this.log);
 
-  async fetchMetadata(
-    options: FetchMetadataOptions,
-  ): Promise<FetchMetadataStepResponse> {
-    const result = await this.fetchMetadataStep.run(options);
-    if (!result.success) throw result.error;
-    return result;
+    this.pushedAuthorizationRequestStep = issuanceConfig
+      .pushedAuthorizationRequest?.stepClass
+      ? new issuanceConfig.pushedAuthorizationRequest.stepClass(
+          this.config,
+          this.log,
+        )
+      : new PushedAuthorizationRequestStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
     return this.log;
   }
 
-  async pushedAuthorizationRequest(
-    options: PushedAuthorizationRequestStepOptions,
-  ): Promise<PushedAuthorizationRequestResponse> {
-    const result = await this.pushedAuthorizationRequestStep.run(options);
-    if (!result.success) throw result.error;
-    return result;
-  }
-
-  async runAll(options: WalletIssuanceOrchestratorFlowRunOptions): Promise<{
+  async issuance(): Promise<{
     fetchMetadataResponse: FetchMetadataStepResponse;
     //pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
-      const { fetchMetadataOptions, pushedAuthorizationRequestOptions } =
-        options;
+      const fetchMetadataOptions = this.issuanceConfig.fetchMetadata?.options;
+
       this.log.debug(
         "Fetch Metadata Options: ",
         JSON.stringify(fetchMetadataOptions),
       );
-      const fetchMetadataResponse = await this.fetchMetadata({
+      const fetchMetadataResponse = await this.fetchMetadataStep.run({
         entityStatementClaimsSchema:
           fetchMetadataOptions?.entityStatementClaimsSchema ||
           itWalletEntityStatementClaimsSchema,
@@ -161,7 +145,7 @@ export class WalletIssuanceOrchestratorFlow {
       //   scope: options.credentialConfiguration.scope,
       // };
 
-      // const pushedAuthorizationRequestResponse = await this.pushedAuthorizationRequest({
+      // const pushedAuthorizationRequestResponse = await this.pushedAuthorizationRequestStep.run({
       //   ...createParOptions,
       //   attestation: pushedAuthorizationRequestOptions?.attestation || walletAttestationResponse.attestation,
       //   attestationPoP: pushedAuthorizationRequestOptions?.attestationPoP || clientAttestationDPoP,

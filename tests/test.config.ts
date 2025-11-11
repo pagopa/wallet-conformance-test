@@ -23,12 +23,29 @@ const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
 
 /**
  * Example: Failed Configuration - Invalid Metadata Fetch
- 
+
 const failedMetadataConfig = IssuerTestConfiguration.createCustom({
   testName: "Failed Metadata Fetch Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-  fetchMetadataOptions: {
-    wellKnownPath: "/.well-known/invalid-path",
+  fetchMetadata: {
+    options: {
+      wellKnownPath: "/.well-known/invalid-path",
+    }
+  },
+});
+ */
+
+/**
+ * Example: Alternative Step Configuration - Return hardcoded entity metadata
+ 
+
+import { FetchMetadataHardCodedEntityStep } from "@/step/issuance/fetch-metadata-hardcoded-entity-step";
+
+const failedMetadataConfig = IssuerTestConfiguration.createCustom({
+  testName: "Failed Metadata Fetch Test",
+  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
+  fetchMetadata: {
+    stepClass: FetchMetadataHardCodedEntityStep,
   },
 });
 */

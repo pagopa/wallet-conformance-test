@@ -19,15 +19,13 @@ getTestRegistry()
   .forEach((testConfig) => {
     describe(`[${testConfig.testName}] Credential Issuer Tests`, async () => {
       const orchestrator: WalletIssuanceOrchestratorFlow =
-        new WalletIssuanceOrchestratorFlow(testConfig.testName);
+        new WalletIssuanceOrchestratorFlow(testConfig);
       const baseLog = orchestrator.getLog();
       let fetchMetadataResponse: FetchMetadataStepResponse;
       let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
 
       beforeAll(async () => {
-        ({ fetchMetadataResponse } = await orchestrator.runAll(
-          testConfig.toRunOptions(),
-        ));
+        ({ fetchMetadataResponse } = await orchestrator.issuance());
       });
 
       test("CI_001: Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
