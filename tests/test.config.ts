@@ -7,8 +7,8 @@
  * The registered configurations will be picked up by the test suite.
  */
 
-import { IssuerTestConfiguration } from "./src/issuance-test-configuration";
-import { registerTest } from "./src/issuance-test-registry";
+import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
+import { registerTest } from "./config/issuance-test-registry";
 
 // ============================================================================
 // DEFINE YOUR TEST CONFIGURATIONS HERE
@@ -17,11 +17,11 @@ import { registerTest } from "./src/issuance-test-registry";
 const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
 
 const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
-  testName: "Happy Flow mDL Test",
   credentialConfiguration: {
     id: "dc_sd_jwt_DrivingLicense",
     scope: "DrivingLicense",
   },
+  testName: "Happy Flow mDL Test",
 });
 
 /**

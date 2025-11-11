@@ -5,10 +5,11 @@ import { beforeAll, describe, expect, test } from "vitest";
 // Import test configuration - this will register all configurations
 import "../test.config";
 
-import { WalletIssuanceOrchestratorFlow } from "../src/orchestrator/wallet-issuance-orchestrator-flow";
-import { FetchMetadataStepResponse } from "../src/step/issuance/fetch-metadata-step";
-import { PushedAuthorizationRequestResponse } from "../src/step/issuance/pushed-authorization-request-step";
-import { getTestRegistry } from "../src/issuance-test-registry";
+import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
+import { FetchMetadataStepResponse } from "@/step/issuance/fetch-metadata-step";
+import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
+
+import { getTestRegistry } from "../config/issuance-test-registry";
 import { HAPPY_FLOW_NAME } from "../test.config";
 
 // Get the test configuration from the registry
@@ -82,12 +83,12 @@ getTestRegistry()
         log.info("Validating response format...");
         const result = itWalletEntityStatementClaimsSchema._def.schema
           .pick({
-            iss: true,
-            sub: true,
-            iat: true,
             exp: true,
+            iat: true,
+            iss: true,
             jwks: true,
             metadata: true,
+            sub: true,
           })
           .refine((data) => data.metadata !== undefined, {
             message: "metadata is missing",

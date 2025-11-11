@@ -6,7 +6,7 @@ import { IssuerTestConfiguration } from "./issuance-test-configuration";
  */
 export class IssuerTestRegistry {
   private static instance: IssuerTestRegistry;
-  private configurations: Map<string, IssuerTestConfiguration[]> = new Map();
+  private configurations = new Map<string, IssuerTestConfiguration[]>();
 
   private constructor() {}
 
@@ -18,6 +18,40 @@ export class IssuerTestRegistry {
       IssuerTestRegistry.instance = new IssuerTestRegistry();
     }
     return IssuerTestRegistry.instance;
+  }
+
+  /**
+   * Clear all registered configurations
+   */
+  clear(): void {
+    this.configurations.clear();
+  }
+
+  /**
+   * Get a specific configurations by flow name
+   * @param flowName - The name of the flow test configuration to retrieve
+   * @returns The test configurations or undefined if not found
+   */
+  get(flowName: string): IssuerTestConfiguration[] {
+    const testConfigurations = this.configurations.get(flowName);
+    if (!testConfigurations) {
+      const availableFlows = Array.from(this.configurations.keys()).join(", ");
+      throw new Error(
+        `No test configuration registered for flow "${flowName}"! ` +
+          `Available flows: ${availableFlows || "none"}. ` +
+          `Please register a configuration using registerTest() or registerTests() before running the tests.`,
+      );
+    }
+    return testConfigurations;
+  }
+
+  /**
+   * Check if a configuration is registered
+   * @param flowName - The name of the flow test configuration to check
+   * @returns True if the configuration is registered
+   */
+  has(testName: string): boolean {
+    return this.configurations.has(testName);
   }
 
   /**
@@ -50,40 +84,6 @@ export class IssuerTestRegistry {
   ): IssuerTestRegistry {
     configs.forEach((config) => this.register(flowName, config));
     return this;
-  }
-
-  /**
-   * Get a specific configurations by flow name
-   * @param flowName - The name of the flow test configuration to retrieve
-   * @returns The test configurations or undefined if not found
-   */
-  get(flowName: string): IssuerTestConfiguration[] {
-    const testConfigurations = this.configurations.get(flowName);
-    if (!testConfigurations) {
-      const availableFlows = Array.from(this.configurations.keys()).join(", ");
-      throw new Error(
-        `No test configuration registered for flow "${flowName}"! ` +
-          `Available flows: ${availableFlows || "none"}. ` +
-          `Please register a configuration using registerTest() or registerTests() before running the tests.`,
-      );
-    }
-    return testConfigurations;
-  }
-
-  /**
-   * Check if a configuration is registered
-   * @param flowName - The name of the flow test configuration to check
-   * @returns True if the configuration is registered
-   */
-  has(testName: string): boolean {
-    return this.configurations.has(testName);
-  }
-
-  /**
-   * Clear all registered configurations
-   */
-  clear(): void {
-    this.configurations.clear();
   }
 }
 

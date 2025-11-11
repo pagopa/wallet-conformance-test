@@ -1,11 +1,19 @@
-import { fetchWithRetries } from "@/logic/utils";
-import { StepFlow, StepResult } from "../step-flow";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
+import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 import { Schema } from "zod";
 
-export type FetchMetadataOptions = {
+import { fetchWithRetries } from "@/logic/utils";
+import { StepFlow, StepResult } from "@/step/step-flow";
+
+export interface FetchMetadataExecuteResponse {
+  entityStatementClaims?: any;
+  entityStatementJwt?: string;
+  headers: Headers;
+  status: number;
+}
+
+export interface FetchMetadataOptions {
   /**
    * Schema to validate the entity statement claims against.
    * If not provided, @itWalletEntityStatementClaimsSchema is used.
@@ -16,14 +24,7 @@ export type FetchMetadataOptions = {
    * Overrides the default well-known path /.well-known/openid-federation for fetching metadata.
    */
   wellKnownPath?: string;
-};
-
-export type FetchMetadataExecuteResponse = {
-  status: number;
-  headers: Headers;
-  entityStatementJwt?: string;
-  entityStatementClaims?: any;
-};
+}
 
 export type FetchMetadataStepResponse = StepResult & {
   response?: FetchMetadataExecuteResponse;
@@ -83,10 +84,10 @@ export class FetchMetadataStep extends StepFlow {
       }
 
       return {
-        status: res.response.status,
-        headers: res.response.headers,
-        entityStatementJwt,
         entityStatementClaims,
+        entityStatementJwt,
+        headers: res.response.headers,
+        status: res.response.status,
       };
     });
   }

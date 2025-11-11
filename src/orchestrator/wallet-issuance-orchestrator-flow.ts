@@ -1,47 +1,48 @@
-import { createLogger } from "@/logic/logs";
-import { loadConfig } from "@/logic/utils";
-import {
-  FetchMetadataStepResponse,
-  FetchMetadataStep,
-  FetchMetadataOptions,
-} from "../step/issuance/fetch-metadata-step";
-import {
-  PushedAuthorizationRequestOptions,
-  PushedAuthorizationRequestStepOptions,
-  PushedAuthorizationRequestStep,
-  PushedAuthorizationRequestResponse,
-} from "../step/issuance/pushed-authorization-request-step";
-import { partialCallbacks } from "@/logic/utils";
-import {
-  ItWalletEntityStatementClaims,
-  itWalletEntityStatementClaimsSchema,
-} from "@pagopa/io-wallet-oid-federation";
-import { loadAttestation } from "@/functions";
-import { signJwtCallback } from "@/logic/jwt";
 import {
   createClientAttestationPopJwt,
   CreateClientAttestationPopJwtOptions,
   CreatePushedAuthorizationRequestOptions,
 } from "@pagopa/io-wallet-oauth2";
+import {
+  ItWalletEntityStatementClaims,
+  itWalletEntityStatementClaimsSchema,
+} from "@pagopa/io-wallet-oid-federation";
+
+import { loadAttestation } from "@/functions";
+import { signJwtCallback } from "@/logic/jwt";
+import { createLogger } from "@/logic/logs";
+import { loadConfig } from "@/logic/utils";
+import { partialCallbacks } from "@/logic/utils";
+import {
+  FetchMetadataOptions,
+  FetchMetadataStep,
+  FetchMetadataStepResponse,
+} from "@/step/issuance/fetch-metadata-step";
+import {
+  PushedAuthorizationRequestOptions,
+  PushedAuthorizationRequestResponse,
+  PushedAuthorizationRequestStep,
+  PushedAuthorizationRequestStepOptions,
+} from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
-export type WalletIssuanceOrchestratorFlowRunOptions = {
-  testName: string;
+export interface WalletIssuanceOrchestratorFlowRunOptions {
   credentialConfiguration: {
     id: string;
     scope: string;
   };
   fetchMetadataOptions?: FetchMetadataOptions;
   pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
-};
+  testName: string;
+}
 
 export class WalletIssuanceOrchestratorFlow {
   private config: Config;
-  private log = createLogger();
-  private testName: string;
-
   private fetchMetadataStep: FetchMetadataStep;
+  private log = createLogger();
+
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestStep;
+  private testName: string;
 
   constructor(testName: string) {
     this.testName = testName;
@@ -76,16 +77,16 @@ export class WalletIssuanceOrchestratorFlow {
     );
   }
 
-  getLog(): typeof this.log {
-    return this.log;
-  }
-
   async fetchMetadata(
     options: FetchMetadataOptions,
   ): Promise<FetchMetadataStepResponse> {
     const result = await this.fetchMetadataStep.run(options);
     if (!result.success) throw result.error;
     return result;
+  }
+
+  getLog(): typeof this.log {
+    return this.log;
   }
 
   async pushedAuthorizationRequest(
@@ -110,12 +111,12 @@ export class WalletIssuanceOrchestratorFlow {
         JSON.stringify(fetchMetadataOptions),
       );
       const fetchMetadataResponse = await this.fetchMetadata({
-        wellKnownPath:
-          fetchMetadataOptions?.wellKnownPath ||
-          `/.well-known/openid-federation`,
         entityStatementClaimsSchema:
           fetchMetadataOptions?.entityStatementClaimsSchema ||
           itWalletEntityStatementClaimsSchema,
+        wellKnownPath:
+          fetchMetadataOptions?.wellKnownPath ||
+          `/.well-known/openid-federation`,
       });
 
       this.log.info("Loading Wallet Attestation...");

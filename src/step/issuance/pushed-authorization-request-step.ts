@@ -1,5 +1,3 @@
-import { partialCallbacks } from "@/logic/utils";
-import { StepFlow, StepResult } from "../step-flow";
 import {
   createPushedAuthorizationRequest,
   CreatePushedAuthorizationRequestOptions,
@@ -9,7 +7,13 @@ import {
   PushedAuthorizationResponse,
 } from "@pagopa/io-wallet-oauth2";
 
-export type PushedAuthorizationRequestOptions = {
+import { partialCallbacks } from "@/logic/utils";
+import { StepFlow, StepResult } from "@/step/step-flow";
+
+export type PushedAuthorizationRequestExecuteResponse =
+  PushedAuthorizationResponse;
+
+export interface PushedAuthorizationRequestOptions {
   /**
    * Wallet Attestation used to authenticate the client,
    * if not provided, the attestation will be loaded from the configuration
@@ -33,21 +37,19 @@ export type PushedAuthorizationRequestOptions = {
    * if not provided, the endpoint will be loaded from the issuer metadata
    */
   pushedAuthorizationRequestEndpoint?: string;
-};
-
-export type PushedAuthorizationRequestStepOptions = {
-  attestation: string;
-  attestationPoP: string;
-  clientId: string;
-  pushedAuthorizationRequestEndpoint: string;
-} & CreatePushedAuthorizationRequestOptions;
-
-export type PushedAuthorizationRequestExecuteResponse =
-  PushedAuthorizationResponse;
+}
 
 export type PushedAuthorizationRequestResponse = StepResult & {
   response?: PushedAuthorizationResponse;
 };
+
+export type PushedAuthorizationRequestStepOptions =
+  CreatePushedAuthorizationRequestOptions & {
+    attestation: string;
+    attestationPoP: string;
+    clientId: string;
+    pushedAuthorizationRequestEndpoint: string;
+  };
 
 export class PushedAuthorizationRequestStep extends StepFlow {
   tag = "PUSHED_AUTHORIZATION_REQUEST";

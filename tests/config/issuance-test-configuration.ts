@@ -1,5 +1,5 @@
-import { FetchMetadataOptions } from "./step/issuance/fetch-metadata-step";
-import { PushedAuthorizationRequestOptions } from "./step/issuance/pushed-authorization-request-step";
+import { FetchMetadataOptions } from "@/step/issuance/fetch-metadata-step";
+import { PushedAuthorizationRequestOptions } from "@/step/issuance/pushed-authorization-request-step";
 
 /**
  * Configuration for credential issuance
@@ -21,11 +21,6 @@ export interface CredentialConfiguration {
  */
 export class IssuerTestConfiguration {
   /**
-   * Name of the test (used for logging and identification)
-   */
-  public readonly testName: string;
-
-  /**
    * Credential configuration to use in the test
    */
   public readonly credentialConfiguration: CredentialConfiguration;
@@ -40,11 +35,16 @@ export class IssuerTestConfiguration {
    */
   public readonly pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
 
+  /**
+   * Name of the test (used for logging and identification)
+   */
+  public readonly testName: string;
+
   constructor(config: {
-    testName: string;
     credentialConfiguration: CredentialConfiguration;
     fetchMetadataOptions?: FetchMetadataOptions;
     pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
+    testName: string;
   }) {
     this.testName = config.testName;
     this.credentialConfiguration = config.credentialConfiguration;
@@ -54,15 +54,15 @@ export class IssuerTestConfiguration {
   }
 
   /**
-   * Convert the configuration to the format expected by IssuerOrchestratorFlow.runAll()
+   * Create a custom configuration
    */
-  toRunOptions() {
-    return {
-      testName: this.testName,
-      credentialConfiguration: this.credentialConfiguration,
-      fetchMetadataOptions: this.fetchMetadataOptions,
-      pushedAuthorizationRequestOptions: this.pushedAuthorizationRequestOptions,
-    };
+  static createCustom(config: {
+    credentialConfiguration: CredentialConfiguration;
+    fetchMetadataOptions?: FetchMetadataOptions;
+    pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
+    testName: string;
+  }): IssuerTestConfiguration {
+    return new IssuerTestConfiguration(config);
   }
 
   /**
@@ -70,23 +70,23 @@ export class IssuerTestConfiguration {
    */
   static createDefault(): IssuerTestConfiguration {
     return new IssuerTestConfiguration({
-      testName: "Issuance Happy Flow",
       credentialConfiguration: {
         id: "dc_sd_jwt_PersonIdentificationData",
         scope: "PersonIdentificationData",
       },
+      testName: "Issuance Happy Flow",
     });
   }
 
   /**
-   * Create a custom configuration
+   * Convert the configuration to the format expected by IssuerOrchestratorFlow.runAll()
    */
-  static createCustom(config: {
-    testName: string;
-    credentialConfiguration: CredentialConfiguration;
-    fetchMetadataOptions?: FetchMetadataOptions;
-    pushedAuthorizationRequestOptions?: PushedAuthorizationRequestOptions;
-  }): IssuerTestConfiguration {
-    return new IssuerTestConfiguration(config);
+  toRunOptions() {
+    return {
+      credentialConfiguration: this.credentialConfiguration,
+      fetchMetadataOptions: this.fetchMetadataOptions,
+      pushedAuthorizationRequestOptions: this.pushedAuthorizationRequestOptions,
+      testName: this.testName,
+    };
   }
 }
