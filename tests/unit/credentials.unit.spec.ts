@@ -80,11 +80,12 @@ describe("loadCredentials", () => {
       const credentials = await loadCredentials(
         "tests/data/credentials",
         types,
+        console.error,
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
-      expect(credentials.dc_sd_jwt_mDL?.typ).toBe("dc+sd-jwt");
-      expect(credentials.mso_mdoc_mDL?.typ).toBe("mso_mdoc");
+      expect(credentials.get("dc_sd_jwt_mDL")?.typ).toBe("dc+sd-jwt");
+      expect(credentials.get("mso_mdoc_mDL")?.typ).toBe("mso_mdoc");
     } catch (e) {
       if (e instanceof ValidationError) {
         console.error("Schema validation failed");
@@ -109,9 +110,9 @@ describe("loadCredentials", () => {
     const credentials = await loadCredentials(
       "tests/data/credentials",
       types,
-	  console.error,
+      console.error,
     );
-    expect(credentials.unsupported_cred).toBeUndefined();
+    expect(credentials.get("unsupported_cred")).toBeUndefined();
 
     rmSync(unsupportedCredentialPath);
   });

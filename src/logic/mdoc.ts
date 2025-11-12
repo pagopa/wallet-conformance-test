@@ -8,7 +8,7 @@ import {
   issuerSignedSchema,
   Mdoc,
   mdocPayloadSchema,
-  VerificationError,
+  CredentialError,
 } from "@/types";
 
 /**
@@ -20,7 +20,7 @@ import {
  * @param {Buffer} credential - The mdoc credential to be validated, provided as a Buffer.
  * @returns {Promise<Mdoc>} A promise that resolves with an object containing the parsed mdoc and a
  * list of subjects (subs) found in the document.
- * @throws {VerificationError} If mandatory fields are missing from the mdoc, such as algorithm
+ * @throws {CredentialError} If mandatory fields are missing from the mdoc, such as algorithm
  * identifiers or certificates.
  * @throws {Error} If the mdoc payload is malformed or fails schema validation.
  */
@@ -34,11 +34,11 @@ export async function validateMdoc(credential: Buffer): Promise<Mdoc> {
     const items = mdoc.issuerSigned.nameSpaces[nameSpace];
 
     if (!items.find((item) => item.elementIdentifier === "issuing_country"))
-      throw new VerificationError(
+      throw new CredentialError(
         `Missing mandatory 'issuing_country' in namespace ${nameSpace}`,
       );
     if (!items.find((item) => item.elementIdentifier === "issuing_authority"))
-      throw new VerificationError(
+      throw new CredentialError(
         `Missing mandatory 'issuing_authoity' in namespace ${nameSpace}`,
       );
 
@@ -49,11 +49,11 @@ export async function validateMdoc(credential: Buffer): Promise<Mdoc> {
   }
 
   if (!mdoc.issuerSigned.issuerAuth.protectedHeaders.get(1))
-    throw new VerificationError(
+    throw new CredentialError(
       "Missing algorithm identifier header: key '1' in protected headers",
     );
   if (!mdoc.issuerSigned.issuerAuth.unprotectedHeaders.get(33))
-    throw new VerificationError(
+    throw new CredentialError(
       "Missing certificate: key '33' in unprotected headers",
     );
 
