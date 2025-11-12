@@ -8,9 +8,11 @@ export interface KeyPair {
   /**
    * The private key in JWK format.
    */
-  privateKey: Jwk;
+  privateKey: KeyPairJwk;
   /**
    * The public key in JWK format.
    */
-  publicKey: Jwk;
+  publicKey: KeyPairJwk;
 }
+
+export type KeyPairJwk = Jwk & { kid: string } & { kty: "EC" | "RSA" };

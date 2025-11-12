@@ -1,0 +1,20 @@
+{
+    "authority_hints": [],
+    "sub": "{{trust_anchor_base_url}}",
+    "iss": "{{iss}}",
+    "metadata": {
+      "federation_entity": {
+        "contacts": [
+          "info@pagopa.it"
+        ],
+        "federation_fetch_endpoint": "{{trust_anchor_base_url}}/fetch",
+        "federation_resolve_endpoint": "{{trust_anchor_base_url}}/resolve",
+        "federation_trust_mark_status_endpoint": "{{trust_anchor_base_url}}/trust_mark_status",
+        "homepage_uri": "{{trust_anchor_base_url}}",
+        "organization_name": "Trust Anchor - Wallet interop lab",
+        "policy_uri": "{{trust_anchor_base_url}}/en/website/legal-information",
+        "logo_uri": "{{trust_anchor_base_url}}/static/svg/pagopa-logo-c-lb.svg",
+        "federation_list_endpoint": "{{trust_anchor_base_url}}/list"
+      }
+    }
+  }

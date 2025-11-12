@@ -8,7 +8,7 @@ import { exportJWK, generateKeyPair } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
-import { KeyPair } from "@/types";
+import { KeyPair, KeyPairJwk } from "@/types";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve),
@@ -30,11 +30,11 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
     privateKey: parseWithErrorHandling(JWK, {
       kid: kid,
       ...priv,
-    }),
+    }) as KeyPairJwk,
     publicKey: parseWithErrorHandling(JWK, {
       kid: kid,
       ...pub,
-    }),
+    }) as KeyPairJwk,
   };
   writeFileSync(fileName, JSON.stringify(exportedPair));
 
