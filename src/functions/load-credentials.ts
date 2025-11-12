@@ -1,9 +1,8 @@
-import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { validateMdoc, validateSdJwt } from "@/logic";
-import { Credential, VerificationError } from "@/types";
+import { validateMdoc, validateSdJwt, CredentialsManager } from "@/logic";
+import { CredentialError } from "@/types";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -18,9 +17,9 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
-): Promise<Record<string, Credential>> {
+): Promise<CredentialsManager> {
   const files = readdirSync(path);
-  const credentials: Record<string, Credential> = {};
+  const credentials = new CredentialsManager();
 
   for (const file of files) {
     // Skip if the file is not a recognized credential type
@@ -36,20 +35,10 @@ export async function loadCredentials(
       const credential = readFileSync(`${path}/${file}`, "utf-8");
       const jwt = await validateSdJwt(credential);
 
-      for (const name in credentials)
-        if (credentials[name]?.subs.includes(jwt.payload.sub))
-          throw new VerificationError(
-            `duplicate 'sub' found between credentials ${name} and ${file}`,
-          );
-
-      credentials[file] = {
-        credential: jwt,
-        subs: [jwt.payload.sub],
-        typ: "dc+sd-jwt",
-      };
+      credentials.addSdJwt(file, jwt);
       continue; // Move to the next file
     } catch (e) {
-      if (e instanceof VerificationError || e instanceof ValidationError)
+      if (e instanceof CredentialError || e instanceof ValidationError)
         throw e;
 
       const err = e as Error;
@@ -63,19 +52,11 @@ export async function loadCredentials(
       const credential = readFileSync(`${path}/${file}`, "utf-8");
       const mdoc = await validateMdoc(Buffer.from(credential, "base64url"));
 
-      for (const name in credentials)
-        if (credentials[name]?.subs.find((sub) => mdoc.subs.includes(sub)))
-          throw new VerificationError(
-            `duplicate 'sub' found between credentials ${name} and ${file}`,
-          );
-
-      // If validation is successful, add it to the credentials record
-      credentials[file] = {
-        credential: mdoc.document,
-        subs: mdoc.subs,
-        typ: "mso_mdoc",
-      };
+      credentials.addMdoc(file, mdoc);
     } catch (e) {
+      if (e instanceof CredentialError || e instanceof ValidationError)
+        throw e;
+
       const err = e as Error;
       onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);
     }

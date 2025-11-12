@@ -6,4 +6,4 @@
  * specific-error handling, distinguishing verification failures from other types of runtime
  * errors.
  */
-export class VerificationError extends Error {}
+export class CredentialError extends Error {}

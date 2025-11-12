@@ -6,4 +6,4 @@ export * from "./key-pair";
 export * from "./logger";
 export * from "./mdoc";
 export * from "./sd-jwt";
-export * from "./verification-error";
+export * from "./credential-error";

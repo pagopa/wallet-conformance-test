@@ -70,10 +70,9 @@ describe("loadCredentials", () => {
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
-      expect(credentials.dc_sd_jwt_PersonIdentificationData
-?.typ).toBe("dc+sd-jwt");
-      expect(credentials.mso_mdoc_mDL?.typ).toBe("mso_mdoc");
-      expect(credentials.unsupported_cred).toBeUndefined();
+      expect(credentials.get("dc_sd_jwt_PersonIdentificationData")?.typ).toBe("dc+sd-jwt");
+      expect(credentials.get("mso_mdoc_mDL")?.typ).toBe("mso_mdoc");
+      expect(credentials.get("unsupported_cred")).toBeUndefined();
     } catch (e) {
       if (e instanceof ValidationError) {
         console.error("Schema validation failed");
@@ -88,7 +87,7 @@ describe("loadCredentials", () => {
 
   it("should throw a VerificationError for duplicate subjects", async () => {
     await expect(
-      loadCredentials("tests/data/credentials", ["dc_sd_jwt_PersonIdentificationData", "dc_sd_jwt_PersonIdentificationData_copy"], issuerKey, console.error),
+      loadCredentials("tests/data/credentials", ["dc_sd_jwt_PersonIdentificationData", "dc_sd_jwt_PersonIdentificationData_copy"], console.error),
     ).rejects.toThrow(VerificationError);
   });
 });
