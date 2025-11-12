@@ -41,3 +41,4 @@ coverage
 # System-specific files that should not be in the repository.
 .DS_Store
 Thumbs.db
+data
