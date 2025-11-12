@@ -158,6 +158,12 @@ Then, run the test command:
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
 
+**📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
+- Quick start with default configurations
+- Custom credential types and multiple configurations
+- Environment-based configuration
+- Custom step classes and advanced options
+
 #### Testing the Presentation Flow
 
 Similarly, to test the presentation flow, you will use the `test:remote-presentation` command:

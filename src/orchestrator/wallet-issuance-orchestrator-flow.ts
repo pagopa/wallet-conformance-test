@@ -15,14 +15,14 @@ import { createLogger } from "@/logic/logs";
 import { loadConfig } from "@/logic/utils";
 import { partialCallbacks } from "@/logic/utils";
 import {
-  FetchMetadataOptions,
   FetchMetadataDefaultStep,
+  FetchMetadataOptions,
   FetchMetadataStepResponse,
 } from "@/step/issuance/fetch-metadata-step";
 import {
+  PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
   PushedAuthorizationRequestResponse,
-  PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestStepOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
