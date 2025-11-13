@@ -84,10 +84,10 @@ If you prefer using Docker, you can pull the official image from the GitHub Cont
     docker build --tag pagopa/wallet-conformance-test:latest .
     ```
 
-2. Run the CLI for example to start issuing test:
+2. Run the CLI for example to start issuance test:
 
     ```bash
-    docker run --rm wallet-conformance-test:latest test:issuing
+    docker run --rm wallet-conformance-test:latest test:issuance
     ```
 
 3. If you want to mount a local folder for data or configuration (as suggested in the README):
@@ -112,7 +112,7 @@ mkdir data
 docker run -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
 ```
 
-Replace [COMMAND] with the specific test command you want to run (e.g., test:issuing).
+Replace [COMMAND] with the specific test command you want to run (e.g., test:issuance).
 
 ## ⚙️ Usage
 
@@ -133,30 +133,36 @@ Examples:
 
 Override a specific value from the command line:
 
-    wallet-conformance-test test:issuing --credential-issuer-uri https://my-issuer.example.com
+    wallet-conformance-test test:issuance --credential-issuer-uri https://my-issuer.example.com
 
 
 Use a custom configuration file:
 
-    wallet-conformance-test test:issuing --file-ini /path/to/my-config.ini
+    wallet-conformance-test test:issuance --file-ini /path/to/my-config.ini
 
 
 ### Running Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
 
-#### Testing the Issuing Flow
+#### Testing the issuance Flow
 
-To test the credential issuing flow, you will use the `test:issuing` command. 
+To test the credential issuance flow, you will use the `test:issuance` command. 
 
 First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test (e.g., dc_sd_jwt_PersonIdentificationData).
 
 Then, run the test command:
 
-    wallet-conformance-test test:issuing --credential-type PersonIdentificationData
+    wallet-conformance-test test:issuance --credential-type PersonIdentificationData
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
+
+**📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
+- Quick start with default configurations
+- Custom credential types and multiple configurations
+- Environment-based configuration
+- Custom step classes and advanced options
 
 #### Testing the Presentation Flow
 
