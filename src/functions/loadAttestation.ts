@@ -7,7 +7,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";
 
-import { generateKey, partialCallbacks, signJwtCallback } from "@/logic";
+import {
+  generateKey,
+  loadJwks,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
 
 /**
  * Loads a wallet attestation from the filesystem.
@@ -38,25 +43,41 @@ export async function loadAttestation(
     );
   }
 
+  const providerKeyPair = await loadJwks(
+    wallet.backup_storage_path,
+    "/wallet_provider_jwks",
+  );
+  const unitKeyPair = await loadJwks(
+    wallet.backup_storage_path,
+    "/wallet_unit_jwks",
+  );
+
   try {
     return {
       attestation: readFileSync(attestationPath, "utf-8"),
       created: false,
+      providerKey: providerKeyPair,
+      unitKey: unitKeyPair,
     };
   } catch {
-    const providerKeyPair = await generateKey(
-      `${wallet.backup_storage_path}/wallet_provider_jwks`,
-    );
-    const unitKeyPair = await generateKey(
-      `${wallet.backup_storage_path}/wallet_unit_jwks`,
-    );
-
     const trustChain = await new SignJWT({
       jwks: {
         keys: [providerKeyPair.publicKey],
       },
+      metadata: {
+        wallet_provider: {
+          jwks: {
+            keys: [providerKeyPair.publicKey],
+          },
+        },
+      },
     })
       .setProtectedHeader({ alg: "ES256" })
+      .setAudience(wallet.wallet_provider_base_url)
+      .setIssuer(wallet.wallet_provider_base_url)
+      .setSubject(providerKeyPair.publicKey.kid || "")
+      .setExpirationTime("24h")
+      .setIssuedAt()
       .sign(providerKeyPair.privateKey);
 
     if (!providerKeyPair.privateKey.kid)
@@ -87,6 +108,8 @@ export async function loadAttestation(
     return {
       attestation,
       created: true,
+      providerKey: providerKeyPair,
+      unitKey: unitKeyPair,
     };
   }
 }
