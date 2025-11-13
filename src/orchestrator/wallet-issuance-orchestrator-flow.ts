@@ -1,6 +1,5 @@
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import {
-  ItWalletEntityStatementClaims,
   itWalletEntityStatementClaimsSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";

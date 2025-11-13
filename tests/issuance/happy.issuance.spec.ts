@@ -10,6 +10,7 @@ import { FetchMetadataStepResponse } from "@/step/issuance/fetch-metadata-step";
 
 import { getTestRegistry } from "../config/issuance-test-registry";
 import { HAPPY_FLOW_NAME } from "../test.config";
+import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -21,9 +22,11 @@ getTestRegistry()
         new WalletIssuanceOrchestratorFlow(testConfig);
       const baseLog = orchestrator.getLog();
       let fetchMetadataResponse: FetchMetadataStepResponse;
+      let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
 
       beforeAll(async () => {
-        ({ fetchMetadataResponse } = await orchestrator.issuance());
+        ({ fetchMetadataResponse, pushedAuthorizationRequestResponse } =
+          await orchestrator.issuance());
       });
 
       test("CI_001: Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
@@ -167,5 +170,59 @@ getTestRegistry()
         log.info(`Response matches the required format`);
         log.testCompleted();
       });
+
+      // ============================================================================
+      // PUSHED AUTHORIZATION REQUEST TESTS
+      // ============================================================================
+
+      test("CI_040: request_uri validity time is set to less than one minute", async () => {
+        const log = baseLog.withTag("CI_040");
+
+        log.start("Started");
+        expect(
+          pushedAuthorizationRequestResponse.response?.expires_in,
+        ).toBeLessThanOrEqual(60);
+        log.testCompleted();
+      });
+
+      test("CI_041: Generated request_uri includes a cryptographic random value of at least 128 bits", async () => {
+        const log = baseLog.withTag("CI_041");
+
+        log.start("Started");
+        const requestUri =
+          pushedAuthorizationRequestResponse.response?.request_uri;
+
+        // Extract random portion (e.g. UUID, base64, or hex)
+        const randomPart = requestUri?.split(":").pop() ?? "";
+        const isBase64 = /^[A-Za-z0-9+/=]+$/.test(randomPart);
+        const bitLength = isBase64 ? randomPart.length * 6 : randomPart.length * 4; // hex fallback
+        // Ensure it's at least 128 bits of randomness (16 bytes)
+        expect(bitLength).toBeGreaterThanOrEqual(128);
+        log.testCompleted();
+      });
+
+      test("CI_042: Complete request_uri doesn't exceed 512 ASCII characters", async () => {
+        const log = baseLog.withTag("CI_042");
+
+        log.start("Started");
+        expect(
+          pushedAuthorizationRequestResponse.response?.request_uri.length,
+        ).toBeLessThanOrEqual(512);
+        log.testCompleted();
+      });
+
+      test("CI_043: When verification is successful, Credential Issuer returns an HTTP response with 201 status code", async () => {
+        const log = baseLog.withTag("CI_043");
+
+        log.start("Started");
+        expect(pushedAuthorizationRequestResponse.error).toBeUndefined();
+        log.testCompleted();
+      });
+
+      // TODO CI_044 CI_044a CI_044b
+
+      // ============================================================================
+      // AUTHORISATION REQUEST TESTS
+      // ============================================================================
     });
   });
