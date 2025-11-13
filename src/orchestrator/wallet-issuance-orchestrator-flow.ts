@@ -1,18 +1,21 @@
-
+import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import {
+  ItWalletEntityStatementClaims,
   itWalletEntityStatementClaimsSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
+import { signJwtCallback } from "@/logic/jwt";
 import { createLogger } from "@/logic/logs";
-import { loadConfig } from "@/logic/utils";
+import { loadConfig, partialCallbacks } from "@/logic/utils";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
 } from "@/step/issuance/fetch-metadata-step";
 import {
   PushedAuthorizationRequestDefaultStep,
+  PushedAuthorizationRequestResponse,
 } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
@@ -69,7 +72,7 @@ export class WalletIssuanceOrchestratorFlow {
 
   async issuance(): Promise<{
     fetchMetadataResponse: FetchMetadataStepResponse;
-    //pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+    pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -94,9 +97,53 @@ export class WalletIssuanceOrchestratorFlow {
         this.config.wallet,
       );
 
+      this.log.info("Creating Client Attestation DPoP...");
+      const callbacks = {
+        ...partialCallbacks,
+        signJwt: signJwtCallback([
+          walletAttestationResponse.unitKey.privateKey,
+        ]),
+      };
+
+      const entityStatementClaims =
+        fetchMetadataResponse.response?.entityStatementClaims;
+      if (!entityStatementClaims) {
+        throw new Error("Entity Statement Claims not found in response");
+      }
+
+      const clientAttestationDPoP = await createClientAttestationPopJwt({
+        authorizationServer: entityStatementClaims.iss,
+        callbacks,
+        clientAttestation: walletAttestationResponse.attestation,
+      });
+
+      this.log.info("Sending Pushed Authorization Request...");
+
+      const pushedAuthorizationRequestOptions =
+        this.issuanceConfig.pushedAuthorizationRequest?.options;
+
+      const pushedAuthorizationRequestResponse =
+        await this.pushedAuthorizationRequestStep.run({
+          clientId:
+            pushedAuthorizationRequestOptions?.clientId ??
+            walletAttestationResponse.unitKey.publicKey.kid!,
+          credentialConfigurationId:
+            this.issuanceConfig.credentialConfigurationId,
+          popAttestation:
+            pushedAuthorizationRequestOptions?.popAttestation ??
+            clientAttestationDPoP,
+          pushedAuthorizationRequestEndpoint:
+            pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
+            entityStatementClaims.metadata?.oauth_authorization_server
+              ?.pushed_authorization_request_endpoint!,
+          walletAttestation:
+            pushedAuthorizationRequestOptions?.walletAttestation ??
+            walletAttestationResponse,
+        });
+
       return {
         fetchMetadataResponse,
-        //pushedAuthorizationRequestResponse,
+        pushedAuthorizationRequestResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
