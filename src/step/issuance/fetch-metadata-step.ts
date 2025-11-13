@@ -4,6 +4,7 @@ import { Schema } from "zod";
 
 import { fetchWithRetries } from "@/logic/utils";
 import { StepFlow, StepResult } from "@/step/step-flow";
+import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
 export interface FetchMetadataExecuteResponse {
   entityStatementClaims?: any;
@@ -74,8 +75,9 @@ export class FetchMetadataDefaultStep extends StepFlow {
 
       let entityStatementClaims;
       try {
+        const schema = options.entityStatementClaimsSchema ?? itWalletEntityStatementClaimsSchema;
         entityStatementClaims = parseWithErrorHandling(
-          options.entityStatementClaimsSchema!,
+          schema,
           entityStatementJwtDecoded,
         );
       } catch (e) {
