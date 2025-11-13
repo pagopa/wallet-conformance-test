@@ -3,7 +3,6 @@ import {
   CreatePushedAuthorizationRequestOptions,
   fetchPushedAuthorizationResponse,
   fetchPushedAuthorizationResponseOptions,
-  JwtSignerJwk,
   PushedAuthorizationResponse,
 } from "@pagopa/io-wallet-oauth2";
 

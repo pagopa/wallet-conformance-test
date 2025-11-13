@@ -1,4 +1,3 @@
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 import { Schema } from "zod";
@@ -53,7 +52,7 @@ export class FetchMetadataDefaultStep extends StepFlow {
 
     log.debug("Fetch Metadata Options: ", JSON.stringify(options));
     const url = `${this.config.issuance.url}${options.wellKnownPath}`;
-    log.info("Discoverying issuer's metadata...");
+    log.info("Discovering issuer's metadata...");
     log.info(`Fetching metadata from ${url}`);
 
     return this.execute<FetchMetadataExecuteResponse>(async () => {

@@ -28,7 +28,7 @@ export class IssuerTestRegistry {
   }
 
   /**
-   * Get a specific configurations by flow name
+   * Get specific configurations by flow name
    * @param flowName - The name of the flow test configuration to retrieve
    * @returns The test configurations or undefined if not found
    */
@@ -64,17 +64,17 @@ export class IssuerTestRegistry {
     flowName: string,
     config: IssuerTestConfiguration,
   ): IssuerTestRegistry {
-    const key = flowName;
-    if (this.configurations.has(key)) {
-      this.configurations.get(key)?.push(config);
+    if (this.configurations.has(flowName)) {
+      this.configurations.get(flowName)?.push(config);
     } else {
-      this.configurations.set(key, [config]);
+      this.configurations.set(flowName, [config]);
     }
     return this;
   }
 
   /**
    * Register multiple test configurations at once
+   * @param flowName - The name of the flow test configuration
    * @param configs - Array of test configurations to register
    * @returns The registry instance for chaining
    */

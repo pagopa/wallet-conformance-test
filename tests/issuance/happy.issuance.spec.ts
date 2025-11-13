@@ -7,7 +7,6 @@ import "../test.config";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 import { FetchMetadataStepResponse } from "@/step/issuance/fetch-metadata-step";
-import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
 
 import { getTestRegistry } from "../config/issuance-test-registry";
 import { HAPPY_FLOW_NAME } from "../test.config";
@@ -22,7 +21,6 @@ getTestRegistry()
         new WalletIssuanceOrchestratorFlow(testConfig);
       const baseLog = orchestrator.getLog();
       let fetchMetadataResponse: FetchMetadataStepResponse;
-      let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
 
       beforeAll(async () => {
         ({ fetchMetadataResponse } = await orchestrator.issuance());

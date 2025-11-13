@@ -1,29 +1,18 @@
+
 import {
-  createClientAttestationPopJwt,
-  CreateClientAttestationPopJwtOptions,
-  CreatePushedAuthorizationRequestOptions,
-} from "@pagopa/io-wallet-oauth2";
-import {
-  ItWalletEntityStatementClaims,
   itWalletEntityStatementClaimsSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
-import { signJwtCallback } from "@/logic/jwt";
 import { createLogger } from "@/logic/logs";
 import { loadConfig } from "@/logic/utils";
-import { partialCallbacks } from "@/logic/utils";
 import {
   FetchMetadataDefaultStep,
-  FetchMetadataOptions,
   FetchMetadataStepResponse,
 } from "@/step/issuance/fetch-metadata-step";
 import {
   PushedAuthorizationRequestDefaultStep,
-  PushedAuthorizationRequestOptions,
-  PushedAuthorizationRequestResponse,
-  PushedAuthorizationRequestStepOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
@@ -104,54 +93,6 @@ export class WalletIssuanceOrchestratorFlow {
       const walletAttestationResponse = await loadAttestation(
         this.config.wallet,
       );
-
-      // this.log.info("Creating Client Attestation DPoP...");
-      // const callbacks = {
-      //   ...partialCallbacks,
-      //   signJwt: signJwtCallback([walletAttestationResponse.unitKey.privateKey]),
-      // };
-
-      // const itWalletEntityStatementClaims : ItWalletEntityStatementClaims = fetchMetadataResponse.response?.entityStatementClaims;
-
-      // const clientAttestationDPoP = await createClientAttestationPopJwt({
-      //   clientAttestation: walletAttestationResponse.attestation,
-      //   authorizationServer: itWalletEntityStatementClaims.iss,
-      //   callbacks,
-      // });
-
-      // this.log.info("Sending Pushed Authorization Request...");
-
-      // const createParOptions: CreatePushedAuthorizationRequestOptions = {
-      //   audience: this.config.issuance.url,
-      //   authorization_details: [{
-      //     type: "openid_credential",
-      //     credential_configuration_id: options.credentialConfigurationId,
-      //   }],
-      //   callbacks: callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
-      //   codeChallengeMethodsSupported: ["S256"],
-      //   redirectUri: "https://client.example.org/cb",
-      //   responseMode: "query",
-      //   clientId: walletAttestationResponse.unitKey.publicKey.kid!,
-      //   dpop: {
-      //     signer: {
-      //       publicJwk: {
-      //         ...walletAttestationResponse.unitKey.publicKey,
-      //         kid: walletAttestationResponse.unitKey.publicKey.kid!,
-      //       },
-      //       method: "jwk",
-      //       alg: "ES256",
-      //     },
-      //   },
-      //   scope: options.credentialConfiguration.scope,
-      // };
-
-      // const pushedAuthorizationRequestResponse = await this.pushedAuthorizationRequestStep.run({
-      //   ...createParOptions,
-      //   attestation: pushedAuthorizationRequestOptions?.attestation || walletAttestationResponse.attestation,
-      //   attestationPoP: pushedAuthorizationRequestOptions?.attestationPoP || clientAttestationDPoP,
-      //   clientId: pushedAuthorizationRequestOptions?.clientId || walletAttestationResponse.unitKey.publicKey.kid!,
-      //   pushedAuthorizationRequestEndpoint: pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint || itWalletEntityStatementClaims.metadata!.oauth_authorization_server!.pushed_authorization_request_endpoint!
-      // });
 
       return {
         fetchMetadataResponse,

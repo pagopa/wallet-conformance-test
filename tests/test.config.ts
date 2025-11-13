@@ -53,7 +53,7 @@ const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
 // DEFINE YOUR FLOW TEST NAME HERE
 // ============================================================================
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest"; //Reference to happy-flow.issuance.spec.ts
+export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
 
 // ============================================================================
 // REGISTER YOUR TEST CONFIGURATIONS HERE
