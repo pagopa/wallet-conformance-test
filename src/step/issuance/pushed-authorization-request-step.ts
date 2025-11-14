@@ -6,25 +6,15 @@ import {
   PushedAuthorizationResponse,
 } from "@pagopa/io-wallet-oauth2";
 
+import { signJwtCallback } from "@/logic/jwt";
 import { partialCallbacks } from "@/logic/utils";
 import { StepFlow, StepResult } from "@/step/step-flow";
+import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse;
 
 export interface PushedAuthorizationRequestOptions {
-  /**
-   * Wallet Attestation used to authenticate the client,
-   * if not provided, the attestation will be loaded from the configuration
-   */
-  attestation?: string;
-
-  /**
-   * DPoP JWT used to authenticate the client,
-   * if not provided, the DPoP will be created using the wallet attestation
-   */
-  attestationPoP?: string;
-
   /**
    * Client ID of the OAuth2 Client,
    * if not provided, the client ID will be loaded from the wallet attestation public key kid
@@ -32,23 +22,35 @@ export interface PushedAuthorizationRequestOptions {
   clientId?: string;
 
   /**
+   * DPoP JWT used to authenticate the client,
+   * if not provided, the DPoP will be created using the wallet attestation
+   */
+  popAttestation: string;
+
+  /**
    * Pushed Authorization Request Endpoint URL,
    * if not provided, the endpoint will be loaded from the issuer metadata
    */
   pushedAuthorizationRequestEndpoint?: string;
+
+  /**
+   * Wallet Attestation used to authenticate the client,
+   * if not provided, the attestation will be loaded from the configuration
+   */
+  walletAttestation: Omit<AttestationResponse, "created">;
 }
 
 export type PushedAuthorizationRequestResponse = StepResult & {
   response?: PushedAuthorizationResponse;
 };
 
-export type PushedAuthorizationRequestStepOptions =
-  CreatePushedAuthorizationRequestOptions & {
-    attestation: string;
-    attestationPoP: string;
-    clientId: string;
-    pushedAuthorizationRequestEndpoint: string;
-  };
+export interface PushedAuthorizationRequestStepOptions {
+  clientId: string;
+  credentialConfigurationId: string;
+  popAttestation: string;
+  pushedAuthorizationRequestEndpoint: string;
+  walletAttestation: Omit<AttestationResponse, "created">;
+}
 
 export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   tag = "PUSHED_AUTHORIZATION_REQUEST";
@@ -61,19 +63,57 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
       log.info(`Starting PushedAuthorizationRequest Step`);
 
+      const { unitKey } = options.walletAttestation;
+
+      const callbacks = {
+        ...partialCallbacks,
+        signJwt: signJwtCallback([unitKey.privateKey]),
+      };
+
+      const defaultCreateParOptions: CreatePushedAuthorizationRequestOptions = {
+        audience: this.config.issuance.url,
+        authorization_details: [
+          {
+            credential_configuration_id: options.credentialConfigurationId,
+            type: "openid_credential",
+          },
+        ],
+        callbacks:
+          callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
+        clientId: unitKey.publicKey.kid!,
+        codeChallengeMethodsSupported: ["S256"],
+        dpop: {
+          signer: {
+            alg: "ES256",
+            method: "jwk",
+            publicJwk: {
+              ...unitKey.publicKey,
+              kid: unitKey.publicKey.kid!,
+            },
+          },
+        },
+        redirectUri: "https://client.example.org/cb",
+        responseMode: "query",
+      };
+
+      const createParOptions = {
+        ...defaultCreateParOptions,
+        ...options,
+      };
+
       log.info(
         `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
       );
       const pushedAuthorizationRequestSigned =
-        await createPushedAuthorizationRequest(options);
+        await createPushedAuthorizationRequest(createParOptions);
 
       const fetchOptions: fetchPushedAuthorizationResponseOptions = {
         callbacks: partialCallbacks,
-        clientAttestationDPoP: options.attestationPoP,
+        clientAttestationDPoP: options.popAttestation,
         pushedAuthorizationRequestEndpoint:
           options.pushedAuthorizationRequestEndpoint,
         pushedAuthorizationRequestSigned,
-        walletAttestation: options.attestation,
+        walletAttestation: options.walletAttestation.attestation,
       };
 
       log.debug(`Fetching PAR response from ${JSON.stringify(fetchOptions)}`);

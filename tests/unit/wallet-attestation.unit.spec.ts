@@ -68,10 +68,7 @@ describe("Wallet Attestation Unit Test", () => {
       `${backup}/wallet_provider_jwks`,
       "utf-8",
     );
-    const unitKeyPair = readFileSync(
-      `${backup}/wallet_unit_jwks`,
-      "utf-8",
-    );
+    const unitKeyPair = readFileSync(`${backup}/wallet_unit_jwks`, "utf-8");
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
     const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
     const providerKey = await importJWK(providerJWK, "ES256");
