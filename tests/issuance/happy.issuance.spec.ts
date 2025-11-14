@@ -7,10 +7,10 @@ import "../test.config";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 import { FetchMetadataStepResponse } from "@/step/issuance/fetch-metadata-step";
+import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
 
 import { getTestRegistry } from "../config/issuance-test-registry";
 import { HAPPY_FLOW_NAME } from "../test.config";
-import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -195,7 +195,9 @@ getTestRegistry()
         // Extract random portion (e.g. UUID, base64, or hex)
         const randomPart = requestUri?.split(":").pop() ?? "";
         const isBase64 = /^[A-Za-z0-9+/=]+$/.test(randomPart);
-        const bitLength = isBase64 ? randomPart.length * 6 : randomPart.length * 4; // hex fallback
+        const bitLength = isBase64
+          ? randomPart.length * 6
+          : randomPart.length * 4; // hex fallback
         // Ensure it's at least 128 bits of randomness (16 bytes)
         expect(bitLength).toBeGreaterThanOrEqual(128);
         log.testCompleted();
@@ -219,7 +221,34 @@ getTestRegistry()
         log.testCompleted();
       });
 
-      // TODO CI_044 CI_044a CI_044b
+      test("CI_044a: HTTP response includes request_uri parameter containing the generated one-time authorization URI", async () => {
+        const log = baseLog.withTag("CI_044a");
+
+        log.start("Started");
+        expect(
+          pushedAuthorizationRequestResponse.response?.request_uri,
+        ).toBeDefined();
+        expect(
+          pushedAuthorizationRequestResponse.response?.request_uri,
+        ).toBeTruthy();
+        log.testCompleted();
+      });
+
+      test("CI_044b: HTTP response includes expires_in parameter specifying the validity duration in seconds", async () => {
+        const log = baseLog.withTag("CI_044b");
+
+        log.start("Started");
+        expect(
+          pushedAuthorizationRequestResponse.response?.expires_in,
+        ).toBeDefined();
+        expect(
+          typeof pushedAuthorizationRequestResponse.response?.expires_in,
+        ).toBe("number");
+        expect(
+          pushedAuthorizationRequestResponse.response?.expires_in,
+        ).toBeGreaterThan(0);
+        log.testCompleted();
+      });
 
       // ============================================================================
       // AUTHORISATION REQUEST TESTS
