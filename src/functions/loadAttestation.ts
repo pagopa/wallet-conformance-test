@@ -7,8 +7,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { AttestationResponse, Config } from "@/types";
 
 import {
-  generateKey,
   loadJsonDumps,
+  loadJwks,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -48,19 +48,23 @@ export const loadAttestation = async (options: {
     );
   }
 
+  const providerKeyPair = await loadJwks(
+    wallet.backup_storage_path,
+    "/wallet_provider_jwks",
+  );
+  const unitKeyPair = await loadJwks(
+    wallet.backup_storage_path,
+    "/wallet_unit_jwks",
+  );
+
   try {
     return {
       attestation: readFileSync(attestationPath, "utf-8"),
       created: false,
+      providerKey: providerKeyPair,
+      unitKey: unitKeyPair,
     };
   } catch {
-    const providerKeyPair = await generateKey(
-      `${wallet.backup_storage_path}/wallet_provider_jwks`,
-    );
-    const unitKeyPair = await generateKey(
-      `${wallet.backup_storage_path}/wallet_unit_jwks`,
-    );
-
     if (!providerKeyPair.privateKey.kid)
       throw new Error("invalid key pair: kid missing");
 
@@ -107,6 +111,8 @@ export const loadAttestation = async (options: {
     return {
       attestation,
       created: true,
+      providerKey: providerKeyPair,
+      unitKey: unitKeyPair,
     };
   }
 };
