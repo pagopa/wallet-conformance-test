@@ -1,11 +1,19 @@
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
+import {
+  ItWalletEntityStatementClaims,
+  itWalletEntityStatementClaimsSchema,
+} from "@pagopa/io-wallet-oid-federation";
 import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
 import { signJwtCallback } from "@/logic/jwt";
 import { createLogger } from "@/logic/logs";
-import { loadConfig, partialCallbacks } from "@/logic/utils";
+import { loadConfig } from "@/logic/utils";
+import { partialCallbacks } from "@/logic/utils";
+import {
+  AuthorizeDefaultStep,
+  AuthorizeStepResponse,
+} from "@/step/issuance/authorize-step";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
@@ -14,13 +22,15 @@ import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
 } from "@/step/issuance/pushed-authorization-request-step";
-import { Config } from "@/types";
+import { Config, KeyPair } from "@/types";
+import th from "zod/v4/locales/th.js";
 
 export class WalletIssuanceOrchestratorFlow {
+  private authorizeStep: AuthorizeDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
-  private issuanceConfig: IssuerTestConfiguration;
 
+  private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
 
@@ -61,6 +71,10 @@ export class WalletIssuanceOrchestratorFlow {
           this.log,
         )
       : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
+
+    this.authorizeStep = issuanceConfig.authorize?.stepClass
+      ? new issuanceConfig.authorize.stepClass(this.config, this.log)
+      : new AuthorizeDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
@@ -70,6 +84,7 @@ export class WalletIssuanceOrchestratorFlow {
   async issuance(): Promise<{
     fetchMetadataResponse: FetchMetadataStepResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+    authorizeResponse: AuthorizeStepResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -138,9 +153,28 @@ export class WalletIssuanceOrchestratorFlow {
             walletAttestationResponse,
         });
 
+      this.log.info("Starting Authorization Step...");
+
+      const authorizeOptions = this.issuanceConfig.authorize?.options;
+      const authorizeResponse = await this.authorizeStep.run({
+        authorizationEndpoint:
+          authorizeOptions?.authorizationEndpoint ||
+          entityStatementClaims.metadata?.oauth_authorization_server
+            ?.authorization_endpoint!,
+        clientId:
+          authorizeOptions?.clientId ??
+          walletAttestationResponse.unitKey.publicKey.kid!,
+        walletAttestation:
+          authorizeOptions?.walletAttestation || walletAttestationResponse,
+        issuerPublicKey: entityStatementClaims.jwks?.keys[0] as KeyPair,
+        requestUri: pushedAuthorizationRequestResponse.response?.request_uri!,
+        rpMetadata: entityStatementClaims.metadata.openid_credential_verifier,
+      });
+
       return {
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
+        authorizeResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);

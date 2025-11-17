@@ -1,4 +1,8 @@
 import {
+  AuthorizeDefaultStep,
+  AuthorizeStepOptions,
+} from "@/step/issuance/authorize-step";
+import {
   FetchMetadataDefaultStep,
   FetchMetadataOptions,
 } from "@/step/issuance/fetch-metadata-step";
@@ -11,7 +15,12 @@ import {
  * Configuration class for Issuer conformance tests
  */
 export class IssuerTestConfiguration {
+  public readonly authorize?: {
+    options?: AuthorizeStepOptions;
+    stepClass: typeof AuthorizeDefaultStep;
+  };
   public readonly credentialConfigurationId: string;
+
   public readonly fetchMetadata?: {
     options?: FetchMetadataOptions;
     stepClass: typeof FetchMetadataDefaultStep;
@@ -25,6 +34,10 @@ export class IssuerTestConfiguration {
   public readonly testName: string;
 
   constructor(config: {
+    authorize?: {
+      options?: AuthorizeStepOptions;
+      stepClass?: typeof AuthorizeDefaultStep;
+    };
     credentialConfigurationId: string;
     fetchMetadata?: {
       options?: FetchMetadataOptions;
@@ -49,6 +62,10 @@ export class IssuerTestConfiguration {
         config.pushedAuthorizationRequest?.stepClass ??
         PushedAuthorizationRequestDefaultStep,
     };
+    this.authorize = {
+      options: config.authorize?.options,
+      stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
+    };
   }
 
   static createCustom(
@@ -59,6 +76,9 @@ export class IssuerTestConfiguration {
 
   static createDefault(): IssuerTestConfiguration {
     return new IssuerTestConfiguration({
+      authorize: {
+        stepClass: AuthorizeDefaultStep,
+      },
       credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       fetchMetadata: {
         stepClass: FetchMetadataDefaultStep,

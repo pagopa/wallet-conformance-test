@@ -14,7 +14,7 @@ import { registerTest } from "./config/issuance-test-registry";
 // DEFINE YOUR TEST CONFIGURATIONS HERE
 // ============================================================================
 
-const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
+// const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
 
 const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
   credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
@@ -62,7 +62,7 @@ export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest"; // Reference to happy.is
 /**
  * Example 1: Register test on HappyFlowIssuanceTest
  */
-registerTest(HAPPY_FLOW_NAME, happyFlowPIDConfig);
+// registerTest(HAPPY_FLOW_NAME, happyFlowPIDConfig);
 
 /**
  * Example 2: Register test on HappyFlowMdlTest
