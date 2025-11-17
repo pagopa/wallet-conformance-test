@@ -1,15 +1,11 @@
-import { Jwk } from "@pagopa/io-wallet-oauth2";
 import { ValidationError } from "@pagopa/io-wallet-utils";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { loadCredentials } from "@/functions";
-import { readFileSync, rmSync } from "node:fs";
-import { validateSdJwt } from "@/logic";
-import { VerificationError } from "@/types";
+import { validateMdoc, validateSdJwt } from "@/logic";
+import { CredentialError } from "@/types";
 
-const issuerKey = JSON.parse(
-  readFileSync("tests/data/backup/issuer_jwk.pub", "utf-8"),
-) as Jwk;
 const types = ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"];
 
 describe("validateMdoc", () => {
@@ -20,7 +16,7 @@ describe("validateMdoc", () => {
    */
   it("should successfully validate a correct mdoc", async () => {
     const credential = readFileSync(
-      "tests/data/credentials/mso_mdoc_mDL",
+      "tests/mocked-data/credentials/mso_mdoc_mDL",
       "utf-8",
     );
     const mdoc = await validateMdoc(Buffer.from(credential, "base64url"));
@@ -42,7 +38,7 @@ describe("validateMdoc", () => {
 describe("validateSdJwt", () => {
   it("should successfully validate a correct sd-jwt", async () => {
     const credential = readFileSync(
-      "tests/data/credentials/dc_sd_jwt_PersonIdentificationData",
+      "tests/mocked-data/credentials/dc_sd_jwt_PersonIdentificationData",
       "utf-8",
     );
     const jwt = await validateSdJwt(credential);
@@ -70,7 +66,9 @@ describe("loadCredentials", () => {
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
-      expect(credentials.get("dc_sd_jwt_PersonIdentificationData")?.typ).toBe("dc+sd-jwt");
+      expect(credentials.get("dc_sd_jwt_PersonIdentificationData")?.typ).toBe(
+        "dc+sd-jwt",
+      );
       expect(credentials.get("mso_mdoc_mDL")?.typ).toBe("mso_mdoc");
       expect(credentials.get("unsupported_cred")).toBeUndefined();
     } catch (e) {
@@ -87,7 +85,14 @@ describe("loadCredentials", () => {
 
   it("should throw a VerificationError for duplicate subjects", async () => {
     await expect(
-      loadCredentials("tests/data/credentials", ["dc_sd_jwt_PersonIdentificationData", "dc_sd_jwt_PersonIdentificationData_copy"], console.error),
-    ).rejects.toThrow(VerificationError);
+      loadCredentials(
+        "tests/mocked-data/credentials",
+        [
+          "dc_sd_jwt_PersonIdentificationData",
+          "dc_sd_jwt_PersonIdentificationData_copy",
+        ],
+        console.error,
+      ),
+    ).rejects.toThrow(CredentialError);
   });
 });

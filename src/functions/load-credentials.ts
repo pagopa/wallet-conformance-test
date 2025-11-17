@@ -1,7 +1,7 @@
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { validateMdoc, validateSdJwt, CredentialsManager } from "@/logic";
+import { CredentialsManager, validateMdoc, validateSdJwt } from "@/logic";
 import { CredentialError } from "@/types";
 
 /**
@@ -38,8 +38,7 @@ export async function loadCredentials(
       credentials.addSdJwt(file, jwt);
       continue; // Move to the next file
     } catch (e) {
-      if (e instanceof CredentialError || e instanceof ValidationError)
-        throw e;
+      if (e instanceof CredentialError || e instanceof ValidationError) throw e;
 
       const err = e as Error;
       onIgnoreError(
@@ -54,8 +53,7 @@ export async function loadCredentials(
 
       credentials.addMdoc(file, mdoc);
     } catch (e) {
-      if (e instanceof CredentialError || e instanceof ValidationError)
-        throw e;
+      if (e instanceof CredentialError || e instanceof ValidationError) throw e;
 
       const err = e as Error;
       onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);

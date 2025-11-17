@@ -5,10 +5,10 @@ import { ValidationError } from "@pagopa/io-wallet-utils";
 import { decode } from "cbor";
 
 import {
+  CredentialError,
   issuerSignedSchema,
   Mdoc,
   mdocPayloadSchema,
-  CredentialError,
 } from "@/types";
 
 /**
