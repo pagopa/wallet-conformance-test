@@ -1,7 +1,4 @@
-
-import {
-  itWalletEntityStatementClaimsSchema,
-} from "@pagopa/io-wallet-oid-federation";
+import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
@@ -11,9 +8,7 @@ import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
 } from "@/step/issuance/fetch-metadata-step";
-import {
-  PushedAuthorizationRequestDefaultStep,
-} from "@/step/issuance/pushed-authorization-request-step";
+import { PushedAuthorizationRequestDefaultStep } from "@/step/issuance/pushed-authorization-request-step";
 import { Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
@@ -90,9 +85,12 @@ export class WalletIssuanceOrchestratorFlow {
       });
 
       this.log.info("Loading Wallet Attestation...");
-      const walletAttestationResponse = await loadAttestation(
-        this.config.wallet,
-      );
+      const walletAttestationResponse = await loadAttestation({
+        trustAnchorJwksPath:
+          this.config.trust.federation_trust_anchors_jwks_path,
+        wallet: this.config.wallet,
+      });
+      this.log.info("Wallet Attestation Loaded.");
 
       return {
         fetchMetadataResponse,
