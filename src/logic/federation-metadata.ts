@@ -35,7 +35,7 @@ export const createFederationMetadata = async (
 
   const entityJwks = [options.entityPublicJwk];
   // Ensure the signing key is included in the JWKS
-  if(options.entityPublicJwk.kid !== publicKey.kid) {
+  if (options.entityPublicJwk.kid !== publicKey.kid) {
     entityJwks.push(publicKey);
   }
 
@@ -75,33 +75,40 @@ export const createTrustAnchorMetadata = async (
 
 
 /**
- * Options for creating subordinate trust anchor federation metadata.
+ * Options for creating a Trust Anchor's entity statement about a subordinate entity.
  */
-export interface createSubordinateTrustAnchorMetadataOptions {
+export interface CreateSubordinateEntityStatementOptions {
   /**
    * Path to the folder containing the trust anchor JWKS files.
+   * The trust anchor's private key will be used to sign the entity statement.
    */
   federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
 
   /**
-   * Public JWK of the entity creating the subordinate trust anchor metadata.
+   * Public JWK of the subordinate entity (e.g., wallet provider).
+   * This key will be included in the entity statement.
    */
   entityPublicJwk: KeyPairJwk;
 
   /**
-   * Subject (sub) claim for the entity configuration.
-   * Typically the base URL of the subordinate trust anchor.
+   * Subject (sub) claim - the identifier of the subordinate entity.
+   * Typically the base URL of the subordinate entity (e.g., wallet provider URL).
    */
   sub: string;
 }
 
 /**
- * Creates the subordinate trust anchor federation metadata JWT.
- * @param options Options for creating the subordinate trust anchor metadata.
- * @returns The signed subordinate trust anchor federation metadata JWT as a string.
+ * Creates an entity statement signed by the Trust Anchor for a subordinate entity.
+ * 
+ * In OpenID Federation, the Trust Anchor issues entity statements about its subordinates
+ * (e.g., wallet providers). This function creates such a statement, signed by the Trust
+ * Anchor's private key, containing metadata about the subordinate entity.
+ * 
+ * @param options Options for creating the entity statement.
+ * @returns The signed entity statement JWT (signed by Trust Anchor, about the subordinate).
  */
 export const createSubordinateTrustAnchorMetadata = async (
-  options: createSubordinateTrustAnchorMetadataOptions,
+  options: CreateSubordinateEntityStatementOptions,
 ): Promise<string> => {
   const placeholders = {
     sub: options.sub,
