@@ -44,7 +44,7 @@ export const createFederationMetadata = async (
 
 export interface createTrustAnchorMetadataOptions {
   federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
-  iss?: string;
+  sub?: string;
 }
 
 /**
@@ -56,7 +56,7 @@ export const createTrustAnchorMetadata = async (
   options: createTrustAnchorMetadataOptions,
 ): Promise<string> => {
   const placeholders = {
-    iss: options.iss || "https://127.0.0.1:3001",
+    sub: options.sub || "https://127.0.0.1:3001",
     trust_anchor_base_url: "https://127.0.0.1:3001",
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);

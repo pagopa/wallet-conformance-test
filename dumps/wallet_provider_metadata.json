@@ -1,0 +1,29 @@
+{
+  "authority_hints": [
+    "{{trust_anchor_base_url}}"
+  ],
+  "iss": "{{wallet_provider_base_url}}",
+  "sub": "{{wallet_provider_base_url}}",
+  "jwks": {
+    "keys": ["{{publicKey}}"]
+  },
+  "metadata": {
+    "federation_entity": {
+      "homepage_uri": "https://io.italia.it",
+      "logo_uri": "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+      "organization_name": "PagoPa S.p.A.",
+      "policy_uri": "https://io.italia.it/privacy-policy",
+      "tos_uri": "https://io.italia.it/privacy-policy"
+    },
+    "wallet_provider": {
+      "aal_values_supported": [
+        "{{wallet_provider_base_url}}/LoA/basic",
+        "{{wallet_provider_base_url}}/LoA/medium",
+        "{{wallet_provider_base_url}}/LoA/high"
+      ],
+      "jwks": {
+        "keys": ["{{publicKey}}"]
+      }
+    }
+  }
+}
