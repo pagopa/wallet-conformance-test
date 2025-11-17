@@ -14,6 +14,7 @@ import {
 } from "@/logic";
 import {
   createFederationMetadata,
+  createSubordinateTrustAnchorMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 
@@ -71,9 +72,10 @@ export const loadAttestation = async (options: {
     if (providerKeyPair.privateKey.kid !== providerKeyPair.publicKey.kid)
       throw new Error("invalid key pair: kid does not match");
 
-    const taEntityConfiguration = await createTrustAnchorMetadata({
+    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
       sub: wallet.wallet_provider_base_url,
+      entityPublicJwk: providerKeyPair.publicKey,
     });
     const placeholders = {
       publicKey: providerKeyPair.publicKey,
@@ -86,7 +88,8 @@ export const loadAttestation = async (options: {
     );
     const wpEntityConfiguration = await createFederationMetadata({
       claims: wpClaims,
-      jwks: providerKeyPair,
+      signedJwks: providerKeyPair,
+      entityPublicJwk: providerKeyPair.publicKey,
     });
 
     const attestationOptions: WalletAttestationOptions = {
