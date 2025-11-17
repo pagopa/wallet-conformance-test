@@ -4,10 +4,9 @@ import {
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
 
-import { Config } from "@/types/Config";
+import { Config, KeyPair, KeyPairJwk } from "@/types";
 
-import { signCallback } from "../logic/jwt";
-import { KeyPair, KeyPairJwk } from "../types/KeyPair";
+import { signCallback } from "./jwt";
 import { loadJsonDumps, loadJwks } from "./utils";
 
 export interface CreateFederationMetadataOptions {
