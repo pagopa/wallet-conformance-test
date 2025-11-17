@@ -82,9 +82,9 @@ export class WalletIssuanceOrchestratorFlow {
   }
 
   async issuance(): Promise<{
+    authorizeResponse: AuthorizeStepResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
-    authorizeResponse: AuthorizeStepResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -164,17 +164,17 @@ export class WalletIssuanceOrchestratorFlow {
         clientId:
           authorizeOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid!,
-        walletAttestation:
-          authorizeOptions?.walletAttestation || walletAttestationResponse,
         issuerPublicKey: entityStatementClaims.jwks?.keys[0] as KeyPair,
         requestUri: pushedAuthorizationRequestResponse.response?.request_uri!,
         rpMetadata: entityStatementClaims.metadata.openid_credential_verifier,
+        walletAttestation:
+          authorizeOptions?.walletAttestation || walletAttestationResponse,
       });
 
       return {
+        authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
-        authorizeResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
