@@ -22,7 +22,7 @@ test("Mocked Credentials Validation", async () => {
   }
 
   try {
-    await loadCredentials("tests/data/credentials", types, console.error);
+    await loadCredentials("tests/mocked-data/credentials", types, console.error);
   } catch (e) {
     if (e instanceof ValidationError) {
       const msg = e.message
