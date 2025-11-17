@@ -76,7 +76,7 @@ export const loadAttestation = async (options: {
       sub: wallet.wallet_provider_base_url,
     });
     const placeholders = {
-      publicKey: unitKeyPair.publicKey,
+      publicKey: providerKeyPair.publicKey,
       trust_anchor_base_url: "https://127.0.0.1:3001",
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
