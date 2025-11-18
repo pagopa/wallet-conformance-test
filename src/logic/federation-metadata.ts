@@ -14,14 +14,14 @@ export interface CreateFederationMetadataOptions {
   claims: ItWalletEntityConfigurationClaimsOptions;
 
   /**
-   * The JWKS used to sign the federation metadata.
-   */
-  signedJwks: KeyPair;
-
-  /**
    * The public JWK of the entity to include the federation metadata.
    */
   entityPublicJwk: KeyPairJwk;
+
+  /**
+   * The JWKS used to sign the federation metadata.
+   */
+  signedJwks: KeyPair;
 }
 
 export const createFederationMetadata = async (
@@ -70,25 +70,28 @@ export const createTrustAnchorMetadata = async (
     federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",
   );
-  return await createFederationMetadata({ claims, signedJwks, entityPublicJwk: signedJwks.publicKey });
+  return await createFederationMetadata({
+    claims,
+    entityPublicJwk: signedJwks.publicKey,
+    signedJwks,
+  });
 };
-
 
 /**
  * Options for creating a Trust Anchor's entity statement about a subordinate entity.
  */
 export interface CreateSubordinateEntityStatementOptions {
   /**
-   * Path to the folder containing the trust anchor JWKS files.
-   * The trust anchor's private key will be used to sign the entity statement.
-   */
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
-
-  /**
    * Public JWK of the subordinate entity (e.g., wallet provider).
    * This key will be included in the entity statement.
    */
   entityPublicJwk: KeyPairJwk;
+
+  /**
+   * Path to the folder containing the trust anchor JWKS files.
+   * The trust anchor's private key will be used to sign the entity statement.
+   */
+  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
 
   /**
    * Subject (sub) claim - the identifier of the subordinate entity.
@@ -99,11 +102,11 @@ export interface CreateSubordinateEntityStatementOptions {
 
 /**
  * Creates an entity statement signed by the Trust Anchor for a subordinate entity.
- * 
+ *
  * In OpenID Federation, the Trust Anchor issues entity statements about its subordinates
  * (e.g., wallet providers). This function creates such a statement, signed by the Trust
  * Anchor's private key, containing metadata about the subordinate entity.
- * 
+ *
  * @param options Options for creating the entity statement.
  * @returns The signed entity statement JWT (signed by Trust Anchor, about the subordinate).
  */
@@ -119,5 +122,9 @@ export const createSubordinateTrustAnchorMetadata = async (
     options.federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",
   );
-  return await createFederationMetadata({ claims, signedJwks, entityPublicJwk: options.entityPublicJwk });
+  return await createFederationMetadata({
+    claims,
+    entityPublicJwk: options.entityPublicJwk,
+    signedJwks,
+  });
 };

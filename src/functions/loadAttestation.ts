@@ -73,9 +73,9 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
+      entityPublicJwk: providerKeyPair.publicKey,
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
       sub: wallet.wallet_provider_base_url,
-      entityPublicJwk: providerKeyPair.publicKey,
     });
     const placeholders = {
       publicKey: providerKeyPair.publicKey,
@@ -88,8 +88,8 @@ export const loadAttestation = async (options: {
     );
     const wpEntityConfiguration = await createFederationMetadata({
       claims: wpClaims,
-      signedJwks: providerKeyPair,
       entityPublicJwk: providerKeyPair.publicKey,
+      signedJwks: providerKeyPair,
     });
 
     const attestationOptions: WalletAttestationOptions = {
