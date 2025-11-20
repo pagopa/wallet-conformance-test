@@ -14,7 +14,7 @@ export interface CreateFederationMetadataOptions {
   claims: ItWalletEntityConfigurationClaimsOptions;
 
   /**
-   * The public JWK of the entity to include the federation metadata.
+   * The public JWK of the entity to include in the federation metadata's JWKS.
    */
   entityPublicJwk: KeyPairJwk;
 
