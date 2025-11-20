@@ -81,7 +81,7 @@ export const loadJsonDumps = (
     const escapeRegExp = (s: string) =>
       s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     for (const [key, value] of Object.entries(placeholders)) {
-      // Create regex to match both {{key}} and "{{key}}" patterns
+      // Create regex to match {{key}} for strings or "{{key}}" for objects
       // object values should be replaced without quotes
       const reCurly =
         typeof value === "string"
