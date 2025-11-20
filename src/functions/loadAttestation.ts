@@ -27,10 +27,11 @@ import {
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
+  trustAnchorBaseUrl: string;
   trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchorJwksPath, wallet } = options;
+  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
   const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
 
   try {
@@ -77,10 +78,11 @@ export const loadAttestation = async (options: {
       entityPublicJwk: providerKeyPair.publicKey,
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
       sub: wallet.wallet_provider_base_url,
+      trustAnchorBaseUrl: trustAnchorBaseUrl,
     });
     const placeholders = {
       publicKey: providerKeyPair.publicKey,
-      trust_anchor_base_url: "https://127.0.0.1:3001",
+      trust_anchor_base_url: trustAnchorBaseUrl,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
     const wpClaims = loadJsonDumps(

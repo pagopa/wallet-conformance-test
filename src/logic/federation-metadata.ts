@@ -58,16 +58,17 @@ export const createFederationMetadata = async (
  * @param federationTrustAnchorsJwksPath Path to the folder containing the trust anchor JWKS files.
  * @returns The signed federation metadata JWT as a string.
  */
-export const createTrustAnchorMetadata = async (
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"],
-): Promise<string> => {
+export const createTrustAnchorMetadata = async (options: {
+  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchorBaseUrl: string;
+}): Promise<string> => {
   const placeholders = {
-    sub: "https://127.0.0.1:3001",
-    trust_anchor_base_url: "https://127.0.0.1:3001",
+    sub: options.trustAnchorBaseUrl,
+    trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
   const signedJwks = await loadJwks(
-    federationTrustAnchorsJwksPath,
+    options.federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",
   );
   return await createFederationMetadata({
@@ -98,6 +99,11 @@ export interface CreateSubordinateEntityStatementOptions {
    * Typically the base URL of the subordinate entity (e.g., wallet provider URL).
    */
   sub: string;
+
+  /**
+   * The base URL of the Trust Anchor.
+   */
+  trustAnchorBaseUrl: string;
 }
 
 /**
@@ -115,7 +121,7 @@ export const createSubordinateTrustAnchorMetadata = async (
 ): Promise<string> => {
   const placeholders = {
     sub: options.sub,
-    trust_anchor_base_url: "https://127.0.0.1:3001",
+    trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
   const signedJwks = await loadJwks(

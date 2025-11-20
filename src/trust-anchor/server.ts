@@ -9,6 +9,7 @@ export const createServer = () => {
   app.use(express.json());
 
   const config = loadConfig("./config.ini");
+  const trustAnchorBaseUrl = `https://127.0.0.1:${config.server.port}`;
 
   // federation metadata
   app.get("/.well-known/openid-federation", async (_req, res) => {
@@ -16,6 +17,7 @@ export const createServer = () => {
       const jwt = await createTrustAnchorMetadata({
         federationTrustAnchorsJwksPath:
           config.trust.federation_trust_anchors_jwks_path,
+        trustAnchorBaseUrl,
       });
       res.type("application/jwt").send(jwt);
     } catch (err) {
