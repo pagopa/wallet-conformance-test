@@ -15,7 +15,6 @@ import {
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
-  createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 
 /**
