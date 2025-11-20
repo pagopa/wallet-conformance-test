@@ -1,34 +1,30 @@
 import { ValidationError } from "@pagopa/io-wallet-utils";
-import { parse } from "ini";
-import { readFileSync } from "node:fs";
-import { expect, test } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { loadCredentials } from "@/functions";
-import { Config } from "@/types";
 
-test("Mocked Credentials Validation", async () => {
-  const textConfig = readFileSync("config.ini", "utf-8");
-  const config = parse(textConfig) as Config;
-  const types: string[] = [];
-
-  for (const type in config.issuance.credentials.types) {
-    if (!type) continue;
-
-    const issuerHasType = config.issuance.credentials.types[type]?.find(
-      (t) => t === config.issuance.url,
-    );
-
-    if (issuerHasType) types.push(type);
-  }
-
-  try {
-    await loadCredentials("tests/mocked-data/credentials", types, console.error);
-  } catch (e) {
-    if (e instanceof ValidationError) {
-      const msg = e.message
-        .replace(": ", ":\n\t")
-        .replace(/,([A-Za-z])/g, "\n\t$1");
-      expect.fail(`Schema validation failed: ${msg}`);
-    } else throw e;
-  }
+describe("Load Mocked Credentials", async () => {
+  it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
+    try {
+      const credentials = await loadCredentials(
+        "tests/mocked-data/credentials",
+        ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
+        console.error,
+      );
+      expect(credentials).toBeDefined();
+      expect(Object.keys(credentials).length).toBe(2);
+      expect(credentials.dc_sd_jwt_PersonIdentificationData?.typ).toBe("dc+sd-jwt");
+      expect(credentials.mso_mdoc_mDL?.typ).toBe("mso_mdoc");
+      expect(credentials.unsupported_cred).toBeUndefined();
+    } catch (e) {
+      if (e instanceof ValidationError) {
+        console.error("Schema validation failed");
+        expect
+          .soft(
+            e.message.replace(": ", ":\n\t").replace(/,([A-Za-z])/g, "\n\t$1"),
+          )
+          .toBeNull();
+      } else throw e;
+    }
+  });
 });

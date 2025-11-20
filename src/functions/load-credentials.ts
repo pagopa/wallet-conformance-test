@@ -1,4 +1,4 @@
-import { parse } from "@auth0/mdl";
+import { parseMdoc } from "@/logic";
 import { SDJwt } from "@sd-jwt/core";
 import { readdirSync, readFileSync } from "node:fs";
 
@@ -25,7 +25,7 @@ export async function loadCredentials(
     // Skip if the file is not a recognized credential type
     if (!file || !types.find((name) => name === file)) {
       onIgnoreError(
-        `current issuer does not support ${file}'s credential type`,
+        `current issuer does not support '${file}' credential type`,
       );
       continue;
     }
@@ -49,8 +49,8 @@ export async function loadCredentials(
 
     // If SD-JWT verification fails, attempt to parse it as an MDOC
     try {
-      const credential = readFileSync(`${path}/${file}`);
-      const mdoc = parse(credential);
+      const credential = readFileSync(`${path}/${file}`, "utf-8");
+      const mdoc = parseMdoc(Buffer.from(credential, "base64url"));
 
       // If validation is successful, add it to the credentials record
       credentials[file] = {
