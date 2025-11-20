@@ -34,7 +34,7 @@ export const createFederationMetadata = async (
     signCallback({ jwk: privateKey, toBeSigned });
 
   const entityJwks = [options.entityPublicJwk];
-  // Ensure the signing key is included in the JWKS
+  // Ensure the signing key is included in the JWKS if it differs from the entity's public key
   if (options.entityPublicJwk.kid !== publicKey.kid) {
     entityJwks.push(publicKey);
   }
