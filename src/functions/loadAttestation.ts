@@ -2,28 +2,36 @@ import {
   WalletAttestationOptions,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
-import { SignJWT } from "jose";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";
 
 import {
-  generateKey,
+  loadJsonDumps,
   loadJwks,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import {
+  createFederationMetadata,
+  createSubordinateTrustAnchorMetadata,
+} from "@/logic/federation-metadata";
 
 /**
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
  *
- * @param wallet The wallet configuration.
- * @returns A promise that resolves to the wallet attestation JWT.
+ * @param options - Configuration options
+ * @param options.trustAnchorJwksPath - Path to the trust anchor JWKS
+ * @param options.wallet - The wallet configuration
+ * @returns A promise that resolves to the wallet attestation response.
  */
-export async function loadAttestation(
-  wallet: Config["wallet"],
-): Promise<AttestationResponse> {
+export const loadAttestation = async (options: {
+  trustAnchorBaseUrl: string;
+  trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  wallet: Config["wallet"];
+}): Promise<AttestationResponse> => {
+  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
   const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
 
   try {
@@ -60,37 +68,38 @@ export async function loadAttestation(
       unitKey: unitKeyPair,
     };
   } catch {
-    const trustChain = await new SignJWT({
-      jwks: {
-        keys: [providerKeyPair.publicKey],
-      },
-      metadata: {
-        wallet_provider: {
-          jwks: {
-            keys: [providerKeyPair.publicKey],
-          },
-        },
-      },
-    })
-      .setProtectedHeader({ alg: "ES256" })
-      .setAudience(wallet.wallet_provider_base_url)
-      .setIssuer(wallet.wallet_provider_base_url)
-      .setSubject(providerKeyPair.publicKey.kid || "")
-      .setExpirationTime("24h")
-      .setIssuedAt()
-      .sign(providerKeyPair.privateKey);
-
     if (!providerKeyPair.privateKey.kid)
       throw new Error("invalid key pair: kid missing");
 
     if (providerKeyPair.privateKey.kid !== providerKeyPair.publicKey.kid)
       throw new Error("invalid key pair: kid does not match");
 
+    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
+      entityPublicJwk: providerKeyPair.publicKey,
+      federationTrustAnchorsJwksPath: trustAnchorJwksPath,
+      sub: wallet.wallet_provider_base_url,
+      trustAnchorBaseUrl: trustAnchorBaseUrl,
+    });
+    const placeholders = {
+      publicKey: providerKeyPair.publicKey,
+      trust_anchor_base_url: trustAnchorBaseUrl,
+      wallet_provider_base_url: wallet.wallet_provider_base_url,
+    };
+    const wpClaims = loadJsonDumps(
+      "wallet_provider_metadata.json",
+      placeholders,
+    );
+    const wpEntityConfiguration = await createFederationMetadata({
+      claims: wpClaims,
+      entityPublicJwk: providerKeyPair.publicKey,
+      signedJwks: providerKeyPair,
+    });
+
     const attestationOptions: WalletAttestationOptions = {
       dpopJwkPublic: unitKeyPair.publicKey,
       issuer: wallet.wallet_provider_base_url,
       signer: {
-        trustChain: [trustChain],
+        trustChain: [wpEntityConfiguration, taEntityConfiguration],
         walletProviderJwkPublicKid: providerKeyPair.privateKey.kid,
       },
       walletLink: `${wallet.wallet_provider_base_url}/wallet`,
@@ -112,4 +121,4 @@ export async function loadAttestation(
       unitKey: unitKeyPair,
     };
   }
-}
+};

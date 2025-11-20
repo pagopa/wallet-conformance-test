@@ -66,7 +66,7 @@ export function loadConfig(fileName: string): Config {
  */
 export const loadJsonDumps = (
   fileName: string,
-  placeholders: Record<string, string>,
+  placeholders: Record<string, object | string>,
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
@@ -81,18 +81,22 @@ export const loadJsonDumps = (
     const escapeRegExp = (s: string) =>
       s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     for (const [key, value] of Object.entries(placeholders)) {
-      const reCurly = new RegExp(`\\{\\{${escapeRegExp(key)}\\}\\}`, "g");
-      const reDollar = new RegExp(`\\$\\{${escapeRegExp(key)}\\}`, "g");
-      const rePercent = new RegExp(`%${escapeRegExp(key)}%`, "g");
-      raw = raw
-        .replace(reCurly, value)
-        .replace(reDollar, value)
-        .replace(rePercent, value);
+      // Create regex to match {{key}} for strings or "{{key}}" for objects
+      // object values should be replaced without quotes
+      const reCurly =
+        typeof value === "string"
+          ? new RegExp(`\\{\\{${escapeRegExp(key)}\\}\\}`, "g")
+          : new RegExp(`\\"\\{\\{${escapeRegExp(key)}\\}\\}\\"`, "g");
+      const valueStr =
+        typeof value === "string" ? value : JSON.stringify(value);
+      raw = raw.replace(reCurly, valueStr);
     }
 
     return JSON.parse(raw);
-  } catch {
-    throw new Error(`Missing file or invalid JSON in ${fileName}`);
+  } catch (e) {
+    throw new Error(
+      `Missing file or invalid JSON in ${fileName}: ${(e as Error).message}`,
+    );
   }
 };
 

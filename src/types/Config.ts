@@ -25,6 +25,9 @@ export const configSchema = z.object({
     timeout: z.coerce.number(),
     user_agent: z.string(),
   }),
+  server: z.object({
+    port: z.coerce.number(),
+  }),
   trust: z.object({
     ca_cert_path: z.string(),
     eidas_trusted_lists: z.array(z.string()).optional(),
