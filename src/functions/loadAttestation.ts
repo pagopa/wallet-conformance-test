@@ -21,8 +21,10 @@ import {
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
  *
- * @param wallet The wallet configuration.
- * @returns A promise that resolves to the wallet attestation JWT.
+ * @param options - Configuration options
+ * @param options.trustAnchorJwksPath - Path to the trust anchor JWKS
+ * @param options.wallet - The wallet configuration
+ * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
   trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
