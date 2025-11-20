@@ -20,6 +20,9 @@ importers:
       '@pagopa/io-wallet-oid4vci':
         specifier: ^0.6.2
         version: 0.6.2
+      '@pagopa/io-wallet-oid4vp':
+        specifier: ^0.6.2
+        version: 0.6.2
       '@pagopa/io-wallet-utils':
         specifier: ^0.6.2
         version: 0.6.2

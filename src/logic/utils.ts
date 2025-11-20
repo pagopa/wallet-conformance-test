@@ -16,7 +16,7 @@ import {
 import { generateKey } from "./jwk";
 import { verifyJwt } from "./jwt";
 
-export const partialCallbacks: Partial<CallbackContext> = {
+export const partialCallbacks: Pick<CallbackContext, "fetch" | "generateRandom" | "hash" | "verifyJwt"> = {
   fetch,
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
