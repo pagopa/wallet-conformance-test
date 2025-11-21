@@ -37,7 +37,7 @@ export class TestRegistry<T extends TestConfiguration> {
       throw new Error(
         `No test configuration registered for flow "${flowName}"! ` +
           `Available flows: ${availableFlows || "none"}. ` +
-          `Please register a configuration using register() or registerMany() before running the tests.`,
+          `Please register a configuration using registerTest() or registerMany() before running the tests.`,
       );
     }
 
