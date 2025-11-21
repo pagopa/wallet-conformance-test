@@ -105,7 +105,7 @@ describe("Generate Mocked Credentials", () => {
     const issClaims = loadJsonDumps("issuer_metadata.json", {
       publicKey: issuerKeyPair.publicKey,
       trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-      wallet_provider_base_url: metadata.iss,
+      issuer_base_url: metadata.iss,
     });
     const issEntityConfiguration = await createFederationMetadata({
       claims: issClaims,
