@@ -6,11 +6,10 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
 
-import { Config, configSchema, FetchWithRetriesResponse } from "@/types";
+import { Config, configSchema, KeyPair, FetchWithRetriesResponse } from "@/types";
 
-import { verifyJwt } from ".";
-import { generateKey } from "../logic/jwk";
-import { KeyPair } from "../types";
+import { generateKey } from "./jwk";
+import { verifyJwt } from "./jwt";
 
 export const partialCallbacks: Partial<CallbackContext> = {
   fetch,

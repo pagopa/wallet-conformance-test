@@ -8,7 +8,7 @@
     "rootDir": ".", // The root directory of your source files
     "paths": {
       "@/*": ["./src/*"],
-      "tests/*": ["./tests/*"]
+      "#/*": ["./tests/*"],
     },
 
     // --- Type Checking ---

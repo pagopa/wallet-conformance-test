@@ -1,19 +1,20 @@
+import { IssuerTestConfiguration } from "#/config";
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
-import { signJwtCallback } from "@/logic/jwt";
-import { createLogger } from "@/logic/logs";
-import { loadConfig, partialCallbacks } from "@/logic/utils";
+import {
+  createLogger,
+  loadConfig,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
-} from "@/step/issuance/fetch-metadata-step";
-import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
-} from "@/step/issuance/pushed-authorization-request-step";
+} from "@/step/issuance";
 import { Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
@@ -91,6 +92,7 @@ export class WalletIssuanceOrchestratorFlow {
 
       this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
+        trustAnchorBaseUrl: `https://127.0.0.1:${this.config.server.port}`,
         trustAnchorJwksPath:
           this.config.trust.federation_trust_anchors_jwks_path,
         wallet: this.config.wallet,

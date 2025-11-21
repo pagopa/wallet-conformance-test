@@ -1,8 +1,6 @@
 import express from "express";
 
-import { createTrustAnchorMetadata } from "@/logic/federation-metadata";
-
-import { loadConfig } from "../logic/utils";
+import { createTrustAnchorMetadata, loadConfig } from "@/logic";
 
 export const createServer = () => {
   const app = express();
