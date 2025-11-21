@@ -1,11 +1,9 @@
 import {
   FetchMetadataDefaultStep,
   FetchMetadataOptions,
-} from "@/step/issuance/fetch-metadata-step";
-import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
-} from "@/step/issuance/pushed-authorization-request-step";
+} from "@/step/issuance";
 
 /**
  * Configuration class for Issuer conformance tests

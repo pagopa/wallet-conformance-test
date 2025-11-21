@@ -1,38 +1,54 @@
+import type { DisclosureFrame } from "@sd-jwt/types";
+
+import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { exportPKCS8, exportSPKI, importJWK } from "jose";
+import { asn1, pki } from "node-forge";
+
 import { generateKey } from "@/logic";
 import { KeyPair, KeyPairJwk } from "@/types";
-import { ES256, digest, generateSalt } from "@sd-jwt/crypto-nodejs";
-import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import type { DisclosureFrame } from "@sd-jwt/types";
-import { exportPKCS8, exportSPKI, importJWK } from "jose";
-import { pki, asn1 } from "node-forge";
 
 export async function createMockSdJwt(
   iss: string,
   backupPath: string,
-  issuer?: {keyPair: KeyPair, certificate: string},
-  unitKey?: KeyPairJwk,
+  issuerArg?: { certificate: string; keyPair: KeyPair },
+  unitKeyArg?: KeyPairJwk,
 ): Promise<string> {
-	if (!issuer) {
-		const keyPair = await generateKey(`${backupPath}/issuer.jwk`);
-		const privatePem = await exportPKCS8(await importJWK(keyPair.privateKey) as CryptoKey);
-		const publicPem = await exportSPKI(await importJWK(keyPair.publicKey) as CryptoKey);
+  let issuer;
+  if (!issuerArg) {
+    const keyPair = await generateKey(`${backupPath}/issuer.jwk`);
+    const privatePem = await exportPKCS8(
+      (await importJWK(keyPair.privateKey)) as CryptoKey,
+    );
+    const publicPem = await exportSPKI(
+      (await importJWK(keyPair.publicKey)) as CryptoKey,
+    );
 
-		const certificatePem = pki.createCertificate();
-		certificatePem.publicKey = pki.publicKeyFromPem(publicPem);
-		certificatePem.serialNumber = "01";
-		certificatePem.setSubject([{ name: "wallet-conformance-test", value: "issuer.example.com" }]);
-		certificatePem.setIssuer(certificatePem.subject.attributes);
+    const certificatePem = pki.createCertificate();
+    certificatePem.publicKey = pki.publicKeyFromPem(publicPem);
+    certificatePem.serialNumber = "01";
+    certificatePem.setSubject([
+      { name: "wallet-conformance-test", value: "issuer.example.com" },
+    ]);
+    certificatePem.setIssuer(certificatePem.subject.attributes);
 
-		certificatePem.sign(pki.privateKeyFromPem(privatePem));
-		const certificate = Buffer.from(asn1.toDer(pki.certificateToAsn1(certificatePem)).getBytes(), "binary").toString("base64");
+    certificatePem.sign(pki.privateKeyFromPem(privatePem));
+    const certificate = Buffer.from(
+      asn1.toDer(pki.certificateToAsn1(certificatePem)).getBytes(),
+      "binary",
+    ).toString("base64");
 
-		issuer = {
-			keyPair,
-			certificate
-		}
-	}
+    issuer = {
+      certificate,
+      keyPair,
+    };
+  } else {
+    issuer = issuerArg;
+  }
 
-	unitKey = unitKey ?? (await generateKey(`${backupPath}/wallet_unit.jwk`)).publicKey;
+  const unitKey =
+    unitKeyArg ??
+    (await generateKey(`${backupPath}/wallet_unit.jwk`)).publicKey;
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
@@ -50,27 +66,23 @@ export async function createMockSdJwt(
 
   // TODO: Check required claims for pid
   const claims = {
-    birth_date: "1990-12-15",
-    birth_place: "Rome",
+    birth_date: "1980-01-10",
+    birth_place: "Roma",
     expiry_date: expiration.toISOString().slice(0, 10),
     family_name: "Rossi",
-    fiscal_code: "XXXXXXXXXXXX",
     given_name: "Mario",
-    issuing_authority: "PagoPA spa",
-    issuing_country: "IT",
     nationalities: ["IT"],
-    unique_identifier: "ASDFGHJKL",
+    personal_administrative_number: "XX00000XX",
   };
 
   const disclosureFrame: DisclosureFrame<typeof claims> = {
     _sd: [
       "family_name",
       "given_name",
-      "nationalities",
       "birth_date",
       "birth_place",
-      "fiscal_code",
-      "unique_identifier",
+      "nationalities",
+      "personal_administrative_number",
     ],
   };
 

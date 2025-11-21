@@ -7,7 +7,7 @@ import type {
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
 import { CompactSign, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
-import { jwkFromSigner } from ".";
+import { jwkFromSigner } from "./jwk";
 
 /**
  * Creates a callback function for signing JWTs.
