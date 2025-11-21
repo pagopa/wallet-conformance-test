@@ -1,0 +1,25 @@
+{
+  "authority_hints": [
+    "{{trust_anchor_base_url}}"
+  ],
+  "iss": "{{issuer_base_url}}",
+  "sub": "{{issuer_base_url}}",
+  "jwks": {
+    "keys": ["{{publicKey}}"]
+  },
+  "metadata": {
+    "federation_entity": {
+      "organization_name": "Sample Issuer"
+    },
+    "wallet_provider": {
+      "aal_values_supported": [
+        "{{issuer_base_url}}/LoA/basic",
+        "{{issuer_base_url}}/LoA/medium",
+        "{{issuer_base_url}}/LoA/high"
+      ],
+      "jwks": {
+        "keys": ["{{publicKey}}"]
+      }
+    }
+  }
+}

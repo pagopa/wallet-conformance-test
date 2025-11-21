@@ -35,7 +35,7 @@ export async function createMockSdJwt(
     const issClaims = loadJsonDumps("issuer_metadata.json", {
       publicKey: keyPair.publicKey,
       trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-      wallet_provider_base_url: metadata.iss,
+      issuer_base_url: metadata.iss,
     });
     const issEntityConfiguration = await createFederationMetadata({
       claims: issClaims,
@@ -119,7 +119,7 @@ export async function createMockSdJwt(
     {
       header: {
         kid: issuer.keyPair.privateKey,
-        trust_chain: [issuer.trust_chain],
+        trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
       },
     },
