@@ -1,7 +1,7 @@
-import { parseMdoc } from "@/logic";
 import { SDJwt } from "@sd-jwt/core";
 import { readdirSync, readFileSync } from "node:fs";
 
+import { parseMdoc } from "@/logic";
 import { Credential } from "@/types";
 
 /**

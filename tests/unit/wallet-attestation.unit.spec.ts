@@ -19,9 +19,9 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
+      trustAnchorBaseUrl,
       trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
-      trustAnchorBaseUrl,
     });
 
     // Verify attestation was created
@@ -79,8 +79,8 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       trustAnchorBaseUrl,
+      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 

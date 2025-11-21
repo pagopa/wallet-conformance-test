@@ -4,9 +4,7 @@ import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { decode } from "cbor";
 
-import {
-  issuerSignedSchema,
-} from "@/types";
+import { issuerSignedSchema } from "@/types";
 
 /**
  * Parses a mobile document (mdoc) from a Buffer into an IssuerSignedDocument object.
