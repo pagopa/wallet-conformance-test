@@ -2,46 +2,48 @@ import type { DisclosureFrame } from "@sd-jwt/types";
 
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { exportPKCS8, exportSPKI, importJWK } from "jose";
-import { asn1, pki } from "node-forge";
 
-import { generateKey } from "@/logic";
+import { generateKey,
+  createFederationMetadata,
+  createSubordinateTrustAnchorMetadata,
+  loadJsonDumps } from "@/logic";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 export async function createMockSdJwt(
-  iss: string,
+  metadata: { iss: string, trustAnchorJwksPath: string, trustAnchorBaseUrl: string },
   backupPath: string,
-  issuerArg?: { certificate: string; keyPair: KeyPair },
+  issuerArg?: { trust_chain: string[]; keyPair: KeyPair },
   unitKeyArg?: KeyPairJwk,
 ): Promise<string> {
   let issuer;
   if (!issuerArg) {
     const keyPair = await generateKey(`${backupPath}/issuer.jwk`);
-    const privatePem = await exportPKCS8(
-      (await importJWK(keyPair.privateKey)) as CryptoKey,
-    );
-    const publicPem = await exportSPKI(
-      (await importJWK(keyPair.publicKey)) as CryptoKey,
-    );
 
-    const certificatePem = pki.createCertificate();
-    certificatePem.publicKey = pki.publicKeyFromPem(publicPem);
-    certificatePem.serialNumber = "01";
-    certificatePem.setSubject([
-      { name: "wallet-conformance-test", value: "issuer.example.com" },
-    ]);
-    certificatePem.setIssuer(certificatePem.subject.attributes);
+    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
+      entityPublicJwk: keyPair.publicKey,
+      federationTrustAnchorsJwksPath: metadata.trustAnchorJwksPath,
+      sub: metadata.iss,
+      trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
+    });
 
-    certificatePem.sign(pki.privateKeyFromPem(privatePem));
-    const certificate = Buffer.from(
-      asn1.toDer(pki.certificateToAsn1(certificatePem)).getBytes(),
-      "binary",
-    ).toString("base64");
+    const issClaims = loadJsonDumps(
+      "issuer_metadata.json",
+      {
+        publicKey: keyPair.publicKey,
+        trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+        wallet_provider_base_url: metadata.iss,
+      },
+    );
+    const issEntityConfiguration = await createFederationMetadata({
+      claims: issClaims,
+      entityPublicJwk: keyPair.publicKey,
+      signedJwks: keyPair,
+    });
 
     issuer = {
-      certificate,
-      keyPair,
-    };
+      trust_chain: [issEntityConfiguration, taEntityConfiguration],
+      keyPair
+    }
   } else {
     issuer = issuerArg;
   }
@@ -95,7 +97,7 @@ export async function createMockSdJwt(
       cnf: { jwk: unitKey },
       exp: Math.floor(expiration.getTime() / 1000),
       iat: Math.floor(Date.now() / 1000),
-      iss,
+      iss: metadata.iss,
       status: {
         status_assertion: {
           credential_hash_alg: "sha-256",
@@ -115,7 +117,7 @@ export async function createMockSdJwt(
       header: {
         kid: issuer.keyPair.privateKey,
         typ: "dc+sd-jwt",
-        x5c: [issuer.certificate],
+        trust_chain: [issuer.trust_chain],
       },
     },
   );
