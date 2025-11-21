@@ -1,5 +1,5 @@
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { getTestRegistry } from "#/config";
+import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { decodeJwt } from "jose";
 
 // Import test configuration - this will register all configurations

@@ -3,16 +3,22 @@ import type { DisclosureFrame } from "@sd-jwt/types";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 
-import { generateKey,
+import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
-  loadJsonDumps } from "@/logic";
+  generateKey,
+  loadJsonDumps,
+} from "@/logic";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 export async function createMockSdJwt(
-  metadata: { iss: string, trustAnchorJwksPath: string, trustAnchorBaseUrl: string },
+  metadata: {
+    iss: string;
+    trustAnchorBaseUrl: string;
+    trustAnchorJwksPath: string;
+  },
   backupPath: string,
-  issuerArg?: { trust_chain: string[]; keyPair: KeyPair },
+  issuerArg?: { keyPair: KeyPair; trust_chain: string[] },
   unitKeyArg?: KeyPairJwk,
 ): Promise<string> {
   let issuer;
@@ -26,14 +32,11 @@ export async function createMockSdJwt(
       trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
     });
 
-    const issClaims = loadJsonDumps(
-      "issuer_metadata.json",
-      {
-        publicKey: keyPair.publicKey,
-        trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-        wallet_provider_base_url: metadata.iss,
-      },
-    );
+    const issClaims = loadJsonDumps("issuer_metadata.json", {
+      publicKey: keyPair.publicKey,
+      trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+      wallet_provider_base_url: metadata.iss,
+    });
     const issEntityConfiguration = await createFederationMetadata({
       claims: issClaims,
       entityPublicJwk: keyPair.publicKey,
@@ -41,9 +44,9 @@ export async function createMockSdJwt(
     });
 
     issuer = {
+      keyPair,
       trust_chain: [issEntityConfiguration, taEntityConfiguration],
-      keyPair
-    }
+    };
   } else {
     issuer = issuerArg;
   }
@@ -116,8 +119,8 @@ export async function createMockSdJwt(
     {
       header: {
         kid: issuer.keyPair.privateKey,
-        typ: "dc+sd-jwt",
         trust_chain: [issuer.trust_chain],
+        typ: "dc+sd-jwt",
       },
     },
   );
