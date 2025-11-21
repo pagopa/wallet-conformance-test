@@ -80,7 +80,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         ],
         callbacks:
           callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
-        clientId: unitKey.publicKey.kid!,
+        clientId: unitKey.publicKey.kid,
         codeChallengeMethodsSupported: ["S256"],
         dpop: {
           signer: {
@@ -88,7 +88,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             method: "jwk",
             publicJwk: {
               ...unitKey.publicKey,
-              kid: unitKey.publicKey.kid!,
+              kid: unitKey.publicKey.kid,
             },
           },
         },
