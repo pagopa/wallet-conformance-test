@@ -1,1 +1,2 @@
-export * from "./loadAttestation";
+export * from "./load-attestation";
+export * from "./load-credentials";

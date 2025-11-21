@@ -1,4 +1,4 @@
-import { KeyPair } from "./KeyPair";
+import { KeyPair } from "./key-pair";
 
 export interface AttestationResponse {
   attestation: string;

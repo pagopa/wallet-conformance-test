@@ -6,8 +6,7 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
 
-import { Config, configSchema } from "@/types";
-import { FetchWithRetriesResponse } from "@/types/FetchWithRetriesResponse";
+import { Config, configSchema, FetchWithRetriesResponse } from "@/types";
 
 import { verifyJwt } from ".";
 import { generateKey } from "../logic/jwk";
