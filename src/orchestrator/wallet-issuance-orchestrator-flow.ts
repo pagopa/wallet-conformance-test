@@ -90,9 +90,12 @@ export class WalletIssuanceOrchestratorFlow {
       });
 
       this.log.info("Loading Wallet Attestation...");
-      const walletAttestationResponse = await loadAttestation(
-        this.config.wallet,
-      );
+      const walletAttestationResponse = await loadAttestation({
+        trustAnchorJwksPath:
+          this.config.trust.federation_trust_anchors_jwks_path,
+        wallet: this.config.wallet,
+      });
+      this.log.info("Wallet Attestation Loaded.");
 
       this.log.info("Creating Client Attestation DPoP...");
       const callbacks = {

@@ -1,5 +1,5 @@
-import { createLogger } from "@/logic/logs";
-import { Config } from "@/types/Config";
+import { createLogger } from "@/logic";
+import { Config } from "@/types";
 
 export interface StepResult {
   error?: Error;

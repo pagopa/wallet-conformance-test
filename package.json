@@ -43,12 +43,16 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@auth0/mdl": "^3.0.0",
     "@pagopa/io-wallet-oauth2": "^0.6.1",
     "@pagopa/io-wallet-oid-federation": "^0.6.1",
     "@pagopa/io-wallet-oid4vci": "^0.6.1",
     "@pagopa/io-wallet-utils": "^0.6.1",
-    "express": "^5.1.0",
+    "@sd-jwt/core": "^0.15.0",
+    "@sd-jwt/crypto-nodejs": "^0.15.0",
+    "cbor": "^10.0.11",
     "consola": "^3.4.2",
+    "express": "^5.1.0",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "ksuid": "^3.0.0",

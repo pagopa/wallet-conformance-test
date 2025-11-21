@@ -1,7 +1,7 @@
 {
     "authority_hints": [],
-    "sub": "{{trust_anchor_base_url}}",
-    "iss": "{{iss}}",
+    "sub": "{{sub}}",
+    "iss": "{{trust_anchor_base_url}}",
     "metadata": {
       "federation_entity": {
         "contacts": [

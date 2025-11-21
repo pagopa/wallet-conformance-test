@@ -7,7 +7,7 @@ import {
 import { openSync, writeFile, writeFileSync } from "node:fs";
 import { stdout } from "node:process";
 
-import { Logger } from "@/types/Logger";
+import { Logger } from "@/types";
 
 export function createLogger(): Logger {
   return newLogger({

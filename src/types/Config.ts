@@ -6,14 +6,9 @@ import { z } from "zod";
 export const configSchema = z.object({
   issuance: z.object({
     credentials: z.object({
-      types: z.object({
-        dc_sd_jwt_EuropeanDisabilityCard: z.array(z.string()),
-        dc_sd_jwt_mDL: z.array(z.string()),
-        dc_sd_jwt_PersonIdentificationData: z.array(z.string()),
-        mso_mdoc_mDL: z.array(z.string()),
-      }),
+      types: z.record(z.string(), z.array(z.string())),
     }),
-    url: z.string(),
+    url: z.string().url(),
   }),
   logging: z.object({
     log_file: z.string(),
@@ -24,6 +19,9 @@ export const configSchema = z.object({
     max_retries: z.coerce.number(),
     timeout: z.coerce.number(),
     user_agent: z.string(),
+  }),
+  server: z.object({
+    port: z.coerce.number(),
   }),
   trust: z.object({
     ca_cert_path: z.string(),

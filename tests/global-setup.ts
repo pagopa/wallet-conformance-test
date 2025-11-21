@@ -1,13 +1,15 @@
 import type { Server } from "http";
 
 import { createLogger } from "@/logic/logs";
+import { loadConfig } from "@/logic/utils";
 
 import { createServer } from "../src/trust-anchor/server";
 
 let server: Server;
 
 export default async function setup() {
-  const port = 3001;
+  const config = loadConfig("./config.ini");
+  const port = config.server.port;
   const app = createServer();
   const baseLog = createLogger();
 
