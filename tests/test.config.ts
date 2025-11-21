@@ -69,7 +69,7 @@ issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowMdlConfig);
 /**
  * Example 3: Register test on FailedMetadataFetchTest
  
-registerTest("FailedMetadataFetchTest", failedMetadataConfig);
+issuerRegistry.registerTest("FailedMetadataFetchTest", failedMetadataConfig);
 */
 
 // ============================================================================
