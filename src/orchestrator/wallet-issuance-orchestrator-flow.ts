@@ -26,7 +26,7 @@ export class WalletIssuanceOrchestratorFlow {
 
   constructor(issuanceConfig: IssuerTestConfiguration) {
     this.issuanceConfig = issuanceConfig;
-    this.log = this.log.withTag(this.issuanceConfig.testName);
+    this.log = this.log.withTag(this.issuanceConfig.name);
 
     this.config = loadConfig("./config.ini");
 
