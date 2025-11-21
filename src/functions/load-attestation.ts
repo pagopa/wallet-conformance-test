@@ -7,15 +7,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { AttestationResponse, Config } from "@/types";
 
 import {
+  createFederationMetadata,
+  createSubordinateTrustAnchorMetadata,
   loadJsonDumps,
   loadJwks,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
-import {
-  createFederationMetadata,
-  createSubordinateTrustAnchorMetadata,
-} from "@/logic/federation-metadata";
 
 /**
  * Loads a wallet attestation from the filesystem.

@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { loadConfig } from "@/logic/utils";
+import { loadConfig } from "@/logic";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfig("./config.ini");

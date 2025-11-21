@@ -1,9 +1,7 @@
 import type { Server } from "http";
 
-import { createLogger } from "@/logic/logs";
-import { loadConfig } from "@/logic/utils";
-
-import { createServer } from "../src/trust-anchor/server";
+import { createLogger, loadConfig } from "@/logic";
+import { createServer } from "@/trust-anchor/server";
 
 let server: Server;
 
