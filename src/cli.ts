@@ -79,11 +79,7 @@ function addCommonOptions(command: Command): Command {
 // Test Issuance Flow
 const testIssuance = program
   .command("test:issuance")
-  .description("Run credential issuance flow tests")
-  .option(
-    "--credential-type <type>",
-    "Credential type to test (e.g., PersonIdentificationData)",
-  );
+  .description("Run credential issuance flow tests");
 
 addCommonOptions(testIssuance);
 
