@@ -11,7 +11,6 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: number | string | undefined;
   credentialIssuerUri?: string;
-  credentialType?: string;
   fileIni?: string;
   logFile?: string;
   logLevel?: string;
