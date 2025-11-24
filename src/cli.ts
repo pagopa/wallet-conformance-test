@@ -10,6 +10,42 @@ import { execSync } from "child_process";
 import { Command } from "commander";
 import { resolve } from "path";
 
+/**
+ * Sets environment variables from CLI options
+ * @param options Commander options object
+ * @returns Updated environment object
+ */
+function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+
+  if (options.fileIni) {
+    env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
+  }
+  if (options.credentialIssuerUri) {
+    env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
+  }
+  if (options.credentialType) {
+    env.CONFIG_CREDENTIAL_TYPE = options.credentialType;
+  }
+  if (options.timeout !== undefined) {
+    env.CONFIG_TIMEOUT = options.timeout.toString();
+  }
+  if (options.maxRetries !== undefined) {
+    env.CONFIG_MAX_RETRIES = options.maxRetries.toString();
+  }
+  if (options.logLevel) {
+    env.CONFIG_LOG_LEVEL = options.logLevel;
+  }
+  if (options.logFile) {
+    env.CONFIG_LOG_FILE = options.logFile;
+  }
+  if (options.port !== undefined) {
+    env.CONFIG_PORT = options.port.toString();
+  }
+
+  return env;
+}
+
 const program = new Command();
 
 program
@@ -52,40 +88,14 @@ const testIssuance = program
 addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
-  // Set environment variables for the configuration options
-  const env = { ...process.env };
-
-  if (options.fileIni) {
-    env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
-  }
-  if (options.credentialIssuerUri) {
-    env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
-  }
-  if (options.credentialType) {
-    env.CONFIG_CREDENTIAL_TYPE = options.credentialType;
-  }
-  if (options.timeout !== undefined) {
-    env.CONFIG_TIMEOUT = options.timeout.toString();
-  }
-  if (options.maxRetries !== undefined) {
-    env.CONFIG_MAX_RETRIES = options.maxRetries.toString();
-  }
-  if (options.logLevel) {
-    env.CONFIG_LOG_LEVEL = options.logLevel;
-  }
-  if (options.logFile) {
-    env.CONFIG_LOG_FILE = options.logFile;
-  }
-  if (options.port !== undefined) {
-    env.CONFIG_PORT = options.port.toString();
-  }
+  const env = setEnvFromOptions(options);
 
   try {
     execSync("pnpm test:issuance", {
       env,
       stdio: "inherit",
     });
-  } catch (error) {
+  } catch {
     process.exit(1);
   }
 });
@@ -98,37 +108,14 @@ const testPresentation = program
 addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
-  // Set environment variables for the configuration options
-  const env = { ...process.env };
-
-  if (options.fileIni) {
-    env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
-  }
-  if (options.credentialIssuerUri) {
-    env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
-  }
-  if (options.timeout !== undefined) {
-    env.CONFIG_TIMEOUT = options.timeout.toString();
-  }
-  if (options.maxRetries !== undefined) {
-    env.CONFIG_MAX_RETRIES = options.maxRetries.toString();
-  }
-  if (options.logLevel) {
-    env.CONFIG_LOG_LEVEL = options.logLevel;
-  }
-  if (options.logFile) {
-    env.CONFIG_LOG_FILE = options.logFile;
-  }
-  if (options.port !== undefined) {
-    env.CONFIG_PORT = options.port.toString();
-  }
+  const env = setEnvFromOptions(options);
 
   try {
     execSync("pnpm test:presentation", {
       env,
       stdio: "inherit",
     });
-  } catch (error) {
+  } catch {
     process.exit(1);
   }
 });
