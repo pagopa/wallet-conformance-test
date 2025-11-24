@@ -6,7 +6,12 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
 
-import { Config, configSchema, KeyPair, FetchWithRetriesResponse } from "@/types";
+import {
+  Config,
+  configSchema,
+  FetchWithRetriesResponse,
+  KeyPair,
+} from "@/types";
 
 import { generateKey } from "./jwk";
 import { verifyJwt } from "./jwt";

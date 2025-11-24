@@ -6,10 +6,10 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
-  generateKey,
   loadJsonDumps,
+  loadJwks,
 } from "@/logic";
-import { KeyPair, KeyPairJwk } from "@/types";
+import { writeFileSync } from "node:fs";
 
 export async function createMockSdJwt(
   metadata: {
@@ -18,42 +18,34 @@ export async function createMockSdJwt(
     trustAnchorJwksPath: string;
   },
   backupPath: string,
-  issuerArg?: { keyPair: KeyPair; trust_chain: string[] },
-  unitKeyArg?: KeyPairJwk,
+  credentialsPath: string,
 ): Promise<string> {
-  let issuer;
-  if (!issuerArg) {
-    const keyPair = await generateKey(`${backupPath}/issuer.jwk`);
+  const keyPair = await loadJwks(backupPath, "issuer_jwks");
 
-    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
-      entityPublicJwk: keyPair.publicKey,
-      federationTrustAnchorsJwksPath: metadata.trustAnchorJwksPath,
-      sub: metadata.iss,
-      trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
-    });
+  const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
+    entityPublicJwk: keyPair.publicKey,
+    federationTrustAnchorsJwksPath: metadata.trustAnchorJwksPath,
+    sub: metadata.iss,
+    trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
+  });
 
-    const issClaims = loadJsonDumps("issuer_metadata.json", {
-      publicKey: keyPair.publicKey,
-      trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-      issuer_base_url: metadata.iss,
-    });
-    const issEntityConfiguration = await createFederationMetadata({
-      claims: issClaims,
-      entityPublicJwk: keyPair.publicKey,
-      signedJwks: keyPair,
-    });
+  const issClaims = loadJsonDumps("issuer_metadata.json", {
+    issuer_base_url: metadata.iss,
+    publicKey: keyPair.publicKey,
+    trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+  });
+  const issEntityConfiguration = await createFederationMetadata({
+    claims: issClaims,
+    entityPublicJwk: keyPair.publicKey,
+    signedJwks: keyPair,
+  });
 
-    issuer = {
-      keyPair,
-      trust_chain: [issEntityConfiguration, taEntityConfiguration],
-    };
-  } else {
-    issuer = issuerArg;
-  }
+  const issuer = {
+    keyPair,
+    trust_chain: [issEntityConfiguration, taEntityConfiguration],
+  };
 
-  const unitKey =
-    unitKeyArg ??
-    (await generateKey(`${backupPath}/wallet_unit.jwk`)).publicKey;
+  const unitKey = (await loadJwks(backupPath, "wallet_unit_jwks")).publicKey;
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
@@ -125,6 +117,7 @@ export async function createMockSdJwt(
     },
   );
 
+  writeFileSync(`${credentialsPath}/dc_sd_jwt_PersonIdentificationData`, credential);
   return credential;
 }
 
