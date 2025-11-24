@@ -149,11 +149,11 @@ The primary function of the tool is to run test suites for the main IT Wallet fl
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test (e.g., dc_sd_jwt_PersonIdentificationData).
+First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
 Then, run the test command:
 
-    wallet-conformance-test test:issuance --credential-type PersonIdentificationData
+    wallet-conformance-test test:issuance [OPTIONS]
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
