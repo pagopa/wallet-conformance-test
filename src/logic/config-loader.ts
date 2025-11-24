@@ -108,43 +108,48 @@ export function loadConfigWithHierarchy(
  * Converts CLI options to a partial Config object
  * @param options CLI options
  * @returns Partial configuration object
+ * @note The credentialType option is stored in the CliOptions but not mapped to Config
+ *       because it's intended for test filtering rather than configuration override.
+ *       Test runners should access this value directly from the CliOptions or environment
+ *       variables (CONFIG_CREDENTIAL_TYPE) to filter which credential types to test.
  */
 function cliOptionsToConfig(options: CliOptions): Partial<Config> {
-  const partialConfig: Partial<Config> = {};
+  const partialConfig: Record<string, any> = {};
 
   // Map CLI options to config structure
   if (options.credentialIssuerUri) {
     partialConfig.issuance = {
-      credentials: { types: {} },
       url: options.credentialIssuerUri,
     };
   }
 
   if (options.timeout !== undefined || options.maxRetries !== undefined) {
-    partialConfig.network = {} as Config["network"];
+    const network: Record<string, number> = {};
     if (options.timeout !== undefined) {
-      partialConfig.network!.timeout = options.timeout;
+      network.timeout = options.timeout;
     }
     if (options.maxRetries !== undefined) {
-      partialConfig.network!.max_retries = options.maxRetries;
+      network.max_retries = options.maxRetries;
     }
+    partialConfig.network = network;
   }
 
   if (options.logLevel || options.logFile) {
-    partialConfig.logging = {} as Config["logging"];
+    const logging: Record<string, string> = {};
     if (options.logLevel) {
-      partialConfig.logging!.log_level = options.logLevel;
+      logging.log_level = options.logLevel;
     }
     if (options.logFile) {
-      partialConfig.logging!.log_file = options.logFile;
+      logging.log_file = options.logFile;
     }
+    partialConfig.logging = logging;
   }
 
   if (options.port !== undefined) {
     partialConfig.server = { port: options.port };
   }
 
-  return partialConfig;
+  return partialConfig as Partial<Config>;
 }
 
 /**
@@ -157,6 +162,10 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
   const result = { ...target };
 
   for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+
     const sourceValue = source[key];
     const targetValue = result[key];
 
@@ -223,10 +232,16 @@ function readCliOptionsFromEnv(): CliOptions {
     options.credentialType = process.env.CONFIG_CREDENTIAL_TYPE;
   }
   if (process.env.CONFIG_TIMEOUT) {
-    options.timeout = parseInt(process.env.CONFIG_TIMEOUT, 10);
+    const parsed = parseInt(process.env.CONFIG_TIMEOUT, 10);
+    if (!isNaN(parsed)) {
+      options.timeout = parsed;
+    }
   }
   if (process.env.CONFIG_MAX_RETRIES) {
-    options.maxRetries = parseInt(process.env.CONFIG_MAX_RETRIES, 10);
+    const parsed = parseInt(process.env.CONFIG_MAX_RETRIES, 10);
+    if (!isNaN(parsed)) {
+      options.maxRetries = parsed;
+    }
   }
   if (process.env.CONFIG_LOG_LEVEL) {
     options.logLevel = process.env.CONFIG_LOG_LEVEL;
@@ -235,7 +250,10 @@ function readCliOptionsFromEnv(): CliOptions {
     options.logFile = process.env.CONFIG_LOG_FILE;
   }
   if (process.env.CONFIG_PORT) {
-    options.port = parseInt(process.env.CONFIG_PORT, 10);
+    const parsed = parseInt(process.env.CONFIG_PORT, 10);
+    if (!isNaN(parsed)) {
+      options.port = parsed;
+    }
   }
 
   return options;
