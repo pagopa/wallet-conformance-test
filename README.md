@@ -120,7 +120,7 @@ The CLI tool is designed to test a running instance of your Credential Issuer or
 
 ### Configuration
 
-The tool can be configured using a `.ini` file or via command-line options. A default `.ini` file is provided with standard values for settings like the data storage directory or Certification Authority references. You can create your own `.ini` file and specify it using the `--file-ini` option. Command-line options always override settings from the `.ini` file.
+The tool can be configured using a `config.ini` file or via command-line options. An example `config.example.ini` file is provided with standard values for settings like the data storage directory or Trust Certification Authority references. You can create your own `config.ini` file and specify it using the `--file-ini` option. Command-line options always override settings from the `config.ini` file.
 
 Configuration Hierarchy:
 - Command-Line Options (Highest priority)
