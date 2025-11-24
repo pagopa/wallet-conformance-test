@@ -12,9 +12,9 @@ import { KeyPair } from "../types";
 
 // Re-export config loading functions
 export {
+  type CliOptions,
   loadConfig,
   loadConfigWithHierarchy,
-  type CliOptions,
 } from "./config-loader";
 
 export const partialCallbacks: Partial<CallbackContext> = {

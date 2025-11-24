@@ -9,15 +9,142 @@ import { Config, configSchema } from "@/types";
  * Command-line options that can override configuration
  */
 export interface CliOptions {
-  fileIni?: string;
+  [key: string]: number | string | undefined;
   credentialIssuerUri?: string;
   credentialType?: string;
-  timeout?: number;
-  maxRetries?: number;
-  logLevel?: string;
+  fileIni?: string;
   logFile?: string;
+  logLevel?: string;
+  maxRetries?: number;
   port?: number;
-  [key: string]: string | number | undefined;
+  timeout?: number;
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use loadConfigWithHierarchy instead
+ * @param fileName The path to the INI configuration file.
+ * @returns The parsed configuration object.
+ */
+export function loadConfig(fileName: string): Config {
+  return loadConfigWithHierarchy({}, fileName);
+}
+
+/**
+ * Loads configuration with hierarchical priority:
+ * 1. Command-Line Options (Highest priority)
+ * 2. Custom .ini File (--file-ini)
+ * 3. Default .ini File (Lowest priority)
+ *
+ * @param options CLI options including optional custom INI file path (if not provided, reads from environment)
+ * @param defaultIniPath Path to the default INI file (defaults to ./config.ini)
+ * @returns The merged and validated configuration object
+ */
+export function loadConfigWithHierarchy(
+  options: CliOptions | null = null,
+  defaultIniPath = "./config.ini",
+): Config {
+  // If no options provided, read from environment variables
+  const cliOptions = options ?? readCliOptionsFromEnv();
+
+  // Step 1: Load default config.ini (lowest priority)
+  const defaultIniAbsPath = path.resolve(process.cwd(), defaultIniPath);
+  const defaultConfig = loadIniFile(defaultIniAbsPath);
+
+  if (!defaultConfig) {
+    throw new Error(
+      `Default configuration file not found at ${defaultIniAbsPath}. Please ensure config.ini exists.`,
+    );
+  }
+
+  // Step 2: Load custom ini file if specified (medium priority)
+  let customConfig: null | Partial<Config> = null;
+  if (cliOptions.fileIni) {
+    const customIniPath = path.resolve(process.cwd(), cliOptions.fileIni);
+    customConfig = loadIniFile(customIniPath);
+
+    if (!customConfig) {
+      throw new Error(
+        `Custom configuration file not found at ${customIniPath}`,
+      );
+    }
+  }
+
+  // Step 3: Convert CLI options to config format (highest priority)
+  const cliConfig = cliOptionsToConfig(cliOptions);
+
+  // Step 4: Merge configurations in priority order
+  let mergedConfig = defaultConfig;
+
+  if (customConfig) {
+    mergedConfig = deepMerge(mergedConfig, customConfig);
+  }
+
+  if (Object.keys(cliConfig).length > 0) {
+    mergedConfig = deepMerge(mergedConfig, cliConfig);
+  }
+
+  // Step 5: Validate the final configuration
+  try {
+    const validatedConfig = parseWithErrorHandling(configSchema, mergedConfig);
+    return validatedConfig;
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `Configuration validation failed: ${err.message}\n\n` +
+        `Please ensure all mandatory fields are defined in either:\n` +
+        `- Default INI file (${defaultIniPath})\n` +
+        `- Custom INI file (${cliOptions.fileIni || "not specified"})\n` +
+        `- Command-line options\n\n` +
+        `Configuration hierarchy:\n` +
+        `1. Command-Line Options (Highest priority)\n` +
+        `2. Custom .ini File (--file-ini)\n` +
+        `3. Default .ini File (Lowest priority)`,
+    );
+  }
+}
+
+/**
+ * Converts CLI options to a partial Config object
+ * @param options CLI options
+ * @returns Partial configuration object
+ */
+function cliOptionsToConfig(options: CliOptions): Partial<Config> {
+  const partialConfig: Partial<Config> = {};
+
+  // Map CLI options to config structure
+  if (options.credentialIssuerUri) {
+    partialConfig.issuance = {
+      credentials: { types: {} },
+      url: options.credentialIssuerUri,
+    };
+  }
+
+  if (options.timeout !== undefined || options.maxRetries !== undefined) {
+    partialConfig.network = {} as Config["network"];
+    if (options.timeout !== undefined) {
+      partialConfig.network!.timeout = options.timeout;
+    }
+    if (options.maxRetries !== undefined) {
+      partialConfig.network!.max_retries = options.maxRetries;
+    }
+  }
+
+  if (options.logLevel || options.logFile) {
+    partialConfig.logging = {} as Config["logging"];
+    if (options.logLevel) {
+      partialConfig.logging!.log_level = options.logLevel;
+    }
+    if (options.logFile) {
+      partialConfig.logging!.log_file = options.logFile;
+    }
+  }
+
+  if (options.port !== undefined) {
+    partialConfig.server = { port: options.port };
+  }
+
+  return partialConfig;
 }
 
 /**
@@ -64,7 +191,7 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
  * @param filePath Path to the INI file
  * @returns Parsed configuration object or null if file doesn't exist
  */
-function loadIniFile(filePath: string): Partial<Config> | null {
+function loadIniFile(filePath: string): null | Partial<Config> {
   if (!existsSync(filePath)) {
     return null;
   }
@@ -112,131 +239,4 @@ function readCliOptionsFromEnv(): CliOptions {
   }
 
   return options;
-}
-
-/**
- * Converts CLI options to a partial Config object
- * @param options CLI options
- * @returns Partial configuration object
- */
-function cliOptionsToConfig(options: CliOptions): Partial<Config> {
-  const partialConfig: Partial<Config> = {};
-
-  // Map CLI options to config structure
-  if (options.credentialIssuerUri) {
-    partialConfig.issuance = {
-      url: options.credentialIssuerUri,
-      credentials: { types: {} },
-    };
-  }
-
-  if (options.timeout !== undefined || options.maxRetries !== undefined) {
-    partialConfig.network = {} as Config["network"];
-    if (options.timeout !== undefined) {
-      partialConfig.network!.timeout = options.timeout;
-    }
-    if (options.maxRetries !== undefined) {
-      partialConfig.network!.max_retries = options.maxRetries;
-    }
-  }
-
-  if (options.logLevel || options.logFile) {
-    partialConfig.logging = {} as Config["logging"];
-    if (options.logLevel) {
-      partialConfig.logging!.log_level = options.logLevel;
-    }
-    if (options.logFile) {
-      partialConfig.logging!.log_file = options.logFile;
-    }
-  }
-
-  if (options.port !== undefined) {
-    partialConfig.server = { port: options.port };
-  }
-
-  return partialConfig;
-}
-
-/**
- * Loads configuration with hierarchical priority:
- * 1. Command-Line Options (Highest priority)
- * 2. Custom .ini File (--file-ini)
- * 3. Default .ini File (Lowest priority)
- *
- * @param options CLI options including optional custom INI file path (if not provided, reads from environment)
- * @param defaultIniPath Path to the default INI file (defaults to ./config.ini)
- * @returns The merged and validated configuration object
- */
-export function loadConfigWithHierarchy(
-  options: CliOptions | null = null,
-  defaultIniPath: string = "./config.ini",
-): Config {
-  // If no options provided, read from environment variables
-  const cliOptions = options ?? readCliOptionsFromEnv();
-
-  // Step 1: Load default config.ini (lowest priority)
-  const defaultIniAbsPath = path.resolve(process.cwd(), defaultIniPath);
-  const defaultConfig = loadIniFile(defaultIniAbsPath);
-
-  if (!defaultConfig) {
-    throw new Error(
-      `Default configuration file not found at ${defaultIniAbsPath}. Please ensure config.ini exists.`,
-    );
-  }
-
-  // Step 2: Load custom ini file if specified (medium priority)
-  let customConfig: Partial<Config> | null = null;
-  if (cliOptions.fileIni) {
-    const customIniPath = path.resolve(process.cwd(), cliOptions.fileIni);
-    customConfig = loadIniFile(customIniPath);
-
-    if (!customConfig) {
-      throw new Error(
-        `Custom configuration file not found at ${customIniPath}`,
-      );
-    }
-  }
-
-  // Step 3: Convert CLI options to config format (highest priority)
-  const cliConfig = cliOptionsToConfig(cliOptions);
-
-  // Step 4: Merge configurations in priority order
-  let mergedConfig = defaultConfig;
-
-  if (customConfig) {
-    mergedConfig = deepMerge(mergedConfig, customConfig);
-  }
-
-  if (Object.keys(cliConfig).length > 0) {
-    mergedConfig = deepMerge(mergedConfig, cliConfig);
-  }
-
-  // Step 5: Validate the final configuration
-  try {
-    const validatedConfig = parseWithErrorHandling(configSchema, mergedConfig);
-    return validatedConfig;
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `Configuration validation failed: ${err.message}\n\n` +
-        `Please ensure all mandatory fields are defined in either:\n` +
-        `- Default INI file (${defaultIniPath})\n` +
-        `- Custom INI file (${cliOptions.fileIni || "not specified"})\n` +
-        `- Command-line options\n\n` +
-        `Configuration hierarchy:\n` +
-        `1. Command-Line Options (Highest priority)\n` +
-        `2. Custom .ini File (--file-ini)\n` +
-        `3. Default .ini File (Lowest priority)`,
-    );
-  }
-}
-
-/**
- * Legacy function for backward compatibility
- * @deprecated Use loadConfigWithHierarchy instead
- * @param fileName The path to the INI configuration file.
- * @returns The parsed configuration object.
- */
-export function loadConfig(fileName: string): Config {
-  return loadConfigWithHierarchy({}, fileName);
 }

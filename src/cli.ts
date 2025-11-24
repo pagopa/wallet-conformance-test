@@ -6,8 +6,8 @@
  * to the test runners via environment variables.
  */
 
-import { Command } from "commander";
 import { execSync } from "child_process";
+import { Command } from "commander";
 import { resolve } from "path";
 
 const program = new Command();
@@ -21,19 +21,33 @@ program
 function addCommonOptions(command: Command): Command {
   return command
     .option("--file-ini <path>", "Path to custom INI configuration file")
-    .option("--credential-issuer-uri <uri>", "Override the credential issuer URL")
-    .option("--timeout <seconds>", "Network timeout in seconds", (val) => parseInt(val, 10))
-    .option("--max-retries <number>", "Maximum number of retry attempts", (val) => parseInt(val, 10))
+    .option(
+      "--credential-issuer-uri <uri>",
+      "Override the credential issuer URL",
+    )
+    .option("--timeout <seconds>", "Network timeout in seconds", (val) =>
+      parseInt(val, 10),
+    )
+    .option(
+      "--max-retries <number>",
+      "Maximum number of retry attempts",
+      (val) => parseInt(val, 10),
+    )
     .option("--log-level <level>", "Logging level (DEBUG, INFO, WARN, ERROR)")
     .option("--log-file <path>", "Path to log file")
-    .option("--port <number>", "Trust Anchor server port", (val) => parseInt(val, 10));
+    .option("--port <number>", "Trust Anchor server port", (val) =>
+      parseInt(val, 10),
+    );
 }
 
 // Test Issuance Flow
 const testIssuance = program
   .command("test:issuance")
   .description("Run credential issuance flow tests")
-  .option("--credential-type <type>", "Credential type to test (e.g., PersonIdentificationData)");
+  .option(
+    "--credential-type <type>",
+    "Credential type to test (e.g., PersonIdentificationData)",
+  );
 
 addCommonOptions(testIssuance);
 
@@ -68,8 +82,8 @@ testIssuance.action((options) => {
 
   try {
     execSync("pnpm test:issuance", {
-      stdio: "inherit",
       env,
+      stdio: "inherit",
     });
   } catch (error) {
     process.exit(1);
@@ -111,8 +125,8 @@ testPresentation.action((options) => {
 
   try {
     execSync("pnpm test:presentation", {
-      stdio: "inherit",
       env,
+      stdio: "inherit",
     });
   } catch (error) {
     process.exit(1);
