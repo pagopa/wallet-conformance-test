@@ -5,7 +5,7 @@ import { IssuerTestConfiguration } from "tests/config/issuance-test-configuratio
 import { loadAttestation } from "@/functions";
 import { signJwtCallback } from "@/logic/jwt";
 import { createLogger } from "@/logic/logs";
-import { loadConfig, partialCallbacks } from "@/logic/utils";
+import { loadConfigWithHierarchy, partialCallbacks } from "@/logic/utils";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
@@ -28,7 +28,7 @@ export class WalletIssuanceOrchestratorFlow {
     this.issuanceConfig = issuanceConfig;
     this.log = this.log.withTag(this.issuanceConfig.testName);
 
-    this.config = loadConfig("./config.ini");
+    this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
       format: this.config.logging.log_format,
@@ -37,7 +37,9 @@ export class WalletIssuanceOrchestratorFlow {
     });
 
     this.log.info("Setting Up Wallet conformance Tests - Issuance Flow");
-    this.log.info("Configuration Loaded from config.ini");
+    this.log.info(
+      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
+    );
 
     this.log.info(
       "Configuration Loaded:\n",
