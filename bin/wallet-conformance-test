@@ -1,13 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-
-const args = process.argv.slice(2);
-
-if (args[0] === 'test:issuance') {
-  execSync('pnpm test:issuance', { stdio: 'inherit' });
-} if (args[0] === 'test:presentation') {
-  execSync('pnpm test:presentation', { stdio: 'inherit' });
-} else {
-  console.log('Command not found:', args[0]);
-}
+// Use ts-node to run the TypeScript CLI file
+require('ts-node/register/transpile-only');
+require('tsconfig-paths/register');
+require('../src/cli.ts');
