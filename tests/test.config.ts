@@ -8,17 +8,18 @@
  */
 
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { PresentationTestConfiguration } from "./config/presentation-test-configuration";
+import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 
 // ============================================================================
-// DEFINE YOUR TEST CONFIGURATIONS HERE
+// DEFINE YOUR TEST CONFIGURATIONS HERE -- ISSUANCE
 // ============================================================================
 
 const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
 
 const happyFlowMdlConfig = IssuerTestConfiguration.createCustom({
   credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
-  testName: "Happy Flow mDL Test",
+  name: "Happy Flow mDL Test",
 });
 
 /**
@@ -50,30 +51,44 @@ const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
 */
 
 // ============================================================================
-// DEFINE YOUR FLOW TEST NAME HERE
+// DEFINE YOUR FLOW TEST NAME HERE -- ISSUANCE
 // ============================================================================
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
+
+/**
+ * Example 1: Register test on HappyFlowIssuanceTest
+ */
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowPIDConfig);
+
+/**
+ * Example 2: Register test on HappyFlowMdlTest
+ */
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowMdlConfig);
+
+/**
+ * Example 3: Register test on FailedMetadataFetchTest
+ 
+issuerRegistry.registerTest("FailedMetadataFetchTest", failedMetadataConfig);
+*/
+
+// ============================================================================
+// DEFINE YOUR FLOW TEST NAME HERE -- PRESENTATION
+// ============================================================================
+
+export const HAPPY_FLOW_PRESENTATION_NAME = "HappyFlowPresentationTest"; // Reference to happy.presentation.spec.ts
 
 // ============================================================================
 // REGISTER YOUR TEST CONFIGURATIONS HERE
 // ============================================================================
 
 /**
- * Example 1: Register test on HappyFlowIssuanceTest
+ * Example 1: Register test on HappyFlowPresentationTest
  */
-registerTest(HAPPY_FLOW_NAME, happyFlowPIDConfig);
-
-/**
- * Example 2: Register test on HappyFlowMdlTest
- */
-registerTest(HAPPY_FLOW_NAME, happyFlowMdlConfig);
-
-/**
- * Example 3: Register test on FailedMetadataFetchTest
- 
-registerTest("FailedMetadataFetchTest", failedMetadataConfig);
-*/
+presentationRegistry.registerTest(
+  HAPPY_FLOW_PRESENTATION_NAME,
+  PresentationTestConfiguration.createDefault(),
+);
 
 // ============================================================================
 // END OF CONFIGURATION
