@@ -4,8 +4,6 @@ import type {
   Jwk,
   SignJwtCallback,
   VerifyJwtCallback,
-  EncryptJweCallback,
-  JweEncryptor,
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
