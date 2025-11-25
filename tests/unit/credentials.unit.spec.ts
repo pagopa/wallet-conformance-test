@@ -1,16 +1,13 @@
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
-import {
-  loadConfig,
-  loadJwks,
-} from "@/logic";
+import { loadConfig, loadJwks } from "@/logic";
 import { KeyPairJwk } from "@/types";
-import { rmSync } from "node:fs";
 
 describe("Load Mocked Credentials", async () => {
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
@@ -62,7 +59,7 @@ describe("Generate Mocked Credentials", () => {
 
     const decoded = await new SDJwtVcInstance({
       hasher: digest,
-    }).decode(credential);
+    }).decode(credential.compact);
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);

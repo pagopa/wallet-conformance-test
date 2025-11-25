@@ -33,10 +33,11 @@ export async function loadCredentials(
     // First, attempt to parse the credential as a SD-JWT
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const jwt = await SDJwt.extractJwt(credential);
+      const parsed = await SDJwt.extractJwt(credential);
 
       credentials[file] = {
-        credential: jwt,
+        compact: credential,
+        parsed,
         typ: "dc+sd-jwt",
       };
       continue; // Move to the next file
@@ -50,11 +51,12 @@ export async function loadCredentials(
     // If SD-JWT verification fails, attempt to parse it as an MDOC
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const mdoc = parseMdoc(Buffer.from(credential, "base64url"));
+      const parsed = parseMdoc(Buffer.from(credential, "base64url"));
 
       // If validation is successful, add it to the credentials record
       credentials[file] = {
-        credential: mdoc,
+        compact: credential,
+        parsed,
         typ: "mso_mdoc",
       };
     } catch (e) {

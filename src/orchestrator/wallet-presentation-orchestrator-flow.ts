@@ -1,5 +1,5 @@
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { PresentationTestConfiguration } from "tests/config/presentation-test-configuration";
+import { PresentationTestConfiguration } from "#/config";
 
 import { createLogger } from "@/logic/logs";
 import { loadConfig } from "@/logic/utils";

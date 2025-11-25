@@ -2,6 +2,9 @@ import type { DisclosureFrame } from "@sd-jwt/types";
 
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { decodeJwt } from "jose";
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
 
 import {
   createFederationMetadata,
@@ -9,7 +12,7 @@ import {
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
-import { writeFileSync } from "node:fs";
+import { Credential } from "@/types";
 
 export async function createMockSdJwt(
   metadata: {
@@ -19,7 +22,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
-): Promise<string> {
+): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_jwks");
 
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
@@ -45,7 +48,7 @@ export async function createMockSdJwt(
     trust_chain: [issEntityConfiguration, taEntityConfiguration],
   };
 
-  const unitKey = (await loadJwks(backupPath, "wallet_unit_jwks")).publicKey;
+  const { publicKey: unitKey } = await loadJwks(backupPath, "wallet_unit_jwks");
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
@@ -59,7 +62,7 @@ export async function createMockSdJwt(
     verifier,
   });
 
-  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 355);
+  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
 
   // TODO: Check required claims for pid
   const claims = {
@@ -86,7 +89,6 @@ export async function createMockSdJwt(
   const vct = "urn:eudi:pid:1";
   const vctIntegrity = await generateSRIHash(vct);
 
-  // TODO: Check required payload and header for sd-jwt
   const credential = await sdjwt.issue(
     {
       cnf: { jwk: unitKey },
@@ -110,30 +112,25 @@ export async function createMockSdJwt(
     disclosureFrame,
     {
       header: {
-        kid: issuer.keyPair.privateKey,
+        kid: issuer.keyPair.privateKey.kid,
         trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
       },
     },
   );
 
-  writeFileSync(`${credentialsPath}/dc_sd_jwt_PersonIdentificationData`, credential);
-  return credential;
+  writeFileSync(
+    `${credentialsPath}/dc_sd_jwt_PersonIdentificationData`,
+    credential,
+  );
+  return {
+    compact: credential,
+    parsed: await decodeJwt(credential),
+    typ: "dc+sd-jwt",
+  };
 }
 
 async function generateSRIHash(content: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
-
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-
-  const hashBinary = hashArray
-    .map((byte) => String.fromCharCode(byte))
-    .join("");
-
-  const base64Hash = Buffer.from(hashBinary).toString("base64");
-
-  return `sha256-${base64Hash}`;
+  const digest = createHash("sha256").update(content).digest("base64");
+  return `sha256-${digest}`;
 }
