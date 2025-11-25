@@ -5,7 +5,7 @@
   "iss": "{{wallet_provider_base_url}}",
   "sub": "{{wallet_provider_base_url}}",
   "jwks": {
-    "keys": ["{{publicKey}}"]
+    "keys": ["{{public_key}}"]
   },
   "metadata": {
     "federation_entity": {
@@ -22,7 +22,7 @@
         "{{wallet_provider_base_url}}/LoA/high"
       ],
       "jwks": {
-        "keys": ["{{publicKey}}"]
+        "keys": ["{{public_key}}"]
       }
     }
   }

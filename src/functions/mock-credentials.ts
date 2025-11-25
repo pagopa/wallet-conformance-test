@@ -34,7 +34,7 @@ export async function createMockSdJwt(
 
   const issClaims = loadJsonDumps("issuer_metadata.json", {
     issuer_base_url: metadata.iss,
-    publicKey: keyPair.publicKey,
+    public_key: keyPair.publicKey,
     trust_anchor_base_url: metadata.trustAnchorBaseUrl,
   });
   const issEntityConfiguration = await createFederationMetadata({

@@ -5,21 +5,245 @@
   "iss": "{{issuer_base_url}}",
   "sub": "{{issuer_base_url}}",
   "jwks": {
-    "keys": ["{{publicKey}}"]
+    "keys": ["{{public_key}}"]
   },
   "metadata": {
     "federation_entity": {
-      "organization_name": "Sample Issuer"
+      "contacts": [
+        "info@pagopa.it"
+      ],
+      "federation_resolve_endpoint": "{{issuer_base_url}}/resolve",
+      "homepage_uri": "https://io.italia.it",
+      "logo_uri": "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+      "organization_name": "PagoPa S.p.A.",
+      "policy_uri": "https://io.italia.it/privacy-policy"
     },
-    "wallet_provider": {
-      "aal_values_supported": [
-        "{{issuer_base_url}}/LoA/basic",
-        "{{issuer_base_url}}/LoA/medium",
-        "{{issuer_base_url}}/LoA/high"
+    "oauth_authorization_server": {
+      "acr_values_supported": [
+        "https://trust-registry.eid-wallet.example.it/loa/low",
+        "https://trust-registry.eid-wallet.example.it/loa/substantial",
+        "https://trust-registry.eid-wallet.example.it/loa/high"
+      ],
+      "authorization_endpoint": "{{issuer_base_url}}/authorize",
+      "authorization_signing_alg_values_supported": [
+        "ES256",
+        "ES384",
+        "ES512"
+      ],
+      "client_registration_types_supported": [
+        "automatic"
+      ],
+      "code_challenge_methods_supported": [
+        "S256"
+      ],
+      "grant_types_supported": [
+        "authorization_code"
+      ],
+      "issuer": "{{issuer_base_url}}",
+      "jwks": {
+        "keys": ["{{public_key}}"]
+      },
+      "pushed_authorization_request_endpoint": "{{issuer_base_url}}/as/par",
+      "request_object_signing_alg_values_supported": [
+        "ES256",
+        "ES384",
+        "ES512"
+      ],
+      "response_modes_supported": [
+        "query",
+        "form_post.jwt"
+      ],
+      "response_types_supported": [
+        "code"
+      ],
+      "scopes_supported": [
+        "PersonIdentificationData"
+      ],
+      "token_endpoint": "{{issuer_base_url}}/token",
+      "token_endpoint_auth_methods_supported": [
+        "attest_jwt_client_auth"
+      ],
+      "token_endpoint_auth_signing_alg_values_supported": [
+        "ES256",
+        "ES384",
+        "ES512"
+      ]
+    },
+    "openid_credential_issuer": {
+      "client_registration_types_supported": [
+        "automatic"
+      ],
+      "batch_credential_issuance": {
+        "batch_size": 30
+      },
+      "credential_configurations_supported": {
+        "dc_sd_jwt_PersonIdentificationData": {
+          "format": "dc+sd-jwt",
+          "vct": "urn:eu.europa.ec.eudi:pid:1",
+          "claims": [
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Data di Nascita"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "Date of Birth"
+                }
+              ],
+              "path": [
+                "birth_date"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Luogo di Nascita"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "Birth Place"
+                }
+              ],
+              "path": [
+                "birth_place"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Cognome"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "Family Name"
+                }
+              ],
+              "path": [
+                "family_name"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Nome"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "First Name"
+                }
+              ],
+              "path": [
+                "given_name"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Nazionalità"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "Nationality"
+                }
+              ],
+              "path": [
+                "nationalities"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Codice Fiscale"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "National tax identification code"
+                }
+              ],
+              "path": [
+                "fiscal_code"
+              ]
+            },
+            {
+              "display": [
+                {
+                  "locale": "it-IT",
+                  "name": "Identificativo univoco"
+                },
+                {
+                  "locale": "en-US",
+                  "name": "Unique Identifier"
+                }
+              ],
+              "path": [
+                "unique_identifier"
+              ]
+            }
+          ],
+          "credential_signing_alg_values_supported": [
+            "ES256",
+            "ES384",
+            "ES512"
+          ],
+          "cryptographic_binding_methods_supported": [
+            "jwk"
+          ],
+          "display": [
+            {
+              "locale": "it-IT",
+              "name": "PID Provider italiano"
+            },
+            {
+              "locale": "en-US",
+              "name": "Italian PID Provider"
+            }
+          ],
+          "proof_types_supported": {
+            "jwt": {
+              "proof_signing_alg_values_supported": [
+                "ES256",
+                "ES384",
+                "ES512"
+              ]
+            }
+          },
+          "scope": "PersonIdentificationData"
+        }
+      },
+      "credential_endpoint": "{{issuer_base_url}}/credential",
+      "credential_hash_alg_supported": "sha-256",
+      "credential_issuer": "{{issuer_base_url}}",
+      "deferred_credential_endpoint": "{{issuer_base_url}}/deferred",
+      "display": [
+        {
+          "locale": "it-IT",
+          "name": "PagoPA S.p.A."
+        }
+      ],
+      "evidence_supported": [
+        "vouch"
       ],
       "jwks": {
-        "keys": ["{{publicKey}}"]
-      }
+        "keys": ["{{public_key}}"]
+      },
+      "nonce_endpoint": "{{issuer_base_url}}/nonce",
+      "notification_endpoint": "{{issuer_base_url}}/notification",
+      "revocation_endpoint": "{{issuer_base_url}}/revoke",
+      "status_assertion_endpoint": "{{issuer_base_url}}/status",
+      "status_attestation_endpoint": "{{issuer_base_url}}/status",
+      "trust_frameworks_supported": [
+        "it_cie",
+        "eudi_wallet",
+        "it_wallet"
+      ]
     }
   }
 }
+

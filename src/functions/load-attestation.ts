@@ -79,7 +79,7 @@ export const loadAttestation = async (options: {
       trustAnchorBaseUrl: trustAnchorBaseUrl,
     });
     const placeholders = {
-      publicKey: providerKeyPair.publicKey,
+      public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
