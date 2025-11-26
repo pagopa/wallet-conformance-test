@@ -87,7 +87,7 @@ export class WalletIssuanceOrchestratorFlow {
           itWalletEntityStatementClaimsSchema,
         wellKnownPath:
           fetchMetadataOptions?.wellKnownPath ||
-          `/.well-known/openid-federation`,
+          "/.well-known/openid-federation",
       });
 
       this.log.info("Loading Wallet Attestation...");
