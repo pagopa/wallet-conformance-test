@@ -10,7 +10,7 @@ import { signCallback } from "./jwt";
 import { loadJsonDumps, loadJwks } from "./utils";
 
 export interface CreateFederationMetadataOptions {
-  claims: ItWalletEntityConfigurationClaimsOptions;
+  claims: Omit<ItWalletEntityConfigurationClaimsOptions, 'exp' | 'iat'>;
 
   /**
    * The public JWK of the entity to include in the federation metadata's JWKS.
@@ -46,7 +46,7 @@ export const createFederationMetadata = async (
       jwks: {
         keys: entityJwks,
       },
-    },
+    } as ItWalletEntityConfigurationClaimsOptions,
     header: { alg: "ES256", kid: publicKey.kid, typ: "entity-statement+jwt" },
     signJwtCallback,
   });
@@ -130,6 +130,43 @@ export const createSubordinateTrustAnchorMetadata = async (
   return await createFederationMetadata({
     claims,
     entityPublicJwk: options.entityPublicJwk,
+    signedJwks,
+  });
+};
+
+/**
+ * Options for creating subordinate wallet metadata.
+ */
+export interface CreateSubordinateWalletUnitMetadataOptions {
+  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchorBaseUrl: string;
+  sub: string;
+  walletBackupStoragePath: string;
+}
+
+/**
+ * Creates a subordinate wallet metadata JWT signed by the Trust Anchor.
+ *  
+ * @param options Options for creating the subordinate wallet metadata.
+ * @returns The signed subordinate wallet metadata JWT.
+ */
+export const createSubordinateWalletUnitMetadata = async (
+  options: CreateSubordinateWalletUnitMetadataOptions,
+): Promise<string> => {
+  const signedJwks = await loadJwks(
+    options.federationTrustAnchorsJwksPath,
+    "trust_anchor_jwks",
+  );
+  const walletJwks = await loadJwks(
+    options.walletBackupStoragePath,
+    "wallet_unit_jwks",
+  );
+  return await createFederationMetadata({
+    claims: {
+      sub: options.sub,
+      iss: options.trustAnchorBaseUrl,
+    },
+    entityPublicJwk: walletJwks.publicKey,
     signedJwks,
   });
 };
