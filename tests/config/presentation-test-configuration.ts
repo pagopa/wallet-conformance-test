@@ -8,7 +8,7 @@ import { TestConfiguration } from "./test-registry";
 interface PresentationTestConfigurationOptions {
   fetchMetadata?: {
     options?: FetchMetadataOptions;
-    stepClass?: typeof FetchMetadataDefaultStep;
+    stepClass: typeof FetchMetadataDefaultStep;
   };
   name: string;
 }
