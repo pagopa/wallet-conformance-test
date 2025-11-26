@@ -6,3 +6,4 @@
 - Don't put a period at the end of the subject line
 - Use the imperative mood
 - Try to describe the rationale behind the changes instead of the changes themselves
+- Write in English
