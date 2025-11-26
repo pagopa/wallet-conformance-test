@@ -9,7 +9,7 @@ import { loadConfig, partialCallbacks } from "@/logic/utils";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
-} from "@/step/issuance/fetch-metadata-step";
+} from "@/step/fetch-metadata-step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
@@ -81,12 +81,13 @@ export class WalletIssuanceOrchestratorFlow {
         JSON.stringify(fetchMetadataOptions),
       );
       const fetchMetadataResponse = await this.fetchMetadataStep.run({
+        baseUrl: this.config.issuance.url,
         entityStatementClaimsSchema:
           fetchMetadataOptions?.entityStatementClaimsSchema ||
           itWalletEntityStatementClaimsSchema,
         wellKnownPath:
           fetchMetadataOptions?.wellKnownPath ||
-          `/.well-known/openid-federation`,
+          "/.well-known/openid-federation",
       });
 
       this.log.info("Loading Wallet Attestation...");
