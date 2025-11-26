@@ -61,8 +61,6 @@ tests/test.config.ts → Registers configs → Registry → Test suite retrieves
 - **JWT Signing**: `signJwtCallback()` in `src/logic/jwt.ts` wraps signing with proper headers
 - **Federation Metadata**: `src/logic/federation-metadata.ts` creates OpenID Federation entity configurations
 
-**Critical**: All JWKs now include `alg: "ES256"` field (recent change in `feature/WLEO-702-load-config` branch)
-
 ### 4. Configuration System
 
 **Hierarchy** (highest to lowest precedence):
@@ -231,8 +229,6 @@ const credentials = await loadCredentials({
 
 ## Known Issues & Gotchas
 
-1. **JWK `kid` field**: Recent changes added `alg` field - ensure all consumers handle it
-2. **Mock credentials bug**: `createMockSdJwt()` passes entire private key object instead of `kid` to JWT header (line 112)
 3. **Trust Anchor startup**: Tests automatically start server - don't run `pnpm ta:server` concurrently
 4. **Config paths**: Use absolute paths in `.ini` or relative to project root
 5. **Vitest configs**: Three separate configs (`vitest.config.mjs`, `vitest.unit.config.mjs`, `vitest.issuance.config.mjs`) with different test patterns
