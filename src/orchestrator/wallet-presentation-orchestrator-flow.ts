@@ -74,6 +74,12 @@ export class WalletPresentationOrchestratorFlow {
           "/.well-known/openid-federation",
       });
 
+      const entityStatementClaims =
+        fetchMetadataResponse.response?.entityStatementClaims;
+      if (!entityStatementClaims) {
+        throw new Error("Entity Statement Claims not found in response");
+      }
+
       return { fetchMetadataResponse };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
