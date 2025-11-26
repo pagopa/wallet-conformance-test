@@ -120,7 +120,7 @@ The CLI tool is designed to test a running instance of your Credential Issuer or
 
 ### Configuration
 
-The tool can be configured using a `.ini` file or via command-line options. A default `.ini` file is provided with standard values for settings like the data storage directory or Certification Authority references. You can create your own `.ini` file and specify it using the `--file-ini` option. Command-line options always override settings from the `.ini` file.
+The tool can be configured using a `config.ini` file or via command-line options. An example `config.example.ini` file is provided with standard values for settings like the data storage directory or Trust Certification Authority references. You can create your own `config.ini` file and specify it using the `--file-ini` option. Command-line options always override settings from the `config.ini` file.
 
 Configuration Hierarchy:
 - Command-Line Options (Highest priority)
@@ -149,11 +149,11 @@ The primary function of the tool is to run test suites for the main IT Wallet fl
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test (e.g., dc_sd_jwt_PersonIdentificationData).
+First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
 Then, run the test command:
 
-    wallet-conformance-test test:issuance --credential-type PersonIdentificationData
+    wallet-conformance-test test:issuance [OPTIONS]
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
