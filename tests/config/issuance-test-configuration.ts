@@ -1,28 +1,30 @@
 import {
   FetchMetadataDefaultStep,
   FetchMetadataOptions,
-} from "@/step/issuance/fetch-metadata-step";
+} from "@/step/fetch-metadata-step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
 
+import { TestConfiguration } from "./test-registry";
+
 /**
  * Configuration class for Issuer conformance tests
  */
-export class IssuerTestConfiguration {
+export class IssuerTestConfiguration implements TestConfiguration {
   public readonly credentialConfigurationId: string;
   public readonly fetchMetadata?: {
     options?: FetchMetadataOptions;
     stepClass: typeof FetchMetadataDefaultStep;
   };
 
+  public readonly name: string;
+
   public readonly pushedAuthorizationRequest?: {
     options?: PushedAuthorizationRequestOptions;
     stepClass: typeof PushedAuthorizationRequestDefaultStep;
   };
-
-  public readonly testName: string;
 
   constructor(config: {
     credentialConfigurationId: string;
@@ -30,13 +32,13 @@ export class IssuerTestConfiguration {
       options?: FetchMetadataOptions;
       stepClass?: typeof FetchMetadataDefaultStep;
     };
+    name: string;
     pushedAuthorizationRequest?: {
       options?: PushedAuthorizationRequestOptions;
       stepClass?: typeof PushedAuthorizationRequestDefaultStep;
     };
-    testName: string;
   }) {
-    this.testName = config.testName;
+    this.name = config.name;
     this.credentialConfigurationId = config.credentialConfigurationId;
 
     this.fetchMetadata = {
@@ -63,10 +65,10 @@ export class IssuerTestConfiguration {
       fetchMetadata: {
         stepClass: FetchMetadataDefaultStep,
       },
+      name: "Issuance Happy Flow",
       pushedAuthorizationRequest: {
         stepClass: PushedAuthorizationRequestDefaultStep,
       },
-      testName: "Issuance Happy Flow",
     });
   }
 }

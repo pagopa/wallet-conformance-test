@@ -3,6 +3,7 @@
   "name": "wallet-conformance-test",
   "description": "",
   "main": "index.js",
+  "packageManager": "pnpm@10.23.0",
   "files": [
     "config.ini"
   ],
@@ -23,7 +24,8 @@
     "pre-commit": "pnpm format && pnpm lint",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
-    "test:issuance": "vitest run --config vitest.issuance.config.mjs"
+    "test:issuance": "vitest run --config vitest.issuance.config.mjs",
+    "test:presentation": "vitest run --config vitest.presentation.config.mjs"
   },
   "keywords": [],
   "author": "",

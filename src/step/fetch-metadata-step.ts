@@ -15,6 +15,10 @@ export interface FetchMetadataExecuteResponse {
 
 export interface FetchMetadataOptions {
   /**
+   * Base URL of the issuer or verifier to fetch metadata from.
+   */
+  baseUrl: string;
+  /**
    * Schema to validate the entity statement claims against.
    * If not provided, @itWalletEntityStatementClaimsSchema is used.
    */
@@ -31,7 +35,7 @@ export type FetchMetadataStepResponse = StepResult & {
 };
 
 /**
- * Flow step to fetch issuer metadata from the well-known endpoint.
+ * Flow step to fetch issuer or verifier metadata from the well-known endpoint.
  * It retrieves the entity statement JWT and its claims.
  * Base URI is taken from the configuration.
  *
@@ -50,10 +54,10 @@ export class FetchMetadataDefaultStep extends StepFlow {
 
   async run(options: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
     const log = this.log.withTag(this.tag);
+    const url = `${options.baseUrl}${options.wellKnownPath}`;
 
     log.debug("Fetch Metadata Options: ", JSON.stringify(options));
-    const url = `${this.config.issuance.url}${options.wellKnownPath}`;
-    log.info("Discovering issuer's metadata...");
+    log.info("Discovering metadata...");
     log.info(`Fetching metadata from ${url}`);
 
     return this.execute<FetchMetadataExecuteResponse>(async () => {
