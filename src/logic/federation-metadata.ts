@@ -169,4 +169,4 @@ export const createSubordinateWalletMetadata = async (
     entityPublicJwk: walletJwks.publicKey,
     signedJwks,
   });
-}
+};
