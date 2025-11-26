@@ -140,7 +140,7 @@ wallet-conformance-test test:issuance --credential-type PersonIdentificationData
 ## Project-Specific Conventions
 
 ### File Naming
-- **Type files**: lowercase (e.g., `config.ts`, `credential.ts`, `logger.ts`) - changed from PascalCase in recent branch
+- **Type files**: lowercase (e.g., `config.ts`, `credential.ts`, `logger.ts`)
 - **Implementation files**: kebab-case (e.g., `load-attestation.ts`, `federation-metadata.ts`)
 - **Test files**: `*.spec.ts` for Vitest tests
 
