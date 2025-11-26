@@ -1,7 +1,7 @@
 import express from "express";
 
 import {
-  createSubordinateWalletMetadata,
+  createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 
@@ -44,7 +44,7 @@ export const createServer = () => {
       }
 
       // Create the subordinate statement
-      const subordinateStatement = await createSubordinateWalletMetadata(
+      const subordinateStatement = await createSubordinateWalletUnitMetadata(
         {
           federationTrustAnchorsJwksPath:
             config.trust.federation_trust_anchors_jwks_path,

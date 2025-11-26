@@ -137,7 +137,7 @@ export const createSubordinateTrustAnchorMetadata = async (
 /**
  * Options for creating subordinate wallet metadata.
  */
-export interface CreateSubordinateWalletMetadataOptions {
+export interface CreateSubordinateWalletUnitMetadataOptions {
   federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   trustAnchorBaseUrl: string;
   sub: string;
@@ -150,8 +150,8 @@ export interface CreateSubordinateWalletMetadataOptions {
  * @param options Options for creating the subordinate wallet metadata.
  * @returns The signed subordinate wallet metadata JWT.
  */
-export const createSubordinateWalletMetadata = async (
-  options: CreateSubordinateWalletMetadataOptions,
+export const createSubordinateWalletUnitMetadata = async (
+  options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
   const signedJwks = await loadJwks(
     options.federationTrustAnchorsJwksPath,
