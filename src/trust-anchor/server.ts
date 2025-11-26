@@ -35,7 +35,7 @@ export const createServer = () => {
       const sub = req.query.sub as string | undefined;
 
       if (!sub) {
-        return res.status(400).json({ error: "missing_sub_parameter" });
+        return res.status(400).json({ error: "sub_parameter_required" });
       }
 
       // Check if the subject matches the wallet provider base URL
