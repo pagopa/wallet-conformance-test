@@ -165,7 +165,6 @@ wallet-conformance-test test:issuance --credential-type PersonIdentificationData
 - Uses `@sd-jwt/sd-jwt-vc` library
 - Creates test PIDs (PersonIdentificationData) with selective disclosure
 - Includes trust chain in JWT header
-- **Bug Fix Needed**: Line 112 has `kid: issuer.keyPair.privateKey` (should be `.kid`)
 
 **mDOC Generation**: Uses `@auth0/mdl` library for mDL credentials
 
