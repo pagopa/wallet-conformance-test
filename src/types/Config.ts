@@ -20,6 +20,9 @@ export const configSchema = z.object({
     timeout: z.coerce.number(),
     user_agent: z.string(),
   }),
+  presentation: z.object({
+    verifier: z.string().url(),
+  }),
   server: z.object({
     port: z.coerce.number(),
   }),

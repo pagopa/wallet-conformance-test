@@ -1,7 +1,7 @@
 import {
   FetchMetadataDefaultStep,
   FetchMetadataOptions,
-} from "@/step/issuance/fetch-metadata-step";
+} from "@/step/fetch-metadata-step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
