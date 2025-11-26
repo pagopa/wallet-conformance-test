@@ -1,8 +1,8 @@
-import { SDJwt } from "@sd-jwt/core";
+import { ValidationError } from "@pagopa/io-wallet-utils";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { parseMdoc } from "@/logic";
-import { Credential } from "@/types";
+import { CredentialsManager, validateMdoc, validateSdJwt } from "@/logic";
+import { CredentialError } from "@/types";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -17,9 +17,9 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
-): Promise<Record<string, Credential>> {
+): Promise<CredentialsManager> {
   const files = readdirSync(path);
-  const credentials: Record<string, Credential> = {};
+  const credentials = new CredentialsManager();
 
   for (const file of files) {
     // Skip if the file is not a recognized credential type
@@ -30,34 +30,31 @@ export async function loadCredentials(
       continue;
     }
 
-    // First, attempt to parse the credential as a SD-JWT
+    // First, attempt to verify the credential as a SD-JWT
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const jwt = await SDJwt.extractJwt(credential);
+      const jwt = await validateSdJwt(credential);
 
-      credentials[file] = {
-        credential: jwt,
-        typ: "dc+sd-jwt",
-      };
+      credentials.addSdJwt(file, jwt);
       continue; // Move to the next file
     } catch (e) {
+      if (e instanceof CredentialError || e instanceof ValidationError) throw e;
+
       const err = e as Error;
       onIgnoreError(
         `${file} was not a valid sd-jwt credential: ${err.message}`,
       );
     }
 
-    // If SD-JWT verification fails, attempt to parse it as an MDOC
+    // If SD-JWT verification fails, attempt to verify it as an MDOC
     try {
       const credential = readFileSync(`${path}/${file}`, "utf-8");
-      const mdoc = parseMdoc(Buffer.from(credential, "base64url"));
+      const mdoc = await validateMdoc(Buffer.from(credential, "base64url"));
 
-      // If validation is successful, add it to the credentials record
-      credentials[file] = {
-        credential: mdoc,
-        typ: "mso_mdoc",
-      };
+      credentials.addMdoc(file, mdoc);
     } catch (e) {
+      if (e instanceof CredentialError || e instanceof ValidationError) throw e;
+
       const err = e as Error;
       onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);
     }

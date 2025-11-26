@@ -92,6 +92,7 @@ export class WalletIssuanceOrchestratorFlow {
 
       this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
+        trustAnchorBaseUrl: `https://127.0.0.1:${this.config.server.port}`,
         trustAnchorJwksPath:
           this.config.trust.federation_trust_anchors_jwks_path,
         wallet: this.config.wallet,
@@ -127,7 +128,7 @@ export class WalletIssuanceOrchestratorFlow {
         await this.pushedAuthorizationRequestStep.run({
           clientId:
             pushedAuthorizationRequestOptions?.clientId ??
-            walletAttestationResponse.unitKey.publicKey.kid!,
+            walletAttestationResponse.unitKey.publicKey.kid,
           credentialConfigurationId:
             this.issuanceConfig.credentialConfigurationId,
           popAttestation:
@@ -136,7 +137,7 @@ export class WalletIssuanceOrchestratorFlow {
           pushedAuthorizationRequestEndpoint:
             pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
             entityStatementClaims.metadata?.oauth_authorization_server
-              ?.pushed_authorization_request_endpoint!,
+              ?.pushed_authorization_request_endpoint,
           walletAttestation:
             pushedAuthorizationRequestOptions?.walletAttestation ??
             walletAttestationResponse,
