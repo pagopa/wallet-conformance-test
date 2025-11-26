@@ -159,7 +159,7 @@ export const createSubordinateWalletMetadata = async (
   );
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
-    "/wallet_unit_jwks",
+    "wallet_unit_jwks",
   );
   return await createFederationMetadata({
     claims: {
