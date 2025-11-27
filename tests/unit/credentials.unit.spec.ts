@@ -1,7 +1,13 @@
 import { ValidationError } from "@pagopa/io-wallet-utils";
-import { describe, expect, it } from "vitest";
+import { digest } from "@sd-jwt/crypto-nodejs";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { rmSync } from "node:fs";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { loadCredentials } from "@/functions";
+import { createMockSdJwt } from "@/functions";
+import { loadConfig, loadJwks } from "@/logic";
+import { KeyPairJwk } from "@/types";
 
 describe("Load Mocked Credentials", async () => {
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
@@ -28,5 +34,38 @@ describe("Load Mocked Credentials", async () => {
           .toBeNull();
       } else throw e;
     }
+  });
+});
+
+describe("Generate Mocked Credentials", () => {
+  const backupDir = "./tests/mocked-data/backup";
+  const config = loadConfig("./config.ini");
+  const iss = "https://issuer.example.com";
+  const metadata = {
+    iss,
+    trustAnchorBaseUrl: `https://127.0.0.1:${config.server.port}`,
+    trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+  };
+
+  afterAll(() => {
+    rmSync(`${backupDir}/dc_sd_jwt_PersonIdentificationData`, { force: true });
+  });
+
+  it("should create a mock SD-JWT using existing keys", async () => {
+    const unitKey: KeyPairJwk = (await loadJwks(backupDir, "wallet_unit_jwks"))
+      .publicKey;
+
+    const credential = await createMockSdJwt(metadata, backupDir, backupDir);
+
+    const decoded = await new SDJwtVcInstance({
+      hasher: digest,
+    }).decode(credential.compact);
+
+    expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
+    expect(decoded.jwt?.payload?.iss).toBe(iss);
+    expect(decoded.jwt?.payload?.vct).toBe("urn:eudi:pid:1");
+    expect(
+      (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
+    ).toBe(unitKey.kid);
   });
 });

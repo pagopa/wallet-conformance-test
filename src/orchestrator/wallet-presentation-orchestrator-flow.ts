@@ -1,12 +1,8 @@
+import { PresentationTestConfiguration } from "#/config";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { PresentationTestConfiguration } from "tests/config/presentation-test-configuration";
 
-import { createLogger } from "@/logic/logs";
-import { loadConfig } from "@/logic/utils";
-import {
-  FetchMetadataDefaultStep,
-  FetchMetadataStepResponse,
-} from "@/step/fetch-metadata-step";
+import { createLogger, loadConfig } from "@/logic";
+import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import { Config } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
