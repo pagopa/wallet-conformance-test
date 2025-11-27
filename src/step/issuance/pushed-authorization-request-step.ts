@@ -6,9 +6,8 @@ import {
   PushedAuthorizationResponse,
 } from "@pagopa/io-wallet-oauth2";
 
-import { signJwtCallback } from "@/logic/jwt";
-import { partialCallbacks } from "@/logic/utils";
-import { StepFlow, StepResult } from "@/step/step-flow";
+import { partialCallbacks, signJwtCallback } from "@/logic";
+import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =

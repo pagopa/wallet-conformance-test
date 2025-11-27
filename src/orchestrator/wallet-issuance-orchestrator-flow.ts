@@ -9,10 +9,7 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
-import {
-  FetchMetadataDefaultStep,
-  FetchMetadataStepResponse,
-} from "@/step/fetch-metadata-step";
+import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
