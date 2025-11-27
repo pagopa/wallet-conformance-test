@@ -13,8 +13,7 @@ import {
   KeyPair,
 } from "@/types";
 
-import { generateKey } from "./jwk";
-import { verifyJwt } from "./jwt";
+import { generateKey, verifyJwt } from ".";
 
 export const partialCallbacks: Pick<
   CallbackContext,
@@ -30,11 +29,14 @@ export const partialCallbacks: Pick<
 export async function fetchWithRetries(
   url: Request | string | URL,
   network: Config["network"],
+  init?: RequestInit,
 ): Promise<FetchWithRetriesResponse> {
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
       const response = await fetch(url, {
+        ...init,
         headers: {
+          ...init?.headers,
           "User-Agent": network.user_agent,
         },
         method: "GET",
@@ -43,6 +45,7 @@ export async function fetchWithRetries(
 
       return { attempts, response };
     } catch (e) {
+      console.log(e);
       const err = e as Error;
       if (err.name === "TimeoutError")
         throw new Error(`Request timed out: aborting`);
