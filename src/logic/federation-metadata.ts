@@ -4,7 +4,7 @@ import {
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
 
-import { Config, KeyPair } from "@/types";
+import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback } from "./jwt";
 import { loadJsonDumps, loadJwks } from "./utils";

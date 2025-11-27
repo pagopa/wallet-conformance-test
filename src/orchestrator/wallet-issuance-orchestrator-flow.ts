@@ -14,13 +14,18 @@ import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
 } from "@/step/issuance";
+import {
+  AuthorizeDefaultStep,
+  AuthorizeStepResponse,
+} from "@/step/issuance/authorize-step";
 import { Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
+  private authorizeStep: AuthorizeDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
-  private issuanceConfig: IssuerTestConfiguration;
 
+  private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
 
@@ -63,6 +68,10 @@ export class WalletIssuanceOrchestratorFlow {
           this.log,
         )
       : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
+
+    this.authorizeStep = issuanceConfig.authorize?.stepClass
+      ? new issuanceConfig.authorize.stepClass(this.config, this.log)
+      : new AuthorizeDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
@@ -70,6 +79,7 @@ export class WalletIssuanceOrchestratorFlow {
   }
 
   async issuance(): Promise<{
+    authorizeResponse: AuthorizeStepResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
   }> {
@@ -145,7 +155,23 @@ export class WalletIssuanceOrchestratorFlow {
             walletAttestationResponse,
         });
 
+      const authorizeOptions = this.issuanceConfig.authorize?.options;
+
+      const authorizeResponse = await this.authorizeStep.run({
+        authorizationEndpoint:
+          authorizeOptions?.authorizationEndpoint ??
+          entityStatementClaims.metadata?.oauth_authorization_server
+            ?.authorization_endpoint,
+        clientId:
+          authorizeOptions?.clientId ??
+          walletAttestationResponse.unitKey.publicKey.kid,
+        requestUri:
+          authorizeOptions?.requestUri ??
+          pushedAuthorizationRequestResponse.response?.request_uri!,
+      });
+
       return {
+        authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
       };
