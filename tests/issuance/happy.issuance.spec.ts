@@ -27,7 +27,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     beforeAll(async () => {
       ({ fetchMetadataResponse, pushedAuthorizationRequestResponse } =
         await orchestrator.issuance());
-    });
+    }, 1e5);
 
     test("CI_001: Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
       const log = baseLog.withTag("CI_001");
