@@ -171,7 +171,7 @@ export class WalletIssuanceOrchestratorFlow {
         personIdentificationData: "",
         rpMetadata:
           pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
-          entityStatementClaims.metadata?.oauth_authorization_server,
+          entityStatementClaims.metadata?.openid_credential_verifier,
         walletAttestation:
           pushedAuthorizationRequestOptions?.walletAttestation ??
           walletAttestationResponse,

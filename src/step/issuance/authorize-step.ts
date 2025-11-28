@@ -82,12 +82,6 @@ export class AuthorizeDefaultStep extends StepFlow {
 
     const { unitKey } = options.walletAttestation;
 
-    // const rpKey = options.rpMetadata.jwks.keys.find((key) => key.use === "sig");
-    // if (!rpKey) {
-    //   log.error("No encryption key found in RP Metadata JWKS");
-    //   throw new Error("No encryption key found in RP Metadata JWKS");
-    // }
-
     return this.execute<AuthorizeExecuteResponse>(async () => {
       log.info("Fetching Authorize Request from", `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`);
       const fetchAuthorize = await fetchWithRetries(
@@ -97,35 +91,12 @@ export class AuthorizeDefaultStep extends StepFlow {
       //TODO: Repat the call, second time should not succeed
 
       const requestObjectJwt = await fetchAuthorize.response.text();
-      const requestObjectHeaderJwt = decodeProtectedHeader(requestObjectJwt);
-      let issuerPublicKey: Jwk;
-      if (requestObjectHeaderJwt.jwk)
-        issuerPublicKey = requestObjectHeaderJwt.jwk as unknown as Jwk;
-      else if (requestObjectHeaderJwt.kid)
-        issuerPublicKey = options.rpMetadata.jwks.keys.find(
-          (key) => key.kid === requestObjectHeaderJwt.kid,
-        ) as unknown as Jwk;
-      else {
-        log.error(
-          `Missing both 'kid' and 'jwk' from the authorize request object ${JSON.stringify(requestObjectHeaderJwt)}`,
-        );
-        throw new Error(
-          "Missing both 'kid' and 'jwk' from the authorize request object",
-        );
-      }
 
       let authorizeRequest: AuthorizationRequestObject;
       try {
         const parseAuthorizeRequestOptions: ParseAuthorizeRequestOptions = {
           callbacks: {
             verifyJwt,
-          },
-          dpop: {
-            signer: {
-              alg: "ES256",
-              method: "jwk",
-              publicJwk: issuerPublicKey,
-            },
           },
           requestObjectJwt,
         };
@@ -149,8 +120,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         );
       }
 
-      const rpMetadata = authorizeRequest.client_metadata as ItWalletCredentialVerifierMetadata
-      const rpKey = rpMetadata.jwks.keys.find((key) => key.use === "enc");
+      const rpKey = options.rpMetadata.jwks.keys.find((key) => key.use === "enc");
       if (!rpKey) {
         log.error("No encryption key found in RP Metadata JWKS");
         throw new Error("No encryption key found in RP Metadata JWKS");
@@ -166,8 +136,8 @@ export class AuthorizeDefaultStep extends StepFlow {
           callbacks: {
             ...partialCallbacks,
             encryptJwe: getEncryptJweCallback(rpKey, {
-              alg: rpMetadata.authorization_encrypted_response_alg,
-              enc: rpMetadata.authorization_encrypted_response_enc,
+              alg: options.rpMetadata.authorization_encrypted_response_alg,
+              enc: options.rpMetadata.authorization_encrypted_response_enc,
               kid: rpKey.kid,
               typ: "oauth-authz-req+jwt",
             }),
