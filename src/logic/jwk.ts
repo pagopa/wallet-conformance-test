@@ -1,10 +1,10 @@
 import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
-  jsonWebKeySchema as JWK,
-  jsonWebKeySetSchema as JWKS,
+  jsonWebKeySchema,
+  jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { exportJWK, generateKeyPair } from "jose";
+import { decodeJwt, exportJWK, generateKeyPair, importX509 } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
@@ -27,11 +27,11 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
 
   const kid = KSUID.randomSync().string;
   const exportedPair: KeyPair = {
-    privateKey: parseWithErrorHandling(JWK, {
+    privateKey: parseWithErrorHandling(jsonWebKeySchema, {
       kid: kid,
       ...priv,
     }) as KeyPairJwk,
-    publicKey: parseWithErrorHandling(JWK, {
+    publicKey: parseWithErrorHandling(jsonWebKeySchema, {
       kid: kid,
       ...pub,
     }) as KeyPairJwk,
@@ -48,7 +48,7 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
  * @returns The extracted public JWK.
  * @throws An error if the signer method is not supported.
  */
-export function jwkFromSigner(signer: JwtSigner): Jwk {
+export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
   const { didUrl, kid, trustChain } = signer as {
     didUrl?: string;
     kid?: string;
@@ -65,45 +65,87 @@ export function jwkFromSigner(signer: JwtSigner): Jwk {
         throw new Error(`malformed JWK in DID: "${didUrl}"`);
 
       return parseWithErrorHandling(
-        JWK,
+        jsonWebKeySchema,
         JSON.parse(Buffer.from(didJwk, "base64url").toString()),
         "malformed signer's JWK in DID",
       );
+    case "federation":
+      if (!kid) throw new Error("missing signer key's kid");
+      if (!trustChain || !trustChain.length) {
+        throw new Error("missing signer's trust chain");
+      }
+      return jwkFromTrustChain(trustChain, kid);
     case "jwk":
       return parseWithErrorHandling(
-        JWK,
+        jsonWebKeySchema,
         signer.publicJwk,
         "malformed signer's JWK",
       );
-    case "federation":
-      if (!kid) throw new Error("missing signer key's kid");
-      if (trustChain && trustChain.length > 0)
-        return jwkFromTrustChain(trustChain, kid);
-      else throw new Error("missing signer's trust chain");
+    case "x5c":
+      return await jwkFromCertificateChain(signer.x5c, signer.alg);
     default:
       throw new Error(`signer method "${signer.method}" not supported`);
   }
 }
 
+function convertBase64DerToPem(certificate: string): string {
+  return `-----BEGIN CERTIFICATE-----\n${certificate}\n-----END CERTIFICATE-----`;
+}
+
+async function jwkFromCertificateChain(
+  x5c: string[] | undefined,
+  alg: string,
+): Promise<Jwk> {
+  if (!x5c || x5c.length === 0) {
+    throw new Error("missing x5c certificate");
+  }
+
+  const pem = convertBase64DerToPem(x5c[0] as string);
+  const key = await importX509(pem, alg, { extractable: true });
+  const jwk = await exportJWK(key);
+
+  return parseWithErrorHandling(
+    jsonWebKeySchema,
+    jwk,
+    "malformed signer's JWK from x5c",
+  );
+}
+
 /**
  * Extracts a JWK from a trust chain array based on the signer's KID.
  *
- * @param trustChains An array of JWTs representing the trust chain.
+ * @param trustChain An array of JWTs representing the trust chain.
  * @param signerKid The KID of the signer to look for in the trust chain.
  * @returns The JWK found in the trust chain.
  * @throws An error if the trust chain is empty or the key is not found.
  */
-function jwkFromTrustChain(trustChains: string[], signerKid: string): Jwk {
-  if (!trustChains[0]) throw new Error("empty trust chain");
-  // TODO check if trust chain is valid
-  const payload = trustChains[0].split(".")[1];
+function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
+  const entityConfigurationJwt = trustChain[0];
+  if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
-  if (!payload) throw new TypeError("malformed jwt in trust chain");
+  const keys: Jwk[] = [];
+  const decodedEntityConfig = decodeJwt(entityConfigurationJwt);
 
-  const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
-  const jwks = parseWithErrorHandling(JWKS, claims.jwks);
-  const federationJwk = jwks.keys.find((key: Jwk) => key.kid === signerKid);
+  // Get top-level jwks
+  if (decodedEntityConfig.jwks) {
+    keys.push(
+      ...parseWithErrorHandling(jsonWebKeySetSchema, decodedEntityConfig.jwks)
+        .keys,
+    );
+  }
 
+  // Check also in metadata entries for additional jwks like openid_credential_verifier
+  if (decodedEntityConfig.metadata) {
+    for (const entry of Object.values(decodedEntityConfig.metadata)) {
+      if (entry.jwks) {
+        keys.push(
+          ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
+        );
+      }
+    }
+  }
+
+  const federationJwk = keys.find((key) => key.kid === signerKid);
   if (!federationJwk) throw new Error("key not found in trust chain");
 
   return federationJwk;

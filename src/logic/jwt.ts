@@ -17,7 +17,7 @@ import { jwkFromSigner } from ".";
  */
 export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
   return async (signer, { header, payload }) => {
-    const publicJwk = jwkFromSigner(signer);
+    const publicJwk = await jwkFromSigner(signer);
     const privateJwk = privateJwks.find(
       (jwkPrv) => jwkPrv.kid === publicJwk.kid,
     );
@@ -76,7 +76,7 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
  * @returns A promise that resolves to an object containing the verification result.
  */
 export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-  const publicJwk = jwkFromSigner(signer);
+  const publicJwk = await jwkFromSigner(signer);
   const key = await importJWK(publicJwk as JWK, signer.alg);
 
   try {

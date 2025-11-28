@@ -21,6 +21,7 @@ export const configSchema = z.object({
     user_agent: z.string(),
   }),
   presentation: z.object({
+    authorize_request_url: z.string().url(),
     verifier: z.string().url(),
   }),
   server: z.object({

@@ -48,6 +48,7 @@
     "@pagopa/io-wallet-oauth2": "^0.6.1",
     "@pagopa/io-wallet-oid-federation": "^0.6.1",
     "@pagopa/io-wallet-oid4vci": "^0.6.1",
+    "@pagopa/io-wallet-oid4vp": "^0.7.1",
     "@pagopa/io-wallet-utils": "^0.6.1",
     "@sd-jwt/core": "^0.15.0",
     "@sd-jwt/crypto-nodejs": "^0.15.0",

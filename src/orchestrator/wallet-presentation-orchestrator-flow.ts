@@ -7,9 +7,14 @@ import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
 } from "@/step/fetch-metadata-step";
+import {
+  AuthorizationRequestStep,
+  AuthorizationRequestStepResponse,
+} from "@/step/presentation/authorization-request-step";
 import { Config } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
+  private authorizationRequestStep: AuthorizationRequestStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
 
@@ -44,6 +49,11 @@ export class WalletPresentationOrchestratorFlow {
     this.fetchMetadataStep = presentationConfig.fetchMetadata?.stepClass
       ? new presentationConfig.fetchMetadata.stepClass(this.config, this.log)
       : new FetchMetadataDefaultStep(this.config, this.log);
+
+    this.authorizationRequestStep = new AuthorizationRequestStep(
+      this.config,
+      this.log,
+    );
   }
 
   getLog(): typeof this.log {
@@ -51,6 +61,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async presentation(): Promise<{
+    authorizationRequestResponse: AuthorizationRequestStepResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
   }> {
     try {
@@ -80,7 +91,20 @@ export class WalletPresentationOrchestratorFlow {
         throw new Error("Entity Statement Claims not found in response");
       }
 
-      return { fetchMetadataResponse };
+      const verifierMetadata =
+        entityStatementClaims.metadata.openid_credential_verifier;
+      if (!verifierMetadata) {
+        throw new Error(
+          "Verifier metadata (openid_credential_verifier) not found",
+        );
+      }
+
+      const authorizationRequestResponse =
+        await this.authorizationRequestStep.run({
+          authorizeRequestUrl: this.config.presentation.authorize_request_url,
+        });
+
+      return { authorizationRequestResponse, fetchMetadataResponse };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
       throw e;
