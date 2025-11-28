@@ -62,9 +62,9 @@ export class WalletIssuanceOrchestratorFlow {
     this.pushedAuthorizationRequestStep = issuanceConfig
       .pushedAuthorizationRequest?.stepClass
       ? new issuanceConfig.pushedAuthorizationRequest.stepClass(
-          this.config,
-          this.log,
-        )
+        this.config,
+        this.log,
+      )
       : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
 
     this.authorizeStep = issuanceConfig.authorize?.stepClass
@@ -166,6 +166,13 @@ export class WalletIssuanceOrchestratorFlow {
         requestUri:
           authorizeOptions?.requestUri ??
           pushedAuthorizationRequestResponse.response?.request_uri!,
+        personIdentificationData: "",
+        rpMetadata:
+          pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
+          entityStatementClaims.metadata?.oauth_authorization_server,
+        walletAttestation:
+          pushedAuthorizationRequestOptions?.walletAttestation ??
+          walletAttestationResponse,
       });
 
       return {
