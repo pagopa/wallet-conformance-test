@@ -1,11 +1,21 @@
 import type {
+  EncryptJweCallback,
+  JweEncryptor,
   Jwk,
   SignJwtCallback,
   VerifyJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
-import { CompactSign, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
+import {
+  CompactSign,
+  FlattenedEncrypt,
+  importJWK,
+  JWEHeaderParameters,
+  type JWK,
+  jwtVerify,
+  SignJWT,
+} from "jose";
 
 import { jwkFromSigner } from "./jwk";
 
@@ -28,9 +38,9 @@ export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
       );
 
     const key = await importJWK(privateJwk as JWK, signer.alg);
-
+    const jwt = await new SignJWT(payload).setProtectedHeader(header).sign(key)
     return {
-      jwt: await new SignJWT(payload).setProtectedHeader(header).sign(key),
+      jwt,
       signerJwk: publicJwk as Jwk,
     };
   };
@@ -92,3 +102,21 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
     };
   }
 };
+
+export function getEncryptJweCallback(
+  publicKey: Jwk,
+  header: JWEHeaderParameters,
+): EncryptJweCallback {
+  return async (_: JweEncryptor, data: string) => {
+
+    const josePublicKey = await importJWK(publicKey, header.alg!)
+    const jwe = await new FlattenedEncrypt(new TextEncoder().encode(data))
+      .setProtectedHeader(header)
+      .encrypt(josePublicKey);
+
+    return {
+      encryptionJwk: publicKey,
+      jwe: jwe.ciphertext,
+    };
+  };
+}
