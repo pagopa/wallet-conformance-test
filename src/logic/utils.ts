@@ -34,13 +34,13 @@ export async function fetchWithRetries(
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
       const response = await fetch(url, {
-        ...init,
-        headers: {
-          ...init?.headers,
-          "User-Agent": network.user_agent,
-        },
         method: "GET",
         signal: AbortSignal.timeout(network.timeout * 1000),
+        ...init,
+        headers: {
+          "User-Agent": network.user_agent,
+          ...init?.headers,
+        },
       });
 
       return { attempts, response };
