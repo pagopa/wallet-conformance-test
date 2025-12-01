@@ -27,15 +27,18 @@ export const partialCallbacks: Partial<CallbackContext> = {
 export async function fetchWithRetries(
   url: Request | string | URL,
   network: Config["network"],
+  init?: RequestInit,
 ): Promise<FetchWithRetriesResponse> {
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
       const response = await fetch(url, {
-        headers: {
-          "User-Agent": network.user_agent,
-        },
         method: "GET",
         signal: AbortSignal.timeout(network.timeout * 1000),
+        ...init,
+        headers: {
+          "User-Agent": network.user_agent,
+          ...init?.headers,
+        },
       });
 
       return { attempts, response };
