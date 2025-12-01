@@ -38,9 +38,9 @@ export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
       );
 
     const key = await importJWK(privateJwk as JWK, signer.alg);
-
+    const jwt = await new SignJWT(payload).setProtectedHeader(header).sign(key)
     return {
-      jwt: await new SignJWT(payload).setProtectedHeader(header).sign(key),
+      jwt,
       signerJwk: publicJwk as Jwk,
     };
   };
