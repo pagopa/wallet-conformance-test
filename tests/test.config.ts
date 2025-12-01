@@ -64,7 +64,10 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to
 /**
  * Example 2: Register test on HappyFlowMdlTest
  */
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowCredentialConfig);
+issuerRegistry.registerTest(
+  HAPPY_FLOW_ISSUANCE_NAME,
+  happyFlowCredentialConfig,
+);
 
 /**
  * Example 3: Register test on FailedMetadataFetchTest

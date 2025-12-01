@@ -2,7 +2,7 @@ import { IssuerTestConfiguration } from "#/config";
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
-import { loadAttestation } from "@/functions";
+import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
@@ -18,7 +18,7 @@ import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
 } from "@/step/issuance/authorize-step";
-import { Config } from "@/types";
+import { Config, Credential } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
@@ -64,9 +64,9 @@ export class WalletIssuanceOrchestratorFlow {
     this.pushedAuthorizationRequestStep = issuanceConfig
       .pushedAuthorizationRequest?.stepClass
       ? new issuanceConfig.pushedAuthorizationRequest.stepClass(
-        this.config,
-        this.log,
-      )
+          this.config,
+          this.log,
+        )
       : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
 
     this.authorizeStep = issuanceConfig.authorize?.stepClass
@@ -101,10 +101,11 @@ export class WalletIssuanceOrchestratorFlow {
           fetchMetadataOptions?.wellKnownPath ||
           "/.well-known/openid-federation",
       });
+      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
 
       this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
-        trustAnchorBaseUrl: `https://127.0.0.1:${this.config.server.port}`,
+        trustAnchorBaseUrl,
         trustAnchorJwksPath:
           this.config.trust.federation_trust_anchors_jwks_path,
         wallet: this.config.wallet,
@@ -157,6 +158,35 @@ export class WalletIssuanceOrchestratorFlow {
 
       const authorizeOptions = this.issuanceConfig.authorize?.options;
 
+      let personIdentificationData: Credential;
+
+      try {
+        const credentials = await loadCredentials(
+          this.config.wallet.credentials_storage_path,
+          ["dc_sd_jwt_PersonIdentificationData"],
+          this.log.error,
+        );
+
+        if (credentials.dc_sd_jwt_PersonIdentificationData)
+          personIdentificationData =
+            credentials.dc_sd_jwt_PersonIdentificationData;
+        else {
+          this.log.error("missing pid: creating new one");
+          throw new Error("missing pid: creating new one");
+        }
+      } catch (e) {
+        personIdentificationData = await createMockSdJwt(
+          {
+            iss: this.config.issuance.url,
+            trustAnchorBaseUrl,
+            trustAnchorJwksPath:
+              this.config.trust.federation_trust_anchors_jwks_path,
+          },
+          this.config.wallet.backup_storage_path,
+          this.config.wallet.credentials_storage_path,
+        );
+      }
+
       const authorizeResponse = await this.authorizeStep.run({
         authorizationEndpoint:
           authorizeOptions?.authorizationEndpoint ??
@@ -165,10 +195,10 @@ export class WalletIssuanceOrchestratorFlow {
         clientId:
           authorizeOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid,
+        credentials: [personIdentificationData.compact],
         requestUri:
           authorizeOptions?.requestUri ??
           pushedAuthorizationRequestResponse.response?.request_uri!,
-        personIdentificationData: "",
         rpMetadata:
           pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
           entityStatementClaims.metadata?.openid_credential_verifier,
