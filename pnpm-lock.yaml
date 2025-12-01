@@ -12,26 +12,32 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       '@pagopa/io-wallet-oauth2':
-        specifier: ^0.6.1
-        version: 0.6.1
+        specifier: ^0.6.2
+        version: 0.6.2
       '@pagopa/io-wallet-oid-federation':
-        specifier: ^0.6.1
-        version: 0.6.1
+        specifier: ^0.6.2
+        version: 0.6.2
       '@pagopa/io-wallet-oid4vci':
-        specifier: ^0.6.1
-        version: 0.6.1
+        specifier: ^0.6.2
+        version: 0.6.2
       '@pagopa/io-wallet-oid4vp':
         specifier: ^0.7.1
         version: 0.7.1
       '@pagopa/io-wallet-utils':
-        specifier: ^0.6.1
-        version: 0.6.1
+        specifier: ^0.6.2
+        version: 0.6.2
       '@sd-jwt/core':
-        specifier: ^0.15.0
-        version: 0.15.0
+        specifier: ^0.17.0
+        version: 0.17.0
       '@sd-jwt/crypto-nodejs':
-        specifier: ^0.15.0
-        version: 0.15.0
+        specifier: ^0.17.0
+        version: 0.17.0
+      '@sd-jwt/sd-jwt-vc':
+        specifier: ^0.17.1
+        version: 0.17.1
+      '@sd-jwt/types':
+        specifier: ^0.17.0
+        version: 0.17.0
       cbor:
         specifier: ^10.0.11
         version: 10.0.11
@@ -50,6 +56,9 @@ importers:
       ksuid:
         specifier: ^3.0.0
         version: 3.0.0
+      node-forge:
+        specifier: ^1.3.1
+        version: 1.3.2
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -66,6 +75,9 @@ importers:
       '@types/node':
         specifier: ^24.1.0
         version: 24.1.0
+      '@types/node-forge':
+        specifier: ^1.3.14
+        version: 1.3.14
       eslint:
         specifier: ^9.38.0
         version: 9.38.0
@@ -392,11 +404,8 @@ packages:
     peerDependencies:
       eslint: ^9.30.0
 
-  '@pagopa/io-wallet-oauth2@0.6.1':
-    resolution: {integrity: sha512-UFoEMF90u/7IwajICzBCJHMUCoKG7QnSmp+CW48cSyKP5eUJ/2DnbNNvfOTwTlSW0aqn1EY3G+CiBexGWwPELQ==}
-
-  '@pagopa/io-wallet-oid-federation@0.6.1':
-    resolution: {integrity: sha512-OxWxkH3ObFRWXqlLPt7SMg0LYI1kzs2oVgFGz03XMgh92hvCc3kirdhaW9mAO4avQyP+9uaZT2WJBmJFFHki5w==}
+  '@pagopa/io-wallet-oauth2@0.6.2':
+    resolution: {integrity: sha512-Z2Oeotiy76VP8utyumQl1qcL1PN+oEf6it4dW/WCN4Tx8JIQEy9WXo2Gs8fPypDkwjrcL+JHcHn5Tj6HMVt46Q==}
 
   '@pagopa/io-wallet-oid-federation@0.6.2':
     resolution: {integrity: sha512-YhHIrVbP/t+RfaK7Ji+DXzt+19/3BoxL20zufJADbjCTowyFc2H8AagidhhV4PQrx4Zf+/Vp3CaFlvAlkMlhfA==}
@@ -404,17 +413,14 @@ packages:
   '@pagopa/io-wallet-oid-federation@0.7.1':
     resolution: {integrity: sha512-VscFocH8oADbrpK6lmOo73sc95DDLD55XZRar77YgS/+SFrQYLak1xhUI2LFlzE38gfJ5kPd2wIpH8M0/+/5Hw==}
 
-  '@pagopa/io-wallet-oid4vci@0.6.1':
-    resolution: {integrity: sha512-ESL4LVWytc45HKWvtLmOGwwdJlKVtF4y43FpJScUjf073Prj+9nNCKY8vy5l1xjuOmusAesaLoFj7AqcOkqW5Q==}
+  '@pagopa/io-wallet-oid4vci@0.6.2':
+    resolution: {integrity: sha512-a2396PpagT3u9Lur1SKJHoVYN7B+08Si0lmJnpSHsyERNZNdqACrPwuPEMPyEzOqtxtZRhpOsrmbwrZtXhbj2Q==}
 
-  '@pagopa/io-wallet-oid4vp@0.6.1':
-    resolution: {integrity: sha512-wod5hp7ar72uQFOiKFf6ZSzeLyDSgDrj0yvg1i3MzWpRuyNwmKmRJfpQJ1rz9T2sYx7xD7m6j8EiTycqONYpEw==}
+  '@pagopa/io-wallet-oid4vp@0.6.2':
+    resolution: {integrity: sha512-ydIDtC+XBV3FhQQo55NBDnsbe59rLBTtGMPkauXwtJ3h7QU4SoWT+88wo+DCyvzMuJNlkcLX5A+V0ML4HGQ5Uw==}
 
   '@pagopa/io-wallet-oid4vp@0.7.1':
     resolution: {integrity: sha512-DsHP9tzCTwNEli/U9iCFPw9/TAQi40nYWGlX4Hb/EvyTUvQt/kEm/p9Tt/P/IUVIkde5o3kwO2eWlqOq8WCruA==}
-
-  '@pagopa/io-wallet-utils@0.6.1':
-    resolution: {integrity: sha512-VZs317i4NNV0fAPHWnzNjoikTWuMmN6W4EL5Fv68azhwIKUHfT3Z2wfU8jIAFhhgDJ9q+Vyg/a16GbN9lX8NGw==}
 
   '@pagopa/io-wallet-utils@0.6.2':
     resolution: {integrity: sha512-CyFo5irkQegMpfCEpttBwJ+7iwV3xL0XvRttsTCiVp+f8dwkNgjjgdQowMiMRoCedBkCsAHADSRKMLGS+cybUw==}
@@ -570,29 +576,37 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sd-jwt/core@0.15.0':
-    resolution: {integrity: sha512-H+I8OcZj8/f6GZxNSblJqJXi6Mo/W5sUcVNiW9K6kc0rEGt+na111zS1vpjbG6QEJT/YC9egIVUHXNJlNIlWxw==}
-    engines: {node: '>=18'}
+  '@sd-jwt/core@0.17.0':
+    resolution: {integrity: sha512-8NM2kZFjBxNT7JE+UukhcXDEiTq/6LSltVx2R2BlL2NlbYaT29Eln+vKyULNDI8FaRbh4lierLguPJGba4E5uA==}
+    engines: {node: '>=20'}
 
-  '@sd-jwt/crypto-nodejs@0.15.0':
-    resolution: {integrity: sha512-qWoXeJL/knLUDYJ5s3elOwT5iakGz3gGpjdM3F9Xghq0lx6MdOUEBdLoJuGzhkyxCVg2eBNewLqsaeg7h2Ik/Q==}
-    engines: {node: '>=18'}
+  '@sd-jwt/crypto-nodejs@0.17.0':
+    resolution: {integrity: sha512-sOhBz3SYmHrrqahgHO11tJje2YBYGKnuEOUMETeERL+9nyUiervOMrIZELUrrx+z3vgK0tEgyxUGebnrpzfv6g==}
+    engines: {node: '>=20'}
 
-  '@sd-jwt/decode@0.15.0':
-    resolution: {integrity: sha512-c9PX4/Cnl1G0pSUXU236lkDx1AzkbgGKFnevBaVIPX8WlJl0nII345uDW/KWCV4rs5Ci8j4ZviWVOJm8TCt2fg==}
-    engines: {node: '>=18'}
+  '@sd-jwt/decode@0.17.0':
+    resolution: {integrity: sha512-1qBA0nfsYdAPb/s+n+uWfeaYRVaiDYBg/cL7iDpPcSS8Zq8rtHFwR86KhQfRk8WR5V4cKO7p+njK/8LweqlHxg==}
+    engines: {node: '>=20'}
 
-  '@sd-jwt/present@0.15.0':
-    resolution: {integrity: sha512-Wf/KUKDe06QjnRBzaN6fMAtYPVynQZ+hJOSnpDiNU3E2k3X1KB/rPy7J4uT08ch3ZwJN+08FR7aFsrKvWjjsmg==}
-    engines: {node: '>=18'}
+  '@sd-jwt/jwt-status-list@0.17.1':
+    resolution: {integrity: sha512-5vcOQsEmWwCkh7uEU7iwSaZ9aDH7nSNLnt48dTc6X5UrF9qWNFkVf8r/juBfuzSy2JlxRZQitVYGhyactiXxHA==}
+    engines: {node: '>=20'}
 
-  '@sd-jwt/types@0.15.0':
-    resolution: {integrity: sha512-3b/jz4xkQ9HAOVtnR5s+R9qzqPUig8EvTK4kDOL1rSdTHSQ8E50+Gji1k2m/0hF/DP4EskWc5iQJKrk2qRohaQ==}
-    engines: {node: '>=18'}
+  '@sd-jwt/present@0.17.0':
+    resolution: {integrity: sha512-qh226z4H76uMVfFfqvltV9d0oz2N9S2REURy2HcVFKhsa1fSYZXdKkhg4S102iwp9fEELEPyCnLkW26+qwWLcg==}
+    engines: {node: '>=20'}
 
-  '@sd-jwt/utils@0.15.0':
-    resolution: {integrity: sha512-eHenn93LQD1DirBwz8bgE5vEH+sJaKKP+1y9kk2OGuPh1vLiw1hT0O7zlvRVHf9Z9SFYe09ZVucH0jDkjo5OAw==}
-    engines: {node: '>=18'}
+  '@sd-jwt/sd-jwt-vc@0.17.1':
+    resolution: {integrity: sha512-rkbkAfZSJM6gLyOn+eKqzFRrsztfpo+k8odKkXv+psmmZURnOleVvECJHdn2v3ggn6HSqa5uiiH7WkjNiHmGMA==}
+    engines: {node: '>=20'}
+
+  '@sd-jwt/types@0.17.0':
+    resolution: {integrity: sha512-XMZprAzSst+ze6JXoMttV3zrUNTL9VFAzHWChENTlFuh9tM6gy+/hJjFyTO0RVO0SRRNl2c7eMeYu7byLMj6Jg==}
+    engines: {node: '>=20'}
+
+  '@sd-jwt/utils@0.17.0':
+    resolution: {integrity: sha512-Xe6GgO3tzjQrKbwVgtrE4LkB8Prcl0zCX+LDFC0QCzsvrks1jEFSPpcpP5Ge/ESBK6LrNG/srBKOQlFM/RuGsg==}
+    engines: {node: '>=20'}
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -638,6 +652,9 @@ packages:
 
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
+
+  '@types/node-forge@1.3.14':
+    resolution: {integrity: sha512-mhVF2BnD4BO+jtOp7z1CdzaK4mbuK0LLQYAvdOLqHTavxFNq4zA1EmYkpnFjP8HOUzedfQkRnp0E2ulSAYSzAw==}
 
   '@types/node@24.1.0':
     resolution: {integrity: sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==}
@@ -1391,6 +1408,10 @@ packages:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
 
+  node-forge@1.3.2:
+    resolution: {integrity: sha512-6xKiQ+cph9KImrRh0VsjH2d8/GXA4FIMlgU4B757iI1ApvcyA9VlouP0yZJha01V+huImO+kKMU7ih+2+E14fw==}
+    engines: {node: '>= 6.13.0'}
+
   node-gyp-build-optional-packages@5.1.1:
     resolution: {integrity: sha512-+P72GAjVAbTxjjwUmwjVrqrdZROD4nf8KgpBoDxqXXTiYZZt/ud60dE5yvCSr9lRO8e8yv6kgJIC0K0PfZFVQw==}
     hasBin: true
@@ -1421,6 +1442,9 @@ packages:
   p-locate@5.0.0:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
+
+  pako@2.1.0:
+    resolution: {integrity: sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==}
 
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
@@ -2077,18 +2101,12 @@ snapshots:
       - supports-color
       - vitest
 
-  '@pagopa/io-wallet-oauth2@0.6.1':
+  '@pagopa/io-wallet-oauth2@0.6.2':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-utils': 0.6.1
+      '@pagopa/io-wallet-utils': 0.6.2
       js-base64: 3.7.8
-      zod: 3.25.76
-
-  '@pagopa/io-wallet-oid-federation@0.6.1':
-    dependencies:
-      '@openid-federation/core': 0.2.0
-      '@openid4vc/utils': 0.3.0-alpha-20250714110838
       zod: 3.25.76
 
   '@pagopa/io-wallet-oid-federation@0.6.2':
@@ -2103,24 +2121,24 @@ snapshots:
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vci@0.6.1':
+  '@pagopa/io-wallet-oid4vci@0.6.2':
     dependencies:
       '@openid-federation/core': 0.2.0
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vci': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oauth2': 0.6.1
-      '@pagopa/io-wallet-oid4vp': 0.6.1
-      '@pagopa/io-wallet-utils': 0.6.1
+      '@pagopa/io-wallet-oauth2': 0.6.2
+      '@pagopa/io-wallet-oid4vp': 0.6.2
+      '@pagopa/io-wallet-utils': 0.6.2
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vp@0.6.1':
+  '@pagopa/io-wallet-oid4vp@0.6.2':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vp': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oid-federation': 0.6.2
-      '@pagopa/io-wallet-utils': 0.6.2
+      '@pagopa/io-wallet-oid-federation': 0.7.1
+      '@pagopa/io-wallet-utils': 0.7.1
       zod: 3.25.76
 
   '@pagopa/io-wallet-oid4vp@0.7.1':
@@ -2131,10 +2149,6 @@ snapshots:
       '@pagopa/io-wallet-oid-federation': 0.7.1
       '@pagopa/io-wallet-utils': 0.7.1
       zod: 3.25.76
-
-  '@pagopa/io-wallet-utils@0.6.1':
-    dependencies:
-      '@openid4vc/utils': 0.3.0-alpha-20250714110838
 
   '@pagopa/io-wallet-utils@0.6.2':
     dependencies:
@@ -2310,31 +2324,43 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.46.1':
     optional: true
 
-  '@sd-jwt/core@0.15.0':
+  '@sd-jwt/core@0.17.0':
     dependencies:
-      '@sd-jwt/decode': 0.15.0
-      '@sd-jwt/present': 0.15.0
-      '@sd-jwt/types': 0.15.0
-      '@sd-jwt/utils': 0.15.0
+      '@sd-jwt/decode': 0.17.0
+      '@sd-jwt/present': 0.17.0
+      '@sd-jwt/types': 0.17.0
+      '@sd-jwt/utils': 0.17.0
 
-  '@sd-jwt/crypto-nodejs@0.15.0': {}
+  '@sd-jwt/crypto-nodejs@0.17.0': {}
 
-  '@sd-jwt/decode@0.15.0':
+  '@sd-jwt/decode@0.17.0':
     dependencies:
-      '@sd-jwt/types': 0.15.0
-      '@sd-jwt/utils': 0.15.0
+      '@sd-jwt/types': 0.17.0
+      '@sd-jwt/utils': 0.17.0
 
-  '@sd-jwt/present@0.15.0':
+  '@sd-jwt/jwt-status-list@0.17.1':
     dependencies:
-      '@sd-jwt/decode': 0.15.0
-      '@sd-jwt/types': 0.15.0
-      '@sd-jwt/utils': 0.15.0
+      '@sd-jwt/types': 0.17.0
+      '@sd-jwt/utils': 0.17.0
+      pako: 2.1.0
 
-  '@sd-jwt/types@0.15.0': {}
-
-  '@sd-jwt/utils@0.15.0':
+  '@sd-jwt/present@0.17.0':
     dependencies:
-      '@sd-jwt/types': 0.15.0
+      '@sd-jwt/decode': 0.17.0
+      '@sd-jwt/types': 0.17.0
+      '@sd-jwt/utils': 0.17.0
+
+  '@sd-jwt/sd-jwt-vc@0.17.1':
+    dependencies:
+      '@sd-jwt/core': 0.17.0
+      '@sd-jwt/jwt-status-list': 0.17.1
+      '@sd-jwt/utils': 0.17.0
+
+  '@sd-jwt/types@0.17.0': {}
+
+  '@sd-jwt/utils@0.17.0':
+    dependencies:
+      '@sd-jwt/types': 0.17.0
       js-base64: 3.7.8
 
   '@tsconfig/node10@1.0.11': {}
@@ -2382,6 +2408,10 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/mime@1.3.5': {}
+
+  '@types/node-forge@1.3.14':
+    dependencies:
+      '@types/node': 24.1.0
 
   '@types/node@24.1.0':
     dependencies:
@@ -3210,6 +3240,8 @@ snapshots:
 
   negotiator@1.0.0: {}
 
+  node-forge@1.3.2: {}
+
   node-gyp-build-optional-packages@5.1.1:
     dependencies:
       detect-libc: 2.1.1
@@ -3243,6 +3275,8 @@ snapshots:
   p-locate@5.0.0:
     dependencies:
       p-limit: 3.1.0
+
+  pako@2.1.0: {}
 
   parent-module@1.0.1:
     dependencies:

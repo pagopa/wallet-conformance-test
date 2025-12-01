@@ -28,10 +28,12 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
   const kid = KSUID.randomSync().string;
   const exportedPair: KeyPair = {
     privateKey: parseWithErrorHandling(jsonWebKeySchema, {
+      alg: "ES256",
       kid: kid,
       ...priv,
     }) as KeyPairJwk,
     publicKey: parseWithErrorHandling(jsonWebKeySchema, {
+      alg: "ES256",
       kid: kid,
       ...pub,
     }) as KeyPairJwk,
