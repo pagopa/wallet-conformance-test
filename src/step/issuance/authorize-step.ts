@@ -11,7 +11,6 @@ import {
   ParseAuthorizeRequestOptions,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
-import { decodeProtectedHeader } from "jose";
 
 import {
   fetchWithRetries,
@@ -47,9 +46,9 @@ export interface AuthorizeStepOptions {
   clientId: string;
 
   /**
-   * Credential token produced by the issuer
+   * Credential tokens produced by the issuer
    */
-  personIdentificationData: string;
+  credentials: string[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -83,12 +82,14 @@ export class AuthorizeDefaultStep extends StepFlow {
     const { unitKey } = options.walletAttestation;
 
     return this.execute<AuthorizeExecuteResponse>(async () => {
-      log.info("Fetching Authorize Request from", `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`);
+      log.info(
+        "Fetching Authorize Request from",
+        `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`,
+      );
       const fetchAuthorize = await fetchWithRetries(
         `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`,
         this.config.network,
       );
-      //TODO: Repat the call, second time should not succeed
 
       const requestObjectJwt = await fetchAuthorize.response.text();
 
@@ -104,9 +105,8 @@ export class AuthorizeDefaultStep extends StepFlow {
         authorizeRequest = await parseAuthorizeRequest(
           parseAuthorizeRequestOptions,
         );
-      log.info(JSON.stringify(authorizeRequest, null, 4))
       } catch (e) {
-        log.info("Failed to parse authorize request: ", e);
+        log.info("Failed to parse authorize request:", e);
         throw new Error(
           "Failed to parse authorize request object from response",
         );
@@ -120,7 +120,9 @@ export class AuthorizeDefaultStep extends StepFlow {
         );
       }
 
-      const rpKey = options.rpMetadata.jwks.keys.find((key) => key.use === "enc");
+      const rpKey = options.rpMetadata.jwks.keys.find(
+        (key) => key.use === "enc",
+      );
       if (!rpKey) {
         log.error("No encryption key found in RP Metadata JWKS");
         throw new Error("No encryption key found in RP Metadata JWKS");
@@ -147,13 +149,13 @@ export class AuthorizeDefaultStep extends StepFlow {
           requestObject: authorizeRequest,
           rpMetadata: options.rpMetadata,
           signer,
-          vp_token: [options.personIdentificationData],
+          vp_token: options.credentials,
         };
 
       const authorizationResponse = await createAuthorizationResponse(
         createAuthorizationResponseOptions,
       );
-      log.info(authorizationResponse)
+      log.info(authorizationResponse);
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
