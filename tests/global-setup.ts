@@ -1,12 +1,14 @@
 import type { Server } from "http";
 
-import { createLogger, loadConfig } from "@/logic";
-import { createServer } from "@/trust-anchor/server";
+import { createLogger } from "@/logic/logs";
+import { loadConfigWithHierarchy } from "@/logic/utils";
+
+import { createServer } from "../src/trust-anchor/server";
 
 let server: Server;
 
 export default async function setup() {
-  const config = loadConfig("./config.ini");
+  const config = loadConfigWithHierarchy();
   const port = config.server.port;
   const app = createServer();
   const baseLog = createLogger().withTag("globalSetup");

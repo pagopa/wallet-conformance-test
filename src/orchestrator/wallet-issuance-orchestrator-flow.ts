@@ -5,7 +5,7 @@ import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-feder
 import { loadAttestation } from "@/functions";
 import {
   createLogger,
-  loadConfig,
+  loadConfigWithHierarchy,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -28,7 +28,7 @@ export class WalletIssuanceOrchestratorFlow {
     this.issuanceConfig = issuanceConfig;
     this.log = this.log.withTag(this.issuanceConfig.name);
 
-    this.config = loadConfig("./config.ini");
+    this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
       format: this.config.logging.log_format,
@@ -37,7 +37,9 @@ export class WalletIssuanceOrchestratorFlow {
     });
 
     this.log.info("Setting Up Wallet conformance Tests - Issuance Flow");
-    this.log.info("Configuration Loaded from config.ini");
+    this.log.info(
+      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
+    );
 
     this.log.info(
       "Configuration Loaded:\n",
