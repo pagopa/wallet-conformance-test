@@ -1,16 +1,17 @@
 /* eslint-disable max-lines-per-function */
+import { issuerRegistry } from "#/config";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { decodeJwt } from "jose";
-import { beforeAll, describe, expect, test } from "vitest";
 
 // Import test configuration - this will register all configurations
 import "../test.config";
 
-import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
-import { FetchMetadataStepResponse } from "@/step/fetch-metadata-step";
-import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
+import { decodeJwt } from "jose";
+import { beforeAll, describe, expect, test } from "vitest";
 
-import { issuerRegistry } from "../config/test-registry";
+import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
+import { FetchMetadataStepResponse } from "@/step";
+import { PushedAuthorizationRequestResponse } from "@/step/issuance";
+
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
 
 // Get the test configuration from the registry

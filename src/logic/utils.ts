@@ -4,11 +4,15 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
 
-import { Config, FetchWithRetriesResponse } from "@/types";
+import {
+  Config,
+  configSchema,
+  FetchWithRetriesResponse,
+  KeyPair,
+} from "@/types";
 
-import { verifyJwt } from ".";
-import { generateKey } from "../logic/jwk";
-import { KeyPair } from "../types";
+import { generateKey } from "./jwk";
+import { verifyJwt } from "./jwt";
 
 // Re-export config loading functions
 export {

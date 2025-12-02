@@ -11,19 +11,17 @@ export default async function setup() {
   const config = loadConfigWithHierarchy();
   const port = config.server.port;
   const app = createServer();
-  const baseLog = createLogger();
+  const baseLog = createLogger().withTag("globalSetup");
 
   server = app.listen(port, () => {
-    baseLog.info(
-      `[globalSetup] Trust anchor server running at http://localhost:${port}`,
-    );
+    baseLog.info(`Trust anchor server running at http://localhost:${port}`);
   });
 
   // teardown
   return async () => {
     await new Promise<void>((resolve) => {
       server.close(() => {
-        baseLog.info("[globalSetup] Trust anchor stopped");
+        baseLog.info("Trust anchor stopped");
         resolve();
       });
     });
