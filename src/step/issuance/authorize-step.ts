@@ -1,4 +1,3 @@
-import { Jwk } from "@pagopa/io-wallet-oauth2";
 import {
   AuthorizationResponse,
   sendAuthorizationResponseAndExtractCode,
@@ -155,7 +154,6 @@ export class AuthorizeDefaultStep extends StepFlow {
       const authorizationResponse = await createAuthorizationResponse(
         createAuthorizationResponseOptions,
       );
-      log.info(authorizationResponse);
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
