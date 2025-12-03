@@ -139,7 +139,7 @@ function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
   // Check also in metadata entries for additional jwks like openid_credential_verifier
   if (decodedEntityConfig.metadata) {
     for (const entry of Object.values(decodedEntityConfig.metadata)) {
-      if (entry.jwks) {
+      if (entry.jwks && Array.isArray(entry.jwks.keys)) {
         keys.push(
           ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
         );
