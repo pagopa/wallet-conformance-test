@@ -1,7 +1,8 @@
 import { PresentationTestConfiguration } from "#/config";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
-import { createLogger, loadConfig } from "@/logic";
+import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import { createLogger, loadConfigWithHierarchy } from "@/logic";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
@@ -24,7 +25,7 @@ export class WalletPresentationOrchestratorFlow {
     this.presentationConfig = presentationConfig;
     this.log = this.log.withTag(this.presentationConfig.name);
 
-    this.config = loadConfig("./config.ini");
+    this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
       format: this.config.logging.log_format,
@@ -84,23 +85,56 @@ export class WalletPresentationOrchestratorFlow {
           "/.well-known/openid-federation",
       });
 
+      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
+
+      this.log.info("Loading Wallet Attestation...");
+      const walletAttestation = await loadAttestation({
+        trustAnchorBaseUrl,
+        trustAnchorJwksPath:
+          this.config.trust.federation_trust_anchors_jwks_path,
+        wallet: this.config.wallet,
+      });
+
+      this.log.info("Wallet Attestation Loaded.");
       const entityStatementClaims =
         fetchMetadataResponse.response?.entityStatementClaims;
       if (!entityStatementClaims) {
         throw new Error("Entity Statement Claims not found in response");
       }
 
-      const verifierMetadata =
+      const rpMetadata =
         entityStatementClaims.metadata.openid_credential_verifier;
-      if (!verifierMetadata) {
+      if (!rpMetadata) {
         throw new Error(
           "Verifier metadata (openid_credential_verifier) not found",
         );
       }
 
+      const credentials = await loadCredentials(
+        this.config.wallet.credentials_storage_path,
+        ["dc_sd_jwt_PersonIdentificationData"],
+        this.log.error,
+      );
+
+      const pid = credentials.dc_sd_jwt_PersonIdentificationData
+        ? credentials.dc_sd_jwt_PersonIdentificationData
+        : await createMockSdJwt(
+            {
+              iss: this.config.issuance.url,
+              trustAnchorBaseUrl,
+              trustAnchorJwksPath:
+                this.config.trust.federation_trust_anchors_jwks_path,
+            },
+            this.config.wallet.backup_storage_path,
+            this.config.wallet.credentials_storage_path,
+          );
+
       const authorizationRequestResponse =
         await this.authorizationRequestStep.run({
           authorizeRequestUrl: this.config.presentation.authorize_request_url,
+          credentials: [pid.compact],
+          rpMetadata,
+          walletAttestation,
         });
 
       return { authorizationRequestResponse, fetchMetadataResponse };
