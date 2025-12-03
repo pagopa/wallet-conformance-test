@@ -108,7 +108,10 @@ export function getEncryptJweCallback(
   header: JWEHeaderParameters & { alg: string; enc: string },
 ): EncryptJweCallback {
   return async (_: JweEncryptor, data: string) => {
-    const key = await importJWK(publicKey, header.alg);
+    const key = await importJWK(
+      publicKey,
+      header.alg,
+    );
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
