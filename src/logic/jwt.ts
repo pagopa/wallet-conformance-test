@@ -8,6 +8,7 @@ import type {
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
 import {
+  CompactEncrypt,
   CompactSign,
   FlattenedEncrypt,
   importJWK,
@@ -105,18 +106,27 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
 
 export function getEncryptJweCallback(
   publicKey: Jwk,
-  header: JWEHeaderParameters,
+  header: JWEHeaderParameters & { alg: string; enc: string },
 ): EncryptJweCallback {
   return async (_: JweEncryptor, data: string) => {
 
-    const josePublicKey = await importJWK(publicKey, header.alg!)
-    const jwe = await new FlattenedEncrypt(new TextEncoder().encode(data))
-      .setProtectedHeader(header)
-      .encrypt(josePublicKey);
+    const key = await importJWK(
+      publicKey,
+      header.alg,
+    );
+
+    const plaintext = new TextEncoder().encode(data);
+    const jwe = await new CompactEncrypt(plaintext)
+      .setProtectedHeader({
+        alg: header.alg,
+        enc: header.enc,
+        kid: publicKey.kid,
+      })
+      .encrypt(key);
 
     return {
       encryptionJwk: publicKey,
-      jwe: jwe.ciphertext,
+      jwe: jwe,
     };
   };
 }
