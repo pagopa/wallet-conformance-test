@@ -22,6 +22,7 @@ import {
 import { AttestationResponse } from "@/types";
 
 import { StepFlow, StepResult } from "../step-flow";
+import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
@@ -133,6 +134,38 @@ export class AuthorizeDefaultStep extends StepFlow {
         method: "jwk" as const,
         publicJwk: unitKey.publicKey,
       };
+
+      const credentialsWithKb = await Promise.all(options.credentials.map((sdJwt) => createVpTokenSdJwt({
+        sdJwt, 
+        dpopJwk: unitKey.privateKey,
+        nonce: authorizeRequest.nonce,
+        sd_hash: authorizeRequest.sd_hash,
+        client_id: options.clientId,
+      })));
+      const wiaWithKb = await createVpTokenSdJwt({
+        sdJwt: options.walletAttestation.attestation,
+        dpopJwk: unitKey.privateKey,
+        nonce: authorizeRequest.nonce,
+        sd_hash: authorizeRequest.sd_hash,
+        client_id: options.clientId,
+      });
+
+      /**
+       * VP Token structure:
+       * {
+       *   "0": "<Credential 1 with KB-JWT>",
+       *   "1": "<Credential 2 with KB-JWT>",
+       *   ...
+       *   "<N>": "<WIA with KB-JWT>"
+       * }
+       */
+      const vp_token = credentialsWithKb.reduce((acc, credential, index) => ({
+        ...acc,
+          [index]: credential,
+        }),
+        { [options.credentials.length]: wiaWithKb } as Record<string, string>,
+      );
+
       const createAuthorizationResponseOptions: CreateAuthorizationResponseOptions =
         {
           callbacks: {
@@ -148,8 +181,7 @@ export class AuthorizeDefaultStep extends StepFlow {
           client_id: options.clientId,
           requestObject: authorizeRequest,
           rpMetadata: options.rpMetadata,
-          signer,
-          vp_token: options.credentials,
+          vp_token,
         };
 
       const authorizationResponse = await createAuthorizationResponse(
