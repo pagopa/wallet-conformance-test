@@ -16,6 +16,7 @@ import {
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
+import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { StepFlow, type StepResult } from "@/step/step-flow";
 
 export interface AuthorizationRequestOptions {
@@ -65,6 +66,27 @@ export class AuthorizationRequestStep extends StepFlow {
 
       const { unitKey } = options.walletAttestation;
 
+      const credentialsWithKb = await Promise.all(
+        [...options.credentials, options.walletAttestation.attestation].map(
+          (sdJwt) =>
+            createVpTokenSdJwt({
+              client_id: parsedQrCode.clientId,
+              dpopJwk: unitKey.privateKey,
+              nonce: requestObject.nonce,
+              sd_hash: requestObject.sd_hash as string,
+              sdJwt,
+            }),
+        ),
+      );
+
+      const vpToken = credentialsWithKb.reduce(
+        (acc, credential, currIndex) => {
+          acc[currIndex] = credential;
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
       const authorizationResponse = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
@@ -84,7 +106,7 @@ export class AuthorizationRequestStep extends StepFlow {
           method: "jwk" as const,
           publicJwk: unitKey.publicKey,
         },
-        vp_token: options.credentials,
+        vp_token: vpToken,
       });
 
       return {
