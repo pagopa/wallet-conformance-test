@@ -1,7 +1,5 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { parse } from "ini";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
@@ -15,6 +13,13 @@ import {
 
 import { generateKey } from "./jwk";
 import { verifyJwt } from "./jwt";
+
+// Re-export config loading functions
+export {
+  type CliOptions,
+  loadConfig,
+  loadConfigWithHierarchy,
+} from "./config-loader";
 
 export const partialCallbacks: Partial<CallbackContext> = {
   fetch,
@@ -47,19 +52,6 @@ export async function fetchWithRetries(
   }
 
   throw new Error(`Request failed with no retries left: aborting`);
-}
-
-/**
- * Loads and parses the configuration from a specified INI file.
- *
- * @param fileName The path to the INI configuration file.
- * @returns The parsed configuration object.
- */
-export function loadConfig(fileName: string): Config {
-  const textConfig = readFileSync(fileName, "utf-8");
-  const parsed = parseWithErrorHandling(configSchema, parse(textConfig));
-
-  return parsed;
 }
 
 /**
