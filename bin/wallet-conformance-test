@@ -6,6 +6,8 @@ const args = process.argv.slice(2);
 
 if (args[0] === 'test:issuance') {
   execSync('pnpm test:issuance', { stdio: 'inherit' });
+} if (args[0] === 'test:issuance:unsafe') {
+  execSync('pnpm test:issuance:unsafe', { stdio: 'inherit' });
 } if (args[0] === 'test:presentation') {
   execSync('pnpm test:presentation', { stdio: 'inherit' });
 } else {
