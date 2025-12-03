@@ -35,8 +35,7 @@ export async function createVpTokenSdJwt({
     .setIssuedAt()
     .sign(dpopPrivateKey);
 
-  // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
-  const vpToken = [sdJwt, kbJwt].join("~");
+    // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
 
-  return vpToken;
+    return sdJwt.endsWith('~') ? `${sdJwt}${kbJwt}` : `${sdJwt}~${kbJwt}`;   
 }
