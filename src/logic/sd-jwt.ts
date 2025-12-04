@@ -1,4 +1,5 @@
 import { importJWK, SignJWT } from "jose";
+import crypto from "node:crypto";
 
 import { KeyPair } from "@/types";
 
@@ -11,15 +12,15 @@ export async function createVpTokenSdJwt({
   client_id,
   dpopJwk,
   nonce,
-  sd_hash,
   sdJwt,
 }: {
   client_id: string;
   dpopJwk: KeyPair["privateKey"];
   nonce: string;
-  sd_hash: string;
   sdJwt: string;
 }): Promise<string> {
+  const sd_hash = crypto.createHash("sha256").update(sdJwt).digest("base64url");
+
   // Use dpop key for the key binding JWT (wallet holder's key)
   const dpopPrivateKey = await importJWK(dpopJwk, "ES256");
   const kbJwt = await new SignJWT({
@@ -35,6 +36,7 @@ export async function createVpTokenSdJwt({
     .sign(dpopPrivateKey);
 
   // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
+  const vpToken = [sdJwt, kbJwt].join("~");
 
-  return sdJwt.endsWith("~") ? `${sdJwt}${kbJwt}` : `${sdJwt}~${kbJwt}`;
+  return vpToken;
 }

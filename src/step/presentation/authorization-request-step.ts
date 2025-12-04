@@ -1,9 +1,12 @@
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
+  type AuthorizationResponse,
+  sendAuthorizationResponseAndExtractCode,
+} from "@pagopa/io-wallet-oid4vci";
+import {
   type AuthorizationRequestObject,
   createAuthorizationResponse,
-  CreateOpenid4vpAuthorizationResponseResult,
   fetchAuthorizationRequest,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
@@ -31,7 +34,7 @@ export type AuthorizationRequestStepResponse = StepResult & {
 };
 
 export interface AuthorizationStepResponse {
-  authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
+  authorizationResponse: AuthorizationResponse;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
 }
@@ -73,7 +76,6 @@ export class AuthorizationRequestStep extends StepFlow {
               client_id: parsedQrCode.clientId,
               dpopJwk: unitKey.privateKey,
               nonce: requestObject.nonce,
-              sd_hash: requestObject.sd_hash as string,
               sdJwt,
             }),
         ),
@@ -87,7 +89,13 @@ export class AuthorizationRequestStep extends StepFlow {
         {} as Record<string, string>,
       );
 
-      const authorizationResponse = await createAuthorizationResponse({
+      const signer = {
+        alg: "ES256",
+        method: "jwk" as const,
+        publicJwk: unitKey.publicKey,
+      };
+
+      const authorizationResponseResult = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
           encryptJwe: getEncryptJweCallback(verifierKey, {
@@ -101,13 +109,28 @@ export class AuthorizationRequestStep extends StepFlow {
         client_id: parsedQrCode.clientId,
         requestObject,
         rpMetadata: options.rpMetadata,
-        signer: {
-          alg: "ES256",
-          method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
-        },
+        signer,
         vp_token: vpToken,
       });
+
+      if (!authorizationResponseResult.jarm) {
+        throw new Error(
+          "JARM response is missing in the authorization response",
+        );
+      }
+
+      const authorizationResponse =
+        await sendAuthorizationResponseAndExtractCode({
+          authorizationResponseJarm:
+            authorizationResponseResult.jarm.responseJwt,
+          callbacks: {
+            verifyJwt,
+          },
+          iss: unitKey.publicKey.kid,
+          presentationResponseUri: responseUri,
+          signer,
+          state: requestObject.state,
+        });
 
       return {
         authorizationResponse,
