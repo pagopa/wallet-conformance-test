@@ -16,7 +16,8 @@ export abstract class StepFlow {
     this.config = config;
     this.log = logger;
   }
-  abstract run(...args: any[]): Promise<StepResult>;
+
+  abstract run(...args: unknown[]): Promise<StepResult>;
 
   protected async execute<T>(
     action: () => Promise<T>,
