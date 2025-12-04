@@ -7,6 +7,7 @@ import {
   AuthorizationRequestObject,
   createAuthorizationResponse,
   CreateAuthorizationResponseOptions,
+  fetchAuthorizationRequest,
   parseAuthorizeRequest,
   ParseAuthorizeRequestOptions,
 } from "@pagopa/io-wallet-oid4vp";
@@ -19,16 +20,15 @@ import {
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
+import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { AttestationResponse } from "@/types";
 
 import { StepFlow, StepResult } from "../step-flow";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
   headers: Headers;
   requestObject?: AuthorizationRequestObject;
-  requestObjectJwt?: string;
   status: number;
 }
 
@@ -38,6 +38,11 @@ export interface AuthorizeStepOptions {
    * if not provided, the endpoint will be loaded from the issuer metadata
    */
   authorizationEndpoint: string;
+
+  /**
+   * Base URL of the issuer.
+   */
+  baseUrl: string;
 
   /**
    * Client ID of the OAuth2 Client,
@@ -92,28 +97,12 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.config.network,
       );
 
-      const requestObjectJwt = await fetchAuthorize.response.text();
+      const { requestObject } = await fetchAuthorizationRequest({
+        authorizeRequestUrl: options.authorizationEndpoint,
+        callbacks: { verifyJwt },
+      });
 
-      let authorizeRequest: AuthorizationRequestObject;
-      try {
-        const parseAuthorizeRequestOptions: ParseAuthorizeRequestOptions = {
-          callbacks: {
-            verifyJwt,
-          },
-          requestObjectJwt,
-        };
-
-        authorizeRequest = await parseAuthorizeRequest(
-          parseAuthorizeRequestOptions,
-        );
-      } catch (e) {
-        log.info("Failed to parse authorize request:", e);
-        throw new Error(
-          "Failed to parse authorize request object from response",
-        );
-      }
-
-      const responseUri = authorizeRequest.response_uri;
+      const responseUri = requestObject.response_uri;
       if (!responseUri) {
         log.error("Failed to obtain response uri from authorization request");
         throw new Error(
@@ -129,25 +118,21 @@ export class AuthorizeDefaultStep extends StepFlow {
         throw new Error("No encryption key found in RP Metadata JWKS");
       }
 
-      const signer = {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: unitKey.publicKey,
-      };
-
-      const credentialsWithKb = await Promise.all(options.credentials.map((sdJwt) => createVpTokenSdJwt({
-        sdJwt, 
-        dpopJwk: unitKey.privateKey,
-        nonce: authorizeRequest.nonce,
-        sd_hash: authorizeRequest.sd_hash,
-        client_id: options.clientId,
-      })));
+      const credentialsWithKb = await Promise.all(
+        options.credentials.map((sdJwt) =>
+          createVpTokenSdJwt({
+            client_id: options.clientId,
+            dpopJwk: unitKey.privateKey,
+            nonce: requestObject.nonce,
+            sdJwt,
+          }),
+        ),
+      );
       const wiaWithKb = await createVpTokenSdJwt({
-        sdJwt: options.walletAttestation.attestation,
-        dpopJwk: unitKey.privateKey,
-        nonce: authorizeRequest.nonce,
-        sd_hash: authorizeRequest.sd_hash,
         client_id: options.clientId,
+        dpopJwk: unitKey.privateKey,
+        nonce: requestObject.nonce,
+        sdJwt: options.walletAttestation.attestation,
       });
 
       /**
@@ -159,8 +144,9 @@ export class AuthorizeDefaultStep extends StepFlow {
        *   "<N>": "<WIA with KB-JWT>"
        * }
        */
-      const vp_token = credentialsWithKb.reduce((acc, credential, index) => ({
-        ...acc,
+      const vp_token = credentialsWithKb.reduce(
+        (acc, credential, index) => ({
+          ...acc,
           [index]: credential,
         }),
         { [options.credentials.length]: wiaWithKb } as Record<string, string>,
@@ -179,7 +165,7 @@ export class AuthorizeDefaultStep extends StepFlow {
             signJwt: signJwtCallback([unitKey.privateKey]),
           },
           client_id: options.clientId,
-          requestObject: authorizeRequest,
+          requestObject: requestObject,
           rpMetadata: options.rpMetadata,
           vp_token,
         };
@@ -187,7 +173,6 @@ export class AuthorizeDefaultStep extends StepFlow {
       const authorizationResponse = await createAuthorizationResponse(
         createAuthorizationResponseOptions,
       );
-      log.info(authorizationResponse);
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
@@ -198,10 +183,14 @@ export class AuthorizeDefaultStep extends StepFlow {
         callbacks: {
           verifyJwt,
         },
-        iss: unitKey.publicKey.kid,
+        iss: options.baseUrl,
         presentationResponseUri: responseUri,
-        signer,
-        state: authorizeRequest.state,
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        state: requestObject.state,
       };
 
       return {
@@ -209,8 +198,7 @@ export class AuthorizeDefaultStep extends StepFlow {
           sendAuthorizationResponseAndExtractCodeOptions,
         ),
         headers: fetchAuthorize.response.headers,
-        requestObject: authorizeRequest,
-        requestObjectJwt,
+        requestObject: requestObject,
         status: fetchAuthorize.response.status,
       };
     });

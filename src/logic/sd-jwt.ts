@@ -1,40 +1,45 @@
-import { KeyPair } from "@/types";
 import { importJWK, SignJWT } from "jose";
+import crypto from "node:crypto";
+
+import { KeyPair } from "@/types";
 
 /**
  * Creates a VP Token SD-JWT by combining the provided SD-JWT with a Key Binding JWT (KB-JWT).
- * @param param0 
- * @returns 
+ * @param param0
+ * @returns
  */
 export async function createVpTokenSdJwt({
-  sdJwt,
+  client_id,
   dpopJwk,
   nonce,
-  sd_hash,
-  client_id,
+  sdJwt,
 }: {
-  sdJwt: string;
+  client_id: string;
   dpopJwk: KeyPair["privateKey"];
   nonce: string;
-  sd_hash: string;
-  client_id: string;
-}): Promise<string> { 
+  sdJwt: string;
+}): Promise<string> {
+  const suffixedSdJwt = sdJwt.endsWith("~") ? sdJwt : `${sdJwt}~`;
+  const sd_hash = crypto
+    .createHash("sha256")
+    .update(suffixedSdJwt)
+    .digest("base64url");
 
-    // Use dpop key for the key binding JWT (wallet holder's key)
-    const dpopPrivateKey = await importJWK(dpopJwk, "ES256");
-    const kbJwt = await new SignJWT({
-        nonce,
-        sd_hash,
-    })
+  // Use dpop key for the key binding JWT (wallet holder's key)
+  const dpopPrivateKey = await importJWK(dpopJwk, "ES256");
+  const kbJwt = await new SignJWT({
+    nonce,
+    sd_hash,
+  })
     .setProtectedHeader({
-        alg: "ES256",
-        typ: "kb+jwt",
+      alg: "ES256",
+      typ: "kb+jwt",
     })
     .setAudience(client_id)
     .setIssuedAt()
     .sign(dpopPrivateKey);
 
-    // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
+  // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
 
-    return sdJwt.endsWith('~') ? `${sdJwt}${kbJwt}` : `${sdJwt}~${kbJwt}`;   
+  return `${suffixedSdJwt}${kbJwt}`;
 }
