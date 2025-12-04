@@ -38,7 +38,7 @@ export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
       );
 
     const key = await importJWK(privateJwk as JWK, signer.alg);
-    const jwt = await new SignJWT(payload).setProtectedHeader(header).sign(key)
+    const jwt = await new SignJWT(payload).setProtectedHeader(header).sign(key);
     return {
       jwt,
       signerJwk: publicJwk as Jwk,
@@ -108,10 +108,7 @@ export function getEncryptJweCallback(
   header: JWEHeaderParameters & { alg: string; enc: string },
 ): EncryptJweCallback {
   return async (_: JweEncryptor, data: string) => {
-    const key = await importJWK(
-      publicKey,
-      header.alg,
-    );
+    const key = await importJWK(publicKey, header.alg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)

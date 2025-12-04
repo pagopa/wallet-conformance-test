@@ -19,7 +19,11 @@ export async function createVpTokenSdJwt({
   nonce: string;
   sdJwt: string;
 }): Promise<string> {
-  const sd_hash = crypto.createHash("sha256").update(sdJwt).digest("base64url");
+  const suffixedSdJwt = sdJwt.endsWith("~") ? sdJwt : `${sdJwt}~`;
+  const sd_hash = crypto
+    .createHash("sha256")
+    .update(suffixedSdJwt)
+    .digest("base64url");
 
   // Use dpop key for the key binding JWT (wallet holder's key)
   const dpopPrivateKey = await importJWK(dpopJwk, "ES256");
@@ -35,7 +39,7 @@ export async function createVpTokenSdJwt({
     .setIssuedAt()
     .sign(dpopPrivateKey);
 
-    // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
+  // <Issuer-signed JWT>~<Disclosure 1>~...~<Disclosure N>~<KB-JWT>
 
-    return sdJwt.endsWith('~') ? `${sdJwt}${kbJwt}` : `${sdJwt}~${kbJwt}`;   
+  return `${suffixedSdJwt}${kbJwt}`;
 }

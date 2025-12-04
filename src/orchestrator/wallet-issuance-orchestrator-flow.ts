@@ -192,6 +192,7 @@ export class WalletIssuanceOrchestratorFlow {
           authorizeOptions?.authorizationEndpoint ??
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.authorization_endpoint,
+        baseUrl: authorizeOptions?.baseUrl ?? this.config.issuance.url,
         clientId:
           authorizeOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid,
