@@ -59,14 +59,6 @@ export class AuthorizationRequestStep extends StepFlow {
         throw new Error("response_uri is missing in the request object");
       }
 
-      const verifierKey = options.rpMetadata.jwks.keys.find(
-        (key) => key.use === "enc",
-      );
-
-      if (!verifierKey) {
-        throw new Error("no encryption key found in verifier metadata");
-      }
-
       const { unitKey } = options.walletAttestation;
 
       const credentialsWithKb = await Promise.all(
@@ -89,13 +81,32 @@ export class AuthorizationRequestStep extends StepFlow {
         {} as Record<string, string>,
       );
 
+      const {
+        authorization_encrypted_response_alg,
+        authorization_encrypted_response_enc,
+        jwks,
+      } = options.rpMetadata;
+
+      const verifierKeys = {
+        enc: jwks.keys.find((k) => k.use === "enc"),
+        sig: jwks.keys.find((k) => k.use === "sig"),
+      };
+
+      if (!verifierKeys.sig) {
+        throw new Error("no signature key found in verifier metadata");
+      }
+
+      if (!verifierKeys.enc) {
+        throw new Error("no encryption key found in verifier metadata");
+      }
+
       const authorizationResponseResult = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(verifierKey, {
-            alg: options.rpMetadata.authorization_encrypted_response_alg,
-            enc: options.rpMetadata.authorization_encrypted_response_enc,
-            kid: verifierKey.kid,
+          encryptJwe: getEncryptJweCallback(verifierKeys.enc, {
+            alg: authorization_encrypted_response_alg,
+            enc: authorization_encrypted_response_enc,
+            kid: verifierKeys.enc.kid,
             typ: "oauth-authz-req+jwt",
           }),
           signJwt: signJwtCallback([unitKey.privateKey]),
@@ -124,7 +135,7 @@ export class AuthorizationRequestStep extends StepFlow {
           signer: {
             alg: "ES256",
             method: "jwk" as const,
-            publicJwk: unitKey.publicKey,
+            publicJwk: verifierKeys.sig,
           },
           state: requestObject.state,
         });
