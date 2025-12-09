@@ -89,12 +89,6 @@ export class AuthorizationRequestStep extends StepFlow {
         {} as Record<string, string>,
       );
 
-      const signer = {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: unitKey.publicKey,
-      };
-
       const authorizationResponseResult = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
@@ -109,7 +103,6 @@ export class AuthorizationRequestStep extends StepFlow {
         client_id: parsedQrCode.clientId,
         requestObject,
         rpMetadata: options.rpMetadata,
-        signer,
         vp_token: vpToken,
       });
 
@@ -128,7 +121,11 @@ export class AuthorizationRequestStep extends StepFlow {
           },
           iss: unitKey.publicKey.kid,
           presentationResponseUri: responseUri,
-          signer,
+          signer: {
+            alg: "ES256",
+            method: "jwk" as const,
+            publicJwk: unitKey.publicKey,
+          },
           state: requestObject.state,
         });
 
