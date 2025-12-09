@@ -105,12 +105,20 @@ export class AuthorizeDefaultStep extends StepFlow {
         );
       }
 
-      const rpKey = options.rpMetadata.jwks.keys.find(
+      const rpEncKey = options.rpMetadata.jwks.keys.find(
         (key) => key.use === "enc",
       );
-      if (!rpKey) {
+      if (!rpEncKey) {
         log.error("No encryption key found in RP Metadata JWKS");
         throw new Error("No encryption key found in RP Metadata JWKS");
+      }
+
+      const rpSigKey = options.rpMetadata.jwks.keys.find(
+        (key) => key.use === "sig",
+      );
+      if (!rpSigKey) {
+        log.error("No signature key found in RP Metadata JWKS");
+        throw new Error("No signature key found in RP Metadata JWKS");
       }
 
       const credentialsWithKb = await Promise.all(
@@ -152,10 +160,10 @@ export class AuthorizeDefaultStep extends StepFlow {
         {
           callbacks: {
             ...partialCallbacks,
-            encryptJwe: getEncryptJweCallback(rpKey, {
+            encryptJwe: getEncryptJweCallback(rpEncKey, {
               alg: options.rpMetadata.authorization_encrypted_response_alg,
               enc: options.rpMetadata.authorization_encrypted_response_enc,
-              kid: rpKey.kid,
+              kid: rpEncKey.kid,
               typ: "oauth-authz-req+jwt",
             }),
             signJwt: signJwtCallback([unitKey.privateKey]),
@@ -185,7 +193,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: rpSigKey,
         },
         state: requestObject.state,
       };

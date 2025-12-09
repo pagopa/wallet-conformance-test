@@ -201,7 +201,7 @@ export class WalletIssuanceOrchestratorFlow {
           authorizeOptions?.requestUri ??
           pushedAuthorizationRequestResponse.response?.request_uri!,
         rpMetadata:
-          pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
+          authorizeOptions?.rpMetadata ??
           entityStatementClaims.metadata?.openid_credential_verifier,
         walletAttestation:
           pushedAuthorizationRequestOptions?.walletAttestation ??
