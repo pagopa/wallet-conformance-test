@@ -1,4 +1,3 @@
-import { Jwk } from "@pagopa/io-wallet-oauth2";
 import {
   AuthorizationResponse,
   sendAuthorizationResponseAndExtractCode,
@@ -7,9 +6,7 @@ import {
   AuthorizationRequestObject,
   createAuthorizationResponse,
   CreateAuthorizationResponseOptions,
-  fetchAuthorizationRequest,
   parseAuthorizeRequest,
-  ParseAuthorizeRequestOptions,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
@@ -27,9 +24,7 @@ import { StepFlow, StepResult } from "../step-flow";
 
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
-  headers: Headers;
   requestObject?: AuthorizationRequestObject;
-  status: number;
 }
 
 export interface AuthorizeStepOptions {
@@ -97,9 +92,9 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.config.network,
       );
 
-      const { requestObject } = await fetchAuthorizationRequest({
-        authorizeRequestUrl: options.authorizationEndpoint,
+      const requestObject = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
+        requestObjectJwt: await fetchAuthorize.response.text(),
       });
 
       const responseUri = requestObject.response_uri;
@@ -152,6 +147,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         { [options.credentials.length]: wiaWithKb } as Record<string, string>,
       );
 
+      log.info("Creating Authorization Response...");
       const createAuthorizationResponseOptions: CreateAuthorizationResponseOptions =
         {
           callbacks: {
@@ -178,6 +174,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         throw new Error("Failed to create authorization response JARM");
       }
 
+      log.info("Sending Authorization Response...");
       const sendAuthorizationResponseAndExtractCodeOptions = {
         authorizationResponseJarm: authorizationResponse.jarm.responseJwt,
         callbacks: {
@@ -197,9 +194,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         authorizeResponse: await sendAuthorizationResponseAndExtractCode(
           sendAuthorizationResponseAndExtractCodeOptions,
         ),
-        headers: fetchAuthorize.response.headers,
         requestObject: requestObject,
-        status: fetchAuthorize.response.status,
       };
     });
   }
