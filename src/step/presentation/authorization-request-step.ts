@@ -130,7 +130,7 @@ export class AuthorizationRequestStep extends StepFlow {
           callbacks: {
             verifyJwt,
           },
-          iss: unitKey.publicKey.kid,
+          iss: this.config.presentation.verifier,
           presentationResponseUri: responseUri,
           signer: {
             alg: "ES256",
