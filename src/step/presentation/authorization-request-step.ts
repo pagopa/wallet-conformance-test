@@ -1,13 +1,10 @@
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
-  type AuthorizationResponse,
-  sendAuthorizationResponseAndExtractCode,
-} from "@pagopa/io-wallet-oid4vci";
-import {
   type AuthorizationRequestObject,
   createAuthorizationResponse,
   fetchAuthorizationRequest,
+  fetchAuthorizationResponse,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
@@ -34,8 +31,8 @@ export type AuthorizationRequestStepResponse = StepResult & {
 };
 
 export interface AuthorizationStepResponse {
-  authorizationResponse: AuthorizationResponse;
   parsedQrCode: ParsedQrCode;
+  redirectUri: string;
   requestObject: AuthorizationRequestObject;
 }
 
@@ -123,26 +120,17 @@ export class AuthorizationRequestStep extends StepFlow {
         );
       }
 
-      const authorizationResponse =
-        await sendAuthorizationResponseAndExtractCode({
-          authorizationResponseJarm:
-            authorizationResponseResult.jarm.responseJwt,
-          callbacks: {
-            verifyJwt,
-          },
-          iss: this.config.presentation.verifier,
-          presentationResponseUri: responseUri,
-          signer: {
-            alg: "ES256",
-            method: "jwk" as const,
-            publicJwk: verifierKeys.sig,
-          },
-          state: requestObject.state,
-        });
+      const { redirect_uri } = await fetchAuthorizationResponse({
+        authorizationResponseJarm: authorizationResponseResult.jarm.responseJwt,
+        callbacks: {
+          ...partialCallbacks.fetch,
+        },
+        presentationResponseUri: responseUri,
+      });
 
       return {
-        authorizationResponse,
         parsedQrCode,
+        redirectUri: redirect_uri,
         requestObject,
       };
     });
