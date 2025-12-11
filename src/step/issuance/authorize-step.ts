@@ -54,7 +54,7 @@ export interface AuthorizeStepOptions {
   /**
    * Request URI obtained from the Pushed Authorization Request step
    */
-  requestUri: string;
+  requestUri?: string;
 
   /**
    * RP Metadata to be included in the Authorization Response

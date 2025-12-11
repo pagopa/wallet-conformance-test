@@ -79,16 +79,13 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         ],
         callbacks:
           callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
-        clientId: unitKey.publicKey.kid!,
+        clientId: unitKey.publicKey.kid,
         codeChallengeMethodsSupported: ["S256"],
         dpop: {
           signer: {
             alg: "ES256",
             method: "jwk",
-            publicJwk: {
-              ...unitKey.publicKey,
-              kid: unitKey.publicKey.kid!,
-            },
+            publicJwk: unitKey.publicKey,
           },
         },
         redirectUri: "https://client.example.org/cb",
