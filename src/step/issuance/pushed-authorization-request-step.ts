@@ -11,7 +11,7 @@ import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
-  PushedAuthorizationResponse;
+  PushedAuthorizationResponse & { client_id: string };
 
 export interface PushedAuthorizationRequestOptions {
   /**
@@ -40,7 +40,7 @@ export interface PushedAuthorizationRequestOptions {
 }
 
 export type PushedAuthorizationRequestResponse = StepResult & {
-  response?: PushedAuthorizationResponse;
+  response?: PushedAuthorizationRequestExecuteResponse;
 };
 
 export interface PushedAuthorizationRequestStepOptions {
@@ -114,7 +114,10 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
       log.debug(`Fetching PAR response from ${JSON.stringify(fetchOptions)}`);
 
-      return await fetchPushedAuthorizationResponse(fetchOptions);
+      return {
+        ...(await fetchPushedAuthorizationResponse(fetchOptions)),
+        client_id: options.clientId,
+      };
     });
   }
 }
