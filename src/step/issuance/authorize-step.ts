@@ -81,14 +81,18 @@ export class AuthorizeDefaultStep extends StepFlow {
     log.info(`Starting Authorize Step`);
 
     const { unitKey } = options.walletAttestation;
+    const authorizeUrl = `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`;
 
     return this.execute<AuthorizeExecuteResponse>(async () => {
-      log.info(
-        "Fetching Authorize Request from",
-        `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`,
-      );
+      log.info("Fetching Authorize Request from", authorizeUrl);
       const fetchAuthorize = await fetchWithRetries(
-        `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`,
+        authorizeUrl,
+        this.config.network,
+      );
+
+      log.info("Performing redundant fetch");
+      const redundantFetchAuthorize = await fetchWithRetries(
+        authorizeUrl,
         this.config.network,
       );
 
@@ -203,6 +207,7 @@ export class AuthorizeDefaultStep extends StepFlow {
           sendAuthorizationResponseAndExtractCodeOptions,
         ),
         requestObject: requestObject,
+        retryStatus: redundantFetchAuthorize.response.status,
       };
     });
   }
