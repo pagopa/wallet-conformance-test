@@ -10,7 +10,6 @@ import { SignCallback } from "@pagopa/io-wallet-oid-federation";
 import {
   CompactEncrypt,
   CompactSign,
-  FlattenedEncrypt,
   importJWK,
   JWEHeaderParameters,
   type JWK,

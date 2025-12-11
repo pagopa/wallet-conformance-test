@@ -139,7 +139,7 @@ export class WalletIssuanceOrchestratorFlow {
         await this.pushedAuthorizationRequestStep.run({
           clientId:
             pushedAuthorizationRequestOptions?.clientId ??
-            walletAttestationResponse.unitKey.publicKey.kid!,
+            walletAttestationResponse.unitKey.publicKey.kid,
           credentialConfigurationId:
             this.issuanceConfig.credentialConfigurationId,
           popAttestation:
@@ -148,7 +148,7 @@ export class WalletIssuanceOrchestratorFlow {
           pushedAuthorizationRequestEndpoint:
             pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
             entityStatementClaims.metadata?.oauth_authorization_server
-              ?.pushed_authorization_request_endpoint!,
+              ?.pushed_authorization_request_endpoint,
           walletAttestation:
             pushedAuthorizationRequestOptions?.walletAttestation ??
             walletAttestationResponse,
@@ -172,7 +172,7 @@ export class WalletIssuanceOrchestratorFlow {
           this.log.error("missing pid: creating new one");
           throw new Error("missing pid: creating new one");
         }
-      } catch (e) {
+      } catch {
         personIdentificationData = await createMockSdJwt(
           {
             iss: this.config.issuance.url,
@@ -197,7 +197,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentials: [personIdentificationData.compact],
         requestUri:
           authorizeOptions?.requestUri ??
-          pushedAuthorizationRequestResponse.response?.request_uri!,
+          pushedAuthorizationRequestResponse.response?.request_uri,
         rpMetadata:
           authorizeOptions?.rpMetadata ??
           entityStatementClaims.metadata?.openid_credential_verifier,
