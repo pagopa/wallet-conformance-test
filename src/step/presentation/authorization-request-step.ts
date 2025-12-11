@@ -59,14 +59,13 @@ export class AuthorizationRequestStep extends StepFlow {
       const { unitKey } = options.walletAttestation;
 
       const credentialsWithKb = await Promise.all(
-        [...options.credentials, options.walletAttestation.attestation].map(
-          (sdJwt) =>
-            createVpTokenSdJwt({
-              client_id: parsedQrCode.clientId,
-              dpopJwk: unitKey.privateKey,
-              nonce: requestObject.nonce,
-              sdJwt,
-            }),
+        options.credentials.map((sdJwt) =>
+          createVpTokenSdJwt({
+            client_id: parsedQrCode.clientId,
+            dpopJwk: unitKey.privateKey,
+            nonce: requestObject.nonce,
+            sdJwt,
+          }),
         ),
       );
 
