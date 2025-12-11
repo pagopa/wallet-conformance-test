@@ -50,7 +50,7 @@ describe("Wallet Attestation Unit Test", () => {
     const trustChain = jwt.protectedHeader.trust_chain as string[] | undefined;
     expect(trustChain).toBeDefined();
     expect(Array.isArray(trustChain)).toBe(true);
-    expect(trustChain!.length).toBe(2);
+    expect(trustChain?.length).toBe(2);
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
@@ -62,17 +62,19 @@ describe("Wallet Attestation Unit Test", () => {
     expect(jwt.payload.wallet_name).toBe(config.wallet.wallet_name);
 
     // Verify trust chain structure
-    const [wpEntityConfig, taEntityStatement] = trustChain!;
+    const [wpEntityConfig, taEntityStatement] = trustChain ?? [];
 
     // Verify Wallet Provider Entity Configuration
-    const wpDecoded = decodeJwt(wpEntityConfig!);
+    const wpDecoded = decodeJwt(wpEntityConfig ?? "");
     expect(wpDecoded.iss).toBe(config.wallet.wallet_provider_base_url);
     expect(wpDecoded.sub).toBe(config.wallet.wallet_provider_base_url);
     expect(wpDecoded.metadata).toBeDefined();
-    expect((wpDecoded.metadata as any).wallet_provider).toBeDefined();
+    expect(
+      (wpDecoded.metadata as { wallet_provider: unknown }).wallet_provider,
+    ).toBeDefined();
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
-    const taDecoded = decodeJwt(taEntityStatement!);
+    const taDecoded = decodeJwt(taEntityStatement ?? "");
     expect(taDecoded.iss).toBe("https://127.0.0.1:3001"); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
@@ -111,6 +113,6 @@ describe("Wallet Attestation Unit Test", () => {
     const trustChain = jwt.protectedHeader.trust_chain as string[] | undefined;
     expect(trustChain).toBeDefined();
     expect(Array.isArray(trustChain)).toBe(true);
-    expect(trustChain!.length).toBe(2);
+    expect(trustChain?.length).toBe(2);
   });
 });

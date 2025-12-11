@@ -66,7 +66,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(decodedData);
       log.testCompleted();
@@ -78,7 +78,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
@@ -111,7 +111,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
@@ -148,7 +148,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
