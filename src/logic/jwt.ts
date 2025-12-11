@@ -1,11 +1,21 @@
 import type {
+  EncryptJweCallback,
+  JweEncryptor,
   Jwk,
   SignJwtCallback,
   VerifyJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
-import { CompactSign, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
+import {
+  CompactEncrypt,
+  CompactSign,
+  importJWK,
+  JWEHeaderParameters,
+  type JWK,
+  jwtVerify,
+  SignJWT,
+} from "jose";
 
 import { jwkFromSigner } from "./jwk";
 
@@ -17,7 +27,7 @@ import { jwkFromSigner } from "./jwk";
  */
 export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
   return async (signer, { header, payload }) => {
-    const publicJwk = jwkFromSigner(signer);
+    const publicJwk = await jwkFromSigner(signer);
     const privateJwk = privateJwks.find(
       (jwkPrv) => jwkPrv.kid === publicJwk.kid,
     );
@@ -76,7 +86,7 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
  * @returns A promise that resolves to an object containing the verification result.
  */
 export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-  const publicJwk = jwkFromSigner(signer);
+  const publicJwk = await jwkFromSigner(signer);
   const key = await importJWK(publicJwk as JWK, signer.alg);
 
   try {
@@ -92,3 +102,26 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
     };
   }
 };
+
+export function getEncryptJweCallback(
+  publicKey: Jwk,
+  header: JWEHeaderParameters & { alg: string; enc: string },
+): EncryptJweCallback {
+  return async (_: JweEncryptor, data: string) => {
+    const key = await importJWK(publicKey, header.alg);
+
+    const plaintext = new TextEncoder().encode(data);
+    const jwe = await new CompactEncrypt(plaintext)
+      .setProtectedHeader({
+        alg: header.alg,
+        enc: header.enc,
+        kid: publicKey.kid,
+      })
+      .encrypt(key);
+
+    return {
+      encryptionJwk: publicKey,
+      jwe: jwe,
+    };
+  };
+}

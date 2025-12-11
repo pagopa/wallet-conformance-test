@@ -4,12 +4,7 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "path";
 
-import {
-  Config,
-  configSchema,
-  FetchWithRetriesResponse,
-  KeyPair,
-} from "@/types";
+import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import { generateKey } from "./jwk";
 import { verifyJwt } from "./jwt";
@@ -21,7 +16,10 @@ export {
   loadConfigWithHierarchy,
 } from "./config-loader";
 
-export const partialCallbacks: Partial<CallbackContext> = {
+export const partialCallbacks: Pick<
+  CallbackContext,
+  "fetch" | "generateRandom" | "hash" | "verifyJwt"
+> = {
   fetch,
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
