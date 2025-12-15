@@ -3,8 +3,8 @@ import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-f
 import {
   type AuthorizationRequestObject,
   createAuthorizationResponse,
+  CreateOpenid4vpAuthorizationResponseResult,
   fetchAuthorizationRequest,
-  fetchAuthorizationResponse,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
@@ -31,8 +31,8 @@ export type AuthorizationRequestStepResponse = StepResult & {
 };
 
 export interface AuthorizationStepResponse {
+  authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
-  redirectUri: string;
   requestObject: AuthorizationRequestObject;
 }
 
@@ -96,7 +96,7 @@ export class AuthorizationRequestStep extends StepFlow {
         throw new Error("no encryption key found in verifier metadata");
       }
 
-      const authorizationResponseResult = await createAuthorizationResponse({
+      const authorizationResponse = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
           encryptJwe: getEncryptJweCallback(verifierKeys.enc, {
@@ -113,23 +113,15 @@ export class AuthorizationRequestStep extends StepFlow {
         vp_token: vpToken,
       });
 
-      if (!authorizationResponseResult.jarm) {
+      if (!authorizationResponse.jarm) {
         throw new Error(
           "JARM response is missing in the authorization response",
         );
       }
 
-      const { redirect_uri } = await fetchAuthorizationResponse({
-        authorizationResponseJarm: authorizationResponseResult.jarm.responseJwt,
-        callbacks: {
-          ...partialCallbacks.fetch,
-        },
-        presentationResponseUri: responseUri,
-      });
-
       return {
+        authorizationResponse,
         parsedQrCode,
-        redirectUri: redirect_uri,
         requestObject,
       };
     });
