@@ -135,12 +135,6 @@ export class AuthorizeDefaultStep extends StepFlow {
           }),
         ),
       );
-      const wiaWithKb = await createVpTokenSdJwt({
-        client_id: options.clientId,
-        dpopJwk: unitKey.privateKey,
-        nonce: requestObject.nonce,
-        sdJwt: options.walletAttestation.attestation,
-      });
 
       /**
        * VP Token structure:
@@ -156,7 +150,7 @@ export class AuthorizeDefaultStep extends StepFlow {
           ...acc,
           [index]: credential,
         }),
-        { [options.credentials.length]: wiaWithKb } as Record<string, string>,
+        {}
       );
 
       log.info("Creating Authorization Response...");
