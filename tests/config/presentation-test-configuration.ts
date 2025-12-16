@@ -1,7 +1,4 @@
-import {
-  FetchMetadataDefaultStep,
-  FetchMetadataOptions,
-} from "@/step/fetch-metadata-step";
+import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
 
 import { TestConfiguration } from "./test-registry";
 

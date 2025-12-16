@@ -1,19 +1,19 @@
+import { IssuerTestConfiguration } from "#/config";
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { IssuerTestConfiguration } from "tests/config/issuance-test-configuration";
 
 import { loadAttestation } from "@/functions";
-import { signJwtCallback } from "@/logic/jwt";
-import { createLogger } from "@/logic/logs";
-import { loadConfig, partialCallbacks } from "@/logic/utils";
 import {
-  FetchMetadataDefaultStep,
-  FetchMetadataStepResponse,
-} from "@/step/fetch-metadata-step";
+  createLogger,
+  loadConfigWithHierarchy,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
+import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
-} from "@/step/issuance/pushed-authorization-request-step";
+} from "@/step/issuance";
 import { Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
@@ -28,7 +28,7 @@ export class WalletIssuanceOrchestratorFlow {
     this.issuanceConfig = issuanceConfig;
     this.log = this.log.withTag(this.issuanceConfig.name);
 
-    this.config = loadConfig("./config.ini");
+    this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
       format: this.config.logging.log_format,
@@ -37,7 +37,9 @@ export class WalletIssuanceOrchestratorFlow {
     });
 
     this.log.info("Setting Up Wallet conformance Tests - Issuance Flow");
-    this.log.info("Configuration Loaded from config.ini");
+    this.log.info(
+      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
+    );
 
     this.log.info(
       "Configuration Loaded:\n",
@@ -92,6 +94,7 @@ export class WalletIssuanceOrchestratorFlow {
 
       this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
+        trustAnchorBaseUrl: `https://127.0.0.1:${this.config.server.port}`,
         trustAnchorJwksPath:
           this.config.trust.federation_trust_anchors_jwks_path,
         wallet: this.config.wallet,

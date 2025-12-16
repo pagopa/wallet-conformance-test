@@ -1,11 +1,8 @@
-import {
-  FetchMetadataDefaultStep,
-  FetchMetadataOptions,
-} from "@/step/fetch-metadata-step";
+import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
-} from "@/step/issuance/pushed-authorization-request-step";
+} from "@/step/issuance";
 
 import { TestConfiguration } from "./test-registry";
 

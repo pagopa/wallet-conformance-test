@@ -3,8 +3,9 @@ import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 import { Schema } from "zod";
 
-import { fetchWithRetries } from "@/logic/utils";
-import { StepFlow, StepResult } from "@/step/step-flow";
+import { fetchWithRetries } from "@/logic";
+
+import { StepFlow, StepResult } from "./step-flow";
 
 export interface FetchMetadataExecuteResponse {
   entityStatementClaims?: any;
