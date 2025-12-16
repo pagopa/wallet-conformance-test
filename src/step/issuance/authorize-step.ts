@@ -90,12 +90,6 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.config.network,
       );
 
-      log.info("Performing redundant fetch");
-      const redundantFetchAuthorize = await fetchWithRetries(
-        authorizeUrl,
-        this.config.network,
-      );
-
       const requestObject = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
         requestObjectJwt: await fetchAuthorize.response.text(),
@@ -150,7 +144,7 @@ export class AuthorizeDefaultStep extends StepFlow {
           ...acc,
           [index]: credential,
         }),
-        {}
+        {},
       );
 
       log.info("Creating Authorization Response...");
@@ -196,12 +190,20 @@ export class AuthorizeDefaultStep extends StepFlow {
         state: requestObject.state,
       };
 
+      const authorizeResponse = await sendAuthorizationResponseAndExtractCode(
+        sendAuthorizationResponseAndExtractCodeOptions,
+      );
+
+      // log.info("Performing redundant fetch");
+      // const redundantFetchAuthorize = await fetchWithRetries(
+      //   authorizeUrl,
+      //   this.config.network,
+      // );
+
       return {
-        authorizeResponse: await sendAuthorizationResponseAndExtractCode(
-          sendAuthorizationResponseAndExtractCodeOptions,
-        ),
+        authorizeResponse,
         requestObject: requestObject,
-        retryStatus: redundantFetchAuthorize.response.status,
+        // retryStatus: redundantFetchAuthorize.response.status,
       };
     });
   }
