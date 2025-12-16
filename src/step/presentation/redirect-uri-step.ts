@@ -27,7 +27,7 @@ export class RedirectUriStep extends StepFlow {
     const log = this.log.withTag(this.tag);
     log.info("Starting redirect uri step...");
 
-    return this.execute<RedirectUriStepResult>(async () => {
+    return this.execute<RedirectUriStepResult | undefined>(async () => {
       if (!options.authorizationResponse.jarm) {
         throw new Error(
           "JARM response is missing in the authorization response",
@@ -43,9 +43,12 @@ export class RedirectUriStep extends StepFlow {
         presentationResponseUri: options.responseUri,
       });
 
-      const redirectUri = new URL(redirect_uri);
+      if (!redirect_uri) {
+        return undefined;
+      }
 
-      const responseCode = redirectUri.searchParams.get("code");
+      const redirectUri = new URL(redirect_uri);
+      const responseCode = redirectUri.searchParams.get("response_code");
       if (!responseCode) {
         throw new Error("Response code is missing in the redirect URI");
       }
