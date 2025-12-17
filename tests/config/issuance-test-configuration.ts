@@ -2,6 +2,8 @@ import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
+  TokenRequestDefaultStep,
+  TokenRequestStepOptions,
 } from "@/step/issuance";
 import {
   AuthorizeDefaultStep,
@@ -29,6 +31,10 @@ export class IssuerTestConfiguration implements TestConfiguration {
     options?: PushedAuthorizationRequestOptions;
     stepClass: typeof PushedAuthorizationRequestDefaultStep;
   };
+  public readonly tokenRequest?: {
+    options?: TokenRequestStepOptions;
+    stepClass: typeof TokenRequestDefaultStep;
+  };
 
   constructor(config: {
     authorize?: {
@@ -44,6 +50,10 @@ export class IssuerTestConfiguration implements TestConfiguration {
     pushedAuthorizationRequest?: {
       options?: PushedAuthorizationRequestOptions;
       stepClass?: typeof PushedAuthorizationRequestDefaultStep;
+    };
+    tokenRequest?: {
+      options?: TokenRequestStepOptions;
+      stepClass: typeof TokenRequestDefaultStep;
     };
   }) {
     this.name = config.name;
@@ -62,6 +72,14 @@ export class IssuerTestConfiguration implements TestConfiguration {
     this.authorize = {
       options: config.authorize?.options,
       stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
+    };
+    this.authorize = {
+      options: config.authorize?.options,
+      stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
+    };
+    this.tokenRequest = {
+      options: config.tokenRequest?.options,
+      stepClass: config.tokenRequest?.stepClass ?? TokenRequestDefaultStep,
     };
   }
 
@@ -83,6 +101,9 @@ export class IssuerTestConfiguration implements TestConfiguration {
       name: "Issuance Happy Flow",
       pushedAuthorizationRequest: {
         stepClass: PushedAuthorizationRequestDefaultStep,
+      },
+      tokenRequest: {
+        stepClass: TokenRequestDefaultStep,
       },
     });
   }

@@ -21,6 +21,11 @@ export interface PushedAuthorizationRequestOptions {
   clientId?: string;
 
   /**
+   * Code Verifier used in the PAR
+   */
+  codeVerifier: string;
+
+  /**
    * DPoP JWT used to authenticate the client,
    * if not provided, the DPoP will be created using the wallet attestation
    */
@@ -45,6 +50,7 @@ export type PushedAuthorizationRequestResponse = StepResult & {
 
 export interface PushedAuthorizationRequestStepOptions {
   clientId: string;
+  codeVerifier: string;
   credentialConfigurationId: string;
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
@@ -81,6 +87,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
         clientId: unitKey.publicKey.kid,
         codeChallengeMethodsSupported: ["S256"],
+        pkceCodeVerifier: options.codeVerifier,
         dpop: {
           signer: {
             alg: "ES256",
