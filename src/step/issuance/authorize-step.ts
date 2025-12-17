@@ -207,7 +207,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         authorizeResponse,
         requestObjectJwt,
         requestObject: requestObject,
-        iss: options.baseUrl
+        iss: options.baseUrl,
         // retryStatus: redundantFetchAuthorize.response.status,
       };
     });
