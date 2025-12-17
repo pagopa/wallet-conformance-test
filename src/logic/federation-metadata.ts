@@ -10,7 +10,7 @@ import { signCallback } from "./jwt";
 import { loadJsonDumps, loadJwks } from "./utils";
 
 export interface CreateFederationMetadataOptions {
-  claims: Omit<ItWalletEntityConfigurationClaimsOptions, 'exp' | 'iat'>;
+  claims: Omit<ItWalletEntityConfigurationClaimsOptions, "exp" | "iat">;
 
   /**
    * The public JWK of the entity to include in the federation metadata's JWKS.
@@ -139,14 +139,14 @@ export const createSubordinateTrustAnchorMetadata = async (
  */
 export interface CreateSubordinateWalletUnitMetadataOptions {
   federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
-  trustAnchorBaseUrl: string;
   sub: string;
+  trustAnchorBaseUrl: string;
   walletBackupStoragePath: string;
 }
 
 /**
  * Creates a subordinate wallet metadata JWT signed by the Trust Anchor.
- *  
+ *
  * @param options Options for creating the subordinate wallet metadata.
  * @returns The signed subordinate wallet metadata JWT.
  */
@@ -163,8 +163,8 @@ export const createSubordinateWalletUnitMetadata = async (
   );
   return await createFederationMetadata({
     claims: {
-      sub: options.sub,
       iss: options.trustAnchorBaseUrl,
+      sub: options.sub,
     },
     entityPublicJwk: walletJwks.publicKey,
     signedJwks,

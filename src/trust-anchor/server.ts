@@ -44,15 +44,13 @@ export const createServer = () => {
       }
 
       // Create the subordinate statement
-      const subordinateStatement = await createSubordinateWalletUnitMetadata(
-        {
-          federationTrustAnchorsJwksPath:
-            config.trust.federation_trust_anchors_jwks_path,
-          trustAnchorBaseUrl,
-          sub,
-          walletBackupStoragePath: config.wallet.backup_storage_path,
-        },
-      );
+      const subordinateStatement = await createSubordinateWalletUnitMetadata({
+        federationTrustAnchorsJwksPath:
+          config.trust.federation_trust_anchors_jwks_path,
+        sub,
+        trustAnchorBaseUrl,
+        walletBackupStoragePath: config.wallet.backup_storage_path,
+      });
 
       res.type("application/entity-statement+jwt").send(subordinateStatement);
     } catch (err) {

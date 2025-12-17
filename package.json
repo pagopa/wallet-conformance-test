@@ -25,6 +25,7 @@
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
     "test:issuance": "vitest run --config vitest.issuance.config.mjs",
+    "test:issuance:unsafe": "NODE_TLS_REJECT_UNAUTHORIZED=0  vitest run --config vitest.issuance.config.mjs",
     "test:presentation": "vitest run --config vitest.presentation.config.mjs"
   },
   "keywords": [],
