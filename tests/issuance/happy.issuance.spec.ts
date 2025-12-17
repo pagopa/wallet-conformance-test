@@ -328,7 +328,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         "string",
       );
       expect(authorizeResponse.response?.authorizeResponse?.iss).toBe(
-        authorizeResponse.response?.iss
+        authorizeResponse.response?.iss,
       );
       log.testCompleted();
     });
