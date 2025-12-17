@@ -18,21 +18,21 @@ export type TokenRequestResponse = StepResult & {
 };
 
 export interface TokenRequestStepOptions {
+  /**
+   * Access Token Endpoint URL
+   */
   accessTokenEndpoint: string;
 
+  /**
+   * Body to be sent as part of the Access Token Request
+   */
   accessTokenRequest: AccessTokenRequest;
 
-  /**
-   * Client ID of the OAuth2 Client,
-   * if not provided, the client ID will be loaded from the wallet attestation public key kid
-   */
-  clientId?: string;
   /**
    * DPoP JWT used to authenticate the client,
    * if not provided, the DPoP will be created using the wallet attestation
    */
   popAttestation: string;
-  redirectUri: string;
 
   /**
    * Wallet Attestation used to authenticate the client,
@@ -64,7 +64,7 @@ export class TokenRequestDefaultStep extends StepFlow {
         },
         tokenRequest: {
           method: "POST",
-          url: options.redirectUri,
+          url: options.accessTokenEndpoint,
         },
       };
       const tokenDPoP = await createTokenDPoP(createTokenDPoPOptions);

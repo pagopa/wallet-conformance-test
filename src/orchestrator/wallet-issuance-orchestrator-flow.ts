@@ -230,11 +230,7 @@ export class WalletIssuanceOrchestratorFlow {
         accessTokenEndpoint: tokenRequestOptions?.accessTokenEndpoint ?? entityStatementClaims.metadata?.oauth_authorization_server
             ?.token_endpoint,
         accessTokenRequest,
-        clientId: tokenRequestOptions?.clientId ??
-          walletAttestationResponse.unitKey.publicKey.kid,
         popAttestation: tokenRequestOptions?.popAttestation ?? clientAttestationDPoP,
-        redirectUri: tokenRequestOptions?.redirectUri ?? entityStatementClaims.metadata?.oauth_authorization_server
-            ?.token_endpoint,
         walletAttestation: tokenRequestOptions?.walletAttestation ?? walletAttestationResponse,
       });
 
