@@ -1,5 +1,5 @@
 import { SDJwt } from "@sd-jwt/core";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 import { parseMdoc } from "@/logic";
 import { Credential } from "@/types";
@@ -18,6 +18,19 @@ export async function loadCredentials(
   types: string[],
   onIgnoreError: (msg: string) => void,
 ): Promise<Record<string, Credential>> {
+
+  try {
+    if (!existsSync(path))
+      mkdirSync(path, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories ${path}: ${err.message}`,
+    );
+  }
+
   const files = readdirSync(path);
   const credentials: Record<string, Credential> = {};
 
