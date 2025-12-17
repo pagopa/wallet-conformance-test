@@ -156,7 +156,7 @@ The primary function of the tool is to run test suites for the main IT Wallet fl
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-1. First rename `config.example.ini` in `config.ini`. 
+1. First rename `config.example.ini` to `config.ini`. 
 
 2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
