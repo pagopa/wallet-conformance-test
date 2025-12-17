@@ -46,7 +46,6 @@ You must have Node.js and npm installed on your system.
     ```bash
     pnpm install 
     ```
-    ```
 
 4. Install the CLI globally using npm:
 
