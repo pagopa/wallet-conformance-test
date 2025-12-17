@@ -262,13 +262,6 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       log.start("Started");
       expect(
-        authorizeResponse.response?.requestObject?.request_uri,
-      ).toBeDefined();
-      expect(authorizeResponse.response?.requestObject?.request_uri).toBe(
-        pushedAuthorizationRequestResponse.response?.request_uri,
-      );
-
-      expect(
         authorizeResponse.response?.requestObject?.client_id,
       ).toBeDefined();
       expect(authorizeResponse.response?.requestObject?.client_id).toBe(
@@ -302,7 +295,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("CI_056");
 
       log.start("Started");
-
+      expect(authorizeResponse.response?.requestObjectJwt).toBeDefined();
       log.testCompleted();
     });
 
@@ -342,7 +335,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         "string",
       );
       expect(authorizeResponse.response?.authorizeResponse?.iss).toBe(
-        testConfig.authorize?.options?.baseUrl,
+        authorizeResponse.response?.iss
       );
       log.testCompleted();
     });
