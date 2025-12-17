@@ -92,7 +92,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.config.network,
       );
 
-      const requestObjectJwt =  await fetchAuthorize.response.text();
+      const requestObjectJwt = await fetchAuthorize.response.text();
       const requestObject = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
         requestObjectJwt,
