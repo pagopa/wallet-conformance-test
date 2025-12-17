@@ -41,7 +41,14 @@ You must have Node.js and npm installed on your system.
     cd wallet-conformance-test
     ```
 
-3. Install the CLI globally using npm:
+3. Install dependencies using npm:
+
+    ```bash
+    pnpm install 
+    ```
+    ```
+
+4. Install the CLI globally using npm:
 
     ```bash
     pnpm install -g
@@ -149,7 +156,9 @@ The primary function of the tool is to run test suites for the main IT Wallet fl
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-First, ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
+1. First rename `config.example.ini` in `config.ini`. 
+
+2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
 Then, run the test command:
 
