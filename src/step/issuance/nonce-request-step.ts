@@ -16,7 +16,7 @@ export interface NonceRequestStepOptions {
   nonceEndpoint: string;
 }
 
-export class TokenRequestDefaultStep extends StepFlow {
+export class NonceRequestDefaultStep extends StepFlow {
   tag = "NONCE_REQUEST";
 
   async run(options: NonceRequestStepOptions): Promise<NonceRequestResponse> {
