@@ -1,8 +1,16 @@
 import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
+import {
+  AuthorizationRequestDefaultStep,
+  AuthorizationRequestOptions,
+} from "@/step/presentation/authorization-request-step";
 
 import { TestConfiguration } from "./test-registry";
 
 interface PresentationTestConfigurationOptions {
+  authorize?: {
+    options?: AuthorizationRequestOptions;
+    stepClass: typeof AuthorizationRequestDefaultStep;
+  };
   fetchMetadata?: {
     options?: FetchMetadataOptions;
     stepClass: typeof FetchMetadataDefaultStep;
@@ -14,6 +22,7 @@ interface PresentationTestConfigurationOptions {
  * Configuration class for Presentation conformance tests
  */
 export class PresentationTestConfiguration implements TestConfiguration {
+  public readonly authorize?: PresentationTestConfigurationOptions["authorize"];
   public readonly fetchMetadata?: PresentationTestConfigurationOptions["fetchMetadata"];
   public readonly name: string;
 
@@ -22,6 +31,10 @@ export class PresentationTestConfiguration implements TestConfiguration {
     this.fetchMetadata = {
       options: config.fetchMetadata?.options,
       stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataDefaultStep,
+    };
+    this.authorize = {
+      options: config.authorize?.options,
+      stepClass: config.authorize?.stepClass ?? AuthorizationRequestDefaultStep,
     };
   }
 
@@ -33,6 +46,9 @@ export class PresentationTestConfiguration implements TestConfiguration {
 
   static createDefault(): PresentationTestConfiguration {
     return new PresentationTestConfiguration({
+      authorize: {
+        stepClass: AuthorizationRequestDefaultStep,
+      },
       fetchMetadata: {
         stepClass: FetchMetadataDefaultStep,
       },

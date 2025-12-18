@@ -8,23 +8,23 @@ import {
   FetchMetadataStepResponse,
 } from "@/step/fetch-metadata-step";
 import {
-  AuthorizationRequestStep,
+  AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResponse,
 } from "@/step/presentation/authorization-request-step";
 import {
-  RedirectUriStep,
+  RedirectUriDefaultStep,
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
 import { Config } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
-  private authorizationRequestStep: AuthorizationRequestStep;
+  private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
   private log = createLogger();
 
   private presentationConfig: PresentationTestConfiguration;
-  private redirectUriStep: RedirectUriStep;
+  private redirectUriStep: RedirectUriDefaultStep;
 
   constructor(presentationConfig: PresentationTestConfiguration) {
     this.presentationConfig = presentationConfig;
@@ -55,12 +55,12 @@ export class WalletPresentationOrchestratorFlow {
       ? new presentationConfig.fetchMetadata.stepClass(this.config, this.log)
       : new FetchMetadataDefaultStep(this.config, this.log);
 
-    this.authorizationRequestStep = new AuthorizationRequestStep(
+    this.authorizationRequestStep = new AuthorizationRequestDefaultStep(
       this.config,
       this.log,
     );
 
-    this.redirectUriStep = new RedirectUriStep(this.config, this.log);
+    this.redirectUriStep = new RedirectUriDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {

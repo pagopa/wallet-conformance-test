@@ -37,7 +37,7 @@ export interface AuthorizationStepResponse {
   responseUri: string;
 }
 
-export class AuthorizationRequestStep extends StepFlow {
+export class AuthorizationRequestDefaultStep extends StepFlow {
   tag = "AUTHORIZATION";
 
   async run(

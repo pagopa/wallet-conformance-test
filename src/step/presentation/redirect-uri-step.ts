@@ -25,7 +25,7 @@ export type RedirectUriStepResult =
       responseCode: string;
     };
 
-export class RedirectUriStep extends StepFlow {
+export class RedirectUriDefaultStep extends StepFlow {
   tag = "REDIRECT URI";
 
   async run(options: RedirectUriOptions): Promise<RedirectUriStepResponse> {
