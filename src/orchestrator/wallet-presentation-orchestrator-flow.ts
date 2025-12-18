@@ -59,7 +59,9 @@ export class WalletPresentationOrchestratorFlow {
       ? new presentationConfig.authorize.stepClass(this.config, this.log)
       : new AuthorizationRequestDefaultStep(this.config, this.log);
 
-    this.redirectUriStep = new RedirectUriDefaultStep(this.config, this.log);
+    this.redirectUriStep = presentationConfig.redirectUri?.stepClass
+      ? new presentationConfig.redirectUri.stepClass(this.config, this.log)
+      : new RedirectUriDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {

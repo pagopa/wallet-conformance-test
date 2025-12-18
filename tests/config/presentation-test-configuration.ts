@@ -3,6 +3,7 @@ import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestOptions,
 } from "@/step/presentation/authorization-request-step";
+import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
 
 import { TestConfiguration } from "./test-registry";
 
@@ -16,6 +17,9 @@ interface PresentationTestConfigurationOptions {
     stepClass: typeof FetchMetadataDefaultStep;
   };
   name: string;
+  redirectUri?: {
+    stepClass: typeof RedirectUriDefaultStep;
+  };
 }
 
 /**
@@ -25,6 +29,7 @@ export class PresentationTestConfiguration implements TestConfiguration {
   public readonly authorize?: PresentationTestConfigurationOptions["authorize"];
   public readonly fetchMetadata?: PresentationTestConfigurationOptions["fetchMetadata"];
   public readonly name: string;
+  public readonly redirectUri?: PresentationTestConfigurationOptions["redirectUri"];
 
   constructor(config: PresentationTestConfigurationOptions) {
     this.name = config.name;
@@ -35,6 +40,9 @@ export class PresentationTestConfiguration implements TestConfiguration {
     this.authorize = {
       options: config.authorize?.options,
       stepClass: config.authorize?.stepClass ?? AuthorizationRequestDefaultStep,
+    };
+    this.redirectUri = {
+      stepClass: config.redirectUri?.stepClass ?? RedirectUriDefaultStep,
     };
   }
 
@@ -53,6 +61,9 @@ export class PresentationTestConfiguration implements TestConfiguration {
         stepClass: FetchMetadataDefaultStep,
       },
       name: "Presentation Happy Flow",
+      redirectUri: {
+        stepClass: RedirectUriDefaultStep,
+      },
     });
   }
 }
