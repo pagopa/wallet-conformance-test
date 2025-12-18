@@ -9,11 +9,11 @@ import { TestConfiguration } from "./test-registry";
 
 interface PresentationTestConfigurationOptions {
   authorize?: {
-    options?: AuthorizationRequestOptions;
+    options?: Partial<AuthorizationRequestOptions>;
     stepClass: typeof AuthorizationRequestDefaultStep;
   };
   fetchMetadata?: {
-    options?: FetchMetadataOptions;
+    options?: Partial<FetchMetadataOptions>;
     stepClass: typeof FetchMetadataDefaultStep;
   };
   name: string;
@@ -26,21 +26,24 @@ interface PresentationTestConfigurationOptions {
  * Configuration class for Presentation conformance tests
  */
 export class PresentationTestConfiguration implements TestConfiguration {
-  public readonly authorize?: PresentationTestConfigurationOptions["authorize"];
-  public readonly fetchMetadata?: PresentationTestConfigurationOptions["fetchMetadata"];
+  public readonly authorize: PresentationTestConfigurationOptions["authorize"];
+  public readonly fetchMetadata: PresentationTestConfigurationOptions["fetchMetadata"];
   public readonly name: string;
-  public readonly redirectUri?: PresentationTestConfigurationOptions["redirectUri"];
+  public readonly redirectUri: PresentationTestConfigurationOptions["redirectUri"];
 
   constructor(config: PresentationTestConfigurationOptions) {
     this.name = config.name;
+
     this.fetchMetadata = {
       options: config.fetchMetadata?.options,
       stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataDefaultStep,
     };
+
     this.authorize = {
       options: config.authorize?.options,
       stepClass: config.authorize?.stepClass ?? AuthorizationRequestDefaultStep,
     };
+
     this.redirectUri = {
       stepClass: config.redirectUri?.stepClass ?? RedirectUriDefaultStep,
     };
