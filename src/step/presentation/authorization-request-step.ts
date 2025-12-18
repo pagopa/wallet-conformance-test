@@ -3,7 +3,7 @@ import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-f
 import {
   type AuthorizationRequestObject,
   createAuthorizationResponse,
-  CreateOpenid4vpAuthorizationResponseResult,
+  type CreateOpenid4vpAuthorizationResponseResult,
   fetchAuthorizationRequest,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
@@ -34,6 +34,7 @@ export interface AuthorizationStepResponse {
   authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
+  responseUri: string;
 }
 
 export class AuthorizationRequestStep extends StepFlow {
@@ -113,16 +114,11 @@ export class AuthorizationRequestStep extends StepFlow {
         vp_token: vpToken,
       });
 
-      if (!authorizationResponse.jarm) {
-        throw new Error(
-          "JARM response is missing in the authorization response",
-        );
-      }
-
       return {
         authorizationResponse,
         parsedQrCode,
         requestObject,
+        responseUri,
       };
     });
   }

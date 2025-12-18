@@ -11,15 +11,20 @@ import {
   AuthorizationRequestStep,
   AuthorizationRequestStepResponse,
 } from "@/step/presentation/authorization-request-step";
+import {
+  RedirectUriStep,
+  RedirectUriStepResponse,
+} from "@/step/presentation/redirect-uri-step";
 import { Config } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
-
   private log = createLogger();
+
   private presentationConfig: PresentationTestConfiguration;
+  private redirectUriStep: RedirectUriStep;
 
   constructor(presentationConfig: PresentationTestConfiguration) {
     this.presentationConfig = presentationConfig;
@@ -54,6 +59,8 @@ export class WalletPresentationOrchestratorFlow {
       this.config,
       this.log,
     );
+
+    this.redirectUriStep = new RedirectUriStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
@@ -63,6 +70,7 @@ export class WalletPresentationOrchestratorFlow {
   async presentation(): Promise<{
     authorizationRequestResponse: AuthorizationRequestStepResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
+    redirectUriResponse: RedirectUriStepResponse;
   }> {
     try {
       this.log.info("Starting Test Presentation Flow...");
@@ -137,7 +145,21 @@ export class WalletPresentationOrchestratorFlow {
           walletAttestation,
         });
 
-      return { authorizationRequestResponse, fetchMetadataResponse };
+      if (!authorizationRequestResponse.response) {
+        throw new Error("Authorization Request Step did not return a response");
+      }
+
+      const redirectUriResponse = await this.redirectUriStep.run({
+        authorizationResponse:
+          authorizationRequestResponse.response.authorizationResponse,
+        responseUri: authorizationRequestResponse.response.responseUri,
+      });
+
+      return {
+        authorizationRequestResponse,
+        fetchMetadataResponse,
+        redirectUriResponse,
+      };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
       throw e;
