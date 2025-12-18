@@ -29,8 +29,7 @@ export interface AuthorizeExecuteResponse {
 
 export interface AuthorizeStepOptions {
   /**
-   * Authorization Endpoint URL,
-   * if not provided, the endpoint will be loaded from the issuer metadata
+   * Authorization Endpoint URL
    */
   authorizationEndpoint: string;
 
@@ -40,9 +39,7 @@ export interface AuthorizeStepOptions {
   baseUrl: string;
 
   /**
-   * Client ID of the OAuth2 Client,
-   * if not provided, the client ID will be loaded from the wallet attestation public key kid
-   *
+   * Client ID of the OAuth2 Client
    * */
   clientId: string;
 
