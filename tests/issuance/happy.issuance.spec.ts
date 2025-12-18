@@ -11,6 +11,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { FetchMetadataStepResponse } from "@/step";
 import { PushedAuthorizationRequestResponse } from "@/step/issuance";
+import { AuthorizeStepResponse } from "@/step/issuance/authorize-step";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
 import z from "zod/v3";
@@ -24,11 +25,15 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     const baseLog = orchestrator.getLog();
     let fetchMetadataResponse: FetchMetadataStepResponse;
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+    let authorizeResponse: AuthorizeStepResponse;
 
     beforeAll(async () => {
-      ({ fetchMetadataResponse, pushedAuthorizationRequestResponse } =
-        await orchestrator.issuance());
-    }, 1e5);
+      ({
+        authorizeResponse,
+        fetchMetadataResponse,
+        pushedAuthorizationRequestResponse,
+      } = await orchestrator.issuance());
+    });
 
     test("CI_001: Fetch Metadata | Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
       const log = baseLog.withTag("CI_001");
@@ -59,14 +64,14 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(fetchMetadataResponse.response).toBeDefined();
 
       log.info("Asserting response status...");
-      expect(fetchMetadataResponse.response!.status).toBe(200);
+      expect(fetchMetadataResponse.response?.status).toBe(200);
 
       log.info("Checking non empty response body...");
       expect(fetchMetadataResponse.response?.entityStatementJwt).toBeDefined();
 
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(decodedData);
       log.testCompleted();
@@ -80,7 +85,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
@@ -114,7 +119,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
@@ -127,9 +132,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         .refine(
           (data) =>
             data.metadata !== undefined &&
-            data.metadata!.federation_entity !== undefined &&
-            data.metadata!.oauth_authorization_server !== undefined &&
-            data.metadata!.openid_credential_issuer !== undefined,
+            data.metadata?.federation_entity !== undefined &&
+            data.metadata?.oauth_authorization_server !== undefined &&
+            data.metadata?.openid_credential_issuer !== undefined,
           {
             message:
               "metadata or federation_entity|oauth_authorization_server|openid_credential_issuer is missing",
@@ -152,7 +157,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
       log.info("Parsing response body as JWT...");
       const decodedData = decodeJwt(
-        fetchMetadataResponse.response?.entityStatementJwt!,
+        fetchMetadataResponse.response?.entityStatementJwt ?? "",
       );
       log.debug(JSON.stringify(decodedData));
 
@@ -165,7 +170,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         .refine(
           (data) =>
             data.metadata !== undefined &&
-            data.metadata!.openid_credential_verifier !== undefined,
+            data.metadata?.openid_credential_verifier !== undefined,
           { message: "metadata or openid_credential_verifier is missing" },
         )
         .safeParse(decodedData);
@@ -264,7 +269,83 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     });
 
     // ============================================================================
-    // AUTHORISATION REQUEST TESTS
+    // AUTHORIZATION REQUEST TESTS
     // ============================================================================
+
+    test("CI_049: Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
+      const log = baseLog.withTag("CI_049");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.requestObject?.exp).toBeDefined();
+      expect(authorizeResponse.response?.requestObject?.exp).toBe(
+        pushedAuthorizationRequestResponse.response?.expires_in,
+      );
+      log.testCompleted();
+    });
+
+    test("CI_054: (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_054");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
+      log.testCompleted();
+    });
+
+    test("CI_055: (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_055");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
+      log.testCompleted();
+    });
+
+    test("CI_056: (Q)EAA Provider successfully provides the presentation request to the Wallet", async () => {
+      const log = baseLog.withTag("CI_056");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.requestObjectJwt).toBeDefined();
+      log.testCompleted();
+    });
+
+    test("CI_058a: Authorization code response includes the authorization code parameter", async () => {
+      const log = baseLog.withTag("CI_058a");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
+      expect(typeof authorizeResponse.response?.authorizeResponse?.code).toBe(
+        "string",
+      );
+      log.testCompleted();
+    });
+
+    test("CI_058b: Authorization code response includes the state parameter matching the original request", async () => {
+      const log = baseLog.withTag("CI_058b");
+
+      log.start("Started");
+      expect(
+        authorizeResponse.response?.authorizeResponse?.state,
+      ).toBeDefined();
+      expect(typeof authorizeResponse.response?.authorizeResponse?.state).toBe(
+        "string",
+      );
+      expect(authorizeResponse.response?.authorizeResponse?.state).toBe(
+        authorizeResponse.response?.requestObject?.state,
+      );
+      log.testCompleted();
+    });
+
+    test("CI_058c: Authorization code response includes the iss parameter identifying the issuer", async () => {
+      const log = baseLog.withTag("CI_058c");
+
+      log.start("Started");
+      expect(authorizeResponse.response?.authorizeResponse?.iss).toBeDefined();
+      expect(typeof authorizeResponse.response?.authorizeResponse?.iss).toBe(
+        "string",
+      );
+      expect(authorizeResponse.response?.authorizeResponse?.iss).toBe(
+        authorizeResponse.response?.iss,
+      );
+      log.testCompleted();
+    });
   });
 });
