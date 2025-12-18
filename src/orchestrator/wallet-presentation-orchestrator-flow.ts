@@ -84,7 +84,8 @@ export class WalletPresentationOrchestratorFlow {
       );
 
       const fetchMetadataResponse = await this.fetchMetadataStep.run({
-        baseUrl: this.config.presentation.verifier,
+        baseUrl:
+          fetchMetadataOptions?.baseUrl || this.config.presentation.verifier,
         entityStatementClaimsSchema:
           fetchMetadataOptions?.entityStatementClaimsSchema ||
           itWalletEntityStatementClaimsSchema,
