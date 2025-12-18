@@ -4,9 +4,10 @@ import {
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt, exportJWK, generateKeyPair, importX509 } from "jose";
+import { decodeJwt, exportJWK, generateKeyPair, importX509, JWK } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
+import crypto from "crypto";
 
 import { KeyPair, KeyPairJwk } from "@/types";
 
@@ -151,4 +152,34 @@ function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
   if (!federationJwk) throw new Error("key not found in trust chain");
 
   return federationJwk;
+}
+
+export function computeJkt(jwk: JWK) {
+  if (!jwk || jwk.kty !== 'EC') {
+    throw new Error('Only EC keys are supported for DPoP');
+  }
+
+  // RFC 7638 canonical members and order for EC keys
+  const canonicalJwk = {
+    crv: jwk.crv,
+    kty: jwk.kty,
+    x: jwk.x,
+    y: jwk.y,
+  };
+
+  // MUST be stringified with sorted keys (already sorted here)
+  const canonicalJson = JSON.stringify(canonicalJwk);
+
+  // SHA-256 hash
+  const hash = crypto
+    .createHash('sha256')
+    .update(canonicalJson)
+    .digest();
+
+  // Base64URL encode (no padding)
+  return hash
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
 }

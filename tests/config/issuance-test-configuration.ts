@@ -81,10 +81,6 @@ export class IssuerTestConfiguration implements TestConfiguration {
       options: config.authorize?.options,
       stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
     };
-    this.authorize = {
-      options: config.authorize?.options,
-      stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
-    };
     this.tokenRequest = {
       options: config.tokenRequest?.options,
       stepClass: config.tokenRequest?.stepClass ?? TokenRequestDefaultStep,
