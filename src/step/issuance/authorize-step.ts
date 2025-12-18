@@ -25,12 +25,13 @@ import { StepFlow, StepResult } from "../step-flow";
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
   requestObject?: AuthorizationRequestObject;
+  requestObjectJwt: string;
+  iss: string;
 }
 
 export interface AuthorizeStepOptions {
   /**
-   * Authorization Endpoint URL,
-   * if not provided, the endpoint will be loaded from the issuer metadata
+   * Authorization Endpoint URL
    */
   authorizationEndpoint: string;
 
@@ -40,9 +41,7 @@ export interface AuthorizeStepOptions {
   baseUrl: string;
 
   /**
-   * Client ID of the OAuth2 Client,
-   * if not provided, the client ID will be loaded from the wallet attestation public key kid
-   *
+   * Client ID of the OAuth2 Client
    * */
   clientId: string;
 
@@ -90,9 +89,10 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.config.network,
       );
 
+      const requestObjectJwt = await fetchAuthorize.response.text();
       const requestObject = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
-        requestObjectJwt: await fetchAuthorize.response.text(),
+        requestObjectJwt,
       });
 
       const responseUri = requestObject.response_uri;
@@ -202,7 +202,9 @@ export class AuthorizeDefaultStep extends StepFlow {
 
       return {
         authorizeResponse,
+        requestObjectJwt,
         requestObject: requestObject,
+        iss: options.baseUrl,
         // retryStatus: redundantFetchAuthorize.response.status,
       };
     });

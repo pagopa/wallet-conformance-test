@@ -1,5 +1,5 @@
 import { IssuerTestConfiguration } from "#/config";
-import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
+import { AccessTokenRequest, createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
@@ -12,16 +12,16 @@ import {
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   PushedAuthorizationRequestDefaultStep,
-  PushedAuthorizationRequestResponse,
-} from "@/step/issuance";
-import {
-  AuthorizeDefaultStep,
+  PushedAuthorizationRequestResponse,AuthorizeDefaultStep,
   AuthorizeStepResponse,
-} from "@/step/issuance/authorize-step";
+  TokenRequestDefaultStep,
+  TokenRequestResponse
+} from "@/step/issuance";
 import { Config, Credential } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
+  private tokenRequestStep: TokenRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
 
@@ -72,6 +72,10 @@ export class WalletIssuanceOrchestratorFlow {
     this.authorizeStep = issuanceConfig.authorize?.stepClass
       ? new issuanceConfig.authorize.stepClass(this.config, this.log)
       : new AuthorizeDefaultStep(this.config, this.log);
+
+    this.tokenRequestStep = issuanceConfig.tokenRequest?.stepClass
+      ? new issuanceConfig.tokenRequest.stepClass(this.config, this.log)
+      : new TokenRequestDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
@@ -82,6 +86,7 @@ export class WalletIssuanceOrchestratorFlow {
     authorizeResponse: AuthorizeStepResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+    tokenResponse: TokenRequestResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -142,6 +147,9 @@ export class WalletIssuanceOrchestratorFlow {
           clientId:
             pushedAuthorizationRequestOptions?.clientId ??
             walletAttestationResponse.unitKey.publicKey.kid,
+          codeVerifier:
+            pushedAuthorizationRequestOptions?.codeVerifier ??
+            "example_code_verifier",
           credentialConfigurationId:
             this.issuanceConfig.credentialConfigurationId,
           popAttestation:
@@ -208,10 +216,29 @@ export class WalletIssuanceOrchestratorFlow {
           walletAttestationResponse,
       });
 
+      const tokenRequestOptions = this.issuanceConfig.tokenRequest?.options;
+
+      const accessTokenRequest: AccessTokenRequest = tokenRequestOptions?.accessTokenRequest ?? {
+        grant_type: "authorization_code",
+        code: authorizeResponse.response?.authorizeResponse?.code,
+        code_verifier:
+            pushedAuthorizationRequestOptions?.codeVerifier ??
+            "example_code_verifier",
+        redirect_uri: authorizeResponse.response?.requestObject?.response_uri
+      };
+      const tokenResponse = await this.tokenRequestStep.run({
+        accessTokenEndpoint: tokenRequestOptions?.accessTokenEndpoint ?? entityStatementClaims.metadata?.oauth_authorization_server
+            ?.token_endpoint,
+        accessTokenRequest,
+        popAttestation: tokenRequestOptions?.popAttestation ?? clientAttestationDPoP,
+        walletAttestation: tokenRequestOptions?.walletAttestation ?? walletAttestationResponse,
+      });
+
       return {
         authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
+        tokenResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
