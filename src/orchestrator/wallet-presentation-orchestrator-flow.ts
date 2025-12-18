@@ -1,5 +1,8 @@
 import { PresentationTestConfiguration } from "#/config";
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
+import {
+  ItWalletCredentialVerifierMetadata,
+  itWalletEntityStatementClaimsSchema,
+} from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
@@ -77,7 +80,9 @@ export class WalletPresentationOrchestratorFlow {
       this.log.info("Starting Test Presentation Flow...");
 
       const fetchMetadataResponse = await this.fetchVerifierMetadata();
-      const rpMetadata = this.extractVerifierMetadata(fetchMetadataResponse);
+      const verifierMetadata = this.extractVerifierMetadata(
+        fetchMetadataResponse,
+      );
 
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
       const walletAttestation =
@@ -88,7 +93,7 @@ export class WalletPresentationOrchestratorFlow {
       const authorizationRequestResponse =
         await this.executeAuthorizationRequest(
           pid.compact,
-          rpMetadata,
+          verifierMetadata,
           walletAttestation,
         );
 
@@ -109,8 +114,7 @@ export class WalletPresentationOrchestratorFlow {
 
   private async executeAuthorizationRequest(
     credential: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rpMetadata: any, // TODO: improve any type
+    verifierMetadata: ItWalletCredentialVerifierMetadata,
     walletAttestation: AttestationResponse,
   ) {
     const authorizationOptions = this.presentationConfig.authorize?.options;
@@ -121,7 +125,8 @@ export class WalletPresentationOrchestratorFlow {
           authorizationOptions?.authorizeRequestUrl ||
           this.config.presentation.authorize_request_url,
         credentials: [credential],
-        rpMetadata: authorizationOptions?.rpMetadata || rpMetadata,
+        verifierMetadata:
+          authorizationOptions?.verifierMetadata || verifierMetadata,
         walletAttestation:
           authorizationOptions?.walletAttestation || walletAttestation,
       });

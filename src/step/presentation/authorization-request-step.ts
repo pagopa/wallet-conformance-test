@@ -22,8 +22,8 @@ import { StepFlow, type StepResult } from "@/step/step-flow";
 export interface AuthorizationRequestOptions {
   authorizeRequestUrl: string;
   credentials: string[];
-  rpMetadata: ItWalletCredentialVerifierMetadata;
-  walletAttestation: Omit<AttestationResponse, "created">;
+  verifierMetadata: ItWalletCredentialVerifierMetadata;
+  walletAttestation: AttestationResponse;
 }
 
 export type AuthorizationRequestStepResponse = StepResult & {
@@ -82,7 +82,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         authorization_encrypted_response_alg,
         authorization_encrypted_response_enc,
         jwks,
-      } = options.rpMetadata;
+      } = options.verifierMetadata;
 
       const verifierKeys = {
         enc: jwks.keys.find((k) => k.use === "enc"),
@@ -110,7 +110,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         },
         client_id: parsedQrCode.clientId,
         requestObject,
-        rpMetadata: options.rpMetadata,
+        rpMetadata: options.verifierMetadata,
         vp_token: vpToken,
       });
 
