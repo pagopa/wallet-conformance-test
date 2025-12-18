@@ -10,15 +10,15 @@ import { TestConfiguration } from "./test-registry";
 interface PresentationTestConfigurationOptions {
   authorize?: {
     options?: Partial<AuthorizationRequestOptions>;
-    stepClass: typeof AuthorizationRequestDefaultStep;
+    stepClass?: typeof AuthorizationRequestDefaultStep;
   };
   fetchMetadata?: {
     options?: Partial<FetchMetadataOptions>;
-    stepClass: typeof FetchMetadataDefaultStep;
+    stepClass?: typeof FetchMetadataDefaultStep;
   };
   name: string;
   redirectUri?: {
-    stepClass: typeof RedirectUriDefaultStep;
+    stepClass?: typeof RedirectUriDefaultStep;
   };
 }
 
