@@ -192,15 +192,13 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
       log.info("Verifying vct_values parameter is present in DCQL query...");
       const requestObject = authorizationRequestResult.response?.requestObject;
-      const dcqlQuery = requestObject?.dcql_query as {
-        credentials?: unknown[];
-      };
+      const dcqlQuery = requestObject?.dcql_query;
 
       expect(dcqlQuery?.credentials).toBeDefined();
 
       // Check that all credentials have meta.vct_values
       let hasVctValues = false;
-      dcqlQuery.credentials?.forEach((credential: unknown) => {
+      dcqlQuery?.credentials.forEach((credential: unknown) => {
         if (
           credential &&
           typeof credential === "object" &&
