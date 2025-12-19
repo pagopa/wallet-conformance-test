@@ -269,9 +269,10 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
       log.info("Verifying typ is oauth-authz-req+jwt...");
       const requestObject = authorizationRequestResult.response?.requestObject;
-      // FIX: not correct
-      expect(requestObject?.type).toBe("oauth-authz-req+jwt");
 
+      // TODO: implement missing assertions blocked by io-wallet-oid4vp fix publishing
+      // FIX: typ is not in requestObject but need to be retrieved from the jwt header
+      expect(requestObject?.typ).toBe("oauth-authz-req+jwt");
       log.testCompleted();
     });
 
