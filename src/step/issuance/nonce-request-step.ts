@@ -1,11 +1,15 @@
 import { fetchWithRetries } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 
+export interface NonceResponsePayload {
+  [key: string]: unknown;
+}
+
 export interface NonceRequestExecuteResponse {
   attempts: number;
   cacheControl: null | string;
   contentType: null | string;
-  nonce: object;
+  nonce: NonceResponsePayload;
 }
 
 export type NonceRequestResponse = StepResult & {
