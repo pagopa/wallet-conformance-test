@@ -19,7 +19,7 @@ import {
   NonceRequestDefaultStep,
   NonceRequestResponse
 } from "@/step/issuance";
-import { Config, Credential } from "@/types";
+import { AttestationResponse, Config, Credential } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
@@ -95,6 +95,7 @@ export class WalletIssuanceOrchestratorFlow {
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     tokenResponse: TokenRequestResponse;
     nonceResponse: NonceRequestResponse;
+    walletAttestationResponse: AttestationResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -250,6 +251,7 @@ export class WalletIssuanceOrchestratorFlow {
       });
 
       return {
+        walletAttestationResponse,
         authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
