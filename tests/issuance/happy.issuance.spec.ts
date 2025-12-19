@@ -5,7 +5,7 @@ import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-feder
 // Import test configuration - this will register all configurations
 import "../test.config";
 
-import { decodeJwt } from "jose";
+import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
@@ -13,7 +13,6 @@ import { FetchMetadataStepResponse } from "@/step";
 import { AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
-import { computeJkt } from "@/logic";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -363,7 +362,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(tokenResponse.response?.dpopKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = computeJkt(tokenResponse.response?.dpopKey!)
+      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
@@ -373,6 +372,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("Parsing token as JWT...");
         const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
 
+        expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
 
@@ -388,7 +388,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(tokenResponse.response?.dpopKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = computeJkt(tokenResponse.response?.dpopKey!)
+      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
@@ -398,6 +398,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("Parsing token as JWT...");
         const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
 
+        expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
 
@@ -423,7 +424,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(tokenResponse.response?.dpopKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = computeJkt(tokenResponse.response?.dpopKey!);
+      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
@@ -433,6 +434,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("Parsing token as JWT...");
         const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
 
+        expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
 
