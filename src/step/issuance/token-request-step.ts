@@ -12,7 +12,7 @@ import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
 import { JWK } from "jose";
 
-export type TokenRequestExecuteResponse = AccessTokenResponse & { dpopKey: JWK };
+export type TokenRequestExecuteResponse = AccessTokenResponse;
 
 export type TokenRequestResponse = StepResult & {
   response?: TokenRequestExecuteResponse;
@@ -80,10 +80,7 @@ export class TokenRequestDefaultStep extends StepFlow {
         dPoP: tokenDPoP.jwt,
         walletAttestation: options.walletAttestation.attestation,
       };
-      return {
-        ...await fetchTokenResponse(fetchTokenResponseOptions),
-        dpopKey: tokenDPoP.signerJwk
-      };
+      return await fetchTokenResponse(fetchTokenResponseOptions);
     });
   }
 }

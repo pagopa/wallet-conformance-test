@@ -13,6 +13,7 @@ import { FetchMetadataStepResponse } from "@/step";
 import { AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
+import { AttestationResponse } from "@/types";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -25,6 +26,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     let fetchMetadataResponse: FetchMetadataStepResponse;
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     let authorizeResponse: AuthorizeStepResponse;
+    let walletAttestationResponse: AttestationResponse;
 
     beforeAll(async () => {
       ({
@@ -32,6 +34,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
+        walletAttestationResponse,
       } = await orchestrator.issuance());
     });
 
@@ -359,10 +362,10 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
 
       expect(tokenResponse.response?.token_type).toBe("DPoP");
-      expect(tokenResponse.response?.dpopKey).toBeDefined();
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
@@ -385,10 +388,10 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
 
       expect(tokenResponse.response?.token_type).toBe("DPoP");
-      expect(tokenResponse.response?.dpopKey).toBeDefined();
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
@@ -421,10 +424,10 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.start("Started");
 
       expect(tokenResponse.response?.token_type).toBe("DPoP");
-      expect(tokenResponse.response?.dpopKey).toBeDefined();
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = await calculateJwkThumbprint(tokenResponse.response?.dpopKey!);
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
