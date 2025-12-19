@@ -87,7 +87,6 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
         clientId: unitKey.publicKey.kid,
         codeChallengeMethodsSupported: ["S256"],
-        pkceCodeVerifier: options.codeVerifier,
         dpop: {
           signer: {
             alg: "ES256",
@@ -95,6 +94,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             publicJwk: unitKey.publicKey,
           },
         },
+        pkceCodeVerifier: options.codeVerifier,
         redirectUri: "https://client.example.org/cb",
         responseMode: "query",
       };
@@ -121,7 +121,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
       log.debug(`Fetching PAR response from ${JSON.stringify(fetchOptions)}`);
 
-      return fetchPushedAuthorizationResponse(fetchOptions)
+      return fetchPushedAuthorizationResponse(fetchOptions);
     });
   }
 }

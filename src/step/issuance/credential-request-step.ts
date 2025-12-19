@@ -1,4 +1,8 @@
 import {
+  createTokenDPoP,
+  CreateTokenDPoPOptions,
+} from "@pagopa/io-wallet-oauth2";
+import {
   createCredentialRequest,
   CredentialRequestOptions,
   CredentialResponse,
@@ -6,7 +10,7 @@ import {
   FetchCredentialResponseOptions,
 } from "@pagopa/io-wallet-oid4vci";
 
-import { signJwtCallback } from "@/logic";
+import { partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -17,8 +21,14 @@ export type CredentialRequestResponse = StepResult & {
 };
 
 export interface CredentialRequestStepOptions {
+  /**
+   * Access Token fetched during the TokenRequestStep
+   */
   accessToken: string;
 
+  /**
+   * Base URL of the issuer.
+   */
   baseUrl: string;
 
   /**
@@ -34,7 +44,10 @@ export interface CredentialRequestStepOptions {
    * if not provided, the endpoint will be loaded from the issuer metadata
    */
   credentialRequestEndpoint: string;
-  dpop: string;
+
+  /**
+   * Nonce fetched dung the NonceRequestStep
+   */
   nonce: string;
 
   /**
@@ -57,6 +70,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const { unitKey } = options.walletAttestation;
 
     return this.execute<CredentialRequestExecuteResponse>(async () => {
+      log.info(`Creating the Credential Request...`);
       const createCredentialRequestOptions: CredentialRequestOptions = {
         callbacks: {
           signJwt: signJwtCallback([unitKey.privateKey]),
@@ -75,8 +89,27 @@ export class CredentialRequestDefaultStep extends StepFlow {
         createCredentialRequestOptions,
       );
 
-      log.debug(
-        `Fetching Credential response from ${options.credentialRequestEndpoint}`,
+      log.info(`Generating DPoP...`);
+      const createTokenDPoPOptions: CreateTokenDPoPOptions = {
+        accessToken: options.accessToken,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk",
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST",
+          url: options.credentialRequestEndpoint,
+        },
+      };
+      const credentialDPoP = await createTokenDPoP(createTokenDPoPOptions);
+
+      log.info(
+        `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
       );
       const fetchCredentialResponseOptions: FetchCredentialResponseOptions = {
         accessToken: options.accessToken,
@@ -85,7 +118,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         },
         credentialEndpoint: options.credentialRequestEndpoint,
         credentialRequest,
-        dPoP: options.dpop,
+        dPoP: credentialDPoP.jwt,
       };
       return await fetchCredentialResponse(fetchCredentialResponseOptions);
     });
