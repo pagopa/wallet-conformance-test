@@ -12,11 +12,11 @@ import {
 } from "@/step/fetch-metadata-step";
 import {
   AuthorizationRequestDefaultStep,
-  AuthorizationRequestStepResponse,
+  AuthorizationRequestStepResult,
 } from "@/step/presentation/authorization-request-step";
 import {
   RedirectUriDefaultStep,
-  RedirectUriStepResponse,
+  RedirectUriStepResult,
 } from "@/step/presentation/redirect-uri-step";
 import { AttestationResponse, Config } from "@/types";
 
@@ -72,9 +72,9 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async presentation(): Promise<{
-    authorizationRequestResponse: AuthorizationRequestStepResponse;
-    fetchMetadataResponse: FetchMetadataStepResponse;
-    redirectUriResponse: RedirectUriStepResponse;
+    authorizationRequestResult: AuthorizationRequestStepResult;
+    fetchMetadataResult: FetchMetadataStepResponse;
+    redirectUriResult: RedirectUriStepResult;
   }> {
     try {
       this.log.info("Starting Test Presentation Flow...");
@@ -102,9 +102,9 @@ export class WalletPresentationOrchestratorFlow {
       );
 
       return {
-        authorizationRequestResponse,
-        fetchMetadataResponse,
-        redirectUriResponse,
+        authorizationRequestResult: authorizationRequestResponse,
+        fetchMetadataResult: fetchMetadataResponse,
+        redirectUriResult: redirectUriResponse,
       };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
@@ -139,7 +139,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async executeRedirectUri(
-    authorizationRequestResponse: AuthorizationRequestStepResponse,
+    authorizationRequestResponse: AuthorizationRequestStepResult,
   ) {
     if (!authorizationRequestResponse.response) {
       throw new Error("Authorization Request response is missing");

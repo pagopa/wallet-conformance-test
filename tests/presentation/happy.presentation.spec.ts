@@ -6,8 +6,8 @@ import "../test.config";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataStepResponse } from "@/step";
-import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
-import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
+import { AuthorizationRequestStepResult } from "@/step/presentation/authorization-request-step";
+import { RedirectUriStepResult } from "@/step/presentation/redirect-uri-step";
 
 import { presentationRegistry } from "../config/test-registry";
 import { HAPPY_FLOW_PRESENTATION_NAME } from "../test.config";
@@ -20,36 +20,30 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       new WalletPresentationOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
 
-    let authorizationRequestResponse: AuthorizationRequestStepResponse;
-    let fetchMetadataResponse: FetchMetadataStepResponse;
-    let redirectUriResponse: RedirectUriStepResponse;
+    let authorizationRequestResult: AuthorizationRequestStepResult;
+    let fetchMetadataResult: FetchMetadataStepResponse;
+    let redirectUriResult: RedirectUriStepResult;
 
     beforeAll(async () => {
-      ({
-        authorizationRequestResponse,
-        fetchMetadataResponse,
-        redirectUriResponse,
-      } = await orchestrator.presentation());
+      ({ authorizationRequestResult, fetchMetadataResult, redirectUriResult } =
+        await orchestrator.presentation());
     });
 
     test("RPR003: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
       const log = baseLog.withTag("RPR003");
 
       log.start("Started");
-      expect(fetchMetadataResponse.success).toBe(true);
-      expect(
-        fetchMetadataResponse.response?.entityStatementClaims,
-      ).toBeDefined();
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
-      const entityClaims =
-        fetchMetadataResponse.response?.entityStatementClaims;
+      const entityClaims = fetchMetadataResult.response?.entityStatementClaims;
       const issuer = entityClaims?.sub;
 
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying authorization URL uses verifier base URL...");
-      const parsedQrCode = authorizationRequestResponse.response?.parsedQrCode;
+      const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
       expect(parsedQrCode?.clientId).toBeDefined();
 
       // The client_id should match the issuer from the entity statement
@@ -68,20 +62,16 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR009");
 
       log.start("Started");
-      expect(fetchMetadataResponse.success).toBe(true);
-      expect(
-        fetchMetadataResponse.response?.entityStatementClaims,
-      ).toBeDefined();
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
       const metadata =
-        fetchMetadataResponse.response?.entityStatementClaims?.metadata;
+        fetchMetadataResult.response?.entityStatementClaims?.metadata;
       const verifierMetadata = metadata?.openid_credential_verifier;
 
       log.info("Verifying request object endpoint uses GET by default...");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(
-        authorizationRequestResponse.response?.requestObject,
-      ).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response?.requestObject).toBeDefined();
 
       // If request_object_endpoint_methods is not specified or includes GET
       if (verifierMetadata?.request_object_endpoint_methods) {
@@ -97,12 +87,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR012");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying state parameter is present...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.state).toBeDefined();
       expect(requestObject?.state).toMatch(/^[a-zA-Z0-9_-]+$/);
 
@@ -117,15 +106,15 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR019");
 
       log.start("Started");
-      expect(redirectUriResponse.success).toBe(true);
-      expect(redirectUriResponse.response?.redirectUri).toBeDefined();
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
       log.info("Verifying redirect_uri is a valid URL...");
-      const redirectUri = redirectUriResponse.response?.redirectUri;
+      const redirectUri = redirectUriResult.response?.redirectUri;
       expect(redirectUri?.toString()).toMatch(/^https?:\/\/.+/);
 
       log.info("Verifying response_code is present in redirect_uri...");
-      expect(redirectUriResponse.response?.responseCode).toBeDefined();
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
 
       log.testCompleted();
     });
@@ -134,12 +123,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR078");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying DCQL query is present in request object...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.dcql_query).toBeDefined();
 
       log.info("Verifying DCQL query structure...");
@@ -158,14 +146,13 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR079");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info(
         "Verifying claims parameter is not in DCQL query for Wallet Attestation...",
       );
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       const dcqlQuery = requestObject?.dcql_query;
 
       expect(dcqlQuery?.credentials).toBeDefined();
@@ -200,12 +187,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR080");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying vct_values parameter is present in DCQL query...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       const dcqlQuery = requestObject?.dcql_query as {
         credentials?: unknown[];
       };
@@ -240,13 +226,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR082");
 
       log.start("Started");
-      expect(fetchMetadataResponse.success).toBe(true);
-      expect(
-        fetchMetadataResponse.response?.entityStatementClaims,
-      ).toBeDefined();
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
       const metadata =
-        fetchMetadataResponse.response?.entityStatementClaims?.metadata;
+        fetchMetadataResult.response?.entityStatementClaims?.metadata;
       const verifierMetadata = metadata?.openid_credential_verifier;
 
       log.info("Verifying response_types_supported includes vp_token...");
@@ -260,20 +244,19 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR083");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying response_uri is present in request object...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.response_uri).toBeDefined();
       expect(requestObject?.response_uri).toMatch(/^https?:\/\/.+/);
 
       log.info("Verifying redirect_uri is returned after authorization...");
-      expect(redirectUriResponse.success).toBe(true);
-      expect(redirectUriResponse.response?.redirectUri).toBeDefined();
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
-      const redirectUri = redirectUriResponse.response?.redirectUri;
+      const redirectUri = redirectUriResult.response?.redirectUri;
       expect(redirectUri?.toString()).toMatch(/^https?:\/\/.+/);
 
       log.testCompleted();
@@ -283,12 +266,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR089");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying typ is oauth-authz-req+jwt...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       // FIX: not correct
       expect(requestObject?.type).toBe("oauth-authz-req+jwt");
 
@@ -299,12 +281,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR090");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying response_mode is direct_post.jwt...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.response_mode).toBe("direct_post.jwt");
 
       log.testCompleted();
@@ -314,12 +295,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR091");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying response_type is vp_token...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.response_type).toBe("vp_token");
 
       log.testCompleted();
@@ -329,17 +309,17 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR092");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying authorization response was sent to response_uri...");
       const responseUri =
-        authorizationRequestResponse.response?.requestObject.response_uri;
+        authorizationRequestResult.response?.requestObject.response_uri;
       expect(responseUri).toBeDefined();
       expect(responseUri).toMatch(/^https?:\/\/.+/);
 
       log.info("Verifying redirect was successful...");
-      expect(redirectUriResponse.success).toBe(true);
+      expect(redirectUriResult.success).toBe(true);
 
       log.testCompleted();
     });
@@ -348,12 +328,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR093");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying nonce has at least 32 characters...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.nonce).toBeDefined();
       expect(requestObject?.nonce.length).toBeGreaterThanOrEqual(32);
 
@@ -364,12 +343,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR094");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying exp parameter is present and not expired...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.exp).toBeDefined();
 
       const currentTime = Math.floor(Date.now() / 1000);
@@ -382,12 +360,11 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("RPR097");
 
       log.start("Started");
-      expect(authorizationRequestResponse.success).toBe(true);
-      expect(authorizationRequestResponse.response).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying Wallet Attestation is requested using DCQL query...");
-      const requestObject =
-        authorizationRequestResponse.response?.requestObject;
+      const requestObject = authorizationRequestResult.response?.requestObject;
       const dcqlQuery = requestObject?.dcql_query;
 
       expect(dcqlQuery?.credentials).toBeDefined();

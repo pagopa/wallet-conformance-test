@@ -26,27 +26,27 @@ export interface AuthorizationRequestOptions {
   walletAttestation: AttestationResponse;
 }
 
-export type AuthorizationRequestStepResponse = StepResult & {
-  response?: AuthorizationStepResponse;
-};
-
-export interface AuthorizationStepResponse {
+export interface AuthorizationRequestStepResponse {
   authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
   responseUri: string;
 }
 
+export type AuthorizationRequestStepResult = StepResult & {
+  response?: AuthorizationRequestStepResponse;
+};
+
 export class AuthorizationRequestDefaultStep extends StepFlow {
   tag = "AUTHORIZATION";
 
   async run(
     options: AuthorizationRequestOptions,
-  ): Promise<AuthorizationRequestStepResponse> {
+  ): Promise<AuthorizationRequestStepResult> {
     const log = this.log.withTag(this.tag);
     log.info("Starting authorization request step...");
 
-    return this.execute<AuthorizationStepResponse>(async () => {
+    return this.execute<AuthorizationRequestStepResponse>(async () => {
       const { parsedQrCode, requestObject } = await fetchAuthorizationRequest({
         authorizeRequestUrl: options.authorizeRequestUrl,
         callbacks: { verifyJwt },
