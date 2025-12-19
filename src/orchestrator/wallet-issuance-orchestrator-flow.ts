@@ -246,7 +246,7 @@ export class WalletIssuanceOrchestratorFlow {
 
       const nonceResponse = await this.nonceRequestStep.run({
         nonceEndpoint: nonceRequestOptions?.nonceEndpoint ?? entityStatementClaims.metadata?.openid_credential_issuer
-            ?.nonce_endpoint
+            ?.nonce_endpoint,
       });
 
       return {
