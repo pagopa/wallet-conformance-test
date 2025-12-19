@@ -5,6 +5,7 @@ import {
   createAuthorizationResponse,
   type CreateOpenid4vpAuthorizationResponseResult,
   fetchAuthorizationRequest,
+  type Openid4vpAuthorizationRequestHeader,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
@@ -27,6 +28,7 @@ export interface AuthorizationRequestOptions {
 }
 
 export interface AuthorizationRequestStepResponse {
+  authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
@@ -47,10 +49,13 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.info("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestStepResponse>(async () => {
-      const { parsedQrCode, requestObject } = await fetchAuthorizationRequest({
-        authorizeRequestUrl: options.authorizeRequestUrl,
-        callbacks: { verifyJwt },
-      });
+      const { parsedAuthorizeRequest, parsedQrCode } =
+        await fetchAuthorizationRequest({
+          authorizeRequestUrl: options.authorizeRequestUrl,
+          callbacks: { verifyJwt },
+        });
+
+      const requestObject = parsedAuthorizeRequest.payload;
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -115,9 +120,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       });
 
       return {
+        authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
         parsedQrCode,
-        requestObject,
         responseUri,
       };
     });

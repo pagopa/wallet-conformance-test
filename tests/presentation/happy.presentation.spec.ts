@@ -260,12 +260,7 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("RPR089: JWT typ parameter is correctly set to oauth-authz-req+jwt.", ({
-      skip,
-    }) => {
-      // WARN: Temporarily skipped because blocked by io-wallet-oid4vp v0.7.5 publishing issue
-      skip("Skipped due to external dependency issue.");
-
+    test("RPR089: JWT typ parameter is correctly set to oauth-authz-req+jwt.", () => {
       const log = baseLog.withTag("RPR089");
 
       log.start("Started");
@@ -273,7 +268,10 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       expect(authorizationRequestResult.response).toBeDefined();
 
       log.info("Verifying typ is oauth-authz-req+jwt...");
-      // TODO: implement here missing assertions.
+
+      expect(
+        authorizationRequestResult.response?.authorizationRequestHeader.typ,
+      ).toBe("oauth-authz-req+jwt");
 
       log.testCompleted();
     });
