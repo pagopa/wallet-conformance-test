@@ -80,7 +80,7 @@ export class WalletIssuanceOrchestratorFlow {
       ? new issuanceConfig.tokenRequest.stepClass(this.config, this.log)
       : new TokenRequestDefaultStep(this.config, this.log);
 
-      this.nonceRequestStep = issuanceConfig.nonceRequest?.stepClass
+    this.nonceRequestStep = issuanceConfig.nonceRequest?.stepClass
       ? new issuanceConfig.nonceRequest.stepClass(this.config, this.log)
       : new NonceRequestDefaultStep(this.config, this.log);
   }
