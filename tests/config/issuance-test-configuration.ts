@@ -4,11 +4,11 @@ import {
   PushedAuthorizationRequestOptions,
   TokenRequestDefaultStep,
   TokenRequestStepOptions,
-} from "@/step/issuance";
-import {
   AuthorizeDefaultStep,
   AuthorizeStepOptions,
-} from "@/step/issuance/authorize-step";
+  NonceRequestDefaultStep,
+  NonceRequestStepOptions,
+} from "@/step/issuance";
 
 import { TestConfiguration } from "./test-registry";
 
@@ -35,6 +35,10 @@ export class IssuerTestConfiguration implements TestConfiguration {
     options?: TokenRequestStepOptions;
     stepClass: typeof TokenRequestDefaultStep;
   };
+  public readonly nonceRequest?: {
+    options?: NonceRequestStepOptions;
+    stepClass: typeof NonceRequestDefaultStep;
+  };
 
   constructor(config: {
     authorize?: {
@@ -54,6 +58,10 @@ export class IssuerTestConfiguration implements TestConfiguration {
     tokenRequest?: {
       options?: TokenRequestStepOptions;
       stepClass: typeof TokenRequestDefaultStep;
+    };
+    nonceRequest?: {
+      options?: NonceRequestStepOptions;
+      stepClass: typeof NonceRequestDefaultStep;
     };
   }) {
     this.name = config.name;
@@ -81,6 +89,10 @@ export class IssuerTestConfiguration implements TestConfiguration {
       options: config.tokenRequest?.options,
       stepClass: config.tokenRequest?.stepClass ?? TokenRequestDefaultStep,
     };
+    this.nonceRequest = {
+      options: config.nonceRequest?.options,
+      stepClass: config.nonceRequest?.stepClass ?? NonceRequestDefaultStep,
+    };
   }
 
   static createCustom(
@@ -104,6 +116,9 @@ export class IssuerTestConfiguration implements TestConfiguration {
       },
       tokenRequest: {
         stepClass: TokenRequestDefaultStep,
+      },
+      nonceRequest: {
+        stepClass: NonceRequestDefaultStep,
       },
     });
   }
