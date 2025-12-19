@@ -4,9 +4,10 @@ import {
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt, exportJWK, generateKeyPair, importX509 } from "jose";
+import { decodeJwt, exportJWK, generateKeyPair, importX509, JWK } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
+import crypto from "crypto";
 
 import { KeyPair, KeyPairJwk } from "@/types";
 

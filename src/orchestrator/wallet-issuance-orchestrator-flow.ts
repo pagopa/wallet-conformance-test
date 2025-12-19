@@ -15,13 +15,16 @@ import {
   PushedAuthorizationRequestResponse,AuthorizeDefaultStep,
   AuthorizeStepResponse,
   TokenRequestDefaultStep,
-  TokenRequestResponse
+  TokenRequestResponse,
+  NonceRequestDefaultStep,
+  NonceRequestResponse
 } from "@/step/issuance";
-import { Config, Credential } from "@/types";
+import { AttestationResponse, Config, Credential } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
   private tokenRequestStep: TokenRequestDefaultStep;
+  private nonceRequestStep: NonceRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataDefaultStep;
 
@@ -76,6 +79,10 @@ export class WalletIssuanceOrchestratorFlow {
     this.tokenRequestStep = issuanceConfig.tokenRequest?.stepClass
       ? new issuanceConfig.tokenRequest.stepClass(this.config, this.log)
       : new TokenRequestDefaultStep(this.config, this.log);
+
+    this.nonceRequestStep = issuanceConfig.nonceRequest?.stepClass
+      ? new issuanceConfig.nonceRequest.stepClass(this.config, this.log)
+      : new NonceRequestDefaultStep(this.config, this.log);
   }
 
   getLog(): typeof this.log {
@@ -87,6 +94,8 @@ export class WalletIssuanceOrchestratorFlow {
     fetchMetadataResponse: FetchMetadataStepResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     tokenResponse: TokenRequestResponse;
+    nonceResponse: NonceRequestResponse;
+    walletAttestationResponse: AttestationResponse;
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
@@ -234,11 +243,20 @@ export class WalletIssuanceOrchestratorFlow {
         walletAttestation: tokenRequestOptions?.walletAttestation ?? walletAttestationResponse,
       });
 
+      const nonceRequestOptions = this.issuanceConfig.nonceRequest?.options;
+
+      const nonceResponse = await this.nonceRequestStep.run({
+        nonceEndpoint: nonceRequestOptions?.nonceEndpoint ?? entityStatementClaims.metadata?.openid_credential_issuer
+            ?.nonce_endpoint,
+      });
+
       return {
+        walletAttestationResponse,
         authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
+        nonceResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
