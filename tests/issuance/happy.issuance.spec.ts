@@ -272,7 +272,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // AUTHORIZATION REQUEST TESTS
     // ============================================================================
 
-    test("CI_049: Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
+    test("CI_049: Authorization | Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
       const log = baseLog.withTag("CI_049");
 
       log.start("Started");
@@ -283,7 +283,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_054: (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
+    test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
 
       log.start("Started");
@@ -291,7 +291,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_055: (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
+    test("CI_055: Authorization | (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_055");
 
       log.start("Started");
@@ -299,7 +299,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_056: (Q)EAA Provider successfully provides the presentation request to the Wallet", async () => {
+    test("CI_056: Authorization | (Q)EAA Provider successfully provides the presentation request to the Wallet", async () => {
       const log = baseLog.withTag("CI_056");
 
       log.start("Started");
@@ -307,7 +307,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058a: Authorization code response includes the authorization code parameter", async () => {
+    test("CI_058a: Authorization | Authorization code response includes the authorization code parameter", async () => {
       const log = baseLog.withTag("CI_058a");
 
       log.start("Started");
@@ -318,7 +318,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058b: Authorization code response includes the state parameter matching the original request", async () => {
+    test("CI_058b: Authorization | Authorization code response includes the state parameter matching the original request", async () => {
       const log = baseLog.withTag("CI_058b");
 
       log.start("Started");
@@ -334,7 +334,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058c: Authorization code response includes the iss parameter identifying the issuer", async () => {
+    test("CI_058c: Authorization | Authorization code response includes the iss parameter identifying the issuer", async () => {
       const log = baseLog.withTag("CI_058c");
 
       log.start("Started");
