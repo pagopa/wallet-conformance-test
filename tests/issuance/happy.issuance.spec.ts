@@ -423,7 +423,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(tokenResponse.response?.dpopKey).toBeDefined();
 
       log.info("Computing JWK Thumbprint...");
-      const jkt = computeJkt(tokenResponse.response?.dpopKey!)
+      const jkt = computeJkt(tokenResponse.response?.dpopKey!);
 
       const tokens = [tokenResponse.response?.access_token];
       if (tokenResponse.response?.refresh_token)
