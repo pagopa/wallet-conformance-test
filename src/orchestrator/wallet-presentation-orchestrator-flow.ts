@@ -79,10 +79,9 @@ export class WalletPresentationOrchestratorFlow {
     try {
       this.log.info("Starting Test Presentation Flow...");
 
-      const fetchMetadataResponse = await this.fetchVerifierMetadata();
-      const verifierMetadata = this.extractVerifierMetadata(
-        fetchMetadataResponse,
-      );
+      const fetchMetadataResult = await this.fetchVerifierMetadata();
+      const verifierMetadata =
+        this.extractVerifierMetadata(fetchMetadataResult);
 
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
       const walletAttestation =
@@ -90,21 +89,20 @@ export class WalletPresentationOrchestratorFlow {
 
       const pid = await this.prepareCredential(trustAnchorBaseUrl);
 
-      const authorizationRequestResponse =
-        await this.executeAuthorizationRequest(
-          pid.compact,
-          verifierMetadata,
-          walletAttestation,
-        );
+      const authorizationRequestResult = await this.executeAuthorizationRequest(
+        pid.compact,
+        verifierMetadata,
+        walletAttestation,
+      );
 
-      const redirectUriResponse = await this.executeRedirectUri(
-        authorizationRequestResponse,
+      const redirectUriResult = await this.executeRedirectUri(
+        authorizationRequestResult,
       );
 
       return {
-        authorizationRequestResult: authorizationRequestResponse,
-        fetchMetadataResult: fetchMetadataResponse,
-        redirectUriResult: redirectUriResponse,
+        authorizationRequestResult,
+        fetchMetadataResult,
+        redirectUriResult,
       };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
@@ -139,24 +137,24 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async executeRedirectUri(
-    authorizationRequestResponse: AuthorizationRequestStepResult,
+    authorizationRequestResult: AuthorizationRequestStepResult,
   ) {
-    if (!authorizationRequestResponse.response) {
+    if (!authorizationRequestResult.response) {
       throw new Error("Authorization Request response is missing");
     }
 
     return await this.redirectUriStep.run({
       authorizationResponse:
-        authorizationRequestResponse.response.authorizationResponse,
-      responseUri: authorizationRequestResponse.response.responseUri,
+        authorizationRequestResult.response.authorizationResponse,
+      responseUri: authorizationRequestResult.response.responseUri,
     });
   }
 
   private extractVerifierMetadata(
-    fetchMetadataResponse: FetchMetadataStepResponse,
+    fetchMetadataResult: FetchMetadataStepResponse,
   ) {
     const entityStatementClaims =
-      fetchMetadataResponse.response?.entityStatementClaims;
+      fetchMetadataResult.response?.entityStatementClaims;
 
     if (!entityStatementClaims) {
       throw new Error("Entity Statement Claims not found in response");
