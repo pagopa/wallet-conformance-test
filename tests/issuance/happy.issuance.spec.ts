@@ -376,7 +376,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // TOKEN REQUEST TESTS
     // ============================================================================
 
-    test("CI_064: Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
+    test("CI_064: Token | Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
       const log = baseLog.withTag("CI_064");
 
       log.start("Started");
@@ -389,10 +389,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(claims.exp).toBeGreaterThan(Date.now() / 1e3);
       expect(claims.iat).toBeLessThan(Date.now() / 1e3);
 
+      console.log('Access Token:', tokenResponse.response?.access_token);
       log.testCompleted();
     });
 
-    test("CI_066: Both Access Token and Refresh Token (when issued) are cryptographically bound to the DPoP key", async () => {
+    test("CI_066: Token | Both Access Token and Refresh Token (when issued) are cryptographically bound to the DPoP key", async () => {
       const log = baseLog.withTag("CI_066");
 
       log.start("Started");
@@ -415,10 +416,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         expect(claims.cnf?.jkt).toBe(jkt);
       }
 
+      console.log('JWK Thumbprint:', jkt);
       log.testCompleted();
     });
 
-    test("CI_094: When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
+    test("CI_094: Token | When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
       const log = baseLog.withTag("CI_094");
 
       log.start("Started");
@@ -444,7 +446,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_095: Both the Access Token and the Refresh Token are sent back to the Wallet Instance", async () => {
+    test("CI_095: Token | Both the Access Token and the Refresh Token are sent back to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_095");
 
       log.start("Started");
@@ -454,7 +456,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_101: Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
+    test("CI_101: Token | Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
       const log = baseLog.withTag("CI_101");
 
       log.start("Started");
@@ -476,7 +478,6 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
-
       log.testCompleted();
     });
 
@@ -484,7 +485,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // NONCE REQUEST TESTS
     // ============================================================================
 
-    test("CI_068: Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
+    test("CI_068: Nonce | Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_068");
 
       log.start("Started");
@@ -493,10 +494,12 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(nonce?.c_nonce).toBeDefined();
       expect(nonce?.c_nonce.length).toBeGreaterThan(0);
 
+      console.log('c_nonce:', nonce?.c_nonce);
+
       log.testCompleted();
     });
 
-    test("CI_069: The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
+    test("CI_069: Nonce | The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
       const log = baseLog.withTag("CI_069");
 
       log.start("Started");
@@ -522,7 +525,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // CREDENTIAL REQUEST TESTS
     // ============================================================================
 
-    test("CI_084: When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
+    test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
 
       log.start("Started");
@@ -559,9 +562,10 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       }
 
       log.testCompleted();
+      console.log(credentialResponse.response?.credentials);
     });
 
-    test("CI_118: (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
+    test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");
 
       log.start("Started");
