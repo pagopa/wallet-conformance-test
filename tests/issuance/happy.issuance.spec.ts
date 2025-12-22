@@ -514,8 +514,34 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       expect(credentialResponse.response?.credentials?.length).toBeGreaterThan(0);
 
-      for (const credential of credentialResponse.response?.credentials ?? [])
+      const credentialPublicKey = credentialResponse.response?.credentialKeyPair?.publicKey;
+      expect(credentialPublicKey).toBeDefined();
+
+      if (!credentialPublicKey) {
+        log.testFailed();
+        return;
+      }
+
+      log.info("Computing JWK Thumbprint of Wallet Instance key...");
+      const expectedJkt = await calculateJwkThumbprint(credentialPublicKey);
+      for (const credential of credentialResponse.response?.credentials ?? []) {
         expect(credential.credential).toBeDefined();
+
+        log.info("Parsing credential as SD-JWT to verify key binding...");
+        const sdJwt = await await SDJwt.extractJwt(credential.credential);
+        const payload = sdJwt.payload as { cnf?: { jwk?: object; jkt?: string } } | undefined;
+
+        expect(payload?.cnf, "SD-JWT credential must contain cnf claim for key binding").toBeDefined();
+
+        if (payload?.cnf?.jwk) {
+          log.info("Verifying SD-JWT credential is bound to Wallet Instance key via jwk...");
+          const credentialJkt = await calculateJwkThumbprint(payload.cnf.jwk);
+          expect(credentialJkt).toBe(expectedJkt);
+          log.info("SD-JWT credential is cryptographically bound to Wallet Instance key");
+        } else {
+          expect.fail("SD-JWT credential cnf claim must contain either jkt or jwk");
+        }
+      }
 
       log.testCompleted();
     });

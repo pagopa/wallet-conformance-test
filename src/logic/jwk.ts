@@ -7,18 +7,16 @@ import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt, exportJWK, generateKeyPair, importX509, JWK } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
-import crypto from "crypto";
 
 import { KeyPair, KeyPairJwk } from "@/types";
 
 /**
- * Generates a new cryptographic key pair (ECDSA with P-256 curve),
- * saves it to a file, and returns the key pair.
+ * Generates a new cryptographic key pair (ECDSA with P-256 curve)
+ * and returns the key pair without saving it to a file.
  *
- * @param fileName The name of the file to save the key pair to.
  * @returns A promise that resolves to the generated key pair.
  */
-export async function generateKey(fileName: string): Promise<KeyPair> {
+export async function createKeys(): Promise<KeyPair> {
   const keyPair = await generateKeyPair("ES256", {
     crv: "P-256",
     extractable: true,
@@ -39,6 +37,19 @@ export async function generateKey(fileName: string): Promise<KeyPair> {
       ...pub,
     }) as KeyPairJwk,
   };
+
+  return exportedPair;
+}
+
+/**
+ * Generates a new cryptographic key pair (ECDSA with P-256 curve),
+ * saves it to a file, and returns the key pair.
+ *
+ * @param fileName The name of the file to save the key pair to.
+ * @returns A promise that resolves to the generated key pair.
+ */
+export async function generateKey(fileName: string): Promise<KeyPair> {
+  const exportedPair = await createKeys();
   writeFileSync(fileName, JSON.stringify(exportedPair));
 
   return exportedPair;
