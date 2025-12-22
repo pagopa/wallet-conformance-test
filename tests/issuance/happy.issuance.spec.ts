@@ -464,16 +464,28 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_069", async () => {
+    test("CI_069: The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
       const log = baseLog.withTag("CI_069");
 
       log.start("Started");
 
       const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
-      expect(nonce?.c_nonce.length).toBeGreaterThanOrEqual(32);
+      let cNonce = nonce?.c_nonce ?? "";
+      log.info(cNonce)
+      const length = cNonce.length;
+      expect(length).toBeGreaterThanOrEqual(32);
 
-      const hash = crypto.createHash('sha256').update(nonce?.c_nonce ?? "").digest('hex');
-      expect(hash.length).toBe(64);
+      let frequencies: number[] = [];
+      for (const char of cNonce) {
+        const prevLength = cNonce.length;
+        cNonce = cNonce.replace(char, "");
+
+        frequencies.push((prevLength - cNonce.length) / length);
+      }
+
+      const entropy = - frequencies.reduce((a, b) => a + (b * Math.log2(b)), 0);
+      log.info(entropy)
+      expect(entropy).toBeGreaterThan(5);
 
       log.testCompleted();
     });
