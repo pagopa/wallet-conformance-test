@@ -24,9 +24,9 @@ import { StepFlow, StepResult } from "../step-flow";
 
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
+  iss: string;
   requestObject?: AuthorizationRequestObject;
   requestObjectJwt: string;
-  iss: string;
 }
 
 export interface AuthorizeStepOptions {
@@ -90,10 +90,12 @@ export class AuthorizeDefaultStep extends StepFlow {
       );
 
       const requestObjectJwt = await fetchAuthorize.response.text();
-      const requestObject = await parseAuthorizeRequest({
+      const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
         requestObjectJwt,
       });
+
+      const requestObject = parsedAuthorizeRequest.payload;
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -202,9 +204,9 @@ export class AuthorizeDefaultStep extends StepFlow {
 
       return {
         authorizeResponse,
-        requestObjectJwt,
-        requestObject: requestObject,
         iss: options.baseUrl,
+        requestObject,
+        requestObjectJwt,
         // retryStatus: redundantFetchAuthorize.response.status,
       };
     });
