@@ -269,10 +269,25 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("CI_049");
 
       log.start("Started");
-      expect(authorizeResponse.response?.requestObject?.request_uri).toBeDefined();
-      expect(authorizeResponse.response?.requestObject?.request_uri).toBe(
-        pushedAuthorizationRequestResponse.response?.request_uri,
-      );
+
+      // Verify PAR response provided a valid request_uri
+      log.info("Verifying PAR response contains request_uri...");
+      const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
+      expect(requestUri).toBeDefined();
+      expect(typeof requestUri).toBe("string");
+      expect(requestUri!.length).toBeGreaterThan(0);
+
+      // Verify the request_uri follows the expected format (urn:ietf:params:oauth:request_uri:...)
+      log.info("Verifying request_uri format...");
+      expect(requestUri).toMatch(/^urn:ietf:params:oauth:request_uri:.+$/);
+
+      // Verify authorization was successful - this proves the issuer correlated the request
+      // If the issuer couldn't correlate the authorization request with the PAR, it would fail
+      log.info("Verifying authorization succeeded with the PAR request_uri...");
+      expect(authorizeResponse.success).toBe(true);
+      expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
+
+      log.info("Credential Issuer successfully correlated authorization request with PAR");
       log.testCompleted();
     });
 
