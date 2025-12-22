@@ -10,10 +10,12 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { FetchMetadataStepResponse } from "@/step";
-import { AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
+import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
 import { AttestationResponse } from "@/types";
+
+import crypto from "crypto";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -27,6 +29,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     let authorizeResponse: AuthorizeStepResponse;
     let walletAttestationResponse: AttestationResponse;
+    let nonceResponse: NonceRequestResponse;
 
     beforeAll(async () => {
       ({
@@ -35,6 +38,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         pushedAuthorizationRequestResponse,
         tokenResponse,
         walletAttestationResponse,
+        nonceResponse,
       } = await orchestrator.issuance());
     });
 
@@ -440,6 +444,48 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
+
+      log.testCompleted();
+    });
+
+    // ============================================================================
+    // NONCE REQUEST TESTS
+    // ============================================================================
+
+    test("CI_068: Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_068");
+
+      log.start("Started");
+
+      const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+      expect(nonce?.c_nonce).toBeDefined();
+      expect(nonce?.c_nonce.length).toBeGreaterThan(0);
+
+      log.testCompleted();
+    });
+
+    test("CI_069: The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
+      const log = baseLog.withTag("CI_069");
+
+      log.start("Started");
+
+      const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+      let cNonce = nonce?.c_nonce ?? "";
+      log.info(cNonce)
+      const length = cNonce.length;
+      expect(length).toBeGreaterThanOrEqual(32);
+
+      let frequencies: number[] = [];
+      for (const char of cNonce) {
+        const prevLength = cNonce.length;
+        cNonce = cNonce.replace(char, "");
+
+        frequencies.push((prevLength - cNonce.length) / length);
+      }
+
+      const entropy = - frequencies.reduce((a, b) => a + (b * Math.log2(b)), 0);
+      log.info(entropy)
+      expect(entropy).toBeGreaterThan(5);
 
       log.testCompleted();
     });
