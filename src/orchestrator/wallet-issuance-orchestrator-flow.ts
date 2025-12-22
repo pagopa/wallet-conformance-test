@@ -189,11 +189,12 @@ export class WalletIssuanceOrchestratorFlow {
       const authorizeOptions = this.issuanceConfig.authorize?.options;
 
       let personIdentificationData: Credential;
+      const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
 
       try {
         const credentials = await loadCredentials(
           this.config.wallet.credentials_storage_path,
-          ["dc_sd_jwt_PersonIdentificationData"],
+          [credentialIdentifier],
           this.log.error,
         );
 
@@ -217,6 +218,8 @@ export class WalletIssuanceOrchestratorFlow {
         );
       }
 
+      const credentialKeyPair = await loadJwks(this.config.wallet.backup_storage_path, `${credentialIdentifier}_jwks`)
+
       const authorizeResponse = await this.authorizeStep.run({
         authorizationEndpoint:
           authorizeOptions?.authorizationEndpoint ??
@@ -228,7 +231,7 @@ export class WalletIssuanceOrchestratorFlow {
           walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [{
           credential: personIdentificationData.compact,
-          keyPair: await loadJwks(this.config.wallet.backup_storage_path, "mock_pid_jwks")
+          keyPair: credentialKeyPair
         }],
         requestUri:
           authorizeOptions?.requestUri ??
