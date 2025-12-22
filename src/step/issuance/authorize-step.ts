@@ -96,7 +96,6 @@ export class AuthorizeDefaultStep extends StepFlow {
       });
 
       const requestObject = parsedAuthorizeRequest.payload;
-
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
         log.error("Failed to obtain response uri from authorization request");
@@ -163,7 +162,7 @@ export class AuthorizeDefaultStep extends StepFlow {
             signJwt: signJwtCallback([unitKey.privateKey]),
           },
           client_id: options.clientId,
-          requestObject: requestObject,
+          requestObject,
           rpMetadata: options.rpMetadata,
           vp_token,
         };
