@@ -9,6 +9,7 @@ import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
+  loadJwks,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -225,7 +226,10 @@ export class WalletIssuanceOrchestratorFlow {
         clientId:
           authorizeOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid,
-        credentials: [personIdentificationData.compact],
+        credentials: [{
+          credential: personIdentificationData.compact,
+          keyPair: await loadJwks(this.config.wallet.backup_storage_path, "mock_pid_jwks")
+        }],
         requestUri:
           authorizeOptions?.requestUri ??
           pushedAuthorizationRequestResponse.response?.request_uri,

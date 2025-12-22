@@ -48,7 +48,7 @@ export async function createMockSdJwt(
     trust_chain: [issEntityConfiguration, taEntityConfiguration],
   };
 
-  const { publicKey: unitKey } = await loadJwks(backupPath, "wallet_unit_jwks");
+  const { publicKey: unitKey } = await loadJwks(backupPath, "mock_pid_jwks");
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
