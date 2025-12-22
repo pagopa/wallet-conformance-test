@@ -104,7 +104,6 @@ export class WalletIssuanceOrchestratorFlow {
     authorizeResponse: AuthorizeStepResponse;
     credentialResponse: CredentialRequestResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
-    nonceResponse: NonceRequestResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     tokenResponse: TokenRequestResponse;
     nonceResponse: NonceRequestResponse;
