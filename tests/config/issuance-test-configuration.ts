@@ -1,13 +1,15 @@
 import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
 import {
+  AuthorizeDefaultStep,
+  AuthorizeStepOptions,
+  CredentialRequestDefaultStep,
+  CredentialRequestStepOptions,
+  NonceRequestDefaultStep,
+  NonceRequestStepOptions,
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestOptions,
   TokenRequestDefaultStep,
   TokenRequestStepOptions,
-  AuthorizeDefaultStep,
-  AuthorizeStepOptions,
-  NonceRequestDefaultStep,
-  NonceRequestStepOptions,
 } from "@/step/issuance";
 
 import { TestConfiguration } from "./test-registry";
@@ -22,11 +24,19 @@ export class IssuerTestConfiguration implements TestConfiguration {
   };
   public readonly credentialConfigurationId: string;
 
+  public readonly credentialRequest?: {
+    options?: CredentialRequestStepOptions;
+    stepClass: typeof CredentialRequestDefaultStep;
+  };
   public readonly fetchMetadata?: {
     options?: FetchMetadataOptions;
     stepClass: typeof FetchMetadataDefaultStep;
   };
   public readonly name: string;
+  public readonly nonceRequest?: {
+    options?: NonceRequestStepOptions;
+    stepClass: typeof NonceRequestDefaultStep;
+  };
   public readonly pushedAuthorizationRequest?: {
     options?: PushedAuthorizationRequestOptions;
     stepClass: typeof PushedAuthorizationRequestDefaultStep;
@@ -35,10 +45,6 @@ export class IssuerTestConfiguration implements TestConfiguration {
     options?: TokenRequestStepOptions;
     stepClass: typeof TokenRequestDefaultStep;
   };
-  public readonly nonceRequest?: {
-    options?: NonceRequestStepOptions;
-    stepClass: typeof NonceRequestDefaultStep;
-  };
 
   constructor(config: {
     authorize?: {
@@ -46,11 +52,19 @@ export class IssuerTestConfiguration implements TestConfiguration {
       stepClass: typeof AuthorizeDefaultStep;
     };
     credentialConfigurationId: string;
+    credentialRequest?: {
+      options?: CredentialRequestStepOptions;
+      stepClass: typeof CredentialRequestDefaultStep;
+    };
     fetchMetadata?: {
       options?: FetchMetadataOptions;
       stepClass?: typeof FetchMetadataDefaultStep;
     };
     name: string;
+    nonceRequest?: {
+      options?: NonceRequestStepOptions;
+      stepClass: typeof NonceRequestDefaultStep;
+    };
     pushedAuthorizationRequest?: {
       options?: PushedAuthorizationRequestOptions;
       stepClass?: typeof PushedAuthorizationRequestDefaultStep;
@@ -58,10 +72,6 @@ export class IssuerTestConfiguration implements TestConfiguration {
     tokenRequest?: {
       options?: TokenRequestStepOptions;
       stepClass: typeof TokenRequestDefaultStep;
-    };
-    nonceRequest?: {
-      options?: NonceRequestStepOptions;
-      stepClass: typeof NonceRequestDefaultStep;
     };
   }) {
     this.name = config.name;
@@ -89,6 +99,11 @@ export class IssuerTestConfiguration implements TestConfiguration {
       options: config.nonceRequest?.options,
       stepClass: config.nonceRequest?.stepClass ?? NonceRequestDefaultStep,
     };
+    this.credentialRequest = {
+      options: config.credentialRequest?.options,
+      stepClass:
+        config.credentialRequest?.stepClass ?? CredentialRequestDefaultStep,
+    };
   }
 
   static createCustom(
@@ -103,18 +118,21 @@ export class IssuerTestConfiguration implements TestConfiguration {
         stepClass: AuthorizeDefaultStep,
       },
       credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
+      credentialRequest: {
+        stepClass: CredentialRequestDefaultStep,
+      },
       fetchMetadata: {
         stepClass: FetchMetadataDefaultStep,
       },
       name: "Issuance Happy Flow",
+      nonceRequest: {
+        stepClass: NonceRequestDefaultStep,
+      },
       pushedAuthorizationRequest: {
         stepClass: PushedAuthorizationRequestDefaultStep,
       },
       tokenRequest: {
         stepClass: TokenRequestDefaultStep,
-      },
-      nonceRequest: {
-        stepClass: NonceRequestDefaultStep,
       },
     });
   }

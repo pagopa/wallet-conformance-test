@@ -18,7 +18,6 @@ export async function loadCredentials(
   types: string[],
   onIgnoreError: (msg: string) => void,
 ): Promise<Record<string, Credential>> {
-
   try {
     if (!existsSync(path))
       mkdirSync(path, {
