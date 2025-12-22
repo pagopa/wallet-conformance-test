@@ -5,6 +5,7 @@ import {
   createAuthorizationResponse,
   type CreateOpenid4vpAuthorizationResponseResult,
   fetchAuthorizationRequest,
+  type Openid4vpAuthorizationRequestHeader,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
@@ -22,35 +23,39 @@ import { StepFlow, type StepResult } from "@/step/step-flow";
 export interface AuthorizationRequestOptions {
   authorizeRequestUrl: string;
   credentials: string[];
-  rpMetadata: ItWalletCredentialVerifierMetadata;
-  walletAttestation: Omit<AttestationResponse, "created">;
+  verifierMetadata: ItWalletCredentialVerifierMetadata;
+  walletAttestation: AttestationResponse;
 }
 
-export type AuthorizationRequestStepResponse = StepResult & {
-  response?: AuthorizationStepResponse;
-};
-
-export interface AuthorizationStepResponse {
+export interface AuthorizationRequestStepResponse {
+  authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
   responseUri: string;
 }
 
-export class AuthorizationRequestStep extends StepFlow {
+export type AuthorizationRequestStepResult = StepResult & {
+  response?: AuthorizationRequestStepResponse;
+};
+
+export class AuthorizationRequestDefaultStep extends StepFlow {
   tag = "AUTHORIZATION";
 
   async run(
     options: AuthorizationRequestOptions,
-  ): Promise<AuthorizationRequestStepResponse> {
+  ): Promise<AuthorizationRequestStepResult> {
     const log = this.log.withTag(this.tag);
     log.info("Starting authorization request step...");
 
-    return this.execute<AuthorizationStepResponse>(async () => {
-      const { parsedQrCode, requestObject } = await fetchAuthorizationRequest({
-        authorizeRequestUrl: options.authorizeRequestUrl,
-        callbacks: { verifyJwt },
-      });
+    return this.execute<AuthorizationRequestStepResponse>(async () => {
+      const { parsedAuthorizeRequest, parsedQrCode } =
+        await fetchAuthorizationRequest({
+          authorizeRequestUrl: options.authorizeRequestUrl,
+          callbacks: { verifyJwt },
+        });
+
+      const requestObject = parsedAuthorizeRequest.payload;
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -82,7 +87,7 @@ export class AuthorizationRequestStep extends StepFlow {
         authorization_encrypted_response_alg,
         authorization_encrypted_response_enc,
         jwks,
-      } = options.rpMetadata;
+      } = options.verifierMetadata;
 
       const verifierKeys = {
         enc: jwks.keys.find((k) => k.use === "enc"),
@@ -110,15 +115,16 @@ export class AuthorizationRequestStep extends StepFlow {
         },
         client_id: parsedQrCode.clientId,
         requestObject,
-        rpMetadata: options.rpMetadata,
+        rpMetadata: options.verifierMetadata,
         vp_token: vpToken,
       });
 
       return {
+        authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
         parsedQrCode,
-        requestObject,
         responseUri,
+        requestObject
       };
     });
   }

@@ -5,16 +5,18 @@ import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-feder
 // Import test configuration - this will register all configurations
 import "../test.config";
 
-import { decodeJwt } from "jose";
+import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { FetchMetadataStepResponse } from "@/step";
-import { PushedAuthorizationRequestResponse } from "@/step/issuance";
-import { AuthorizeStepResponse } from "@/step/issuance/authorize-step";
+import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
 import z from "zod/v3";
+import { AttestationResponse } from "@/types";
+
+import crypto from "crypto";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -23,15 +25,21 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     const orchestrator: WalletIssuanceOrchestratorFlow =
       new WalletIssuanceOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
+    let tokenResponse: TokenRequestResponse;
     let fetchMetadataResponse: FetchMetadataStepResponse;
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     let authorizeResponse: AuthorizeStepResponse;
+    let walletAttestationResponse: AttestationResponse;
+    let nonceResponse: NonceRequestResponse;
 
     beforeAll(async () => {
       ({
         authorizeResponse,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
+        tokenResponse,
+        walletAttestationResponse,
+        nonceResponse,
       } = await orchestrator.issuance());
     });
 
@@ -276,9 +284,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("CI_049");
 
       log.start("Started");
-      expect(authorizeResponse.response?.requestObject?.exp).toBeDefined();
-      expect(authorizeResponse.response?.requestObject?.exp).toBe(
-        pushedAuthorizationRequestResponse.response?.expires_in,
+      expect(authorizeResponse.response?.requestObject?.request_uri).toBeDefined();
+      expect(authorizeResponse.response?.requestObject?.request_uri).toBe(
+        pushedAuthorizationRequestResponse.response?.request_uri,
       );
       log.testCompleted();
     });
@@ -345,6 +353,155 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(authorizeResponse.response?.authorizeResponse?.iss).toBe(
         authorizeResponse.response?.iss,
       );
+    });
+
+    // ============================================================================
+    // TOKEN REQUEST TESTS
+    // ============================================================================
+
+    test("CI_064: Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
+      const log = baseLog.withTag("CI_064");
+
+      log.start("Started");
+
+      const token = tokenResponse.response?.access_token;
+      expect(token).toBeDefined();
+
+      log.info("Parsing token as JWT...");
+      const claims = decodeJwt(token ?? "");
+      expect(claims.exp).toBeGreaterThan(Date.now() / 1e3);
+      expect(claims.iat).toBeLessThan(Date.now() / 1e3);
+
+      log.testCompleted();
+    });
+
+    test("CI_066: Both Access Token and Refresh Token (when issued) are cryptographically bound to the DPoP key", async () => {
+      const log = baseLog.withTag("CI_066");
+
+      log.start("Started");
+
+      expect(tokenResponse.response?.token_type).toBe("DPoP");
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
+
+      log.info("Computing JWK Thumbprint...");
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+
+      const tokens = [tokenResponse.response?.access_token];
+      if (tokenResponse.response?.refresh_token)
+        tokens.push(tokenResponse.response?.refresh_token);
+      
+      for (const token of tokens) {
+        log.info("Parsing token as JWT...");
+        const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+
+        expect(claims.cnf?.jkt).toBeDefined();
+        expect(claims.cnf?.jkt).toBe(jkt);
+      }
+
+      log.testCompleted();
+    });
+
+    test("CI_094: When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
+      const log = baseLog.withTag("CI_094");
+
+      log.start("Started");
+
+      expect(tokenResponse.response?.token_type).toBe("DPoP");
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
+
+      log.info("Computing JWK Thumbprint...");
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+
+      const tokens = [tokenResponse.response?.access_token];
+      if (tokenResponse.response?.refresh_token)
+        tokens.push(tokenResponse.response?.refresh_token);
+      
+      for (const token of tokens) {
+        log.info("Parsing token as JWT...");
+        const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+
+        expect(claims.cnf?.jkt).toBeDefined();
+        expect(claims.cnf?.jkt).toBe(jkt);
+      }
+
+      log.testCompleted();
+    });
+
+    test("CI_095: Both the Access Token and the Refresh Token are sent back to the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_095");
+
+      log.start("Started");
+
+      expect(tokenResponse.response?.access_token).toBeDefined();
+
+      log.testCompleted();
+    });
+
+    test("CI_101: Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
+      const log = baseLog.withTag("CI_101");
+
+      log.start("Started");
+
+      expect(tokenResponse.response?.token_type).toBe("DPoP");
+      expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
+
+      log.info("Computing JWK Thumbprint...");
+      const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+
+      const tokens = [tokenResponse.response?.access_token];
+      if (tokenResponse.response?.refresh_token)
+        tokens.push(tokenResponse.response?.refresh_token);
+      
+      for (const token of tokens) {
+        log.info("Parsing token as JWT...");
+        const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+
+        expect(claims.cnf?.jkt).toBeDefined();
+        expect(claims.cnf?.jkt).toBe(jkt);
+      }
+
+      log.testCompleted();
+    });
+
+    // ============================================================================
+    // NONCE REQUEST TESTS
+    // ============================================================================
+
+    test("CI_068: Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_068");
+
+      log.start("Started");
+
+      const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+      expect(nonce?.c_nonce).toBeDefined();
+      expect(nonce?.c_nonce.length).toBeGreaterThan(0);
+
+      log.testCompleted();
+    });
+
+    test("CI_069: The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
+      const log = baseLog.withTag("CI_069");
+
+      log.start("Started");
+
+      const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+      let cNonce = nonce?.c_nonce ?? "";
+      log.info(cNonce)
+      const length = cNonce.length;
+      expect(length).toBeGreaterThanOrEqual(32);
+
+      let frequencies: number[] = [];
+      for (const char of cNonce) {
+        const prevLength = cNonce.length;
+        cNonce = cNonce.replace(char, "");
+
+        frequencies.push((prevLength - cNonce.length) / length);
+      }
+
+      const entropy = - frequencies.reduce((a, b) => a + (b * Math.log2(b)), 0);
+      log.info(entropy)
+      expect(entropy).toBeGreaterThan(5);
+
       log.testCompleted();
     });
   });

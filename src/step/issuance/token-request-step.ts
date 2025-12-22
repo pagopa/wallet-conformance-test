@@ -10,11 +10,12 @@ import {
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
+import { JWK } from "jose";
 
 export type TokenRequestExecuteResponse = AccessTokenResponse;
 
 export type TokenRequestResponse = StepResult & {
-  response?: AccessTokenResponse;
+  response?: TokenRequestExecuteResponse;
 };
 
 export interface TokenRequestStepOptions {
