@@ -11,11 +11,7 @@ export interface RedirectUriOptions {
   responseUri: string;
 }
 
-export type RedirectUriStepResponse = StepResult & {
-  response?: RedirectUriStepResult;
-};
-
-export type RedirectUriStepResult =
+export type RedirectUriStepResponse =
   | {
       redirectUri: undefined;
       responseCode: undefined;
@@ -25,14 +21,18 @@ export type RedirectUriStepResult =
       responseCode: string;
     };
 
-export class RedirectUriStep extends StepFlow {
+export type RedirectUriStepResult = StepResult & {
+  response?: RedirectUriStepResponse;
+};
+
+export class RedirectUriDefaultStep extends StepFlow {
   tag = "REDIRECT URI";
 
-  async run(options: RedirectUriOptions): Promise<RedirectUriStepResponse> {
+  async run(options: RedirectUriOptions): Promise<RedirectUriStepResult> {
     const log = this.log.withTag(this.tag);
     log.info("Starting redirect uri step...");
 
-    return this.execute<RedirectUriStepResult>(async () => {
+    return this.execute<RedirectUriStepResponse>(async () => {
       if (!options.authorizationResponse.jarm) {
         throw new Error(
           "JARM response is missing in the authorization response",
