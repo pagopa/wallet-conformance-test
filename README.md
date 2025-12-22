@@ -188,6 +188,26 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 - Non-Executable Cases: Tests that were skipped and why.
 - Additional Data: Verbose logs and other debugging information.
 
+## 🪪 Automatic Mock PID Generation
+
+The tool **automatically generates a mock PID (Person Identification Data)** credential for testing purposes. This allows you to run conformance tests without needing a real credential from an official issuer.
+
+> Currently, `dc_sd_jwt_PersonIdentificationData` (PID) is the only credential used for presentation in this project. Other credential types are not yet supported for presentation flows.
+
+### How It Works
+
+The mock PID is generated in the **SD-JWT VC** (Selective Disclosure JWT Verifiable Credential) format, which is the standard format used in the Italian IT Wallet ecosystem. All personal data fields are selectively disclosable, meaning they can be individually revealed during presentation flows.
+
+### What is Generated
+
+When running tests, the tool creates a sample PID credential containing fictional Italian citizen data:
+
+- **Personal Information**: Given name, family name, and birth date
+- **Place of Birth**: Italian location
+- **Nationality**: Italian (IT)
+- **Administrative Number**: A sample personal administrative number
+- **Validity**: The credential is set to expire one year from generation
+
 ## 🔐 Trust Anchor Server
 The tool provides a **local Trust Anchor server** for testing purposes. This server is a core component that provides OpenID Federation metadata for testing federation-based wallet interactions. It serves as the root of trust in the federation hierarchy.
 
