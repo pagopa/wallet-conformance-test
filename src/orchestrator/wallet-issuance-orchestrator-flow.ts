@@ -285,7 +285,7 @@ export class WalletIssuanceOrchestratorFlow {
           credentialRequestOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier:
-          credentialRequestOptions?.clientId ??
+          credentialRequestOptions?.credentialIdentifier ??
           this.issuanceConfig.credentialConfigurationId,
         credentialRequestEndpoint:
           credentialRequestOptions?.credentialRequestEndpoint ??

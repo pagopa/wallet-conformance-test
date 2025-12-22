@@ -46,7 +46,7 @@ export interface CredentialRequestStepOptions {
   credentialRequestEndpoint: string;
 
   /**
-   * Nonce fetched dung the NonceRequestStep
+   * Nonce fetched during the NonceRequestStep
    */
   nonce: string;
 
