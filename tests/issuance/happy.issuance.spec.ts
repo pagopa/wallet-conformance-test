@@ -275,7 +275,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
       expect(requestUri).toBeDefined();
       expect(typeof requestUri).toBe("string");
-      expect(requestUri!.length).toBeGreaterThan(0);
+      expect(requestUri?.length).toBeGreaterThan(0);
 
       // Verify the request_uri follows the expected format (urn:ietf:params:oauth:request_uri:...)
       log.info("Verifying request_uri format...");
