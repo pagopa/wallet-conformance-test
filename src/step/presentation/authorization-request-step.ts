@@ -124,6 +124,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         authorizationResponse,
         parsedQrCode,
         responseUri,
+        requestObject
       };
     });
   }
