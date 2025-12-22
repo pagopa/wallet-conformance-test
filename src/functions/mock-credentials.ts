@@ -48,7 +48,8 @@ export async function createMockSdJwt(
     trust_chain: [issEntityConfiguration, taEntityConfiguration],
   };
 
-  const { publicKey: unitKey } = await loadJwks(backupPath, "wallet_unit_jwks");
+  const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
+  const { publicKey: unitKey } = await loadJwks(backupPath, `${credentialIdentifier}_jwks`);
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
@@ -111,7 +112,7 @@ export async function createMockSdJwt(
   );
 
   writeFileSync(
-    `${credentialsPath}/dc_sd_jwt_PersonIdentificationData`,
+    `${credentialsPath}/${credentialIdentifier}`,
     credential,
   );
   return {

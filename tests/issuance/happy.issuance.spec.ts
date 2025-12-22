@@ -10,12 +10,12 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { FetchMetadataStepResponse } from "@/step";
-import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse } from "@/step/issuance";
+import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse, CredentialRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
 import { AttestationResponse } from "@/types";
-
-import crypto from "crypto";
+import { SDJwt } from "@sd-jwt/core";
+import { parseMdoc } from "@/logic";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -30,6 +30,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     let authorizeResponse: AuthorizeStepResponse;
     let walletAttestationResponse: AttestationResponse;
     let nonceResponse: NonceRequestResponse;
+    let credentialResponse: CredentialRequestResponse;
 
     beforeAll(async () => {
       ({
@@ -39,6 +40,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         tokenResponse,
         walletAttestationResponse,
         nonceResponse,
+        credentialResponse,
       } = await orchestrator.issuance());
     });
 
@@ -486,7 +488,6 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
       let cNonce = nonce?.c_nonce ?? "";
-      log.info(cNonce)
       const length = cNonce.length;
       expect(length).toBeGreaterThanOrEqual(32);
 
@@ -499,10 +500,76 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       }
 
       const entropy = - frequencies.reduce((a, b) => a + (b * Math.log2(b)), 0);
-      log.info(entropy)
       expect(entropy).toBeGreaterThan(5);
+	});
+
+    // ============================================================================
+    // CREDENTIAL REQUEST TESTS
+    // ============================================================================
+
+    test("CI_084: When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_084");
+
+      log.start("Started");
+
+      expect(credentialResponse.response?.credentials?.length).toBeGreaterThan(0);
+
+      const credentialPublicKey = credentialResponse.response?.credentialKeyPair?.publicKey;
+      expect(credentialPublicKey).toBeDefined();
+
+      if (!credentialPublicKey) {
+        log.testFailed();
+        return;
+      }
+
+      log.info("Computing JWK Thumbprint of Wallet Instance key...");
+      const expectedJkt = await calculateJwkThumbprint(credentialPublicKey);
+      for (const credential of credentialResponse.response?.credentials ?? []) {
+        expect(credential.credential).toBeDefined();
+
+        log.info("Parsing credential as SD-JWT to verify key binding...");
+        const sdJwt = await await SDJwt.extractJwt(credential.credential);
+        const payload = sdJwt.payload as { cnf?: { jwk?: object; jkt?: string } } | undefined;
+
+        expect(payload?.cnf, "SD-JWT credential must contain cnf claim for key binding").toBeDefined();
+
+        if (payload?.cnf?.jwk) {
+          log.info("Verifying SD-JWT credential is bound to Wallet Instance key via jwk...");
+          const credentialJkt = await calculateJwkThumbprint(payload.cnf.jwk);
+          expect(credentialJkt).toBe(expectedJkt);
+          log.info("SD-JWT credential is cryptographically bound to Wallet Instance key");
+        } else {
+          expect.fail("SD-JWT credential cnf claim must contain either jkt or jwk");
+        }
+      }
 
       log.testCompleted();
+    });
+
+    test("CI_118: (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
+      const log = baseLog.withTag("CI_118");
+
+      log.start("Started");
+
+      for (const credential of credentialResponse.response?.credentials ?? []) {
+        try {
+          log.info("Parsing credential as SD-JWT...");
+          await SDJwt.extractJwt(credential.credential);
+
+          log.testCompleted();
+          return;
+        } catch {}
+
+        try {
+          log.info("Parsing credential as mdoc-CBOR...");
+          parseMdoc(Buffer.from(credential.credential));
+
+          log.testCompleted();
+          return;
+        } catch {
+          log.testFailed();
+        }
+      }
     });
   });
 });

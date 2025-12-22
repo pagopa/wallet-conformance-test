@@ -192,6 +192,8 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 
 The tool **automatically generates a mock PID (Person Identification Data)** credential for testing purposes. This allows you to run conformance tests without needing a real credential from an official issuer.
 
+> Currently, `dc_sd_jwt_PersonIdentificationData` (PID) is the only credential used for presentation in this project. Other credential types are not yet supported for presentation flows.
+
 ### How It Works
 
 The mock PID is generated in the **SD-JWT VC** (Selective Disclosure JWT Verifiable Credential) format, which is the standard format used in the Italian IT Wallet ecosystem. All personal data fields are selectively disclosable, meaning they can be individually revealed during presentation flows.

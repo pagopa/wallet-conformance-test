@@ -13,12 +13,13 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 import {
   fetchWithRetries,
   getEncryptJweCallback,
+  loadJwks,
   partialCallbacks,
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
-import { AttestationResponse } from "@/types";
+import { AttestationResponse, KeyPair } from "@/types";
 
 import { StepFlow, StepResult } from "../step-flow";
 
@@ -48,7 +49,7 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: string[];
+  credentials: { credential: string, keyPair: KeyPair }[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -121,12 +122,12 @@ export class AuthorizeDefaultStep extends StepFlow {
       }
 
       const credentialsWithKb = await Promise.all(
-        options.credentials.map((sdJwt) =>
+        options.credentials.map(c =>
           createVpTokenSdJwt({
             client_id: options.clientId,
-            dpopJwk: unitKey.privateKey,
+            dpopJwk: c.keyPair.privateKey,
             nonce: requestObject.nonce,
-            sdJwt,
+            sdJwt: c.credential,
           }),
         ),
       );
