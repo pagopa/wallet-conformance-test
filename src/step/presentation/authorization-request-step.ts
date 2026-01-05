@@ -47,6 +47,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   ): Promise<AuthorizationRequestStepResult> {
     const log = this.log.withTag(this.tag);
     log.info("Starting authorization request step...");
+    log.info(`Fetching and processing authorization request to ${options.authorizeRequestUrl}...`);
 
     return this.execute<AuthorizationRequestStepResponse>(async () => {
       const { parsedAuthorizeRequest, parsedQrCode } =
@@ -56,6 +57,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         });
 
       const requestObject = parsedAuthorizeRequest.payload;
+      log.info(`Authorization request fetched: ${JSON.stringify(requestObject)}.`);
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -93,10 +95,6 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         enc: jwks.keys.find((k) => k.use === "enc"),
         sig: jwks.keys.find((k) => k.use === "sig"),
       };
-
-      if (!verifierKeys.sig) {
-        throw new Error("no signature key found in verifier metadata");
-      }
 
       if (!verifierKeys.enc) {
         throw new Error("no encryption key found in verifier metadata");
