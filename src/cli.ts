@@ -24,6 +24,9 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.credentialIssuerUri) {
     env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
   }
+  if (options.presentationAuthorizeUri) {
+    env.CONFIG_PRESENTATION_AUTHORIZE_URI = options.presentationAuthorizeUri;
+  }
   if (options.credentialType) {
     env.CONFIG_CREDENTIAL_TYPE = options.credentialType;
   }
@@ -60,6 +63,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--credential-issuer-uri <uri>",
       "Override the credential issuer URL",
+    )
+    .option(
+      "--presentation-authorize-uri <uri>",
+      "Override the presentation authorize URL",
     )
     .option("--timeout <seconds>", "Network timeout in seconds", (val) =>
       parseInt(val, 10),

@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: number | string | undefined;
   credentialIssuerUri?: string;
+  presentationAuthorizeUri?: string;
   fileIni?: string;
   logFile?: string;
   logLevel?: string;
@@ -121,6 +122,11 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
       url: options.credentialIssuerUri,
     };
   }
+  if (options.presentationAuthorizeUri) {
+    partialConfig.presentation = {
+      authorize_request_url: options.presentationAuthorizeUri,
+    };
+  }
 
   if (options.timeout !== undefined || options.maxRetries !== undefined) {
     const network: Record<string, number> = {};
@@ -226,6 +232,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_CREDENTIAL_ISSUER_URI) {
     options.credentialIssuerUri = process.env.CONFIG_CREDENTIAL_ISSUER_URI;
+  }
+  if (process.env.CONFIG_PRESENTATION_AUTHORIZE_URI) {
+    options.presentationAuthorizeUri = process.env.CONFIG_PRESENTATION_AUTHORIZE_URI;
   }
   if (process.env.CONFIG_CREDENTIAL_TYPE) {
     options.credentialType = process.env.CONFIG_CREDENTIAL_TYPE;

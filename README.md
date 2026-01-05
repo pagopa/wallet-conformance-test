@@ -185,6 +185,17 @@ The pre-configured happy flow test validates the issuance of the `dc_sd_jwt_Euro
 
 #### Testing the Presentation Flow
 
+2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
+
+`config.ini`:
+
+    [presentation]
+    verifier = ...
+    authorize_request_url = ...
+
+
+
+
 Similarly, to test the presentation flow, you will use the `test:remote-presentation` command:
 
     wallet-conformance-test test:remote-presentation [OPTIONS]
