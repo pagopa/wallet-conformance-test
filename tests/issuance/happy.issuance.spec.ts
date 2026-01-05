@@ -207,7 +207,6 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(expires_in).toBeLessThanOrEqual(60);
       log.testCompleted();
 
-      console.log(expires_in);
       console.log('Expires in:', expires_in);
     });
 
