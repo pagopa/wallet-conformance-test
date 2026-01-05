@@ -235,11 +235,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       const log = baseLog.withTag("CI_042");
 
       log.start("Started");
-      const requestUriLenght = pushedAuthorizationRequestResponse.response?.request_uri.length
-      expect(requestUriLenght).toBeLessThanOrEqual(512);
+      const requestUriLength = pushedAuthorizationRequestResponse.response?.request_uri.length;
+      expect(requestUriLength).toBeLessThanOrEqual(512);
       log.testCompleted();
       
-      console.log('Request URI length:', requestUriLenght);
+      console.log('Request URI length:', requestUriLength);
     });
 
     test("CI_043: PAR Request | When verification is successful, Credential Issuer returns an HTTP response with 201 status code", async () => {
