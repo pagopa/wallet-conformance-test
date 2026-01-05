@@ -15,8 +15,6 @@ import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 // DEFINE YOUR TEST CONFIGURATIONS HERE -- ISSUANCE
 // ============================================================================
 
-// const happyFlowPIDConfig = IssuerTestConfiguration.createDefault();
-
 const happyFlowCredentialConfig = IssuerTestConfiguration.createCustom({
   credentialConfigurationId: "dc_sd_jwt_EuropeanDisabilityCard",
   name: "Happy Flow EuropeanDisabilityCard Test",
@@ -58,11 +56,6 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to
 
 /**
  * Example 1: Register test on HappyFlowIssuanceTest
- */
-//issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowPIDConfig);
-
-/**
- * Example 2: Register test on HappyFlowMdlTest
  */
 issuerRegistry.registerTest(
   HAPPY_FLOW_ISSUANCE_NAME,

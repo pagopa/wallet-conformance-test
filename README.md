@@ -151,13 +151,22 @@ Use a custom configuration file:
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
 
+1. First rename `config.example.ini` to `config.ini`. 
+
+
 #### Testing the issuance Flow
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-1. First rename `config.example.ini` to `config.ini`. 
-
 2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
+
+`config.ini`:
+
+    [issuance]
+    url = ...
+
+
+
 
 Then, run the test command:
 
@@ -165,6 +174,8 @@ Then, run the test command:
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
+
+The pre-configured happy flow test validates the issuance of the `dc_sd_jwt_EuropeanDisabilityCard` credential. To modify this default setting, refer to the instructions below.
 
 **📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
 - Quick start with default configurations

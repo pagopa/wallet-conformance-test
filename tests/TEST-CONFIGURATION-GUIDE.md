@@ -17,11 +17,19 @@ The default configuration is already set up in `tests/test.config.ts`:
 
 ```typescript
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { PresentationTestConfiguration } from "./config/presentation-test-configuration";
+import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
+export const HAPPY_FLOW_PRESENTATION_NAME = "HappyFlowPresentationTest"; // Reference to happy.presentation.spec.ts
 
-registerTest(HAPPY_FLOW_NAME, IssuerTestConfiguration.createDefault());
+const happyFlowCredentialConfig = IssuerTestConfiguration.createCustom({
+  credentialConfigurationId: "dc_sd_jwt_EuropeanDisabilityCard",
+  name: "Happy Flow EuropeanDisabilityCard Test",
+});
+
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowCredentialConfig);
+presentationRegistry.registerTest(HAPPY_FLOW_PRESENTATION_NAME, PresentationTestConfiguration.createDefault());
 ```
 
 ### Step 2: Run the Tests
@@ -52,9 +60,9 @@ pnpm test:issuance
 The test configuration system has four main components:
 
 1. **Configuration File (`test.config.ts`)**: Where you define and register test configurations
-2. **Flow Names**: Constants that identify which test flow to run (e.g., `HAPPY_FLOW_NAME`)
-3. **Registry (`IssuerTestRegistry`)**: Manages all registered configurations organized by flow name
-4. **Test Suite (`happy.issuance.spec.ts`)**: Automatically loads and runs configurations
+2. **Flow Names**: Constants that identify which test flow to run (e.g., `HAPPY_FLOW_ISSUANCE_NAME`, `HAPPY_FLOW_PRESENTATION_NAME`)
+3. **Registries (`issuerRegistry`, `presentationRegistry`)**: Manage all registered configurations organized by flow name
+4. **Test Suites (`happy.issuance.spec.ts`, `happy.presentation.spec.ts`)**: Automatically load and run configurations
 
 **Flow:**
 ```
@@ -65,74 +73,57 @@ test.config.ts → Registers configs → Registry → Test suite retrieves confi
 
 ## 📚 Configuration Examples
 
-### Example 1: Default Configuration
 
-Uses PersonIdentificationData credential with default settings.
-
-```typescript
-// test.config.ts
-import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
-
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
-
-registerTest(HAPPY_FLOW_NAME, IssuerTestConfiguration.createDefault());
-```
-
-**Run**: `pnpm test:issuance`
-
----
-
-### Example 2: Custom Credential Type
+### Example 1: Custom Credential Type
 
 Test a different credential type (e.g., DrivingLicense).
 
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const mdlConfig = IssuerTestConfiguration.createCustom({
-  testName: "DrivingLicense Test",
+  name: "DrivingLicense Test",
   credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
 });
 
-registerTest(HAPPY_FLOW_NAME, mdlConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, mdlConfig);
 ```
 
 **Run**: `pnpm test:issuance`
 
 ---
 
-### Example 3: Multiple Credential Types
+### Example 2: Multiple Credential Types
 
 Test multiple credential types in one run.
 
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest, registerTests } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const pidConfig = IssuerTestConfiguration.createCustom({
-  testName: "PersonIdentificationData Test",
+  name: "PersonIdentificationData Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
 });
 
 const mdlConfig = IssuerTestConfiguration.createCustom({
-  testName: "DrivingLicense Test",
+  name: "DrivingLicense Test",
   credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
 });
 
 // Option 1: Register individually
-registerTest(HAPPY_FLOW_NAME, pidConfig);
-registerTest(HAPPY_FLOW_NAME, mdlConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, pidConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, mdlConfig);
 
 // Option 2: Register multiple at once
-// registerTests(HAPPY_FLOW_NAME, [pidConfig, mdlConfig]);
+// issuerRegistry.registerMany(HAPPY_FLOW_ISSUANCE_NAME, [pidConfig, mdlConfig]);
 ```
 
 **Run**: `pnpm test:issuance`  
@@ -140,16 +131,16 @@ registerTest(HAPPY_FLOW_NAME, mdlConfig);
 
 ---
 
-### Example 4: Environment-Based Configuration
+### Example 3: Environment-Based Configuration
 
 Use different configurations for dev/prod environments.
 
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const environment = process.env.TEST_ENV || "dev";
 
@@ -161,11 +152,11 @@ const configs = {
 const credentialId = configs[environment as keyof typeof configs];
 
 const envConfig = IssuerTestConfiguration.createCustom({
-  testName: `${environment.toUpperCase()} Test`,
+  name: `${environment.toUpperCase()} Test`,
   credentialConfigurationId: credentialId,
 });
 
-registerTest(HAPPY_FLOW_NAME, envConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, envConfig);
 ```
 
 **Run**:
@@ -174,19 +165,19 @@ registerTest(HAPPY_FLOW_NAME, envConfig);
 
 ---
 
-### Example 5: Custom Metadata Path
+### Example 4: Custom Metadata Path
 
 Use a custom well-known path for federation metadata.
 
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const customMetadataConfig = IssuerTestConfiguration.createCustom({
-  testName: "Custom Metadata Path Test",
+  name: "Custom Metadata Path Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
   fetchMetadata: {
     options: {
@@ -195,34 +186,34 @@ const customMetadataConfig = IssuerTestConfiguration.createCustom({
   },
 });
 
-registerTest(HAPPY_FLOW_NAME, customMetadataConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, customMetadataConfig);
 ```
 
 **Run**: `pnpm test:issuance`
 
 ---
 
-### Example 6: Custom Step Classes
+### Example 5: Custom Step Classes
 
 Replace default step implementations with custom ones for testing scenarios.
 
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 import { FetchMetadataHardcodedStep } from "@/step/issuance/fetch-metadata-hardcoded-step";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
-  testName: "Hardcoded Metadata Fetch Test",
+  name: "Hardcoded Metadata Fetch Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
   fetchMetadata: {
     stepClass: FetchMetadataHardcodedStep,
   },
 });
 
-registerTest(HAPPY_FLOW_NAME, hardcodedMetadataConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, hardcodedMetadataConfig);
 ```
 
 **Use Cases**:
@@ -242,12 +233,12 @@ Use both custom options and custom step classes together.
 ```typescript
 // test.config.ts
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
 const advancedConfig = IssuerTestConfiguration.createCustom({
-  testName: "Advanced Combined Test",
+  name: "Advanced Combined Test",
   credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
   fetchMetadata: {
     options: {
@@ -263,7 +254,7 @@ const advancedConfig = IssuerTestConfiguration.createCustom({
   },
 });
 
-registerTest(HAPPY_FLOW_NAME, advancedConfig);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, advancedConfig);
 ```
 
 **Run**: `pnpm test:issuance`
@@ -278,11 +269,11 @@ All configurations registered to the same flow name run automatically:
 
 ```typescript
 // test.config.ts
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-registerTest(HAPPY_FLOW_NAME, config1); // ✓ Will run
-registerTest(HAPPY_FLOW_NAME, config2); // ✓ Will run
-registerTest(HAPPY_FLOW_NAME, config3); // ✓ Will run
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config1); // ✓ Will run
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config2); // ✓ Will run
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config3); // ✓ Will run
 ```
 
 **Run**: `pnpm test:issuance` → All three configurations execute
@@ -293,30 +284,30 @@ Create separate flows for different test scenarios:
 
 ```typescript
 // test.config.ts
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
-export const ERROR_FLOW_NAME = "ErrorFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
+export const ERROR_FLOW_ISSUANCE_NAME = "ErrorFlowIssuanceTest";
 
 // Register to happy flow
-registerTest(HAPPY_FLOW_NAME, happyConfig1);
-registerTest(HAPPY_FLOW_NAME, happyConfig2);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyConfig1);
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyConfig2);
 
 // Register to error flow
-registerTest(ERROR_FLOW_NAME, errorConfig1);
-registerTest(ERROR_FLOW_NAME, errorConfig2);
+issuerRegistry.registerTest(ERROR_FLOW_ISSUANCE_NAME, errorConfig1);
+issuerRegistry.registerTest(ERROR_FLOW_ISSUANCE_NAME, errorConfig2);
 ```
 
 Then create corresponding test files:
-- `tests/issuance/happy.issuance.spec.ts` → Uses `HAPPY_FLOW_NAME`
-- `tests/issuance/error.issuance.spec.ts` → Uses `ERROR_FLOW_NAME`
+- `tests/issuance/happy.issuance.spec.ts` → Uses `HAPPY_FLOW_ISSUANCE_NAME`
+- `tests/issuance/error.issuance.spec.ts` → Uses `ERROR_FLOW_ISSUANCE_NAME`
 
 ### Quickly Switching Configurations
 
 Comment/uncomment to activate different configs:
 
 ```typescript
-// registerTest(HAPPY_FLOW_NAME, config1);  // ✗ Commented out
-registerTest(HAPPY_FLOW_NAME, config2);     // ✓ Active
-// registerTest(HAPPY_FLOW_NAME, config3);  // ✗ Commented out
+// issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config1);  // ✗ Commented out
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config2);     // ✓ Active
+// issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, config3);  // ✗ Commented out
 ```
 
 ---
@@ -358,11 +349,11 @@ registerTest(HAPPY_FLOW_NAME, config2);     // ✓ Active
 **Solution**: Add at least one configuration:
 ```typescript
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { registerTest } from "./config/issuance-test-registry";
+import { issuerRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-registerTest(HAPPY_FLOW_NAME, IssuerTestConfiguration.createDefault());
+issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, IssuerTestConfiguration.createDefault());
 ```
 
 ---
@@ -372,9 +363,9 @@ registerTest(HAPPY_FLOW_NAME, IssuerTestConfiguration.createDefault());
 Before running tests, verify:
 
 - [ ] `test.config.ts` exists in `tests/` directory
-- [ ] Flow name constant is defined (e.g., `HAPPY_FLOW_NAME`)
-- [ ] At least one `registerTest()` call is present
-- [ ] `credentialConfigurationId` is correct
+- [ ] Flow name constant is defined (e.g., `HAPPY_FLOW_ISSUANCE_NAME`, `HAPPY_FLOW_PRESENTATION_NAME`)
+- [ ] At least one `issuerRegistry.registerTest()` or `presentationRegistry.registerTest()` call is present
+- [ ] `credentialConfigurationId` is correct (for issuance tests)
 - [ ] Configuration is not commented out
 - [ ] No syntax errors in file
 - [ ] Flow name matches between config and test files
@@ -387,10 +378,13 @@ Before running tests, verify:
 tests/
 ├── test.config.ts                         # ← Your configurations here
 ├── issuance/
-│   └── happy.issuance.spec.ts             # Test suite (happy flow)
+│   └── happy.issuance.spec.ts             # Test suite (issuance happy flow)
+├── presentation/
+│   └── happy.presentation.spec.ts         # Test suite (presentation happy flow)
 ├── config/
-│   ├── issuance-test-configuration.ts     # Configuration class
-│   └── issuance-test-registry.ts          # Registry system
+│   ├── issuance-test-configuration.ts     # Issuance configuration class
+│   ├── presentation-test-configuration.ts # Presentation configuration class
+│   └── test-registry.ts                   # Registry system (issuerRegistry, presentationRegistry)
 └── TEST-CONFIGURATION-GUIDE.md            # This guide
 ```
 
