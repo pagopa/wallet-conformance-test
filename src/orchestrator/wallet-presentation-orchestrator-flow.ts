@@ -219,7 +219,7 @@ export class WalletPresentationOrchestratorFlow {
             iss: "https://issuer.example.com",
             trustAnchorBaseUrl,
             trustAnchorJwksPath:
-            this.config.trust.federation_trust_anchors_jwks_path,
+              this.config.trust.federation_trust_anchors_jwks_path,
           },
           this.config.wallet.backup_storage_path,
           this.config.wallet.credentials_storage_path,
