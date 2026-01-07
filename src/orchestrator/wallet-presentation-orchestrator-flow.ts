@@ -219,7 +219,7 @@ export class WalletPresentationOrchestratorFlow {
       ? credentials[credentialIdentifier]
       : await createMockSdJwt(
           {
-            iss: this.config.issuance.url,
+            iss: "https://issuer.example.com",
             trustAnchorBaseUrl,
             trustAnchorJwksPath:
               this.config.trust.federation_trust_anchors_jwks_path,
