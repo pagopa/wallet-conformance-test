@@ -19,7 +19,7 @@ import {
   RedirectUriDefaultStep,
   RedirectUriStepResult,
 } from "@/step/presentation/redirect-uri-step";
-import { AttestationResponse, Config, KeyPairJwk } from "@/types";
+import { AttestationResponse, Config } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
