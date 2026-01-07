@@ -5,7 +5,7 @@ import {
 } from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
-import { createLogger, loadConfigWithHierarchy } from "@/logic";
+import { createLogger, loadConfigWithHierarchy, loadJwks } from "@/logic";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
@@ -13,6 +13,7 @@ import {
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResult,
+  CredentialWithKey,
 } from "@/step/presentation/authorization-request-step";
 import {
   RedirectUriDefaultStep,
@@ -87,10 +88,12 @@ export class WalletPresentationOrchestratorFlow {
       const walletAttestation =
         await this.loadWalletAttestation(trustAnchorBaseUrl);
 
-      const pid = await this.prepareCredential(trustAnchorBaseUrl);
+      const pid = await this.prepareCredential(trustAnchorBaseUrl, "dc_sd_jwt_PersonIdentificationData");
+
+      const credentials: CredentialWithKey[] = [pid];
 
       const authorizationRequestResult = await this.executeAuthorizationRequest(
-        pid.compact,
+        credentials,
         verifierMetadata,
         walletAttestation,
       );
@@ -111,7 +114,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async executeAuthorizationRequest(
-    credential: string,
+    credentials: CredentialWithKey[],
     verifierMetadata: ItWalletCredentialVerifierMetadata,
     walletAttestation: AttestationResponse,
   ) {
@@ -122,7 +125,7 @@ export class WalletPresentationOrchestratorFlow {
         authorizeRequestUrl:
           authorizationOptions?.authorizeRequestUrl ||
           this.config.presentation.authorize_request_url,
-        credentials: [credential],
+        credentials,
         verifierMetadata:
           authorizationOptions?.verifierMetadata || verifierMetadata,
         walletAttestation:
@@ -205,15 +208,15 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
-  private async prepareCredential(trustAnchorBaseUrl: string) {
+  private async prepareCredential(trustAnchorBaseUrl: string, credentialIdentifier: string): Promise<CredentialWithKey> {
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
-      ["dc_sd_jwt_PersonIdentificationData"],
+      [credentialIdentifier],
       this.log.error,
     );
 
-    const pid = credentials.dc_sd_jwt_PersonIdentificationData
-      ? credentials.dc_sd_jwt_PersonIdentificationData
+    const pid = credentials[credentialIdentifier]
+      ? credentials[credentialIdentifier]
       : await createMockSdJwt(
           {
             iss: "https://issuer.example.com",
@@ -225,6 +228,11 @@ export class WalletPresentationOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
         );
 
-    return pid;
+    const { privateKey } = await loadJwks(this.config.wallet.backup_storage_path, `${credentialIdentifier}_jwks`);
+
+    return {
+      credential: pid.compact,
+      dpopJwk: privateKey,
+    };
   }
 }
