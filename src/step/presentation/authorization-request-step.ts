@@ -9,7 +9,7 @@ import {
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
-import type { AttestationResponse } from "@/types";
+import type { AttestationResponse, KeyPairJwk } from "@/types";
 
 import {
   getEncryptJweCallback,
@@ -20,9 +20,14 @@ import {
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { StepFlow, type StepResult } from "@/step/step-flow";
 
+export interface CredentialWithKey {
+  credential: string;
+  dpopJwk: KeyPairJwk;
+}
+
 export interface AuthorizationRequestOptions {
   authorizeRequestUrl: string;
-  credentials: string[];
+  credentials: CredentialWithKey[];
   verifierMetadata: ItWalletCredentialVerifierMetadata;
   walletAttestation: AttestationResponse;
 }
@@ -62,15 +67,13 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         throw new Error("response_uri is missing in the request object");
       }
 
-      const { unitKey } = options.walletAttestation;
-
       const credentialsWithKb = await Promise.all(
-        options.credentials.map((sdJwt) =>
+        options.credentials.map(({ credential, dpopJwk }) =>
           createVpTokenSdJwt({
             client_id: parsedQrCode.clientId,
-            dpopJwk: unitKey.privateKey,
+            dpopJwk,
             nonce: requestObject.nonce,
-            sdJwt,
+            sdJwt: credential,
           }),
         ),
       );
@@ -83,11 +86,15 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         {} as Record<string, string>,
       );
 
+      const metadata = {
+        ...options.verifierMetadata,
+      }
+
       const {
         authorization_encrypted_response_alg,
         authorization_encrypted_response_enc,
         jwks,
-      } = options.verifierMetadata;
+      } = metadata;
 
       const verifierKeys = {
         enc: jwks.keys.find((k) => k.use === "enc"),
@@ -102,6 +109,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         throw new Error("no encryption key found in verifier metadata");
       }
 
+      const { unitKey } = options.walletAttestation;
+
       const authorizationResponse = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
@@ -115,7 +124,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         },
         client_id: parsedQrCode.clientId,
         requestObject,
-        rpMetadata: options.verifierMetadata,
+        rpMetadata: metadata,
         vp_token: vpToken,
       });
 
