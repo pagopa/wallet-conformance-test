@@ -208,7 +208,7 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
-  private async prepareCredential(trustAnchorBaseUrl: string, credentialIdentifier: string) : Promise<CredentialWithKey> {
+  private async prepareCredential(trustAnchorBaseUrl: string, credentialIdentifier: string): Promise<CredentialWithKey> {
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
