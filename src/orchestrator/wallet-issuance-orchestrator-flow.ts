@@ -208,10 +208,10 @@ export class WalletIssuanceOrchestratorFlow {
       } catch {
         personIdentificationData = await createMockSdJwt(
           {
-            iss: this.config.issuance.url,
+            iss: "https://issuer.example.com",
             trustAnchorBaseUrl,
             trustAnchorJwksPath:
-              this.config.trust.federation_trust_anchors_jwks_path,
+            this.config.trust.federation_trust_anchors_jwks_path,
           },
           this.config.wallet.backup_storage_path,
           this.config.wallet.credentials_storage_path,
