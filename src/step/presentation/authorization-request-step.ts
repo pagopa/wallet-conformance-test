@@ -88,7 +88,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
 
       const metadata = {
         ...options.verifierMetadata,
-      }
+      };
 
       const {
         authorization_encrypted_response_alg,
