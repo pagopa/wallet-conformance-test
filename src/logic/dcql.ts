@@ -13,10 +13,10 @@ type DcqlMatchSuccess = Extract<
  * @example of matches structure
  * [
  *   [
- *     "0",
+ *     "credential_id_example",
  *     {
  *       "success": true,
- *       "credential_query_id": "0",
+ *       "credential_query_id": "credential_id_example",
  *       "valid_credentials": [
  *         {
  *           "success": true,
