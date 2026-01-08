@@ -220,6 +220,19 @@ The tool **automatically generates a mock PID (Person Identification Data)** cre
 
 The mock PID is generated in the **SD-JWT VC** (Selective Disclosure JWT Verifiable Credential) format, which is the standard format used in the Italian IT Wallet ecosystem. All personal data fields are selectively disclosable, meaning they can be individually revealed during presentation flows.
 
+The mock PID credential uses a **fictitious issuer** with the value `https://issuer.example.com`. 
+
+The credential is **signed with auto-generated mock keys** created locally by the tool. These keys are part of a **local Trust Anchor** federation setup, described in the section below.
+
+> ⚠️ **Important**: The solution under test **must not** fetch issuer data from the `/.well-known/openid-federation` endpoint. Instead, it should perform verification using either:
+> - The `trust_chain` claim in the credential header, or
+> - The `x5c` (X.509 certificate chain) parameter
+>
+> Additionally, **Trust Anchor validity checks must be disabled** during testing, as the mock credentials use locally generated keys that are not part of a real trust infrastructure.
+
+This ensures that your implementation correctly handles trust verification through the credential itself, rather than relying on external federation metadata lookups.
+
+
 ### What is Generated
 
 When running tests, the tool creates a sample PID credential containing fictional Italian citizen data:

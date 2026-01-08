@@ -97,6 +97,11 @@ export async function createMockSdJwt(
       iat: Math.floor(Date.now() / 1000),
       iss: metadata.iss,
       sub: unitKey.kid,
+      status: {
+        status_assertion: {
+          credential_hash_alg: "sha-256",
+        }
+      },
       vct,
       "vct#integrity": vctIntegrity,
       ...claims,
