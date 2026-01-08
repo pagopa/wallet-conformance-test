@@ -90,7 +90,9 @@ export async function validateDcqlQuery(
 
   const queryResult = DcqlQuery.query(parsedQuery, parsedCredentials);
   if (!queryResult.can_be_satisfied) {
-    throw new Error("The provided credentials do not satisfy the DCQL query");
+    throw new Error(
+      "DCQL query validation failed: The provided credentials do not satisfy the DCQL query",
+    );
   }
 
   return queryResult;
