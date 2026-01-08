@@ -36,7 +36,9 @@ export async function buildVpToken(
   );
 }
 
-export async function parseCredentialFromSdJwt(credential: string) {
+export async function parseCredentialFromSdJwt(
+  credential: string,
+): Promise<DcqlSdJwtVcCredential> {
   const { disclosures, jwt } = await decodeSdJwt(credential, digest);
 
   const claims = disclosures.reduce(
@@ -49,7 +51,7 @@ export async function parseCredentialFromSdJwt(credential: string) {
     {} as Record<string, DisclosureData<unknown>>,
   );
 
-  const credentialFormat = jwt.header.typ as "dc+sd-jwt";
+  const credentialFormat = jwt.header.typ;
   if (credentialFormat !== "dc+sd-jwt") {
     throw new Error(`Unsupported credential format: ${credentialFormat}`);
   }
