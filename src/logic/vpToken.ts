@@ -13,8 +13,8 @@ export async function buildVpToken(
   const matches = getDcqlQueryMatches(queryResult);
 
   return matches.reduce(
-    (acc, [credentialQueryId, match], currentIndex) => {
-      const validCredential = match.valid_credentials[currentIndex];
+    (acc, [credentialQueryId, match]) => {
+      const validCredential = match.valid_credentials[0];
       if (!validCredential) {
         throw new Error(
           `No valid credentials found for credential_query_id ${credentialQueryId}`,
