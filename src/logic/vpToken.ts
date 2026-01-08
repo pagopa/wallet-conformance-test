@@ -49,7 +49,7 @@ export async function parseCredentialFromSdJwt(credential: string) {
     {} as Record<string, DisclosureData<unknown>>,
   );
 
-  const credentialFormat = jwt.header.typ;
+  const credentialFormat = jwt.header.typ as "dc+sd-jwt";
   if (credentialFormat !== "dc+sd-jwt") {
     throw new Error(`Unsupported credential format: ${credentialFormat}`);
   }
