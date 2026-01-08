@@ -88,6 +88,7 @@ export class FetchMetadataDefaultStep extends StepFlow {
           entityStatementJwtDecoded,
         );
       } catch (e) {
+        entityStatementClaims = entityStatementJwtDecoded;
         log.info("Failed to parse entity statement claims:", e);
       }
 

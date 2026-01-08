@@ -186,6 +186,10 @@ export class WalletIssuanceOrchestratorFlow {
             walletAttestationResponse,
         });
 
+      if (!pushedAuthorizationRequestResponse.response) {
+        throw new Error("Pushed Authorization Request failed");
+      }
+
       const authorizeOptions = this.issuanceConfig.authorize?.options;
 
       let personIdentificationData: Credential;

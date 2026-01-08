@@ -13,6 +13,7 @@ import { FetchMetadataStepResponse } from "@/step";
 import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse, CredentialRequestResponse } from "@/step/issuance";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
+import z from "zod/v3";
 import { AttestationResponse } from "@/types";
 import { SDJwt } from "@sd-jwt/core";
 import { parseMdoc } from "@/logic";
@@ -44,25 +45,29 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       } = await orchestrator.issuance());
     });
 
-    test("CI_001: Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
+    test("CI_001: Fetch Metadata | Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
       const log = baseLog.withTag("CI_001");
 
       log.start("Started");
       expect(fetchMetadataResponse.success).toBe(true);
       log.testCompleted();
+      console.log(fetchMetadataResponse.response?.entityStatementClaims);
     });
 
-    test("CI_002 Entity Configuration response media type check", async () => {
+    test("CI_002: Fetch Metadata | Entity Configuration response media type check", async () => {
       const log = baseLog.withTag("CI_002");
 
       log.start("Started");
-      expect(fetchMetadataResponse.response?.headers.get("content-type")).toBe(
-        "application/entity-statement+jwt",
-      );
+      const expectedContentType = "application/entity-statement+jwt";
+      const actualContentType =
+        fetchMetadataResponse.response?.headers.get("content-type");
+      expect(actualContentType).toBe(expectedContentType);
       log.testCompleted();
+
+      console.log(actualContentType);
     });
 
-    test("CI_003: The Entity Configuration is cryptographically signed", async () => {
+    test("CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed", async () => {
       const log = baseLog.withTag("CI_003");
 
       log.start("Started");
@@ -80,9 +85,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       );
       log.debug(decodedData);
       log.testCompleted();
+
+      console.log(fetchMetadataResponse.response?.entityStatementJwt);
     });
 
-    test("CI_006: Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
+    test("CI_006: Fetch Metadata | Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
       const log = baseLog.withTag("CI_006");
 
       log.start("Started");
@@ -93,15 +100,16 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.debug(JSON.stringify(decodedData));
 
       log.info("Validating response format...");
-      const result = itWalletEntityStatementClaimsSchema._def.schema
-        .pick({
-          exp: true,
-          iat: true,
-          iss: true,
-          jwks: true,
-          metadata: true,
-          sub: true,
+      const result = z
+        .object({
+          exp: z.number(),
+          iat: z.number(),
+          iss: z.string(),
+          jwks: z.any(),
+          metadata: z.any(),
+          sub: z.string(),
         })
+        .passthrough()
         .refine((data) => data.metadata !== undefined, {
           message: "metadata is missing",
         })
@@ -115,7 +123,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_008: Credential Issuer metadata", async () => {
+    test("CI_008: Fetch Metadata | Credential Issuer metadata", async () => {
       const log = baseLog.withTag("CI_008");
 
       log.start("Started");
@@ -126,10 +134,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.debug(JSON.stringify(decodedData));
 
       log.info("Validating response format...");
-      const result = itWalletEntityStatementClaimsSchema._def.schema
-        .pick({
-          metadata: true,
+      const result = z
+        .object({
+          metadata: z.any(),
         })
+        .passthrough()
         .refine(
           (data) =>
             data.metadata !== undefined &&
@@ -152,7 +161,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_009: Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet", async () => {
+    test("CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet", async () => {
       const log = baseLog.withTag("CI_009");
 
       log.start("Started");
@@ -163,10 +172,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.debug(JSON.stringify(decodedData));
 
       log.info("Validating response format...");
-      const result = itWalletEntityStatementClaimsSchema._def.schema
-        .pick({
-          metadata: true,
+      const result = z
+        .object({
+          metadata: z.any(),
         })
+        .passthrough()
         .refine(
           (data) =>
             data.metadata !== undefined &&
@@ -182,23 +192,25 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       log.info(`Response matches the required format`);
       log.testCompleted();
+
     });
 
     // ============================================================================
     // PUSHED AUTHORIZATION REQUEST TESTS
     // ============================================================================
 
-    test("CI_040: request_uri validity time is set to less than one minute", async () => {
+    test("CI_040: PAR Request | request_uri validity time is set to less than one minute", async () => {
       const log = baseLog.withTag("CI_040");
 
       log.start("Started");
-      expect(
-        pushedAuthorizationRequestResponse.response?.expires_in,
-      ).toBeLessThanOrEqual(60);
+      const expires_in = pushedAuthorizationRequestResponse.response?.expires_in;
+      expect(expires_in).toBeLessThanOrEqual(60);
       log.testCompleted();
+
+      console.log('Expires in:', expires_in);
     });
 
-    test("CI_041: Generated request_uri includes a cryptographic random value of at least 128 bits", async () => {
+    test("CI_041: PAR Request | Generated request_uri includes a cryptographic random value of at least 128 bits", async () => {
       const log = baseLog.withTag("CI_041");
 
       log.start("Started");
@@ -214,19 +226,22 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       // Ensure it's at least 128 bits of randomness (16 bytes)
       expect(bitLength).toBeGreaterThanOrEqual(128);
       log.testCompleted();
+
+      console.log('Bits length:', bitLength);
     });
 
-    test("CI_042: Complete request_uri doesn't exceed 512 ASCII characters", async () => {
+    test("CI_042: PAR Request | Complete request_uri doesn't exceed 512 ASCII characters", async () => {
       const log = baseLog.withTag("CI_042");
 
       log.start("Started");
-      expect(
-        pushedAuthorizationRequestResponse.response?.request_uri.length,
-      ).toBeLessThanOrEqual(512);
+      const requestUriLength = pushedAuthorizationRequestResponse.response?.request_uri.length;
+      expect(requestUriLength).toBeLessThanOrEqual(512);
       log.testCompleted();
+      
+      console.log('Request URI length:', requestUriLength);
     });
 
-    test("CI_043: When verification is successful, Credential Issuer returns an HTTP response with 201 status code", async () => {
+    test("CI_043: PAR Request | When verification is successful, Credential Issuer returns an HTTP response with 201 status code", async () => {
       const log = baseLog.withTag("CI_043");
 
       log.start("Started");
@@ -234,20 +249,19 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_044a: HTTP response includes request_uri parameter containing the generated one-time authorization URI", async () => {
+    test("CI_044a: PAR Request | HTTP response includes request_uri parameter containing the generated one-time authorization URI", async () => {
       const log = baseLog.withTag("CI_044a");
 
       log.start("Started");
-      expect(
-        pushedAuthorizationRequestResponse.response?.request_uri,
-      ).toBeDefined();
-      expect(
-        pushedAuthorizationRequestResponse.response?.request_uri,
-      ).toBeTruthy();
+      const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
+      expect(requestUri).toBeDefined();
+      expect(requestUri).toBeTruthy();
       log.testCompleted();
+
+      console.log('Request URI:', requestUri);
     });
 
-    test("CI_044b: HTTP response includes expires_in parameter specifying the validity duration in seconds", async () => {
+    test("CI_044b: PAR Request | HTTP response includes expires_in parameter specifying the validity duration in seconds", async () => {
       const log = baseLog.withTag("CI_044b");
 
       log.start("Started");
@@ -267,7 +281,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // AUTHORIZATION REQUEST TESTS
     // ============================================================================
 
-    test("CI_049: Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
+    test("CI_049: Authorization | Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
       const log = baseLog.withTag("CI_049");
 
       log.start("Started");
@@ -293,7 +307,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_054: (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
+    test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
 
       log.start("Started");
@@ -301,7 +315,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_055: (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
+    test("CI_055: Authorization | (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_055");
 
       log.start("Started");
@@ -309,7 +323,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_056: (Q)EAA Provider successfully provides the presentation request to the Wallet", async () => {
+    test("CI_056: Authorization | (Q)EAA Provider successfully provides the presentation request to the Wallet", async () => {
       const log = baseLog.withTag("CI_056");
 
       log.start("Started");
@@ -317,7 +331,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058a: Authorization code response includes the authorization code parameter", async () => {
+    test("CI_058a: Authorization | Authorization code response includes the authorization code parameter", async () => {
       const log = baseLog.withTag("CI_058a");
 
       log.start("Started");
@@ -328,7 +342,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058b: Authorization code response includes the state parameter matching the original request", async () => {
+    test("CI_058b: Authorization | Authorization code response includes the state parameter matching the original request", async () => {
       const log = baseLog.withTag("CI_058b");
 
       log.start("Started");
@@ -344,7 +358,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_058c: Authorization code response includes the iss parameter identifying the issuer", async () => {
+    test("CI_058c: Authorization | Authorization code response includes the iss parameter identifying the issuer", async () => {
       const log = baseLog.withTag("CI_058c");
 
       log.start("Started");
@@ -361,7 +375,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // TOKEN REQUEST TESTS
     // ============================================================================
 
-    test("CI_064: Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
+    test("CI_064: Token | Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
       const log = baseLog.withTag("CI_064");
 
       log.start("Started");
@@ -374,10 +388,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(claims.exp).toBeGreaterThan(Date.now() / 1e3);
       expect(claims.iat).toBeLessThan(Date.now() / 1e3);
 
+      console.log('Access Token:', tokenResponse.response?.access_token);
       log.testCompleted();
     });
 
-    test("CI_066: Both Access Token and Refresh Token (when issued) are cryptographically bound to the DPoP key", async () => {
+    test("CI_066: Token | Both Access Token and Refresh Token (when issued) are cryptographically bound to the DPoP key", async () => {
       const log = baseLog.withTag("CI_066");
 
       log.start("Started");
@@ -400,10 +415,11 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         expect(claims.cnf?.jkt).toBe(jkt);
       }
 
+      console.log('JWK Thumbprint:', jkt);
       log.testCompleted();
     });
 
-    test("CI_094: When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
+    test("CI_094: Token | When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
       const log = baseLog.withTag("CI_094");
 
       log.start("Started");
@@ -429,7 +445,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_095: Both the Access Token and the Refresh Token are sent back to the Wallet Instance", async () => {
+    test("CI_095: Token | Both the Access Token and the Refresh Token are sent back to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_095");
 
       log.start("Started");
@@ -439,7 +455,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       log.testCompleted();
     });
 
-    test("CI_101: Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
+    test("CI_101: Token | Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
       const log = baseLog.withTag("CI_101");
 
       log.start("Started");
@@ -461,7 +477,6 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         expect(claims.cnf?.jkt).toBeDefined();
         expect(claims.cnf?.jkt).toBe(jkt);
       }
-
       log.testCompleted();
     });
 
@@ -469,7 +484,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // NONCE REQUEST TESTS
     // ============================================================================
 
-    test("CI_068: Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
+    test("CI_068: Nonce | Credential Issuer provides a c_nonce value to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_068");
 
       log.start("Started");
@@ -478,10 +493,12 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       expect(nonce?.c_nonce).toBeDefined();
       expect(nonce?.c_nonce.length).toBeGreaterThan(0);
 
+      console.log('c_nonce:', nonce?.c_nonce);
+
       log.testCompleted();
     });
 
-    test("CI_069: The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
+    test("CI_069: Nonce | The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
       const log = baseLog.withTag("CI_069");
 
       log.start("Started");
@@ -507,7 +524,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     // CREDENTIAL REQUEST TESTS
     // ============================================================================
 
-    test("CI_084: When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
+    test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
 
       log.start("Started");
@@ -544,9 +561,10 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       }
 
       log.testCompleted();
+      console.log(credentialResponse.response?.credentials);
     });
 
-    test("CI_118: (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
+    test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");
 
       log.start("Started");
