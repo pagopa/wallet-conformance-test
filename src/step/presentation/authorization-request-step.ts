@@ -63,6 +63,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         });
 
       const requestObject = parsedAuthorizeRequest.payload;
+      log.info(
+        `Authorization request fetched: ${JSON.stringify(requestObject)}.`,
+      );
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -86,6 +89,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       }
 
       const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+      log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {
         ...options.verifierMetadata,
