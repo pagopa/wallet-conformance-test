@@ -1,0 +1,70 @@
+import { digest } from "@sd-jwt/crypto-nodejs";
+import { decodeSdJwt } from "@sd-jwt/decode";
+import { DisclosureData } from "@sd-jwt/types";
+import { DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
+
+import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
+
+export async function buildVpToken(
+  credentials: string[],
+  query: DcqlQuery.Input,
+) {
+  const queryResult = await validateDcqlQuery(credentials, query);
+  const matches = getDcqlQueryMatches(queryResult);
+
+  return matches.reduce(
+    (acc, [credentialQueryId, match]) => {
+      const validCredential = match.valid_credentials[0];
+      if (!validCredential) {
+        throw new Error(
+          `No valid credentials found for credential_query_id ${credentialQueryId}`,
+        );
+      }
+
+      const credentialIndex = validCredential.input_credential_index;
+      const credential = credentials[credentialIndex];
+      if (!credential) {
+        throw new Error(
+          `Credential index ${credentialIndex} not found for credential_query_id ${credentialQueryId}`,
+        );
+      }
+
+      acc[credentialQueryId] = credential;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+}
+
+export async function parseCredentialFromSdJwt(
+  credential: string,
+): Promise<DcqlSdJwtVcCredential> {
+  const { disclosures, jwt } = await decodeSdJwt(credential, digest);
+
+  const claims = disclosures.reduce(
+    (acc, disclosure) => {
+      const disclosureData = disclosure.decode();
+      const claim = disclosureData[1] as string;
+      acc[claim] = disclosureData;
+      return acc;
+    },
+    {} as Record<string, DisclosureData<unknown>>,
+  );
+
+  const credentialFormat = jwt.header.typ;
+  if (credentialFormat !== "dc+sd-jwt") {
+    throw new Error(`Unsupported credential format: ${credentialFormat}`);
+  }
+
+  const vct = jwt.payload.vct;
+  if (typeof vct !== "string") {
+    throw new Error("vct is missing or invalid in the credential payload");
+  }
+
+  return {
+    claims: claims as DcqlSdJwtVcCredential["claims"],
+    credential_format: credentialFormat,
+    cryptographic_holder_binding: true,
+    vct,
+  };
+}

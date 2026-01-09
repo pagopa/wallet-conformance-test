@@ -8,6 +8,7 @@ import {
   type Openid4vpAuthorizationRequestHeader,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
+import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, KeyPairJwk } from "@/types";
 
@@ -18,12 +19,8 @@ import {
   verifyJwt,
 } from "@/logic";
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
+import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResult } from "@/step/step-flow";
-
-export interface CredentialWithKey {
-  credential: string;
-  dpopJwk: KeyPairJwk;
-}
 
 export interface AuthorizationRequestOptions {
   authorizeRequestUrl: string;
@@ -44,6 +41,11 @@ export type AuthorizationRequestStepResult = StepResult & {
   response?: AuthorizationRequestStepResponse;
 };
 
+export interface CredentialWithKey {
+  credential: string;
+  dpopJwk: KeyPairJwk;
+}
+
 export class AuthorizationRequestDefaultStep extends StepFlow {
   tag = "AUTHORIZATION";
 
@@ -52,7 +54,6 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   ): Promise<AuthorizationRequestStepResult> {
     const log = this.log.withTag(this.tag);
     log.info("Starting authorization request step...");
-    log.info(`Fetching and processing authorization request to ${options.authorizeRequestUrl}...`);
 
     return this.execute<AuthorizationRequestStepResponse>(async () => {
       const { parsedAuthorizeRequest, parsedQrCode } =
@@ -62,7 +63,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         });
 
       const requestObject = parsedAuthorizeRequest.payload;
-      log.info(`Authorization request fetched: ${JSON.stringify(requestObject)}.`);
+      log.info(
+        `Authorization request fetched: ${JSON.stringify(requestObject)}.`,
+      );
 
       const responseUri = requestObject.response_uri;
       if (!responseUri) {
@@ -80,16 +83,22 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         ),
       );
 
-      const vpToken = credentialsWithKb.reduce(
-        (acc, credential, currIndex) => {
-          acc[currIndex] = credential;
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
+      const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
+      if (!dcqlQuery) {
+        throw new Error("dcql_query is missing in the request object");
+      }
+
+      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+      log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {
         ...options.verifierMetadata,
+        authorization_encrypted_response_alg:
+          options.verifierMetadata.authorization_encrypted_response_alg ||
+          "ECDH-ES",
+        authorization_encrypted_response_enc:
+          options.verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
       };
 
       const {
@@ -98,12 +107,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         jwks,
       } = metadata;
 
-      const verifierKeys = {
-        enc: jwks.keys.find((k) => k.use === "enc"),
-        sig: jwks.keys.find((k) => k.use === "sig"),
-      };
-
-      if (!verifierKeys.enc) {
+      const encryptionKey = jwks.keys.find((k) => k.use === "enc");
+      if (!encryptionKey) {
         throw new Error("no encryption key found in verifier metadata");
       }
 
@@ -112,10 +117,10 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       const authorizationResponse = await createAuthorizationResponse({
         callbacks: {
           ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(verifierKeys.enc, {
+          encryptJwe: getEncryptJweCallback(encryptionKey, {
             alg: authorization_encrypted_response_alg,
             enc: authorization_encrypted_response_enc,
-            kid: verifierKeys.enc.kid,
+            kid: encryptionKey.kid,
             typ: "oauth-authz-req+jwt",
           }),
           signJwt: signJwtCallback([unitKey.privateKey]),
@@ -130,8 +135,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
         parsedQrCode,
+        requestObject,
         responseUri,
-        requestObject
       };
     });
   }
