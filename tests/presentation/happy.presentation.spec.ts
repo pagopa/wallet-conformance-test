@@ -507,7 +507,7 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       }
     });
 
-    test("RPR093: nonce parameter has sufficient entropy with at least 32 digits.", () => {
+    test("RPR093: nonce parameter has sufficient entropy with at least 32 characters.", () => {
       const log = baseLog.withTag("RPR093");
 
       log.start("Conformance test: Verifying nonce entropy requirements");

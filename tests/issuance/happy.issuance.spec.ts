@@ -816,7 +816,7 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
           expect(credential.credential).toBeDefined();
 
           log.info("  Parsing credential as SD-JWT...");
-          const sdJwt = await await SDJwt.extractJwt(credential.credential);
+          const sdJwt = await SDJwt.extractJwt(credential.credential);
           const payload = sdJwt.payload as { cnf?: { jwk?: object; jkt?: string } } | undefined;
 
           expect(payload?.cnf, "SD-JWT credential must contain cnf claim for key binding").toBeDefined();
@@ -870,9 +870,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
           }
         }
 
-        if (!testSuccess) {
-          log.error("  ❌ No credentials found in valid format");
-        }
+        log.error("  ❌ No credentials found in valid format");
+        
       } finally {
         log.testCompleted(testSuccess);
       }
