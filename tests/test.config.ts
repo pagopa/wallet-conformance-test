@@ -44,7 +44,7 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to
  * Credential types are loaded from:
  * 1. CLI option --credential-types (highest priority)
  * 2. config.ini issuance.credential_types[]
- * 3. Default: dc_sd_jwt_PersonIdentificationData
+ * 3. Default: dc_sd_jwt_EuropeanDisabilityCard
  */
 for (const credentialType of credentialTypes) {
   const testConfig = IssuerTestConfiguration.createCustom({
