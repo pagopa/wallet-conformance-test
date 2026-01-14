@@ -98,8 +98,13 @@ function setLogOptions(
   if (reporters.length > 0) this.setReporters(reporters);
 }
 
-function testCompleted(this: Logger) {
-  this.success("Test completed ✅");
+function testCompleted(this: Logger, success = true) {
+  if (success) {
+    this.success("Test completed ✅");
+  } else {
+    this.error("Test completed ❌");
+  }
+  this.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
 function testFailed(this: Logger) {
