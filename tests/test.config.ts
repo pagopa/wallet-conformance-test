@@ -20,7 +20,7 @@ import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 const config = loadConfigWithHierarchy();
 
 // Default credential type for backward compatibility
-const DEFAULT_CREDENTIAL_TYPES = ["dc_sd_jwt_PersonIdentificationData"];
+const DEFAULT_CREDENTIAL_TYPES = ["dc_sd_jwt_EuropeanDisabilityCard"];
 
 // Use configured credential types, or fall back to default
 const credentialTypes =
