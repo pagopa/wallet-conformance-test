@@ -146,7 +146,6 @@ Use a custom configuration file:
 
     wallet-conformance-test test:issuance --file-ini /path/to/my-config.ini
 
-
 ### Running Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
@@ -209,6 +208,12 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 - Failure Cases: Tests that failed, with details to help identify the root cause.
 - Non-Executable Cases: Tests that were skipped and why.
 - Additional Data: Verbose logs and other debugging information.
+
+## 📋 Official Test Plans
+
+The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation.
+
+This ensures that implementations validated by this tool are aligned with the requirements established by the Italian technical rules for the IT Wallet ecosystem.
 
 ## 🪪 Automatic Mock PID Generation
 
