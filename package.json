@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "name": "wallet-conformance-test",
+  "name": "wct",
   "description": "",
   "main": "index.js",
   "packageManager": "pnpm@10.23.0",
@@ -8,7 +8,7 @@
     "config.ini"
   ],
   "bin": {
-    "wallet-conformance-test": "./bin/wallet-conformance-test"
+    "wct": "./bin/wct"
   },
   "scripts": {
     "build": "tsc",

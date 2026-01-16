@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CLI Entry Point for wallet-conformance-test
+ * CLI Entry Point for wct (Wallet Conformance Test)
  *
  * This script handles command-line arguments and passes configuration options
  * to the test runners via environment variables.
@@ -52,7 +52,7 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
 const program = new Command();
 
 program
-  .name("wallet-conformance-test")
+  .name("wct")
   .description("Automated conformance testing for IT Wallet ecosystem services")
   .version("1.0.0");
 

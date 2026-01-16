@@ -13,6 +13,6 @@ RUN npm install -g pnpm \
 COPY . .
 
 # Make CLI executable
-RUN chmod +x ./bin/wallet-conformance-test
+RUN chmod +x ./bin/wct
 
-ENTRYPOINT ["./bin/wallet-conformance-test"]
+ENTRYPOINT ["./bin/wct"]

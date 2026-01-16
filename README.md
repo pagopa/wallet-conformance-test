@@ -53,17 +53,17 @@ You must have Node.js and pnpm installed on your system.
     pnpm install -g
     ```
 
-This will make the `wallet-conformance-test` command available system-wide. You can use this command or `pnpm` to launch test as described below.
+This will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
 
 
 
 ### Command not found? 🤔
-If you encounter an issue where the `wallet-conformance-test` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
+If you encounter an issue where the `wct` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
 
 2. Make the script executable:
 
     ```bash
-    chmod +x ./bin/wallet-conformance-test
+    chmod +x ./bin/wct
     ```
 
 3. Create a global symbolic link to the command::
@@ -139,12 +139,12 @@ Examples:
 
 Override a specific value from the command line:
 
-    wallet-conformance-test test:issuance --credential-issuer-uri https://my-issuer.example.com
+    wct test:issuance --credential-issuer-uri https://my-issuer.example.com
 
 
 Use a custom configuration file:
 
-    wallet-conformance-test test:issuance --file-ini /path/to/my-config.ini
+    wct test:issuance --file-ini /path/to/my-config.ini
 
 ### Running Tests
 
@@ -169,7 +169,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 Then, run the test command:
 
-    wallet-conformance-test test:issuance [OPTIONS]
+    wct test:issuance [OPTIONS]
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
@@ -197,7 +197,7 @@ The pre-configured happy flow test validates the issuance of the `dc_sd_jwt_Euro
 
 Similarly, to test the presentation flow, you will use the `test:remote-presentation` command:
 
-    wallet-conformance-test test:remote-presentation [OPTIONS]
+    wct test:remote-presentation [OPTIONS]
 
 
 #### Test Reports
