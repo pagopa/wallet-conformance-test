@@ -5,9 +5,7 @@ import { z } from "zod";
  */
 export const configSchema = z.object({
   issuance: z.object({
-    credentials: z.object({
-      types: z.record(z.string(), z.array(z.string())),
-    }),
+    credential_types: z.array(z.string()).optional().default([]),
     url: z.string().url(),
   }),
   logging: z.object({

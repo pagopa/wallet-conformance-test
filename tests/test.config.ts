@@ -2,23 +2,58 @@
  * Test Configuration File
  *
  * This is where you register your test configurations.
- * Create your configurations and register them to run the tests.
+ * Configurations are dynamically loaded from config.ini or CLI options.
  *
  * The registered configurations will be picked up by the test suite.
  */
+
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { PresentationTestConfiguration } from "./config/presentation-test-configuration";
 import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 
 // ============================================================================
-// DEFINE YOUR TEST CONFIGURATIONS HERE -- ISSUANCE
+// LOAD CONFIGURATION AND CREDENTIAL TYPES
 // ============================================================================
 
-const happyFlowCredentialConfig = IssuerTestConfiguration.createCustom({
-  credentialConfigurationId: "dc_sd_jwt_EuropeanDisabilityCard",
-  name: "Happy Flow EuropeanDisabilityCard Test",
-});
+const config = loadConfigWithHierarchy();
+
+// Default credential type for backward compatibility
+const DEFAULT_CREDENTIAL_TYPES = ["dc_sd_jwt_EuropeanDisabilityCard"];
+
+// Use configured credential types, or fall back to default
+const credentialTypes =
+  config.issuance.credential_types &&
+  config.issuance.credential_types.length > 0
+    ? config.issuance.credential_types
+    : DEFAULT_CREDENTIAL_TYPES;
+
+// ============================================================================
+// DEFINE YOUR FLOW TEST NAME HERE -- ISSUANCE
+// ============================================================================
+
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
+
+// ============================================================================
+// DYNAMICALLY REGISTER TEST CONFIGURATIONS -- ISSUANCE
+// ============================================================================
+
+/**
+ * Register a test configuration for each credential type.
+ * Credential types are loaded from:
+ * 1. CLI option --credential-types (highest priority)
+ * 2. config.ini issuance.credential_types[]
+ * 3. Default: dc_sd_jwt_EuropeanDisabilityCard
+ */
+for (const credentialType of credentialTypes) {
+  const testConfig = IssuerTestConfiguration.createCustom({
+    credentialConfigurationId: credentialType,
+    name: `Happy Flow ${credentialType} Test`,
+  });
+
+  issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, testConfig);
+}
 
 /**
  * Example: Failed Configuration - Invalid Metadata Fetch
@@ -32,6 +67,8 @@ const failedMetadataConfig = IssuerTestConfiguration.createCustom({
     }
   },
 });
+
+issuerRegistry.registerTest("FailedMetadataFetchTest", failedMetadataConfig);
  */
 
 /**
@@ -46,26 +83,8 @@ const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
     stepClass: FetchMetadataHardcodedStep,
   },
 });
-*/
 
-// ============================================================================
-// DEFINE YOUR FLOW TEST NAME HERE -- ISSUANCE
-// ============================================================================
-
-export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
-
-/**
- * Example 1: Register test on HappyFlowIssuanceTest
- */
-issuerRegistry.registerTest(
-  HAPPY_FLOW_ISSUANCE_NAME,
-  happyFlowCredentialConfig,
-);
-
-/**
- * Example 3: Register test on FailedMetadataFetchTest
- 
-issuerRegistry.registerTest("FailedMetadataFetchTest", failedMetadataConfig);
+issuerRegistry.registerTest("HardcodedMetadataFetchTest", hardcodedMetadataConfig);
 */
 
 // ============================================================================
