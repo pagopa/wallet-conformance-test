@@ -153,6 +153,33 @@ export class WalletIssuanceOrchestratorFlow {
         throw new Error("Entity Statement Claims not found in response");
       }
 
+      // Validate credentialConfigurationId is supported by the issuer
+      const credentialConfigsSupported =
+        entityStatementClaims.metadata?.openid_credential_issuer
+          ?.credential_configurations_supported;
+
+      if (credentialConfigsSupported) {
+        const supportedIds = Object.keys(credentialConfigsSupported);
+        const requestedId = this.issuanceConfig.credentialConfigurationId;
+
+        if (!supportedIds.includes(requestedId)) {
+          throw new Error(
+            `Credential configuration '${requestedId}' is not supported by the issuer.\n` +
+              `Supported credential configurations: ${supportedIds.join(", ")}\n` +
+              `Please update your test configuration in tests/test.config.ts with a valid credentialConfigurationId.`,
+          );
+        }
+
+        this.log.info(
+          `Credential configuration '${requestedId}' validated as supported by issuer`,
+        );
+      } else {
+        this.log.info(
+          "Warning: Could not verify credentialConfigurationId - " +
+            "credential_configurations_supported not found in issuer metadata",
+        );
+      }
+
       const clientAttestationDPoP = await createClientAttestationPopJwt({
         authorizationServer: entityStatementClaims.iss,
         callbacks,
