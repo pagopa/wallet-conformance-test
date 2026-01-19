@@ -132,7 +132,7 @@ pnpm build                    # Compile TypeScript to dist/
 pnpm link --global            # Make CLI available globally
 
 # Run CLI
-wallet-conformance-test test:issuance --credential-type PersonIdentificationData
+wct test:issuance --credential-type PersonIdentificationData
 ```
 
 ## Project-Specific Conventions

@@ -53,17 +53,17 @@ You must have Node.js and pnpm installed on your system.
     pnpm install -g
     ```
 
-This will make the `wallet-conformance-test` command available system-wide. You can use this command or `pnpm` to launch test as described below.
+This will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
 
 
 
 ### Command not found? 🤔
-If you encounter an issue where the `wallet-conformance-test` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
+If you encounter an issue where the `wct` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
 
 2. Make the script executable:
 
     ```bash
-    chmod +x ./bin/wallet-conformance-test
+    chmod +x ./bin/wct
     ```
 
 3. Create a global symbolic link to the command::
@@ -139,12 +139,12 @@ Examples:
 
 Override a specific value from the command line:
 
-    wallet-conformance-test test:issuance --credential-issuer-uri https://my-issuer.example.com
+    wct test:issuance --credential-issuer-uri https://my-issuer.example.com
 
 
 Use a custom configuration file:
 
-    wallet-conformance-test test:issuance --file-ini /path/to/my-config.ini
+    wct test:issuance --file-ini /path/to/my-config.ini
 
 ### Running Tests
 
@@ -157,24 +157,36 @@ The primary function of the tool is to run test suites for the main IT Wallet fl
 
 To test the credential issuance flow, you will use the `test:issuance` command. 
 
-2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
-`config.ini`:
+##### Using Configuration File
 
+2. Configure your `config.ini` file with the credential issuer URL and credential types:
+
+    ```ini
     [issuance]
-    url = ...
+    url = https://issuer.example.com
+    credential_types[] = dc_sd_jwt_EuropeanDisabilityCard
+    ```
 
+3. Run the test command:
 
+    ```bash
+    wct test:issuance
+    ```
 
+##### Using Command-Line Options
 
-Then, run the test command:
+2. Alternatively, bypass the configuration file and specify parameters directly:
 
-    wallet-conformance-test test:issuance [OPTIONS]
+    ```bash
+    wct test:issuance --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
+    ```
+
 
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
 
-The pre-configured happy flow test validates the issuance of the `dc_sd_jwt_EuropeanDisabilityCard` credential. To modify this default setting, refer to the instructions below.
+The pre-configured happy flow test validates the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
 
 **📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
 - Quick start with default configurations
@@ -184,21 +196,29 @@ The pre-configured happy flow test validates the issuance of the `dc_sd_jwt_Euro
 
 #### Testing the Presentation Flow
 
+##### Using Configuration File
+
 2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
 
 `config.ini`:
-
+    ```bash
     [presentation]
     verifier = ...
     authorize_request_url = ...
+    ```
 
+3. Similarly, to test the presentation flow, you will use the `test:presentation` command:
+    ```bash
+    wct test:presentation [OPTIONS]
+    ```
 
+##### Using Command-Line Options
 
+2. Alternatively, bypass the configuration file and specify parameters directly:
 
-Similarly, to test the presentation flow, you will use the `test:remote-presentation` command:
-
-    wallet-conformance-test test:remote-presentation [OPTIONS]
-
+    ```bash
+    wct test:presentation --presentation-authorize-uri https://rp.example.com
+    ```
 
 #### Test Reports
 
