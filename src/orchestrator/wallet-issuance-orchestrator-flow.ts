@@ -11,6 +11,7 @@ import {
   loadConfigWithHierarchy,
   loadJwks,
   partialCallbacks,
+  saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
@@ -105,9 +106,9 @@ export class WalletIssuanceOrchestratorFlow {
     authorizeResponse: AuthorizeStepResponse;
     credentialResponse: CredentialRequestResponse;
     fetchMetadataResponse: FetchMetadataStepResponse;
+    nonceResponse: NonceRequestResponse;
     pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     tokenResponse: TokenRequestResponse;
-    nonceResponse: NonceRequestResponse;
     walletAttestationResponse: AttestationResponse;
   }> {
     try {
@@ -222,7 +223,10 @@ export class WalletIssuanceOrchestratorFlow {
         );
       }
 
-      const credentialKeyPair = await loadJwks(this.config.wallet.backup_storage_path, `${credentialIdentifier}_jwks`)
+      const credentialKeyPair = await loadJwks(
+        this.config.wallet.backup_storage_path,
+        `${credentialIdentifier}_jwks`,
+      );
 
       const authorizeResponse = await this.authorizeStep.run({
         authorizationEndpoint:
@@ -233,10 +237,12 @@ export class WalletIssuanceOrchestratorFlow {
         clientId:
           authorizeOptions?.clientId ??
           walletAttestationResponse.unitKey.publicKey.kid,
-        credentials: [{
-          credential: personIdentificationData.compact,
-          keyPair: credentialKeyPair
-        }],
+        credentials: [
+          {
+            credential: personIdentificationData.compact,
+            keyPair: credentialKeyPair,
+          },
+        ],
         requestUri:
           authorizeOptions?.requestUri ??
           pushedAuthorizationRequestResponse.response?.request_uri,
@@ -308,14 +314,30 @@ export class WalletIssuanceOrchestratorFlow {
           walletAttestationResponse,
       });
 
+      // Save credential to disk if configured
+      // Currently, only the first credential is saved because we support requesting one at a time
+      const firstCredential = credentialResponse.response?.credentials?.[0];
+      if (this.config.issuance.save_credential && firstCredential) {
+        const savedPath = saveCredentialToDisk(
+          this.config.wallet.credentials_storage_path,
+          this.issuanceConfig.credentialConfigurationId,
+          firstCredential.credential,
+        );
+        if (savedPath) {
+          this.log.info(`Credential saved to disk: ${savedPath}`);
+        } else {
+          this.log.error("Failed to save credential to disk");
+        }
+      }
+
       return {
-        walletAttestationResponse,
         authorizeResponse,
         credentialResponse,
         fetchMetadataResponse,
         nonceResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
+        walletAttestationResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
