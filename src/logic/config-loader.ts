@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: number | string | undefined;
   credentialIssuerUri?: string;
+  credentialTypes?: string;
   presentationAuthorizeUri?: string;
   fileIni?: string;
   logFile?: string;
@@ -117,10 +118,18 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   const partialConfig: Record<string, any> = {};
 
   // Map CLI options to config structure
-  if (options.credentialIssuerUri) {
-    partialConfig.issuance = {
-      url: options.credentialIssuerUri,
-    };
+  if (options.credentialIssuerUri || options.credentialTypes) {
+    const issuance: Record<string, unknown> = {};
+    if (options.credentialIssuerUri) {
+      issuance.url = options.credentialIssuerUri;
+    }
+    if (options.credentialTypes) {
+      issuance.credential_types = options.credentialTypes
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+    }
+    partialConfig.issuance = issuance;
   }
   if (options.presentationAuthorizeUri) {
     partialConfig.presentation = {
@@ -236,8 +245,8 @@ function readCliOptionsFromEnv(): CliOptions {
   if (process.env.CONFIG_PRESENTATION_AUTHORIZE_URI) {
     options.presentationAuthorizeUri = process.env.CONFIG_PRESENTATION_AUTHORIZE_URI;
   }
-  if (process.env.CONFIG_CREDENTIAL_TYPE) {
-    options.credentialType = process.env.CONFIG_CREDENTIAL_TYPE;
+  if (process.env.CONFIG_CREDENTIAL_TYPES) {
+    options.credentialTypes = process.env.CONFIG_CREDENTIAL_TYPES;
   }
   if (process.env.CONFIG_TIMEOUT) {
     const parsed = parseInt(process.env.CONFIG_TIMEOUT, 10);
