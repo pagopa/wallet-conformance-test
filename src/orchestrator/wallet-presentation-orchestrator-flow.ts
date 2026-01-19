@@ -88,7 +88,10 @@ export class WalletPresentationOrchestratorFlow {
       const walletAttestation =
         await this.loadWalletAttestation(trustAnchorBaseUrl);
 
-      const pid = await this.prepareCredential(trustAnchorBaseUrl, "dc_sd_jwt_PersonIdentificationData");
+      const pid = await this.prepareCredential(
+        trustAnchorBaseUrl,
+        "dc_sd_jwt_PersonIdentificationData",
+      );
 
       const credentials: CredentialWithKey[] = [pid];
 
@@ -208,7 +211,10 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
-  private async prepareCredential(trustAnchorBaseUrl: string, credentialIdentifier: string): Promise<CredentialWithKey> {
+  private async prepareCredential(
+    trustAnchorBaseUrl: string,
+    credentialIdentifier: string,
+  ): Promise<CredentialWithKey> {
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
@@ -228,7 +234,10 @@ export class WalletPresentationOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
         );
 
-    const { privateKey } = await loadJwks(this.config.wallet.backup_storage_path, `${credentialIdentifier}_jwks`);
+    const { privateKey } = await loadJwks(
+      this.config.wallet.backup_storage_path,
+      `${credentialIdentifier}_jwks`,
+    );
 
     return {
       credential: pid.compact,

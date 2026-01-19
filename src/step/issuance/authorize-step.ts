@@ -49,7 +49,7 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: { credential: string, keyPair: KeyPair }[];
+  credentials: { credential: string; keyPair: KeyPair }[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -122,7 +122,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       }
 
       const credentialsWithKb = await Promise.all(
-        options.credentials.map(c =>
+        options.credentials.map((c) =>
           createVpTokenSdJwt({
             client_id: options.clientId,
             dpopJwk: c.keyPair.privateKey,

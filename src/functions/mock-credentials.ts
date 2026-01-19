@@ -49,7 +49,10 @@ export async function createMockSdJwt(
   };
 
   const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
-  const { publicKey: unitKey } = await loadJwks(backupPath, `${credentialIdentifier}_jwks`);
+  const { publicKey: unitKey } = await loadJwks(
+    backupPath,
+    `${credentialIdentifier}_jwks`,
+  );
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
   const verifier = await ES256.getVerifier(unitKey);
@@ -96,12 +99,12 @@ export async function createMockSdJwt(
       exp: Math.floor(expiration.getTime() / 1000),
       iat: Math.floor(Date.now() / 1000),
       iss: metadata.iss,
-      sub: unitKey.kid,
       status: {
         status_assertion: {
           credential_hash_alg: "sha-256",
-        }
+        },
       },
+      sub: unitKey.kid,
       vct,
       "vct#integrity": vctIntegrity,
       ...claims,
@@ -116,10 +119,7 @@ export async function createMockSdJwt(
     },
   );
 
-  writeFileSync(
-    `${credentialsPath}/${credentialIdentifier}`,
-    credential,
-  );
+  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, credential);
   return {
     compact: credential,
     parsed: await decodeJwt(credential),

@@ -6,11 +6,11 @@ import {
   fetchTokenResponse,
   FetchTokenResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
+import { JWK } from "jose";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
-import { JWK } from "jose";
 
 export type TokenRequestExecuteResponse = AccessTokenResponse;
 

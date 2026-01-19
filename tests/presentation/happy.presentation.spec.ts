@@ -44,14 +44,19 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR003: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
       const log = baseLog.withTag("RPR003");
 
-      log.start("Conformance test: Verifying QR-Code URL alignment with RP metadata");
+      log.start(
+        "Conformance test: Verifying QR-Code URL alignment with RP metadata",
+      );
 
       let testSuccess = false;
       try {
         expect(fetchMetadataResult.success).toBe(true);
-        expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+        expect(
+          fetchMetadataResult.response?.entityStatementClaims,
+        ).toBeDefined();
 
-        const entityClaims = fetchMetadataResult.response?.entityStatementClaims;
+        const entityClaims =
+          fetchMetadataResult.response?.entityStatementClaims;
         const issuer = entityClaims?.sub;
 
         expect(authorizationRequestResult.success).toBe(true);
@@ -84,12 +89,16 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR009: Relying Party accepts defaults to GET method.", () => {
       const log = baseLog.withTag("RPR009");
 
-      log.start("Conformance test: Verifying HTTP GET method support for request objects");
+      log.start(
+        "Conformance test: Verifying HTTP GET method support for request objects",
+      );
 
       let testSuccess = false;
       try {
         expect(fetchMetadataResult.success).toBe(true);
-        expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+        expect(
+          fetchMetadataResult.response?.entityStatementClaims,
+        ).toBeDefined();
 
         const metadata =
           fetchMetadataResult.response?.entityStatementClaims?.metadata;
@@ -97,17 +106,23 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
         log.info("→ Checking request_object_endpoint_methods configuration...");
         expect(authorizationRequestResult.success).toBe(true);
-        expect(authorizationRequestResult.response?.requestObject).toBeDefined();
+        expect(
+          authorizationRequestResult.response?.requestObject,
+        ).toBeDefined();
 
         // If request_object_endpoint_methods is not specified or includes GET
         if (verifierMetadata?.request_object_endpoint_methods) {
-          log.info(`  Supported methods: ${verifierMetadata.request_object_endpoint_methods.join(", ")}`);
+          log.info(
+            `  Supported methods: ${verifierMetadata.request_object_endpoint_methods.join(", ")}`,
+          );
           expect(verifierMetadata.request_object_endpoint_methods).toContain(
             "GET",
           );
           log.info("  ✅ GET method is supported");
         } else {
-          log.info("  ℹ request_object_endpoint_methods not specified (GET is default)");
+          log.info(
+            "  ℹ request_object_endpoint_methods not specified (GET is default)",
+          );
         }
 
         testSuccess = true;
@@ -119,7 +134,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR012: Relying Party receives and validates response with state and nonce values.", () => {
       const log = baseLog.withTag("RPR012");
 
-      log.start("Conformance test: Verifying state and nonce parameter presence and format");
+      log.start(
+        "Conformance test: Verifying state and nonce parameter presence and format",
+      );
 
       let testSuccess = false;
       try {
@@ -127,15 +144,20 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating state parameter...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         expect(requestObject?.state).toBeDefined();
-        log.info(`  state: ${requestObject?.state} (length: ${requestObject?.state.length})`);
+        log.info(
+          `  state: ${requestObject?.state} (length: ${requestObject?.state.length})`,
+        );
         expect(requestObject?.state).toMatch(/^[a-zA-Z0-9_-]+$/);
         log.info("  ✅ state parameter is present and valid");
 
         log.info("→ Validating nonce parameter...");
         expect(requestObject?.nonce).toBeDefined();
-        log.info(`  nonce: ${requestObject?.nonce} (length: ${requestObject?.nonce.length})`);
+        log.info(
+          `  nonce: ${requestObject?.nonce} (length: ${requestObject?.nonce.length})`,
+        );
         expect(requestObject?.nonce).toMatch(/^[a-zA-Z0-9_-]+$/);
         log.info("  ✅ nonce parameter is present and valid");
 
@@ -148,7 +170,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR019: User is redirected correctly, the endpoint works.", () => {
       const log = baseLog.withTag("RPR019");
 
-      log.start("Conformance test: Verifying redirect URI functionality and response code");
+      log.start(
+        "Conformance test: Verifying redirect URI functionality and response code",
+      );
 
       let testSuccess = false;
       try {
@@ -160,7 +184,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
         if (!redirectUriResult.response?.redirectUri) {
           log.error("❌ redirectUri is undefined in response");
-          log.error(`  Response object: ${JSON.stringify(redirectUriResult.response, null, 2)}`);
+          log.error(
+            `  Response object: ${JSON.stringify(redirectUriResult.response, null, 2)}`,
+          );
         }
         expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
@@ -173,10 +199,14 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         log.info("→ Checking response_code parameter...");
         if (!redirectUriResult.response?.responseCode) {
           log.warn("  ⚠ response_code is undefined");
-          log.warn(`  Response keys: ${Object.keys(redirectUriResult.response || {}).join(", ")}`);
+          log.warn(
+            `  Response keys: ${Object.keys(redirectUriResult.response || {}).join(", ")}`,
+          );
         }
         expect(redirectUriResult.response?.responseCode).toBeDefined();
-        log.info(`  response_code: ${redirectUriResult.response?.responseCode}`);
+        log.info(
+          `  response_code: ${redirectUriResult.response?.responseCode}`,
+        );
         log.info("  ✅ response_code is present");
 
         testSuccess = true;
@@ -188,7 +218,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR078: Wallet Attestation request correctly uses standard DCQL query.", () => {
       const log = baseLog.withTag("RPR078");
 
-      log.start("Conformance test: Verifying DCQL query standard format compliance");
+      log.start(
+        "Conformance test: Verifying DCQL query standard format compliance",
+      );
 
       let testSuccess = false;
       try {
@@ -196,7 +228,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Checking dcql_query presence in request object...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         expect(requestObject?.dcql_query).toBeDefined();
         log.info("  ✅ dcql_query is present");
 
@@ -222,17 +255,18 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR079: claims parameter is not included in DCQL query for Wallet Attestation.", () => {
       const log = baseLog.withTag("RPR079");
 
-      log.start("Conformance test: Verifying Wallet Attestation does not include claims parameter");
+      log.start(
+        "Conformance test: Verifying Wallet Attestation does not include claims parameter",
+      );
 
       let testSuccess = false;
       try {
         expect(authorizationRequestResult.success).toBe(true);
         expect(authorizationRequestResult.response).toBeDefined();
 
-        log.info(
-          "→ Checking DCQL query credentials for Wallet Attestation...",
-        );
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        log.info("→ Checking DCQL query credentials for Wallet Attestation...");
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         const dcqlQuery = requestObject?.dcql_query;
 
         expect(dcqlQuery?.credentials).toBeDefined();
@@ -257,7 +291,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
               )
             ) {
               walletAttestationFound = true;
-              log.info(`  Credential ${index + 1}: Wallet Attestation detected`);
+              log.info(
+                `  Credential ${index + 1}: Wallet Attestation detected`,
+              );
               log.info(`    vct: ${cred.meta?.vct_values?.join(", ")}`);
               expect(cred.claims).toBeUndefined();
               log.info("    ✅ claims parameter is not present (as required)");
@@ -278,15 +314,20 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR080: vct_values parameter is correctly required in DCQL query.", () => {
       const log = baseLog.withTag("RPR080");
 
-      log.start("Conformance test: Verifying vct_values presence in DCQL credentials");
+      log.start(
+        "Conformance test: Verifying vct_values presence in DCQL credentials",
+      );
 
       let testSuccess = false;
       try {
         expect(authorizationRequestResult.success).toBe(true);
         expect(authorizationRequestResult.response).toBeDefined();
 
-        log.info("→ Validating vct_values parameter in DCQL query credentials...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        log.info(
+          "→ Validating vct_values parameter in DCQL query credentials...",
+        );
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         const dcqlQuery = requestObject?.dcql_query;
 
         expect(dcqlQuery?.credentials).toBeDefined();
@@ -310,7 +351,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
               expect(Array.isArray(cred.meta.vct_values)).toBe(true);
               log.info(`    vct_values: ${cred.meta.vct_values.join(", ")}`);
               expect(cred.meta.vct_values.length).toBeGreaterThan(0);
-              log.info(`    ✅ vct_values is valid (${cred.meta.vct_values.length} type(s))`);
+              log.info(
+                `    ✅ vct_values is valid (${cred.meta.vct_values.length} type(s))`,
+              );
             }
           }
         });
@@ -327,12 +370,16 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR082: response_types_supported is correctly set to vp_token.", () => {
       const log = baseLog.withTag("RPR082");
 
-      log.start("Conformance test: Verifying vp_token support in verifier metadata");
+      log.start(
+        "Conformance test: Verifying vp_token support in verifier metadata",
+      );
 
       let testSuccess = false;
       try {
         expect(fetchMetadataResult.success).toBe(true);
-        expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+        expect(
+          fetchMetadataResult.response?.entityStatementClaims,
+        ).toBeDefined();
 
         const metadata =
           fetchMetadataResult.response?.entityStatementClaims?.metadata;
@@ -342,19 +389,29 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
         if (!verifierMetadata) {
           log.error("❌ openid_credential_verifier metadata is undefined");
-          log.error(`  Available metadata keys: ${Object.keys(metadata || {}).join(", ")}`);
+          log.error(
+            `  Available metadata keys: ${Object.keys(metadata || {}).join(", ")}`,
+          );
           log.error(`  Full metadata: ${JSON.stringify(metadata, null, 2)}`);
         }
 
         if (!verifierMetadata?.response_types_supported) {
           log.error("❌ response_types_supported is undefined");
-          log.error(`  Verifier metadata keys: ${Object.keys(verifierMetadata || {}).join(", ")}`);
-          log.error(`  Full verifier metadata: ${JSON.stringify(verifierMetadata, null, 2)}`);
+          log.error(
+            `  Verifier metadata keys: ${Object.keys(verifierMetadata || {}).join(", ")}`,
+          );
+          log.error(
+            `  Full verifier metadata: ${JSON.stringify(verifierMetadata, null, 2)}`,
+          );
         }
 
         expect(verifierMetadata?.response_types_supported).toBeDefined();
-        log.info(`  Supported types: ${verifierMetadata?.response_types_supported.join(", ")}`);
-        expect(verifierMetadata?.response_types_supported).toContain("vp_token");
+        log.info(
+          `  Supported types: ${verifierMetadata?.response_types_supported.join(", ")}`,
+        );
+        expect(verifierMetadata?.response_types_supported).toContain(
+          "vp_token",
+        );
         log.info("  ✅ vp_token is supported");
 
         testSuccess = true;
@@ -366,7 +423,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR083: Relying Party correctly provides and handles redirect_uri.", () => {
       const log = baseLog.withTag("RPR083");
 
-      log.start("Conformance test: Verifying response_uri and redirect_uri handling");
+      log.start(
+        "Conformance test: Verifying response_uri and redirect_uri handling",
+      );
 
       let testSuccess = false;
       try {
@@ -374,11 +433,14 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating response_uri in request object...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
 
         if (!requestObject?.response_uri) {
           log.error("❌ response_uri is undefined");
-          log.error(`  Request object keys: ${Object.keys(requestObject || {}).join(", ")}`);
+          log.error(
+            `  Request object keys: ${Object.keys(requestObject || {}).join(", ")}`,
+          );
         }
         expect(requestObject?.response_uri).toBeDefined();
         log.info(`  response_uri: ${requestObject?.response_uri}`);
@@ -395,8 +457,12 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
         if (!redirectUriResult.response?.redirectUri) {
           log.error("❌ redirectUri is undefined in response");
-          log.error(`  Response keys: ${Object.keys(redirectUriResult.response || {}).join(", ")}`);
-          log.error(`  Full response: ${JSON.stringify(redirectUriResult.response, null, 2)}`);
+          log.error(
+            `  Response keys: ${Object.keys(redirectUriResult.response || {}).join(", ")}`,
+          );
+          log.error(
+            `  Full response: ${JSON.stringify(redirectUriResult.response, null, 2)}`,
+          );
         }
         expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
@@ -422,7 +488,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating JWT typ parameter...");
-        const actualTyp = authorizationRequestResult.response?.authorizationRequestHeader.typ;
+        const actualTyp =
+          authorizationRequestResult.response?.authorizationRequestHeader.typ;
         log.info(`  Expected: oauth-authz-req+jwt`);
         log.info(`  Actual: ${actualTyp}`);
 
@@ -446,7 +513,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating response_mode parameter...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         log.info(`  Expected: direct_post.jwt`);
         log.info(`  Actual: ${requestObject?.response_mode}`);
         expect(requestObject?.response_mode).toBe("direct_post.jwt");
@@ -469,7 +537,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating response_type parameter...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         log.info(`  Expected: vp_token`);
         log.info(`  Actual: ${requestObject?.response_type}`);
         expect(requestObject?.response_type).toBe("vp_token");
@@ -484,7 +553,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR092: Relying Party sends Authorization Response to correct response_uri endpoint.", () => {
       const log = baseLog.withTag("RPR092");
 
-      log.start("Conformance test: Verifying authorization response submission to response_uri");
+      log.start(
+        "Conformance test: Verifying authorization response submission to response_uri",
+      );
 
       let testSuccess = false;
       try {
@@ -501,7 +572,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
 
         log.info("→ Verifying authorization response submission...");
         expect(redirectUriResult.success).toBe(true);
-        log.info("  ✅ Authorization response successfully sent to response_uri");
+        log.info(
+          "  ✅ Authorization response successfully sent to response_uri",
+        );
 
         testSuccess = true;
       } finally {
@@ -520,7 +593,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating nonce length (minimum 32 characters)...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         expect(requestObject?.nonce).toBeDefined();
         log.info(`  nonce: ${requestObject?.nonce}`);
         log.info(`  Length: ${requestObject?.nonce.length} characters`);
@@ -536,7 +610,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
     test("RPR094: JWT exp parameter is correctly set and not expired.", () => {
       const log = baseLog.withTag("RPR094");
 
-      log.start("Conformance test: Verifying JWT expiration timestamp validity");
+      log.start(
+        "Conformance test: Verifying JWT expiration timestamp validity",
+      );
 
       let testSuccess = false;
       try {
@@ -544,7 +620,8 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         expect(authorizationRequestResult.response).toBeDefined();
 
         log.info("→ Validating exp parameter...");
-        const requestObject = authorizationRequestResult.response?.requestObject;
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
         expect(requestObject?.exp).toBeDefined();
 
         const currentTime = Math.floor(Date.now() / 1000);
@@ -552,7 +629,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         const expiresAt = new Date(expTimestamp * 1000).toISOString();
         const timeUntilExpiry = expTimestamp - currentTime;
 
-        log.info(`  Current time: ${new Date(currentTime * 1000).toISOString()}`);
+        log.info(
+          `  Current time: ${new Date(currentTime * 1000).toISOString()}`,
+        );
         log.info(`  Expires at: ${expiresAt}`);
         log.info(`  Time until expiry: ${timeUntilExpiry} seconds`);
 
