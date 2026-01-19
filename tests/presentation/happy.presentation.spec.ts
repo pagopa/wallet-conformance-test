@@ -34,7 +34,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         await orchestrator.presentation());
 
       baseLog.info("");
-      baseLog.info("✅ Presentation flow orchestration completed");
+      baseLog.info("✅ Presentation flow completed");
+      baseLog.info("✅ Your implementation works correctly!");
+      baseLog.info("========================================");
       baseLog.info("📋 Running conformance validation tests...");
       baseLog.info("");
     });

@@ -207,9 +207,9 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
     authorize_request_url = ...
     ```
 
-3. Similarly, to test the presentation flow, you will use the `test:remote-presentation` command:
+3. Similarly, to test the presentation flow, you will use the `test:presentation` command:
     ```bash
-    wct test:remote-presentation [OPTIONS]
+    wct test:presentation [OPTIONS]
     ```
 
 ##### Using Command-Line Options
@@ -217,7 +217,7 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
 2. Alternatively, bypass the configuration file and specify parameters directly:
 
     ```bash
-    wct test:issuance --presentation-authorize-uri https://rp.example.com
+    wct test:presentation --presentation-authorize-uri https://rp.example.com
     ```
 
 #### Test Reports
