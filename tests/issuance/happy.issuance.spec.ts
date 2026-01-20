@@ -50,7 +50,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       } = await orchestrator.issuance());
 
       baseLog.info("");
-      baseLog.info("✅ Issuance flow orchestration completed");
+      baseLog.info("✅ Issuance flow completed");
+      baseLog.info("✅ Your implementation works correctly!");
+      baseLog.info("========================================");
       baseLog.info("📋 Running conformance validation tests...");
       baseLog.info("");
     });
