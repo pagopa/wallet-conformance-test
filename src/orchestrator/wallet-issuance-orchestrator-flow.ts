@@ -174,7 +174,7 @@ export class WalletIssuanceOrchestratorFlow {
           `Credential configuration '${requestedId}' validated as supported by issuer`,
         );
       } else {
-        this.log.info(
+        this.log.warn(
           "Warning: Could not verify credentialConfigurationId - " +
             "credential_configurations_supported not found in issuer metadata",
         );
