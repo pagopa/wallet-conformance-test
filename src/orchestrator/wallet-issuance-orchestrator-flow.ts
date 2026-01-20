@@ -317,7 +317,7 @@ export class WalletIssuanceOrchestratorFlow {
       // Save credential to disk if configured
       // Currently, only the first credential is saved because we support requesting one at a time
       const firstCredential = credentialResponse.response?.credentials?.[0];
-      if (this.config.issuance.save_credential && firstCredential) {
+      if (this.config.issuance.save_credential && firstCredential?.credential) {
         const savedPath = saveCredentialToDisk(
           this.config.wallet.credentials_storage_path,
           this.issuanceConfig.credentialConfigurationId,
