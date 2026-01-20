@@ -166,7 +166,7 @@ export class WalletIssuanceOrchestratorFlow {
           throw new Error(
             `Credential configuration '${requestedId}' is not supported by the issuer.\n` +
               `Supported credential configurations: ${supportedIds.join(", ")}\n` +
-              `Please update your test configuration in tests/test.config.ts with a valid credentialConfigurationId.`,
+              `Please update your test configuration with a valid credentialConfigurationId.`,
           );
         }
 
