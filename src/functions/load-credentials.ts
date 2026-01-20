@@ -37,7 +37,7 @@ export async function loadCredentials(
     // Skip if the file is not a recognized credential type
     if (!file || !types.find((name) => name === file)) {
       onIgnoreError(
-        `current issuer does not support '${file}' credential type`,
+        `Local credential '${file}' is not included in credential types, it will be ignored.`,
       );
       continue;
     }
@@ -56,7 +56,7 @@ export async function loadCredentials(
     } catch (e) {
       const err = e as Error;
       onIgnoreError(
-        `${file} was not a valid sd-jwt credential: ${err.message}`,
+        `Local credential '${file}' was not a valid sd-jwt credential: ${err.message}`,
       );
     }
 
