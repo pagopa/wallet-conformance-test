@@ -90,7 +90,7 @@ function addCommonOptions(command: Command): Command {
     )
     .option(
       "--save-credential",
-      "Save the received credential to disk after issuance",
+      "Save the received credential to disk after test issuance",
     );
 }
 
