@@ -188,6 +188,8 @@ During the test, verbose logs will be printed to the console, informing you of p
 
 The pre-configured happy flow test validates the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
 
+> **Note**: By default, credentials generated during testing are not saved to disk. However, you can configure the tool to save them locally for presentation phase. You can configure that using `config.ini` with `save_credential = true` or using cli option `--save-credential`
+
 **📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
 - Quick start with default configurations
 - Custom credential types and multiple configurations
@@ -219,6 +221,9 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
     ```bash
     wct test:presentation --presentation-authorize-uri https://rp.example.com
     ```
+
+> **Note**: 
+> The credentials used during the presentation tests will include both the credentials saved during the issuance tests and the auto-generated PID (dc_sd_jwt_PersonIdentificationData).
 
 #### Test Reports
 
