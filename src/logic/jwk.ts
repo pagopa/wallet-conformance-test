@@ -42,13 +42,12 @@ export async function createKeys(): Promise<KeyPair> {
 }
 
 /**
- * Generates a new cryptographic key pair (ECDSA with P-256 curve),
- * saves it to a file, and returns the key pair.
+ * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
  *
  * @param fileName The name of the file to save the key pair to.
  * @returns A promise that resolves to the generated key pair.
  */
-export async function generateKey(fileName: string): Promise<KeyPair> {
+export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
   const exportedPair = await createKeys();
   writeFileSync(fileName, JSON.stringify(exportedPair));
 

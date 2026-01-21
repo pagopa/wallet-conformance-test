@@ -6,7 +6,7 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { generateKey, verifyJwt } from ".";
+import { createAndSaveKeys, verifyJwt } from ".";
 
 // Re-export config loading functions
 export {
@@ -97,7 +97,7 @@ export const loadJsonDumps = (
 };
 
 /**
- * Loads or generates JWKS for the federation trust anchor.
+ * Loads or generates JWKS saving it to a file.
  * @param jwksPath The directory path where JWKS files are stored.
  * @param filename The name of the JWKS file to load or create.
  * @returns A promise that resolves to the loaded or generated KeyPair.
@@ -122,7 +122,7 @@ export async function loadJwks(
     const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
     return JSON.parse(jwksData) as KeyPair;
   } catch {
-    return await generateKey(`${jwksPath}/${filename}`);
+    return await createAndSaveKeys(`${jwksPath}/${filename}`);
   }
 }
 
