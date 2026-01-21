@@ -45,6 +45,9 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.port !== undefined) {
     env.CONFIG_PORT = options.port.toString();
   }
+  if (options.saveCredential !== undefined) {
+    env.CONFIG_SAVE_CREDENTIAL = options.saveCredential.toString();
+  }
 
   return env;
 }
@@ -84,6 +87,10 @@ function addCommonOptions(command: Command): Command {
     .option("--log-file <path>", "Path to log file")
     .option("--port <number>", "Trust Anchor server port", (val) =>
       parseInt(val, 10),
+    )
+    .option(
+      "--save-credential",
+      "Save the received credential to disk after test issuance",
     );
 }
 

@@ -9,15 +9,16 @@ import { Config, configSchema } from "@/types";
  * Command-line options that can override configuration
  */
 export interface CliOptions {
-  [key: string]: number | string | undefined;
+  [key: string]: boolean | number | string | undefined;
   credentialIssuerUri?: string;
   credentialTypes?: string;
-  presentationAuthorizeUri?: string;
   fileIni?: string;
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
   port?: number;
+  presentationAuthorizeUri?: string;
+  saveCredential?: boolean;
   timeout?: number;
 }
 
@@ -118,7 +119,11 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   const partialConfig: Record<string, any> = {};
 
   // Map CLI options to config structure
-  if (options.credentialIssuerUri || options.credentialTypes) {
+  if (
+    options.credentialIssuerUri ||
+    options.credentialTypes ||
+    options.saveCredential !== undefined
+  ) {
     const issuance: Record<string, unknown> = {};
     if (options.credentialIssuerUri) {
       issuance.url = options.credentialIssuerUri;
@@ -128,6 +133,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
+    }
+    if (options.saveCredential !== undefined) {
+      issuance.save_credential = options.saveCredential;
     }
     partialConfig.issuance = issuance;
   }
@@ -243,7 +251,8 @@ function readCliOptionsFromEnv(): CliOptions {
     options.credentialIssuerUri = process.env.CONFIG_CREDENTIAL_ISSUER_URI;
   }
   if (process.env.CONFIG_PRESENTATION_AUTHORIZE_URI) {
-    options.presentationAuthorizeUri = process.env.CONFIG_PRESENTATION_AUTHORIZE_URI;
+    options.presentationAuthorizeUri =
+      process.env.CONFIG_PRESENTATION_AUTHORIZE_URI;
   }
   if (process.env.CONFIG_CREDENTIAL_TYPES) {
     options.credentialTypes = process.env.CONFIG_CREDENTIAL_TYPES;
@@ -271,6 +280,9 @@ function readCliOptionsFromEnv(): CliOptions {
     if (!isNaN(parsed)) {
       options.port = parsed;
     }
+  }
+  if (process.env.CONFIG_SAVE_CREDENTIAL) {
+    options.saveCredential = process.env.CONFIG_SAVE_CREDENTIAL === "true";
   }
 
   return options;

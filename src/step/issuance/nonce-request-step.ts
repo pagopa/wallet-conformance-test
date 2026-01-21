@@ -1,10 +1,6 @@
 import { fetchWithRetries } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 
-export interface NonceResponsePayload {
-  [key: string]: unknown;
-}
-
 export interface NonceRequestExecuteResponse {
   attempts: number;
   cacheControl: null | string;
@@ -19,6 +15,8 @@ export type NonceRequestResponse = StepResult & {
 export interface NonceRequestStepOptions {
   nonceEndpoint: string;
 }
+
+export type NonceResponsePayload = Record<string, unknown>;
 
 export class NonceRequestDefaultStep extends StepFlow {
   tag = "NONCE_REQUEST";

@@ -1,12 +1,12 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { generateKey, verifyJwt } from ".";
+import { createAndSaveKeys, verifyJwt } from ".";
 
 // Re-export config loading functions
 export {
@@ -97,7 +97,7 @@ export const loadJsonDumps = (
 };
 
 /**
- * Loads or generates JWKS for the federation trust anchor.
+ * Loads or generates JWKS saving it to a file.
  * @param jwksPath The directory path where JWKS files are stored.
  * @param filename The name of the JWKS file to load or create.
  * @returns A promise that resolves to the loaded or generated KeyPair.
@@ -122,6 +122,35 @@ export async function loadJwks(
     const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
     return JSON.parse(jwksData) as KeyPair;
   } catch {
-    return await generateKey(`${jwksPath}/${filename}`);
+    return await createAndSaveKeys(`${jwksPath}/${filename}`);
+  }
+}
+
+/**
+ * Saves a credential to disk.
+ * @param credentialsStoragePath The directory path where credentials are stored.
+ * @param credentialConfigurationId The credential configuration identifier (used as filename).
+ * @param credential The credential in compact format to save.
+ * @returns The full path where the credential was saved, or null if saving failed.
+ */
+export function saveCredentialToDisk(
+  credentialsStoragePath: string,
+  credentialConfigurationId: string,
+  credential: string,
+): string | null {
+  try {
+    const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath);
+
+    // Ensure the directory exists
+    if (!existsSync(credentialsPath)) {
+      mkdirSync(credentialsPath, { recursive: true });
+    }
+
+    const filePath = `${credentialsPath}/${credentialConfigurationId}`;
+    writeFileSync(filePath, credential);
+
+    return filePath;
+  } catch {
+    return null;
   }
 }

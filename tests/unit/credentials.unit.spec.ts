@@ -52,8 +52,10 @@ describe("Generate Mocked Credentials", () => {
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {
-    const unitKey: KeyPairJwk = (await loadJwks(backupDir, "wallet_unit_jwks"))
-      .publicKey;
+    const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
+    const unitKey: KeyPairJwk = (
+      await loadJwks(backupDir, `${credentialIdentifier}_jwks`)
+    ).publicKey;
 
     const credential = await createMockSdJwt(metadata, backupDir, backupDir);
 

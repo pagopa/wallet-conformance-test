@@ -57,7 +57,7 @@ tests/test.config.ts → Registers configs → Registry → Test suite retrieves
 ### 3. JWK/JWT Management
 
 - **Key Generation**: `src/logic/jwk.ts` - generates ES256 keys with KSUID-based `kid`
-- **Key Storage**: Keys stored in `backup_storage_path` (e.g., `wallet_provider_jwks`, `issuer_jwks`)
+- **Key Storage**: Keys stored in `backup_storage_path` (e.g., `wallet_provider_jwks`, `issuer_pid_mocked_jwks`)
 - **JWT Signing**: `signJwtCallback()` in `src/logic/jwt.ts` wraps signing with proper headers
 - **Federation Metadata**: `src/logic/federation-metadata.ts` creates OpenID Federation entity configurations
 

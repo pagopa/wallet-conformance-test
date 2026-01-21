@@ -5,18 +5,24 @@ import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-feder
 // Import test configuration - this will register all configurations
 import "../test.config";
 
+import { SDJwt } from "@sd-jwt/core";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
+import z from "zod/v3";
 
+import { parseMdoc } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { FetchMetadataStepResponse } from "@/step";
-import { NonceRequestResponse, AuthorizeStepResponse, PushedAuthorizationRequestResponse, TokenRequestResponse, CredentialRequestResponse } from "@/step/issuance";
+import {
+  AuthorizeStepResponse,
+  CredentialRequestResponse,
+  NonceRequestResponse,
+  PushedAuthorizationRequestResponse,
+  TokenRequestResponse,
+} from "@/step/issuance";
+import { AttestationResponse } from "@/types";
 
 import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
-import z from "zod/v3";
-import { AttestationResponse } from "@/types";
-import { SDJwt } from "@sd-jwt/core";
-import { parseMdoc } from "@/logic";
 
 // Get the test configuration from the registry
 // The configuration must be registered before running the tests
@@ -41,12 +47,12 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
       ({
         authorizeResponse,
+        credentialResponse,
         fetchMetadataResponse,
+        nonceResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
         walletAttestationResponse,
-        nonceResponse,
-        credentialResponse,
       } = await orchestrator.issuance());
 
       baseLog.info("");
@@ -60,7 +66,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_001: Fetch Metadata | Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
       const log = baseLog.withTag("CI_001");
 
-      log.start("Conformance test: Verifying Entity Configuration availability");
+      log.start(
+        "Conformance test: Verifying Entity Configuration availability",
+      );
 
       let testSuccess = false;
       try {
@@ -69,7 +77,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("  ✅ Entity Configuration successfully fetched");
 
         log.info("→ Validating Entity Statement claims are present...");
-        expect(fetchMetadataResponse.response?.entityStatementClaims).toBeDefined();
+        expect(
+          fetchMetadataResponse.response?.entityStatementClaims,
+        ).toBeDefined();
         log.info("  ✅ Entity Statement claims are present");
 
         testSuccess = true;
@@ -81,7 +91,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_002: Fetch Metadata | Entity Configuration response media type check", async () => {
       const log = baseLog.withTag("CI_002");
 
-      log.start("Conformance test: Verifying Entity Configuration content-type header");
+      log.start(
+        "Conformance test: Verifying Entity Configuration content-type header",
+      );
 
       let testSuccess = false;
       try {
@@ -104,7 +116,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed", async () => {
       const log = baseLog.withTag("CI_003");
 
-      log.start("Conformance test: Verifying Entity Configuration JWT signature");
+      log.start(
+        "Conformance test: Verifying Entity Configuration JWT signature",
+      );
 
       let testSuccess = false;
       try {
@@ -117,7 +131,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("  ✅ Response status is 200");
 
         log.info("→ Checking Entity Statement JWT is present...");
-        expect(fetchMetadataResponse.response?.entityStatementJwt).toBeDefined();
+        expect(
+          fetchMetadataResponse.response?.entityStatementJwt,
+        ).toBeDefined();
         log.info("  ✅ Entity Statement JWT is present");
 
         log.info("→ Parsing response body as JWT...");
@@ -136,7 +152,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_006: Fetch Metadata | Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
       const log = baseLog.withTag("CI_006");
 
-      log.start("Conformance test: Verifying Entity Configuration mandatory parameters");
+      log.start(
+        "Conformance test: Verifying Entity Configuration mandatory parameters",
+      );
 
       let testSuccess = false;
       try {
@@ -146,7 +164,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         );
         log.info("  ✅ JWT successfully parsed");
 
-        log.info("→ Validating required parameters (iss, sub, iat, exp, jwks, metadata)...");
+        log.info(
+          "→ Validating required parameters (iss, sub, iat, exp, jwks, metadata)...",
+        );
         const result = z
           .object({
             exp: z.number(),
@@ -177,7 +197,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_008: Fetch Metadata | Credential Issuer metadata", async () => {
       const log = baseLog.withTag("CI_008");
 
-      log.start("Conformance test: Verifying Credential Issuer metadata structure");
+      log.start(
+        "Conformance test: Verifying Credential Issuer metadata structure",
+      );
 
       let testSuccess = false;
       try {
@@ -227,7 +249,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet", async () => {
       const log = baseLog.withTag("CI_009");
 
-      log.start("Conformance test: Verifying openid_credential_verifier metadata presence");
+      log.start(
+        "Conformance test: Verifying openid_credential_verifier metadata presence",
+      );
 
       let testSuccess = false;
       try {
@@ -276,7 +300,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking request_uri expiration time...");
-        const expires_in = pushedAuthorizationRequestResponse.response?.expires_in;
+        const expires_in =
+          pushedAuthorizationRequestResponse.response?.expires_in;
         expect(expires_in).toBeDefined();
         log.info(`  expires_in: ${expires_in} seconds`);
         expect(expires_in).toBeLessThanOrEqual(60);
@@ -331,7 +356,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking request_uri length...");
-        const requestUriLength = pushedAuthorizationRequestResponse.response?.request_uri.length;
+        const requestUriLength =
+          pushedAuthorizationRequestResponse.response?.request_uri.length;
         expect(requestUriLength).toBeDefined();
         log.info(`  Length: ${requestUriLength} characters`);
         log.info(`  Maximum: 512 characters`);
@@ -369,7 +395,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking request_uri parameter...");
-        const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
+        const requestUri =
+          pushedAuthorizationRequestResponse.response?.request_uri;
         expect(requestUri).toBeDefined();
         expect(requestUri).toBeTruthy();
         log.info(`  request_uri: ${requestUri}`);
@@ -389,7 +416,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking expires_in parameter...");
-        const expiresIn = pushedAuthorizationRequestResponse.response?.expires_in;
+        const expiresIn =
+          pushedAuthorizationRequestResponse.response?.expires_in;
         expect(expiresIn).toBeDefined();
         expect(typeof expiresIn).toBe("number");
         log.info(`  expires_in: ${expiresIn} seconds`);
@@ -409,13 +437,16 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_049: Authorization | Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
       const log = baseLog.withTag("CI_049");
 
-      log.start("Conformance test: Verifying PAR and authorization request correlation");
+      log.start(
+        "Conformance test: Verifying PAR and authorization request correlation",
+      );
 
       let testSuccess = false;
       try {
         // Verify PAR response provided a valid request_uri
         log.info("→ Verifying PAR response contains request_uri...");
-        const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
+        const requestUri =
+          pushedAuthorizationRequestResponse.response?.request_uri;
         expect(requestUri).toBeDefined();
         expect(typeof requestUri).toBe("string");
         expect(requestUri?.length).toBeGreaterThan(0);
@@ -429,10 +460,16 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
         // Verify authorization was successful - this proves the issuer correlated the request
         // If the issuer couldn't correlate the authorization request with the PAR, it would fail
-        log.info("→ Verifying authorization succeeded with the PAR request_uri...");
+        log.info(
+          "→ Verifying authorization succeeded with the PAR request_uri...",
+        );
         expect(authorizeResponse.success).toBe(true);
-        expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
-        log.info("  ✅ Authorization successful - issuer correlated PAR and authorization");
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
+        log.info(
+          "  ✅ Authorization successful - issuer correlated PAR and authorization",
+        );
 
         testSuccess = true;
       } finally {
@@ -448,8 +485,12 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking authorization code presence...");
-        expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
-        log.info("  ✅ Authorization code received (user authentication successful)");
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
+        log.info(
+          "  ✅ Authorization code received (user authentication successful)",
+        );
 
         testSuccess = true;
       } finally {
@@ -465,8 +506,12 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking OpenID4VP presentation flow completed...");
-        expect(authorizeResponse.response?.authorizeResponse?.code).toBeDefined();
-        log.info("  ✅ OpenID4VP presentation successful (authorization code received)");
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
+        log.info(
+          "  ✅ OpenID4VP presentation successful (authorization code received)",
+        );
 
         testSuccess = true;
       } finally {
@@ -519,7 +564,8 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking state parameter...");
-        const responseState = authorizeResponse.response?.authorizeResponse?.state;
+        const responseState =
+          authorizeResponse.response?.authorizeResponse?.state;
         const requestState = authorizeResponse.response?.requestObject?.state;
 
         expect(responseState).toBeDefined();
@@ -568,7 +614,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_064: Token | Credential Issuer provides the Wallet Instance with a valid Access Token upon successful authorization", async () => {
       const log = baseLog.withTag("CI_064");
 
-      log.start("Conformance test: Verifying Access Token issuance and validity");
+      log.start(
+        "Conformance test: Verifying Access Token issuance and validity",
+      );
 
       let testSuccess = false;
       try {
@@ -581,9 +629,15 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         const claims = decodeJwt(token ?? "");
         const currentTime = Date.now() / 1e3;
 
-        log.info(`  Issued at (iat): ${new Date(claims.iat! * 1000).toISOString()}`);
-        log.info(`  Expires at (exp): ${new Date(claims.exp! * 1000).toISOString()}`);
-        log.info(`  Current time: ${new Date(currentTime * 1000).toISOString()}`);
+        log.info(
+          `  Issued at (iat): ${new Date(claims.iat! * 1000).toISOString()}`,
+        );
+        log.info(
+          `  Expires at (exp): ${new Date(claims.exp! * 1000).toISOString()}`,
+        );
+        log.info(
+          `  Current time: ${new Date(currentTime * 1000).toISOString()}`,
+        );
 
         expect(claims.exp).toBeGreaterThan(currentTime);
         expect(claims.iat).toBeLessThan(currentTime);
@@ -608,7 +662,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
         log.info("→ Computing JWK Thumbprint from wallet key...");
         expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+        const jkt = await calculateJwkThumbprint(
+          walletAttestationResponse.unitKey.publicKey,
+        );
         log.info(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
@@ -636,7 +692,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_094: Token | When all validation checks succeed, Credential Issuer generates new Access Token and new Refresh Token, both bound to the DPoP key", async () => {
       const log = baseLog.withTag("CI_094");
 
-      log.start("Conformance test: Verifying token generation with DPoP binding");
+      log.start(
+        "Conformance test: Verifying token generation with DPoP binding",
+      );
 
       let testSuccess = false;
       try {
@@ -646,7 +704,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
         log.info("→ Computing JWK Thumbprint...");
         expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+        const jkt = await calculateJwkThumbprint(
+          walletAttestationResponse.unitKey.publicKey,
+        );
         log.info(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
@@ -688,7 +748,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_101: Token | Access Tokens and Refresh Tokens are bound to the same DPoP key", async () => {
       const log = baseLog.withTag("CI_101");
 
-      log.start("Conformance test: Verifying consistent DPoP key binding across tokens");
+      log.start(
+        "Conformance test: Verifying consistent DPoP key binding across tokens",
+      );
 
       let testSuccess = false;
       try {
@@ -698,7 +760,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
 
         log.info("→ Computing JWK Thumbprint...");
         expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(walletAttestationResponse.unitKey.publicKey);
+        const jkt = await calculateJwkThumbprint(
+          walletAttestationResponse.unitKey.publicKey,
+        );
         log.info(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
@@ -732,7 +796,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Checking c_nonce parameter...");
-        const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+        const nonce = nonceResponse.response?.nonce as
+          | undefined
+          | { c_nonce: string };
         expect(nonce?.c_nonce).toBeDefined();
         expect(nonce?.c_nonce.length).toBeGreaterThan(0);
         log.info(`  c_nonce: ${nonce?.c_nonce}`);
@@ -748,11 +814,15 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_069: Nonce | The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
       const log = baseLog.withTag("CI_069");
 
-      log.start("Conformance test: Verifying c_nonce entropy and unpredictability");
+      log.start(
+        "Conformance test: Verifying c_nonce entropy and unpredictability",
+      );
 
       let testSuccess = false;
       try {
-        const nonce = nonceResponse.response?.nonce as { c_nonce: string } | undefined;
+        const nonce = nonceResponse.response?.nonce as
+          | undefined
+          | { c_nonce: string };
         let cNonce = nonce?.c_nonce ?? "";
         const length = cNonce.length;
 
@@ -763,18 +833,20 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info("  ✅ c_nonce length is sufficient");
 
         log.info("→ Computing entropy...");
-        let frequencies: number[] = [];
+        const frequencies: number[] = [];
         for (const char of cNonce) {
           const prevLength = cNonce.length;
           cNonce = cNonce.replace(char, "");
           frequencies.push((prevLength - cNonce.length) / length);
         }
 
-        const entropy = - frequencies.reduce((a, b) => a + (b * Math.log2(b)), 0);
+        const entropy = -frequencies.reduce((a, b) => a + b * Math.log2(b), 0);
         log.info(`  Computed entropy: ${entropy.toFixed(2)} bits`);
         log.info(`  Required entropy: >5 bits`);
         expect(entropy).toBeGreaterThan(5);
-        log.info("  ✅ c_nonce has sufficient entropy to prevent guessing attacks");
+        log.info(
+          "  ✅ c_nonce has sufficient entropy to prevent guessing attacks",
+        );
 
         testSuccess = true;
       } finally {
@@ -789,17 +861,24 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
 
-      log.start("Conformance test: Verifying credential issuance with key binding");
+      log.start(
+        "Conformance test: Verifying credential issuance with key binding",
+      );
 
       let testSuccess = false;
       try {
         log.info("→ Checking credential presence...");
-        expect(credentialResponse.response?.credentials?.length).toBeGreaterThan(0);
-        log.info(`  Credentials received: ${credentialResponse.response?.credentials?.length}`);
+        expect(
+          credentialResponse.response?.credentials?.length,
+        ).toBeGreaterThan(0);
+        log.info(
+          `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+        );
         log.info("  ✅ Credentials are present");
 
         log.info("→ Validating credential key pair...");
-        const credentialPublicKey = credentialResponse.response?.credentialKeyPair?.publicKey;
+        const credentialPublicKey =
+          credentialResponse.response?.credentialKeyPair?.publicKey;
         expect(credentialPublicKey).toBeDefined();
 
         if (!credentialPublicKey) {
@@ -814,23 +893,33 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         log.info(`  Expected JWK Thumbprint: ${expectedJkt}`);
 
         log.info("→ Verifying cryptographic key binding in credentials...");
-        for (const credential of credentialResponse.response?.credentials ?? []) {
+        for (const credential of credentialResponse.response?.credentials ??
+          []) {
           expect(credential.credential).toBeDefined();
 
           log.info("  Parsing credential as SD-JWT...");
           const sdJwt = await SDJwt.extractJwt(credential.credential);
-          const payload = sdJwt.payload as { cnf?: { jwk?: object; jkt?: string } } | undefined;
+          const payload = sdJwt.payload as
+            | undefined
+            | { cnf?: { jkt?: string; jwk?: object } };
 
-          expect(payload?.cnf, "SD-JWT credential must contain cnf claim for key binding").toBeDefined();
+          expect(
+            payload?.cnf,
+            "SD-JWT credential must contain cnf claim for key binding",
+          ).toBeDefined();
 
           if (payload?.cnf?.jwk) {
             log.info("  Verifying key binding via jwk claim...");
             const credentialJkt = await calculateJwkThumbprint(payload.cnf.jwk);
             log.info(`    Credential JWK Thumbprint: ${credentialJkt}`);
             expect(credentialJkt).toBe(expectedJkt);
-            log.info("    ✅ Credential is cryptographically bound to Wallet Instance key");
+            log.info(
+              "    ✅ Credential is cryptographically bound to Wallet Instance key",
+            );
           } else {
-            expect.fail("SD-JWT credential cnf claim must contain either jkt or jwk");
+            expect.fail(
+              "SD-JWT credential cnf claim must contain either jkt or jwk",
+            );
           }
         }
         log.info("  ✅ All credentials are properly bound");
@@ -844,13 +933,16 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
     test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");
 
-      log.start("Conformance test: Verifying credential format (SD-JWT VC or mdoc-CBOR)");
+      log.start(
+        "Conformance test: Verifying credential format (SD-JWT VC or mdoc-CBOR)",
+      );
 
       let testSuccess = false;
       try {
         log.info("→ Validating credential format...");
 
-        for (const credential of credentialResponse.response?.credentials ?? []) {
+        for (const credential of credentialResponse.response?.credentials ??
+          []) {
           try {
             log.info("  Attempting to parse as SD-JWT...");
             await SDJwt.extractJwt(credential.credential);
@@ -868,12 +960,13 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
             testSuccess = true;
             return;
           } catch {
-            log.error("  ❌ Credential is neither SD-JWT VC nor mdoc-CBOR format");
+            log.error(
+              "  ❌ Credential is neither SD-JWT VC nor mdoc-CBOR format",
+            );
           }
         }
 
         log.error("  ❌ No credentials found in valid format");
-        
       } finally {
         log.testCompleted(testSuccess);
       }

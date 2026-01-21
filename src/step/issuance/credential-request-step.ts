@@ -10,7 +10,12 @@ import {
   FetchCredentialResponseOptions,
 } from "@pagopa/io-wallet-oid4vci";
 
-import { createKeys, partialCallbacks, signJwtCallback } from "@/logic";
+import { 
+  createAndSaveKeys, 
+  createKeys, 
+  partialCallbacks, 
+  signJwtCallback 
+} from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
 
@@ -72,67 +77,69 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const { unitKey } = options.walletAttestation;
 
     log.info(`Generating new key pair for credential...`);
-    const credentialKeyPair = await createKeys();
+    const credentialKeyPair = this.config.issuance.save_credential 
+      ? await createAndSaveKeys(`${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}_jwks`)
+      : await createKeys();
 
-    return await this.execute<CredentialRequestExecuteResponse>(
-      async () => {
-        log.info(`Creating the Credential Request...`);
-        const createCredentialRequestOptions: CredentialRequestOptions = {
-          callbacks: {
-            signJwt: signJwtCallback([credentialKeyPair.privateKey]),
-          },
-          clientId: options.clientId,
-          credential_identifier: options.credentialIdentifier,
-          issuerIdentifier: options.baseUrl,
-          nonce: options.nonce,
-          signer: {
-            alg: "ES256",
-            method: "jwk",
-            publicJwk: credentialKeyPair.publicKey,
-          },
-        };
-        const credentialRequest = await createCredentialRequest(
-          createCredentialRequestOptions,
-        );
+    return await this.execute<CredentialRequestExecuteResponse>(async () => {
+      log.info(`Creating the Credential Request...`);
+      const createCredentialRequestOptions: CredentialRequestOptions = {
+        callbacks: {
+          signJwt: signJwtCallback([credentialKeyPair.privateKey]),
+        },
+        clientId: options.clientId,
+        credential_identifier: options.credentialIdentifier,
+        issuerIdentifier: options.baseUrl,
+        nonce: options.nonce,
+        signer: {
+          alg: "ES256",
+          method: "jwk",
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      };
+      const credentialRequest = await createCredentialRequest(
+        createCredentialRequestOptions,
+      );
 
-        log.info(`Generating DPoP...`);
-        const createTokenDPoPOptions: CreateTokenDPoPOptions = {
-          accessToken: options.accessToken,
-          callbacks: {
-            ...partialCallbacks,
-            signJwt: signJwtCallback([unitKey.privateKey]),
-          },
-          signer: {
-            alg: "ES256",
-            method: "jwk",
-            publicJwk: unitKey.publicKey,
-          },
-          tokenRequest: {
-            method: "POST",
-            url: options.credentialRequestEndpoint,
-          },
-        };
-        const credentialDPoP = await createTokenDPoP(createTokenDPoPOptions);
+      log.info(`Generating DPoP...`);
+      const createTokenDPoPOptions: CreateTokenDPoPOptions = {
+        accessToken: options.accessToken,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk",
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST",
+          url: options.credentialRequestEndpoint,
+        },
+      };
+      const credentialDPoP = await createTokenDPoP(createTokenDPoPOptions);
 
-        log.info(
-          `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
-        );
-        const fetchCredentialResponseOptions: FetchCredentialResponseOptions = {
-          accessToken: options.accessToken,
-          callbacks: {
-            fetch,
-          },
-          credentialEndpoint: options.credentialRequestEndpoint,
-          credentialRequest,
-          dPoP: credentialDPoP.jwt,
-        };
-        const credentialResponse = await fetchCredentialResponse(fetchCredentialResponseOptions);
+      log.info(
+        `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
+      );
+      const fetchCredentialResponseOptions: FetchCredentialResponseOptions = {
+        accessToken: options.accessToken,
+        callbacks: {
+          fetch,
+        },
+        credentialEndpoint: options.credentialRequestEndpoint,
+        credentialRequest,
+        dPoP: credentialDPoP.jwt,
+      };
+      const credentialResponse = await fetchCredentialResponse(
+        fetchCredentialResponseOptions,
+      );
 
-        return {
-          credentialKeyPair,
-          ...credentialResponse,
-        };
-      },
-    );
+      return {
+        credentialKeyPair,
+        ...credentialResponse,
+      };
+    });
   }
 }
