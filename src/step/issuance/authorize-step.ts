@@ -13,7 +13,6 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 import {
   fetchWithRetries,
   getEncryptJweCallback,
-  loadJwks,
   partialCallbacks,
   signJwtCallback,
   verifyJwt,

@@ -23,7 +23,7 @@ export async function createMockSdJwt(
   backupPath: string,
   credentialsPath: string,
 ): Promise<Credential> {
-  const keyPair = await loadJwks(backupPath, "issuer_jwks");
+  const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
     entityPublicJwk: keyPair.publicKey,
