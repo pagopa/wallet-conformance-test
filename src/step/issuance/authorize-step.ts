@@ -178,7 +178,6 @@ export class AuthorizeDefaultStep extends StepFlow {
         throw new Error("Failed to create authorization response JARM");
       }
 
-      log.info("Sending Authorization Response...");
       log.info(
         `Sending authorization response to: ${responseUri}`,
       );
