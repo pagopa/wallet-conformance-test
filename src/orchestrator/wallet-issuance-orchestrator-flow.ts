@@ -227,7 +227,7 @@ export class WalletIssuanceOrchestratorFlow {
         const credentials = await loadCredentials(
           this.config.wallet.credentials_storage_path,
           [credentialIdentifier],
-          this.log.error,
+          this.log.debug,
         );
 
         if (credentials.dc_sd_jwt_PersonIdentificationData)

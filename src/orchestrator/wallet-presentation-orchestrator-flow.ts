@@ -219,7 +219,7 @@ export class WalletPresentationOrchestratorFlow {
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
-      this.log.error,
+      this.log.debug,
     );
 
     const pid = credentials[credentialIdentifier]
