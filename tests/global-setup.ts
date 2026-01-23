@@ -9,7 +9,7 @@ let server: Server;
 
 export default async function setup() {
   const config = loadConfigWithHierarchy();
-  const port = config.server.port;
+  const port = config.trust_anchor.port;
   const app = createServer();
   const baseLog = createLogger().withTag("globalSetup");
 

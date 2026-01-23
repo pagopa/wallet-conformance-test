@@ -168,7 +168,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   }
 
   if (options.port !== undefined) {
-    partialConfig.server = { port: options.port };
+    partialConfig.trust_anchor = { port: options.port };
   }
 
   return partialConfig as Partial<Config>;

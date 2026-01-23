@@ -23,7 +23,7 @@ export const configSchema = z.object({
     authorize_request_url: z.string().url(),
     verifier: z.string().url(),
   }),
-  server: z.object({
+  trust_anchor: z.object({
     port: z.coerce.number(),
   }),
   trust: z.object({
