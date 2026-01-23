@@ -56,6 +56,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.info("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestStepResponse>(async () => {
+      log.info(
+        `Fetching authorization request from: ${options.authorizeRequestUrl}`,
+      );
       const { parsedAuthorizeRequest, parsedQrCode } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl: options.authorizeRequestUrl,

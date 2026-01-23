@@ -107,6 +107,9 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
       log.info(
         `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
       );
+      log.debug(
+        `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
+      );
       const pushedAuthorizationRequestSigned =
         await createPushedAuthorizationRequest(createParOptions);
 
@@ -119,7 +122,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         walletAttestation: options.walletAttestation.attestation,
       };
 
-      log.debug(`Fetching PAR response from ${JSON.stringify(fetchOptions)}`);
+      log.info(`Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`);
 
       return fetchPushedAuthorizationResponse(fetchOptions);
     });

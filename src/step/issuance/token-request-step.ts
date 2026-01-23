@@ -52,6 +52,7 @@ export class TokenRequestDefaultStep extends StepFlow {
     const { unitKey } = options.walletAttestation;
 
     return this.execute<TokenRequestExecuteResponse>(async () => {
+      log.info(`Fetching access token from: ${options.accessTokenEndpoint}`);
       const createTokenDPoPOptions: CreateTokenDPoPOptions = {
         callbacks: {
           ...partialCallbacks,

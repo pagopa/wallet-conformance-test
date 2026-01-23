@@ -149,6 +149,9 @@ export class AuthorizeDefaultStep extends StepFlow {
       );
 
       log.info("Creating Authorization Response...");
+      log.debug(
+        `Authorization response nonce: ${JSON.stringify({ nonce: requestObject.nonce })}`,
+      );
       const createAuthorizationResponseOptions: CreateAuthorizationResponseOptions =
         {
           callbacks: {
@@ -176,6 +179,12 @@ export class AuthorizeDefaultStep extends StepFlow {
       }
 
       log.info("Sending Authorization Response...");
+      log.info(
+        `Sending authorization response to: ${responseUri}`,
+      );
+      log.debug(
+        `Authorization response iss: ${options.baseUrl}`,
+      );
       const sendAuthorizationResponseAndExtractCodeOptions = {
         authorizationResponseJarm: authorizationResponse.jarm.responseJwt,
         callbacks: {
