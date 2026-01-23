@@ -10,7 +10,7 @@ import { loadConfig } from "@/logic";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfig("./config.ini");
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.server.port}`;
+  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
     const attestationPath = `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_id}`;

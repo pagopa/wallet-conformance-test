@@ -12,7 +12,7 @@ export const createServer = () => {
   app.use(express.json());
 
   const config = loadConfig("./config.ini");
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.server.port}`;
+  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   // federation metadata
   app.get("/.well-known/openid-federation", async (_req, res) => {

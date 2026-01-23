@@ -129,7 +129,7 @@ export class WalletIssuanceOrchestratorFlow {
           fetchMetadataOptions?.wellKnownPath ||
           "/.well-known/openid-federation",
       });
-      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
+      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
       this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
@@ -227,7 +227,7 @@ export class WalletIssuanceOrchestratorFlow {
         const credentials = await loadCredentials(
           this.config.wallet.credentials_storage_path,
           [credentialIdentifier],
-          this.log.error,
+          this.log.debug,
         );
 
         if (credentials.dc_sd_jwt_PersonIdentificationData)

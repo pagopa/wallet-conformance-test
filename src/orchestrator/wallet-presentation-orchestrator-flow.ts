@@ -84,7 +84,7 @@ export class WalletPresentationOrchestratorFlow {
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
-      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.server.port}`;
+      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
       const walletAttestation =
         await this.loadWalletAttestation(trustAnchorBaseUrl);
 
@@ -219,7 +219,7 @@ export class WalletPresentationOrchestratorFlow {
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
-      this.log.error,
+      this.log.debug,
     );
 
     const pid = credentials[credentialIdentifier]

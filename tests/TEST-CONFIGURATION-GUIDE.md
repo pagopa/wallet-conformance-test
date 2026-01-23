@@ -16,19 +16,27 @@ This comprehensive guide shows you how to configure and run Issuer conformance t
 The default configuration is already set up in `tests/test.config.ts`:
 
 ```typescript
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { PresentationTestConfiguration } from "./config/presentation-test-configuration";
 import { issuerRegistry, presentationRegistry } from "./config/test-registry";
 
-export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest"; // Reference to happy.issuance.spec.ts
-export const HAPPY_FLOW_PRESENTATION_NAME = "HappyFlowPresentationTest"; // Reference to happy.presentation.spec.ts
+// Load configuration (credential types come from config.ini or CLI)
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
 
-const happyFlowCredentialConfig = IssuerTestConfiguration.createCustom({
-  credentialConfigurationId: "dc_sd_jwt_EuropeanDisabilityCard",
-  name: "Happy Flow EuropeanDisabilityCard Test",
-});
+export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
+export const HAPPY_FLOW_PRESENTATION_NAME = "HappyFlowPresentationTest";
 
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, happyFlowCredentialConfig);
+// Automatically register tests for each credential type
+for (const credentialType of credentialTypes) {
+  const testConfig = IssuerTestConfiguration.createCustom({
+    name: `Happy Flow ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
+  });
+  issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, testConfig);
+}
+
 presentationRegistry.registerTest(HAPPY_FLOW_PRESENTATION_NAME, PresentationTestConfiguration.createDefault());
 ```
 
@@ -76,21 +84,41 @@ test.config.ts → Registers configs → Registry → Test suite retrieves confi
 
 ### Example 1: Custom Credential Type
 
-Test a different credential type (e.g., DrivingLicense).
+Test different credential types by configuring them in `config.ini` or via CLI.
 
+**Option 1: Using config.ini**
+```ini
+[issuance]
+credential_types[] = dc_sd_jwt_DrivingLicense
+credential_types[] = dc_sd_jwt_PersonIdentificationData
+```
+
+**Option 2: Using CLI**
+```bash
+pnpm test:issuance -- --credential-types dc_sd_jwt_DrivingLicense,dc_sd_jwt_PersonIdentificationData
+```
+
+The test configuration will automatically pick up these credential types:
 ```typescript
-// test.config.ts
+// test.config.ts (no changes needed)
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { issuerRegistry } from "./config/test-registry";
 
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
+
 export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-const mdlConfig = IssuerTestConfiguration.createCustom({
-  name: "DrivingLicense Test",
-  credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
-});
-
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, mdlConfig);
+for (const credentialType of credentialTypes) {
+  issuerRegistry.registerTest(
+    HAPPY_FLOW_ISSUANCE_NAME,
+    IssuerTestConfiguration.createCustom({
+      name: `Happy Flow ${credentialType} Test`,
+      credentialConfigurationId: credentialType,
+    })
+  );
+}
 ```
 
 **Run**: `pnpm test:issuance`
@@ -99,69 +127,73 @@ issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, mdlConfig);
 
 ### Example 2: Multiple Credential Types
 
-Test multiple credential types in one run.
+Test multiple credential types in one run by specifying them in `config.ini` or via CLI.
 
+**Using config.ini:**
+```ini
+[issuance]
+credential_types[] = dc_sd_jwt_PersonIdentificationData
+credential_types[] = dc_sd_jwt_DrivingLicense
+credential_types[] = dc_sd_jwt_EuropeanDisabilityCard
+```
+
+**Using CLI:**
+```bash
+pnpm test:issuance -- --credential-types dc_sd_jwt_PersonIdentificationData,dc_sd_jwt_DrivingLicense,dc_sd_jwt_EuropeanDisabilityCard
+```
+
+**No changes needed in test.config.ts** - the system automatically creates test configurations for each credential type:
 ```typescript
-// test.config.ts
-import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { issuerRegistry } from "./config/test-registry";
-
-export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
-
-const pidConfig = IssuerTestConfiguration.createCustom({
-  name: "PersonIdentificationData Test",
-  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-});
-
-const mdlConfig = IssuerTestConfiguration.createCustom({
-  name: "DrivingLicense Test",
-  credentialConfigurationId: "dc_sd_jwt_DrivingLicense",
-});
-
-// Option 1: Register individually
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, pidConfig);
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, mdlConfig);
-
-// Option 2: Register multiple at once
-// issuerRegistry.registerMany(HAPPY_FLOW_ISSUANCE_NAME, [pidConfig, mdlConfig]);
+// The loop in test.config.ts automatically handles multiple types
+for (const credentialType of credentialTypes) {
+  issuerRegistry.registerTest(
+    HAPPY_FLOW_ISSUANCE_NAME,
+    IssuerTestConfiguration.createCustom({
+      name: `Happy Flow ${credentialType} Test`,
+      credentialConfigurationId: credentialType,
+    })
+  );
+}
 ```
 
 **Run**: `pnpm test:issuance`  
-**Result**: Both configurations will run automatically
+**Result**: All configured credential types will run automatically
 
 ---
 
 ### Example 3: Environment-Based Configuration
 
-Use different configurations for dev/prod environments.
+Use different credential types for dev/prod environments.
 
-```typescript
-// test.config.ts
-import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
-import { issuerRegistry } from "./config/test-registry";
+**Create environment-specific config files:**
 
-export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
-
-const environment = process.env.TEST_ENV || "dev";
-
-const configs = {
-  dev: "dc_sd_jwt_DevCredential",
-  prod: "dc_sd_jwt_ProdCredential",
-};
-
-const credentialId = configs[environment as keyof typeof configs];
-
-const envConfig = IssuerTestConfiguration.createCustom({
-  name: `${environment.toUpperCase()} Test`,
-  credentialConfigurationId: credentialId,
-});
-
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, envConfig);
+`config.dev.ini`:
+```ini
+[issuance]
+credential_types[] = dc_sd_jwt_DevCredential
 ```
 
-**Run**:
-- Dev: `pnpm test:issuance`
-- Prod: `TEST_ENV=prod pnpm test:issuance`
+`config.prod.ini`:
+```ini
+[issuance]
+credential_types[] = dc_sd_jwt_ProdCredential
+```
+
+**Or use CLI with environment variables:**
+```bash
+# Dev
+pnpm test:issuance -- --credential-types dc_sd_jwt_DevCredential
+
+# Prod
+pnpm test:issuance -- --credential-types dc_sd_jwt_ProdCredential
+```
+
+**The test.config.ts automatically adapts** to the loaded configuration:
+```typescript
+// No environment-specific code needed - it's handled by config loading
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
+```
 
 ---
 
@@ -171,22 +203,27 @@ Use a custom well-known path for federation metadata.
 
 ```typescript
 // test.config.ts
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { issuerRegistry } from "./config/test-registry";
 
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
+
 export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-const customMetadataConfig = IssuerTestConfiguration.createCustom({
-  name: "Custom Metadata Path Test",
-  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-  fetchMetadata: {
-    options: {
-      wellKnownPath: "/.well-known/custom-federation",
+for (const credentialType of credentialTypes) {
+  const customMetadataConfig = IssuerTestConfiguration.createCustom({
+    name: `Custom Metadata ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
+    fetchMetadata: {
+      options: {
+        wellKnownPath: "/.well-known/custom-federation",
+      },
     },
-  },
-});
-
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, customMetadataConfig);
+  });
+  issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, customMetadataConfig);
+}
 ```
 
 **Run**: `pnpm test:issuance`
@@ -199,21 +236,26 @@ Replace default step implementations with custom ones for testing scenarios.
 
 ```typescript
 // test.config.ts
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { issuerRegistry } from "./config/test-registry";
 import { FetchMetadataHardcodedStep } from "@/step/issuance/fetch-metadata-hardcoded-step";
 
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
+
 export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
-  name: "Hardcoded Metadata Fetch Test",
-  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-  fetchMetadata: {
-    stepClass: FetchMetadataHardcodedStep,
-  },
-});
-
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, hardcodedMetadataConfig);
+for (const credentialType of credentialTypes) {
+  const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
+    name: `Hardcoded Metadata ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
+    fetchMetadata: {
+      stepClass: FetchMetadataHardcodedStep,
+    },
+  });
+  issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, hardcodedMetadataConfig);
+}
 ```
 
 **Use Cases**:
@@ -232,29 +274,34 @@ Use both custom options and custom step classes together.
 
 ```typescript
 // test.config.ts
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { IssuerTestConfiguration } from "./config/issuance-test-configuration";
 import { issuerRegistry } from "./config/test-registry";
 
+const config = loadConfigWithHierarchy();
+const credentialTypes = config.issuance.credential_types || ["dc_sd_jwt_EuropeanDisabilityCard"];
+
 export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 
-const advancedConfig = IssuerTestConfiguration.createCustom({
-  name: "Advanced Combined Test",
-  credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-  fetchMetadata: {
-    options: {
-      wellKnownPath: "/.well-known/custom-federation",
+for (const credentialType of credentialTypes) {
+  const advancedConfig = IssuerTestConfiguration.createCustom({
+    name: `Advanced ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
+    fetchMetadata: {
+      options: {
+        wellKnownPath: "/.well-known/custom-federation",
+      },
+      // stepClass: CustomStep, // Can also specify custom step
     },
-    // stepClass: CustomStep, // Can also specify custom step
-  },
-  pushedAuthorizationRequest: {
-    options: {
-      // Your PAR options here
+    pushedAuthorizationRequest: {
+      options: {
+        // Your PAR options here
+      },
+      // stepClass: CustomPARStep, // Can also specify custom step
     },
-    // stepClass: CustomPARStep, // Can also specify custom step
-  },
-});
-
-issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, advancedConfig);
+  });
+  issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, advancedConfig);
+}
 ```
 
 **Run**: `pnpm test:issuance`
@@ -365,7 +412,7 @@ Before running tests, verify:
 - [ ] `test.config.ts` exists in `tests/` directory
 - [ ] Flow name constant is defined (e.g., `HAPPY_FLOW_ISSUANCE_NAME`, `HAPPY_FLOW_PRESENTATION_NAME`)
 - [ ] At least one `issuerRegistry.registerTest()` or `presentationRegistry.registerTest()` call is present
-- [ ] `credentialConfigurationId` is correct (for issuance tests)
+- [ ] Credential types are configured in `config.ini` or via CLI (for issuance tests)
 - [ ] Configuration is not commented out
 - [ ] No syntax errors in file
 - [ ] Flow name matches between config and test files

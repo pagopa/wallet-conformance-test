@@ -73,7 +73,7 @@ tests/test.config.ts → Registers configs → Registry → Test suite retrieves
 - `[trust]`: CA certs, eIDAS lists, federation trust anchors
 - `[issuance]`: Credential issuer URLs and credential type mappings
 - `[network]`: Timeouts, retries, user agent
-- `[server]`: Trust Anchor local server port (default: 3001)
+- `[trust_anchor]`: Trust Anchor local server port (default: 3001)
 - `[logging]`: Level, format, file path
 
 **Path Aliases**: 

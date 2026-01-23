@@ -1,6 +1,5 @@
 /* eslint-disable max-lines-per-function */
 import { issuerRegistry } from "#/config";
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
 // Import test configuration - this will register all configurations
 import "../test.config";

@@ -43,7 +43,7 @@ describe("Generate Mocked Credentials", () => {
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
-    trustAnchorBaseUrl: `https://127.0.0.1:${config.server.port}`,
+    trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
     trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
   };
 
