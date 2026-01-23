@@ -32,6 +32,7 @@ export const HAPPY_FLOW_PRESENTATION_NAME = "HappyFlowPresentationTest";
 for (const credentialType of credentialTypes) {
   const testConfig = IssuerTestConfiguration.createCustom({
     name: `Happy Flow ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
   });
   issuerRegistry.registerTest(HAPPY_FLOW_ISSUANCE_NAME, testConfig);
 }
@@ -114,6 +115,7 @@ for (const credentialType of credentialTypes) {
     HAPPY_FLOW_ISSUANCE_NAME,
     IssuerTestConfiguration.createCustom({
       name: `Happy Flow ${credentialType} Test`,
+      credentialConfigurationId: credentialType,
     })
   );
 }
@@ -148,6 +150,7 @@ for (const credentialType of credentialTypes) {
     HAPPY_FLOW_ISSUANCE_NAME,
     IssuerTestConfiguration.createCustom({
       name: `Happy Flow ${credentialType} Test`,
+      credentialConfigurationId: credentialType,
     })
   );
 }
@@ -212,6 +215,7 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 for (const credentialType of credentialTypes) {
   const customMetadataConfig = IssuerTestConfiguration.createCustom({
     name: `Custom Metadata ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
     fetchMetadata: {
       options: {
         wellKnownPath: "/.well-known/custom-federation",
@@ -245,6 +249,7 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 for (const credentialType of credentialTypes) {
   const hardcodedMetadataConfig = IssuerTestConfiguration.createCustom({
     name: `Hardcoded Metadata ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
     fetchMetadata: {
       stepClass: FetchMetadataHardcodedStep,
     },
@@ -281,6 +286,7 @@ export const HAPPY_FLOW_ISSUANCE_NAME = "HappyFlowIssuanceTest";
 for (const credentialType of credentialTypes) {
   const advancedConfig = IssuerTestConfiguration.createCustom({
     name: `Advanced ${credentialType} Test`,
+    credentialConfigurationId: credentialType,
     fetchMetadata: {
       options: {
         wellKnownPath: "/.well-known/custom-federation",
