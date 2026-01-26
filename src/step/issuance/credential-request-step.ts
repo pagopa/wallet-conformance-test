@@ -123,6 +123,9 @@ export class CredentialRequestDefaultStep extends StepFlow {
       log.info(
         `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
       );
+      log.debug(
+        `Credential request credentialIdentifier: ${options.credentialIdentifier}`,
+      );
       const fetchCredentialResponseOptions: FetchCredentialResponseOptions = {
         accessToken: options.accessToken,
         callbacks: {

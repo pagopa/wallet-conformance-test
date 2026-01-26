@@ -155,7 +155,7 @@ wct test:issuance --credential-type PersonIdentificationData
 ### Logging
 - Logger from `@/logic/logs` with `.withTag()` for context
 - Standard tags: `"FETCH METADATA"`, `"PUSHED_AUTHORIZATION_REQUEST"`, `"CI_001"` (test IDs)
-- Log levels: `.info()`, `.debug()`, `.success()`, `.error()`, `.start()`, `.testCompleted()`
+- Log levels: `.info()`, `.debug()`, `.error()`, `.start()`, `.testCompleted()`
 
 ### Mock Credentials
 

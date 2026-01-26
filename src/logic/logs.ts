@@ -70,7 +70,7 @@ function setLogOptions(
         .replace(/%\(utc\)/, logObj.date.toUTCString())
         .replace(/%\(date\)/, logObj.date.toISOString())
         .replace(/%\(tag\)/, logObj.tag)
-        .replace(/%\(levelname\)/, logObj.type.toUpperCase())
+        .replace(/%\(levelname\)/, logObj.type.toUpperCase().padEnd(5, ' '))
         .replace(/%\(message\)/, logObj.args.join(" ") ?? "");
 
     reporters.push({
@@ -100,7 +100,7 @@ function setLogOptions(
 
 function testCompleted(this: Logger, success = true) {
   if (success) {
-    this.success("Test completed ✅");
+    this.info("Test completed ✅");
   } else {
     this.error("Test completed ❌");
   }

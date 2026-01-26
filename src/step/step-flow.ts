@@ -24,7 +24,7 @@ export abstract class StepFlow {
   ): Promise<StepResult & { response?: T }> {
     try {
       const response = await action();
-      this.log.withTag(this.tag).success(`${this.tag} step succeeded ✅`);
+      this.log.withTag(this.tag).info(`${this.tag} step succeeded ✅`);
       return { response, success: true };
     } catch (error: unknown) {
       const errorMessage =
