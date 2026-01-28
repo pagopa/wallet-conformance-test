@@ -4,8 +4,7 @@ import {
   createConsola,
   LogObject,
 } from "consola";
-import { openSync, writeFile, writeFileSync } from "node:fs";
-import { stdout } from "node:process";
+import { openSync, writeFileSync } from "node:fs";
 
 import { Logger } from "@/types";
 
@@ -49,9 +48,7 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
 }
 
 function nl() {
-  writeFile(stdout.fd, "\n", (err) => {
-    if (err) throw err;
-  });
+  process.stdout.write("\n");
 }
 
 function setLogOptions(
@@ -75,9 +72,7 @@ function setLogOptions(
 
     reporters.push({
       log: (logObj) => {
-        writeFile(stdout.fd, `${formatLog(logObj)}\n`, (err) => {
-          if (err) throw err;
-        });
+        process.stdout.write(`${formatLog(logObj)}\n`);
       },
     });
   }
