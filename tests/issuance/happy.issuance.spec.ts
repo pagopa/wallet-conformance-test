@@ -44,22 +44,32 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
       baseLog.info("========================================");
       baseLog.info("");
 
-      ({
-        authorizeResponse,
-        credentialResponse,
-        fetchMetadataResponse,
-        nonceResponse,
-        pushedAuthorizationRequestResponse,
-        tokenResponse,
-        walletAttestationResponse,
-      } = await orchestrator.issuance());
+      try {
+        ({
+          authorizeResponse,
+          credentialResponse,
+          fetchMetadataResponse,
+          nonceResponse,
+          pushedAuthorizationRequestResponse,
+          tokenResponse,
+          walletAttestationResponse,
+        } = await orchestrator.issuance());
 
-      baseLog.info("");
-      baseLog.info("✅ Issuance flow completed");
-      baseLog.info("✅ Your implementation works correctly!");
-      baseLog.info("========================================");
-      baseLog.info("📋 Running conformance validation tests...");
-      baseLog.info("");
+        baseLog.info("");
+        baseLog.info("✅ Issuance flow completed");
+        baseLog.info("✅ Your implementation works correctly!");
+        baseLog.info("========================================");
+        baseLog.info("📋 Running conformance validation tests...");
+        baseLog.info("");
+      } catch (e) {
+        baseLog.error("❌ Issuance flow failed with error:", e);
+        baseLog.error("❌ Your implementation did not complete the issuance flow.");
+        baseLog.error("========================================");
+        throw e;
+      } finally {
+        // Give time for all logs to be flushed before starting tests
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     });
 
     test("CI_001: Fetch Metadata | Federation Entity publishes its own Entity Configuration in the .well-known/openid-federation endpoint.", async () => {
