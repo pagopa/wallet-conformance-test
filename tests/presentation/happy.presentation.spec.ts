@@ -41,9 +41,9 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
         baseLog.info("📋 Running conformance validation tests...");
         baseLog.info("");
       } catch (e) {
-        baseLog.info("❌ Presentation flow failed with error:", e);
-        baseLog.info("❌ Your implementation did not complete the presentation flow.");
-        baseLog.info("========================================");
+        baseLog.error("❌ Presentation flow failed with error:", e);
+        baseLog.error("❌ Your implementation did not complete the presentation flow.");
+        baseLog.error("========================================");
         throw e;
       } finally {
         // Give time for all logs to be flushed before starting tests
