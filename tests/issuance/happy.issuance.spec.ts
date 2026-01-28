@@ -62,9 +62,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         baseLog.info("📋 Running conformance validation tests...");
         baseLog.info("");
       } catch (e) {
-        baseLog.info("❌ Issuance flow failed with error:", e);
-        baseLog.info("❌ Your implementation did not complete the issuance flow.");
-        baseLog.info("========================================");
+        baseLog.error("❌ Issuance flow failed with error:", e);
+        baseLog.error("❌ Your implementation did not complete the issuance flow.");
+        baseLog.error("========================================");
         throw e;
       } finally {
         // Give time for all logs to be flushed before starting tests
