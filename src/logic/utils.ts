@@ -45,7 +45,6 @@ export async function fetchWithRetries(
 
       return { attempts, response };
     } catch (e) {
-      console.log(e);
       const err = e as Error;
       if (err.name === "TimeoutError")
         throw new Error(`Request timed out: aborting`);
