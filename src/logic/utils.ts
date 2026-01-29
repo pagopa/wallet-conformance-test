@@ -6,7 +6,7 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveKeys, verifyJwt } from ".";
+import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
 
 // Re-export config loading functions
 export {
@@ -96,6 +96,30 @@ export const loadJsonDumps = (
   }
 };
 
+export async function loadCertificate(
+  certPath: string,
+  filename: string,
+  keyPair: KeyPair,
+): Promise<string> {
+  try {
+    if (!existsSync(certPath))
+      mkdirSync(certPath, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories ${certPath}: ${err.message}`,
+    );
+  }
+
+  try {
+    return readFileSync(`${certPath}/${filename}`, "utf-8");
+  } catch {
+    return await createAndSaveCertificate(`${certPath}/${filename}`, keyPair);
+  }
+}
+
 /**
  * Loads or generates JWKS saving it to a file.
  * @param jwksPath The directory path where JWKS files are stored.
@@ -137,7 +161,7 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
-): string | null {
+): null | string {
   try {
     const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath);
 
