@@ -39,9 +39,7 @@ export class RedirectUriDefaultStep extends StepFlow {
         );
       }
 
-      log.info(
-        `Fetching authorization response from: ${options.responseUri}`,
-      );
+      log.info(`Fetching authorization response from: ${options.responseUri}`);
       const { redirect_uri } = await fetchAuthorizationResponse({
         authorizationResponseJarm:
           options.authorizationResponse.jarm.responseJwt,

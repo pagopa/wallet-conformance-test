@@ -11,6 +11,19 @@ import { writeFileSync } from "node:fs";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 /**
+ * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
+ *
+ * @param fileName The name of the file to save the key pair to.
+ * @returns A promise that resolves to the generated key pair.
+ */
+export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
+  const exportedPair = await createKeys();
+  writeFileSync(fileName, JSON.stringify(exportedPair));
+
+  return exportedPair;
+}
+
+/**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve)
  * and returns the key pair without saving it to a file.
  *
@@ -37,19 +50,6 @@ export async function createKeys(): Promise<KeyPair> {
       ...pub,
     }) as KeyPairJwk,
   };
-
-  return exportedPair;
-}
-
-/**
- * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
- *
- * @param fileName The name of the file to save the key pair to.
- * @returns A promise that resolves to the generated key pair.
- */
-export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
-  const exportedPair = await createKeys();
-  writeFileSync(fileName, JSON.stringify(exportedPair));
 
   return exportedPair;
 }

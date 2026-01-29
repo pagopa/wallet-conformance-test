@@ -7,7 +7,7 @@ import {
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback } from "./jwt";
-import { loadJsonDumps, loadJwks } from "./utils";
+import { loadCertificate, loadJsonDumps, loadJwks } from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<ItWalletEntityConfigurationClaimsOptions, "exp" | "iat">;
@@ -70,6 +70,17 @@ export const createTrustAnchorMetadata = async (options: {
     options.federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",
   );
+
+  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
+    signedJwks.publicKey.x5c = [
+      await loadCertificate(
+        options.federationTrustAnchorsJwksPath,
+        "trust_anchor_cert",
+        signedJwks,
+        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
+      ),
+    ];
+
   return await createFederationMetadata({
     claims,
     entityPublicJwk: signedJwks.publicKey,
@@ -157,6 +168,17 @@ export const createSubordinateWalletUnitMetadata = async (
     options.federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",
   );
+
+  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
+    signedJwks.publicKey.x5c = [
+      await loadCertificate(
+        options.federationTrustAnchorsJwksPath,
+        "trust_anchor_cert",
+        signedJwks,
+        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
+      ),
+    ];
+
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
     "wallet_unit_jwks",

@@ -54,6 +54,7 @@
     "@pagopa/io-wallet-oid4vci": "^0.7.6",
     "@pagopa/io-wallet-oid4vp": "^0.7.6",
     "@pagopa/io-wallet-utils": "^0.7.6",
+    "@peculiar/x509": "^1.14.3",
     "@sd-jwt/core": "^0.17.0",
     "@sd-jwt/crypto-nodejs": "^0.17.0",
     "@sd-jwt/decode": "^0.17.0",
@@ -67,7 +68,6 @@
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "ksuid": "^3.0.0",
-    "node-forge": "^1.3.1",
     "zod": "^3.24.2"
   }
 }

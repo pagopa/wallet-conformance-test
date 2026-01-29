@@ -10,11 +10,11 @@ import {
   FetchCredentialResponseOptions,
 } from "@pagopa/io-wallet-oid4vci";
 
-import { 
-  createAndSaveKeys, 
-  createKeys, 
-  partialCallbacks, 
-  signJwtCallback 
+import {
+  createAndSaveKeys,
+  createKeys,
+  partialCallbacks,
+  signJwtCallback,
 } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
@@ -77,8 +77,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const { unitKey } = options.walletAttestation;
 
     log.info(`Generating new key pair for credential...`);
-    const credentialKeyPair = this.config.issuance.save_credential 
-      ? await createAndSaveKeys(`${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}_jwks`)
+    const credentialKeyPair = this.config.issuance.save_credential
+      ? await createAndSaveKeys(
+          `${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}_jwks`,
+        )
       : await createKeys();
 
     return await this.execute<CredentialRequestExecuteResponse>(async () => {

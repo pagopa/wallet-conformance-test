@@ -122,7 +122,9 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         walletAttestation: options.walletAttestation.attestation,
       };
 
-      log.info(`Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`);
+      log.info(
+        `Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`,
+      );
 
       return fetchPushedAuthorizationResponse(fetchOptions);
     });

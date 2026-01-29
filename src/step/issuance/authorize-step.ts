@@ -178,12 +178,8 @@ export class AuthorizeDefaultStep extends StepFlow {
         throw new Error("Failed to create authorization response JARM");
       }
 
-      log.info(
-        `Sending authorization response to: ${responseUri}`,
-      );
-      log.debug(
-        `Authorization response iss: ${options.baseUrl}`,
-      );
+      log.info(`Sending authorization response to: ${responseUri}`);
+      log.debug(`Authorization response iss: ${options.baseUrl}`);
       const sendAuthorizationResponseAndExtractCodeOptions = {
         authorizationResponseJarm: authorizationResponse.jarm.responseJwt,
         callbacks: {
