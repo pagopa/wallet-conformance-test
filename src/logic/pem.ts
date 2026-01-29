@@ -6,6 +6,7 @@ import { KeyPair } from "@/types";
 export async function createAndSaveCertificate(
   fileName: string,
   keyPair: KeyPair,
+  subject: string,
 ): Promise<string> {
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
@@ -56,7 +57,7 @@ export async function createAndSaveCertificate(
       await x509.SubjectKeyIdentifierExtension.create(publicKey),
     ],
     keys,
-    name: "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
+    name: subject,
     notBefore: now,
     signingAlgorithm,
   });

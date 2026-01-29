@@ -23,14 +23,14 @@ export const configSchema = z.object({
     authorize_request_url: z.string().url(),
     verifier: z.string().url(),
   }),
-  trust_anchor: z.object({
-    port: z.coerce.number(),
-  }),
   trust: z.object({
     ca_cert_path: z.string(),
     eidas_trusted_lists: z.array(z.string()).optional(),
     federation_trust_anchors: z.array(z.string()),
     federation_trust_anchors_jwks_path: z.string(),
+  }),
+  trust_anchor: z.object({
+    port: z.coerce.number(),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),

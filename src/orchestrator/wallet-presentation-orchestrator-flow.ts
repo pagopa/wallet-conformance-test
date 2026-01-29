@@ -88,12 +88,22 @@ export class WalletPresentationOrchestratorFlow {
       const walletAttestation =
         await this.loadWalletAttestation(trustAnchorBaseUrl);
 
-      const credentialConfigIdentifiers = ["dc_sd_jwt_PersonIdentificationData"];
-      this.log.info("Presenting local credentials:", credentialConfigIdentifiers);
+      const credentialConfigIdentifiers = [
+        "dc_sd_jwt_PersonIdentificationData",
+      ];
+      this.log.info(
+        "Presenting local credentials:",
+        credentialConfigIdentifiers,
+      );
 
       const credentials: CredentialWithKey[] = await Promise.all(
-        credentialConfigIdentifiers.map(async (credentialConfigIdentifier) => 
-          await this.prepareCredential(trustAnchorBaseUrl, credentialConfigIdentifier))
+        credentialConfigIdentifiers.map(
+          async (credentialConfigIdentifier) =>
+            await this.prepareCredential(
+              trustAnchorBaseUrl,
+              credentialConfigIdentifier,
+            ),
+        ),
       );
 
       const authorizationRequestResult = await this.executeAuthorizationRequest(

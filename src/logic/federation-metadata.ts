@@ -77,6 +77,7 @@ export const createTrustAnchorMetadata = async (options: {
         options.federationTrustAnchorsJwksPath,
         "trust_anchor_cert",
         signedJwks,
+        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
       ),
     ];
 
@@ -174,6 +175,7 @@ export const createSubordinateWalletUnitMetadata = async (
         options.federationTrustAnchorsJwksPath,
         "trust_anchor_cert",
         signedJwks,
+        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
       ),
     ];
 

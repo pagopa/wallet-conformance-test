@@ -100,6 +100,7 @@ export async function loadCertificate(
   certPath: string,
   filename: string,
   keyPair: KeyPair,
+  subject: string,
 ): Promise<string> {
   try {
     if (!existsSync(certPath))
@@ -116,7 +117,11 @@ export async function loadCertificate(
   try {
     return readFileSync(`${certPath}/${filename}`, "utf-8");
   } catch {
-    return await createAndSaveCertificate(`${certPath}/${filename}`, keyPair);
+    return await createAndSaveCertificate(
+      `${certPath}/${filename}`,
+      keyPair,
+      subject,
+    );
   }
 }
 
