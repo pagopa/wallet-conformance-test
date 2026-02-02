@@ -30,15 +30,25 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       baseLog.info("========================================");
       baseLog.info("");
 
-      ({ authorizationRequestResult, fetchMetadataResult, redirectUriResult } =
-        await orchestrator.presentation());
+      try {
+        ({ authorizationRequestResult, fetchMetadataResult, redirectUriResult } =
+          await orchestrator.presentation());
 
-      baseLog.info("");
-      baseLog.info("✅ Presentation flow completed");
-      baseLog.info("✅ Your implementation works correctly!");
-      baseLog.info("========================================");
-      baseLog.info("📋 Running conformance validation tests...");
-      baseLog.info("");
+        baseLog.info("");
+        baseLog.info("✅ Presentation flow completed");
+        baseLog.info("✅ Your implementation works correctly!");
+        baseLog.info("========================================");
+        baseLog.info("📋 Running conformance validation tests...");
+        baseLog.info("");
+      } catch (e) {
+        baseLog.error("❌ Presentation flow failed with error:", e);
+        baseLog.error("❌ Your implementation did not complete the presentation flow.");
+        baseLog.error("========================================");
+        throw e;
+      } finally {
+        // Give time for all logs to be flushed before starting tests
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     });
 
     test("RPR003: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {

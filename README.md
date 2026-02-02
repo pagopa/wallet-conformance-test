@@ -303,8 +303,4 @@ Contributions are what make the open-source community such an amazing place to l
 4. Push to the Branch (git push origin feature/AmazingFeature)
 5. Open a Pull Request
 
-Please see the CONTRIBUTING.md file for more details on our code of conduct and the process for submitting pull requests.3
-
-## ⚖️ License
-Distributed under the MIT License. See LICENSE.md for more information.
-Tool for the automated conformance testing of services integrating with the Italian IT Wallet ecosystem.
+Please see the CONTRIBUTING.md file for more details on our code of conduct and the process for submitting pull requests.

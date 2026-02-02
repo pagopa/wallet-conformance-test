@@ -137,7 +137,7 @@ export class WalletPresentationOrchestratorFlow {
       });
 
     if (!authorizationRequestResponse.response) {
-      throw new Error("Authorization Request Step did not return a response");
+      throw new Error("Authorization Request response is missing or contains an error");
     }
 
     return authorizationRequestResponse;
@@ -187,9 +187,10 @@ export class WalletPresentationOrchestratorFlow {
       JSON.stringify(fetchMetadataOptions),
     );
 
+    const baseUrl = this.prepareBaseUrl();
+
     return await this.fetchMetadataStep.run({
-      baseUrl:
-        fetchMetadataOptions?.baseUrl || this.config.presentation.verifier,
+      baseUrl: fetchMetadataOptions?.baseUrl || baseUrl,
       entityStatementClaimsSchema:
         fetchMetadataOptions?.entityStatementClaimsSchema ||
         itWalletEntityStatementClaimsSchema,
@@ -244,5 +245,28 @@ export class WalletPresentationOrchestratorFlow {
       credential: pid.compact,
       dpopJwk: privateKey,
     };
+  }
+
+  private prepareBaseUrl(): string {
+    if (!this.config.presentation.verifier) {
+      const authorizeUrl = new URL(
+        this.config.presentation.authorize_request_url,
+      );
+      const clientId = authorizeUrl.searchParams.get("client_id");
+
+      if (!clientId) {
+        throw new Error(
+          "client_id parameter not found in authorize_request_url and verifier not configured",
+        );
+      }
+
+      const baseUrl = new URL(clientId);
+      this.log.info(
+        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
+      );
+      return baseUrl.href;
+    }
+
+    return this.config.presentation.verifier;
   }
 }
