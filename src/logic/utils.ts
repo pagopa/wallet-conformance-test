@@ -136,7 +136,7 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
-): string | null {
+): null | string {
   try {
     const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath);
 
