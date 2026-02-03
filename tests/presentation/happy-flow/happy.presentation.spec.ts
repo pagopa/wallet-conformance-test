@@ -1,20 +1,15 @@
 /* eslint-disable max-lines-per-function */
+import { definePresentationTest } from "#/config/test-metadata";
 import { beforeAll, describe, expect, test } from "vitest";
-
-// Import test configuration - this will register all configurations
-import "../test.config";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataStepResponse } from "@/step";
 import { AuthorizationRequestStepResult } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResult } from "@/step/presentation/redirect-uri-step";
 
-import { presentationRegistry } from "../config/test-registry";
-import { HAPPY_FLOW_PRESENTATION_NAME } from "../test.config";
+// Define and auto-register test configuration
+const testConfig = await definePresentationTest("HappyFlowPresentation");
 
-// Get the test configuration from the registry
-// The configuration must be registered before running the tests
-presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
   describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     const orchestrator: WalletPresentationOrchestratorFlow =
       new WalletPresentationOrchestratorFlow(testConfig);
@@ -654,4 +649,3 @@ presentationRegistry.get(HAPPY_FLOW_PRESENTATION_NAME).forEach((testConfig) => {
       }
     });
   });
-});

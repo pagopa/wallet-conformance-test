@@ -5,8 +5,6 @@ import {
 } from "@/step/presentation/authorization-request-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
 
-import { TestConfiguration } from "./test-registry";
-
 interface PresentationTestConfigurationOptions {
   authorize?: {
     options?: Partial<AuthorizationRequestOptions>;
@@ -25,7 +23,7 @@ interface PresentationTestConfigurationOptions {
 /**
  * Configuration class for Presentation conformance tests
  */
-export class PresentationTestConfiguration implements TestConfiguration {
+export class PresentationTestConfiguration {
   public readonly authorize: PresentationTestConfigurationOptions["authorize"];
   public readonly fetchMetadata: PresentationTestConfigurationOptions["fetchMetadata"];
   public readonly name: string;

@@ -12,12 +12,10 @@ import {
   TokenRequestStepOptions,
 } from "@/step/issuance";
 
-import { TestConfiguration } from "./test-registry";
-
 /**
  * Configuration class for Issuer conformance tests
  */
-export class IssuerTestConfiguration implements TestConfiguration {
+export class IssuerTestConfiguration {
   public readonly authorize?: {
     options?: AuthorizeStepOptions;
     stepClass: typeof AuthorizeDefaultStep;
