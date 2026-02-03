@@ -7,6 +7,7 @@ export const configSchema = z.object({
   issuance: z.object({
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),
+    tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
   logging: z.object({
@@ -21,16 +22,27 @@ export const configSchema = z.object({
   }),
   presentation: z.object({
     authorize_request_url: z.string().url(),
+    tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),
-  trust_anchor: z.object({
-    port: z.coerce.number(),
-  }),
+  testing: z
+    .object({
+      custom_step_pattern: z.string().default("**/*.ts"),
+      spec_pattern: z.string().default("**/*.spec.ts"),
+    })
+    .optional()
+    .default({
+      custom_step_pattern: "**/*.ts",
+      spec_pattern: "**/*.spec.ts",
+    }),
   trust: z.object({
     ca_cert_path: z.string(),
     eidas_trusted_lists: z.array(z.string()).optional(),
     federation_trust_anchors: z.array(z.string()),
     federation_trust_anchors_jwks_path: z.string(),
+  }),
+  trust_anchor: z.object({
+    port: z.coerce.number(),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),

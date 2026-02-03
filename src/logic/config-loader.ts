@@ -13,11 +13,13 @@ export interface CliOptions {
   credentialIssuerUri?: string;
   credentialTypes?: string;
   fileIni?: string;
+  issuanceTestsDir?: string;
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
   port?: number;
   presentationAuthorizeUri?: string;
+  presentationTestsDir?: string;
   saveCredential?: boolean;
   timeout?: number;
 }
@@ -122,7 +124,8 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   if (
     options.credentialIssuerUri ||
     options.credentialTypes ||
-    options.saveCredential !== undefined
+    options.saveCredential !== undefined ||
+    options.issuanceTestsDir
   ) {
     const issuance: Record<string, unknown> = {};
     if (options.credentialIssuerUri) {
@@ -137,12 +140,20 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     if (options.saveCredential !== undefined) {
       issuance.save_credential = options.saveCredential;
     }
+    if (options.issuanceTestsDir) {
+      issuance.tests_dir = options.issuanceTestsDir;
+    }
     partialConfig.issuance = issuance;
   }
-  if (options.presentationAuthorizeUri) {
-    partialConfig.presentation = {
-      authorize_request_url: options.presentationAuthorizeUri,
-    };
+  if (options.presentationAuthorizeUri || options.presentationTestsDir) {
+    const presentation: Record<string, unknown> = {};
+    if (options.presentationAuthorizeUri) {
+      presentation.authorize_request_url = options.presentationAuthorizeUri;
+    }
+    if (options.presentationTestsDir) {
+      presentation.tests_dir = options.presentationTestsDir;
+    }
+    partialConfig.presentation = presentation;
   }
 
   if (options.timeout !== undefined || options.maxRetries !== undefined) {
@@ -283,6 +294,12 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_SAVE_CREDENTIAL) {
     options.saveCredential = process.env.CONFIG_SAVE_CREDENTIAL === "true";
+  }
+  if (process.env.CONFIG_ISSUANCE_TESTS_DIR) {
+    options.issuanceTestsDir = process.env.CONFIG_ISSUANCE_TESTS_DIR;
+  }
+  if (process.env.CONFIG_PRESENTATION_TESTS_DIR) {
+    options.presentationTestsDir = process.env.CONFIG_PRESENTATION_TESTS_DIR;
   }
 
   return options;
