@@ -1,16 +1,8 @@
-import * as path from "node:path";
+/**
+ * Vitest configuration for issuance tests
+ * Uses common configuration factory to avoid duplication
+ */
 
-import { configDefaults, defineConfig } from "vitest/config";
+import { createTestConfig } from "./vitest.common.mjs";
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "#": path.resolve(__dirname, "./tests")
-    },
-  },
-  test: {
-    exclude: configDefaults.exclude,
-    include: ["**/*.issuance.spec.ts"],
-  },
-});
+export default createTestConfig("issuance");
