@@ -35,17 +35,6 @@ export async function createAndSaveCertificate(
 
   // Create self-signed cert (X.509)
   const now = new Date();
-
-  // const attrs = [
-  // 	{ name: "commonName", value: "trust_anchor" },
-  // 	{ name: "organizationName", value: "it_wallet" },
-  // 	{ name: "organizationalUnitName", value: "wallet_lab" },
-  // 	{ name: "countryName", value: "IT" },
-  // 	{ name: "stateOrProvince", value: "Roma" },
-  // 	{ name: "localityName", value: "Roma" },
-  // 	{ name: "emailAddress", value: "example@email.it" },
-  // 	{ name: "organizationIdentifier", value: "2.5.4.97" },
-  // ];
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
       new x509.BasicConstraintsExtension(false, undefined, true),
@@ -63,8 +52,8 @@ export async function createAndSaveCertificate(
   });
 
   // Export certificate to PEM
-  const certPem = cert.toString("pem");
+  const certDer = Buffer.from(cert.rawData).toString("base64");
 
-  writeFileSync(fileName, JSON.stringify(certPem));
-  return certPem;
+  writeFileSync(fileName, cert.toString("pem"));
+  return certDer;
 }

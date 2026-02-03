@@ -23,6 +23,8 @@ export interface CreateFederationMetadataOptions {
   signedJwks: KeyPair;
 }
 
+const federationSubject = "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97";
+
 export const createFederationMetadata = async (
   options: CreateFederationMetadataOptions,
 ): Promise<string> => {
@@ -58,7 +60,7 @@ export const createFederationMetadata = async (
  * @returns The signed federation metadata JWT as a string.
  */
 export const createTrustAnchorMetadata = async (options: {
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
 }): Promise<string> => {
   const placeholders = {
@@ -67,17 +69,17 @@ export const createTrustAnchorMetadata = async (options: {
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
   const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
+    options.trustAnchor.federation_trust_anchors_jwks_path,
     "trust_anchor_jwks",
   );
 
   if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
     signedJwks.publicKey.x5c = [
       await loadCertificate(
-        options.federationTrustAnchorsJwksPath,
+        options.trustAnchor.ca_cert_path,
         "trust_anchor_cert",
         signedJwks,
-        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
+        federationSubject,
       ),
     ];
 
@@ -149,7 +151,7 @@ export const createSubordinateTrustAnchorMetadata = async (
  * Options for creating subordinate wallet metadata.
  */
 export interface CreateSubordinateWalletUnitMetadataOptions {
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchor: Config["trust"];
   sub: string;
   trustAnchorBaseUrl: string;
   walletBackupStoragePath: string;
@@ -165,17 +167,17 @@ export const createSubordinateWalletUnitMetadata = async (
   options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
   const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
+    options.trustAnchor.federation_trust_anchors_jwks_path,
     "trust_anchor_jwks",
   );
 
   if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
     signedJwks.publicKey.x5c = [
       await loadCertificate(
-        options.federationTrustAnchorsJwksPath,
+        options.trustAnchor.ca_cert_path,
         "trust_anchor_cert",
         signedJwks,
-        "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97",
+        federationSubject,
       ),
     ];
 

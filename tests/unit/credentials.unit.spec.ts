@@ -6,10 +6,17 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
-import { loadConfig, loadJwks } from "@/logic";
+import { loadCertificate, loadConfig, loadJwks } from "@/logic";
 import { KeyPairJwk } from "@/types";
 
 describe("Load Mocked Credentials", async () => {
+  afterAll(async () => 
+    rmSync(
+      "tests/mocked-data/federation_trust_anchors/localhost/trust_anchor_cert",
+      { force: true }
+    )
+  );
+
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
     try {
       const credentials = await loadCredentials(
@@ -34,6 +41,22 @@ describe("Load Mocked Credentials", async () => {
           .toBeNull();
       } else throw e;
     }
+  });
+
+  it("should create a new certificate", async () => {
+    const signedJwks = await loadJwks(
+      "tests/mocked-data/federation_trust_anchors/localhost",
+      "trust_anchor_jwks",
+    );
+    const der = await loadCertificate(
+      "tests/mocked-data/federation_trust_anchors/localhost",
+      "trust_anchor_cert",
+      signedJwks,
+      "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab",
+    );
+
+    expect(der).toBeDefined();
+    console.debug(der);
   });
 });
 

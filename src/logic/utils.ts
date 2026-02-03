@@ -7,6 +7,7 @@ import path from "path";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
+import { X509Certificate, X509CertificateGenerator } from "@peculiar/x509";
 
 // Re-export config loading functions
 export {
@@ -115,7 +116,13 @@ export async function loadCertificate(
   }
 
   try {
-    return readFileSync(`${certPath}/${filename}`, "utf-8");
+    const certPem =  readFileSync(`${certPath}/${filename}`, "utf-8");
+    const certDer = certPem
+      .replace('-----BEGIN CERTIFICATE-----', '')
+      .replace('-----END CERTIFICATE-----', '')
+      .trim();
+
+    return Buffer.from(certDer).toString("base64");
   } catch {
     return await createAndSaveCertificate(
       `${certPath}/${filename}`,
