@@ -14,6 +14,10 @@ import path from "path";
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
 
+import { IssuerTestConfiguration } from "./issuance-test-configuration";
+import { PresentationTestConfiguration } from "./presentation-test-configuration";
+import { testLoader } from "./test-loader";
+
 const log = createLogger().withTag("test-metadata");
 
 /**
@@ -103,10 +107,7 @@ export async function defineIssuanceTest(
 
     return testConfig;
   } catch (error) {
-    log.error(
-      `Error auto-registering test ${name}:`,
-      error,
-    );
+    log.error(`Error auto-registering test ${name}:`, error);
     throw error;
   }
 }
@@ -154,17 +155,10 @@ export async function definePresentationTest(
 
     return testConfig;
   } catch (error) {
-    log.error(
-      `Error auto-registering test ${name}:`,
-      error,
-    );
+    log.error(`Error auto-registering test ${name}:`, error);
     throw error;
   }
 }
-
-import { IssuerTestConfiguration } from "./issuance-test-configuration";
-import { PresentationTestConfiguration } from "./presentation-test-configuration";
-import { testLoader } from "./test-loader";
 
 /**
  * Detects the caller's directory using stack trace inspection
@@ -175,7 +169,6 @@ function getCallerDirectory(): string {
   try {
     const error = new Error();
     const stack = error.stack?.split("\n") || [];
-    const currentFilePath = __filename;
 
     // Try multiple stack depths (transpilers, bundlers might change depth)
     // Skip 0 (Error), 1 (this function), start from 2 (actual caller)
@@ -187,12 +180,11 @@ function getCallerDirectory(): string {
 
       if (match?.[1]) {
         const filePath = match[1];
-        // Skip node_modules, internal Node.js paths, and the current file itself
+        // Skip node_modules, internal Node.js paths, and this file
         if (
           !filePath.includes("node_modules") &&
           !filePath.startsWith("node:") &&
-          !filePath.includes("test-metadata") &&
-          filePath !== currentFilePath
+          !filePath.includes("test-metadata")
         ) {
           const directory = path.dirname(filePath);
           log.info(`Detected caller directory: ${directory}`);
