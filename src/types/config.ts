@@ -25,6 +25,7 @@ export const configSchema = z.object({
   }),
   trust: z.object({
     ca_cert_path: z.string(),
+    certificate_subject: z.string(),
     eidas_trusted_lists: z.array(z.string()).optional(),
     federation_trust_anchors: z.array(z.string()),
     federation_trust_anchors_jwks_path: z.string(),

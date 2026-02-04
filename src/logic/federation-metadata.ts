@@ -23,8 +23,6 @@ export interface CreateFederationMetadataOptions {
   signedJwks: KeyPair;
 }
 
-const federationSubject = "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab, C=IT, ST=Roma, L=Roma, E=example@email.it, OID=2.5.4.97";
-
 export const createFederationMetadata = async (
   options: CreateFederationMetadataOptions,
 ): Promise<string> => {
@@ -79,7 +77,7 @@ export const createTrustAnchorMetadata = async (options: {
         options.trustAnchor.ca_cert_path,
         "trust_anchor_cert",
         signedJwks,
-        federationSubject,
+        options.trustAnchor.certificate_subject,
       ),
     ];
 
@@ -177,7 +175,7 @@ export const createSubordinateWalletUnitMetadata = async (
         options.trustAnchor.ca_cert_path,
         "trust_anchor_cert",
         signedJwks,
-        federationSubject,
+        options.trustAnchor.certificate_subject,
       ),
     ];
 

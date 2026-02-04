@@ -117,12 +117,13 @@ export async function loadCertificate(
 
   try {
     const certPem =  readFileSync(`${certPath}/${filename}`, "utf-8");
-    const certDer = certPem
-      .replace('-----BEGIN CERTIFICATE-----', '')
-      .replace('-----END CERTIFICATE-----', '')
+    const certDerBase64 = certPem
+      .replace("-----BEGIN CERTIFICATE-----", "")
+      .replace("-----END CERTIFICATE-----", "")
+      .replace(/\s+/g, "")
       .trim();
 
-    return Buffer.from(certDer).toString("base64");
+    return certDerBase64;
   } catch {
     return await createAndSaveCertificate(
       `${certPath}/${filename}`,
