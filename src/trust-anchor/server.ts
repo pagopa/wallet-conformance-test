@@ -18,8 +18,7 @@ export const createServer = () => {
   app.get("/.well-known/openid-federation", async (_req, res) => {
     try {
       const jwt = await createTrustAnchorMetadata({
-        federationTrustAnchorsJwksPath:
-          config.trust.federation_trust_anchors_jwks_path,
+        trustAnchor: config.trust,
         trustAnchorBaseUrl,
       });
       res.type("application/jwt").send(jwt);
@@ -45,9 +44,8 @@ export const createServer = () => {
 
       // Create the subordinate statement
       const subordinateStatement = await createSubordinateWalletUnitMetadata({
-        federationTrustAnchorsJwksPath:
-          config.trust.federation_trust_anchors_jwks_path,
         sub,
+        trustAnchor: config.trust,
         trustAnchorBaseUrl,
         walletBackupStoragePath: config.wallet.backup_storage_path,
       });

@@ -10,11 +10,11 @@ import { loadCertificate, loadConfig, loadJwks } from "@/logic";
 import { KeyPairJwk } from "@/types";
 
 describe("Load Mocked Credentials", async () => {
-  afterAll(async () => 
+  afterAll(async () =>
     rmSync(
       "tests/mocked-data/federation_trust_anchors/localhost/trust_anchor_cert",
-      { force: true }
-    )
+      { force: true },
+    ),
   );
 
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
@@ -56,7 +56,6 @@ describe("Load Mocked Credentials", async () => {
     );
 
     expect(der).toBeDefined();
-    console.debug(der);
   });
 });
 

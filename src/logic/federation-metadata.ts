@@ -7,7 +7,7 @@ import {
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback } from "./jwt";
-import { loadCertificate, loadJsonDumps, loadJwks } from "./utils";
+import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<ItWalletEntityConfigurationClaimsOptions, "exp" | "iat">;
@@ -66,20 +66,10 @@ export const createTrustAnchorMetadata = async (options: {
     trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
-  const signedJwks = await loadJwks(
-    options.trustAnchor.federation_trust_anchors_jwks_path,
-    "trust_anchor_jwks",
+  const signedJwks = await loadJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor",
   );
-
-  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
-    signedJwks.publicKey.x5c = [
-      await loadCertificate(
-        options.trustAnchor.ca_cert_path,
-        "trust_anchor_cert",
-        signedJwks,
-        options.trustAnchor.certificate_subject,
-      ),
-    ];
 
   return await createFederationMetadata({
     claims,
@@ -149,8 +139,8 @@ export const createSubordinateTrustAnchorMetadata = async (
  * Options for creating subordinate wallet metadata.
  */
 export interface CreateSubordinateWalletUnitMetadataOptions {
-  trustAnchor: Config["trust"];
   sub: string;
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
   walletBackupStoragePath: string;
 }
@@ -164,20 +154,10 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 export const createSubordinateWalletUnitMetadata = async (
   options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
-  const signedJwks = await loadJwks(
-    options.trustAnchor.federation_trust_anchors_jwks_path,
-    "trust_anchor_jwks",
+  const signedJwks = await loadJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor",
   );
-
-  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
-    signedJwks.publicKey.x5c = [
-      await loadCertificate(
-        options.trustAnchor.ca_cert_path,
-        "trust_anchor_cert",
-        signedJwks,
-        options.trustAnchor.certificate_subject,
-      ),
-    ];
 
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
