@@ -17,6 +17,7 @@ import {
   buildJwksPath,
   CLOCK_SKEW_TOLERANCE_MS,
   createFederationMetadata,
+  createLogger,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
   getTrustMarks,
@@ -36,6 +37,8 @@ import {
   type KeyPair,
   zTrustChain,
 } from "@/types";
+
+const log = createLogger().withTag("ATTESTATION");
 
 const resolveTaEntityConfiguration = (
   trust: Config["trust"],
@@ -80,6 +83,9 @@ export const buildWpEntityConfiguration = async (
     "wallet_provider_metadata.json",
     placeholders,
     wallet.wallet_version,
+  );
+  log.debug(
+    `[buildWpEntityConfiguration] Signing WP entity configuration with key kid=${providerKeyPair.publicKey.kid} x5c_present=${!!providerKeyPair.publicKey.x5c}`,
   );
   return createFederationMetadata({
     claims: wpClaims,
@@ -142,6 +148,9 @@ const createAttestation = async (
   attestationPath: string,
 ): Promise<string> => {
   validateProviderKeyPair(providerKeyPair);
+  log.debug(
+    `[createAttestation] wallet_version=${wallet.wallet_version} provider_kid=${providerKeyPair.publicKey.kid}`,
+  );
 
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
 
