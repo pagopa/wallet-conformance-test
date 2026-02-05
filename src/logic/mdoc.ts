@@ -1,10 +1,57 @@
-import { IssuerSignedDocument, MDLParseError } from "@auth0/mdl";
+import {
+  DeviceResponse,
+  IssuerSignedDocument,
+  MDLParseError,
+  MDoc,
+} from "@auth0/mdl";
 import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth";
+import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { ValidationError } from "@pagopa/io-wallet-utils";
-import { decode } from "cbor";
+import { decode, Tagged } from "cbor";
 
-import { issuerSignedSchema } from "@/types";
+import { issuerSignedSchema, KeyPair } from "@/types";
+
+export async function createVpTokenMdoc({
+  clientId,
+  credential,
+  devicePrivateKey,
+  nonce,
+  presentationDefinition,
+  queryId,
+  responseUri,
+}: {
+  clientId: string;
+  credential: string;
+  devicePrivateKey: KeyPair["privateKey"];
+  nonce: string;
+  presentationDefinition: PresentationDefinition;
+  queryId: string;
+  responseUri: string;
+}) {
+  {
+    const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
+    const issuerMDoc = new MDoc([issuerSigned]).encode();
+    const walletNonce = Buffer.from(
+      crypto.getRandomValues(new Uint8Array(16)),
+    ).toString("base64url");
+
+    const deviceResponse = await DeviceResponse.from(issuerMDoc)
+      .usingPresentationDefinition(presentationDefinition)
+      .usingSessionTranscriptForOID4VP(
+        walletNonce,
+        clientId,
+        responseUri,
+        nonce,
+      )
+      .authenticateWithSignature(devicePrivateKey, "ES256")
+      .sign();
+
+    return {
+      [queryId]: deviceResponse.encode(),
+    };
+  }
+}
 
 /**
  * Parses a mobile document (mdoc) from a Buffer into an IssuerSignedDocument object.
@@ -34,16 +81,15 @@ export function parseMdoc(credential: Buffer): IssuerSignedDocument {
       doc.issuerAuth[3],
     );
 
-    if (issuerAuth.decodedPayload.version !== "1.0")
-      throw new MDLParseError("The issuerAuth version must be '1.0'");
-
     const nameSpaces = Object.entries(doc.nameSpaces).reduce(
       (prev, [nameSpace, items]) => ({
         ...prev,
-        [nameSpace]: items.map((item) => decode(item.value)),
+        [nameSpace]: items.map((item) => new Tagged(24, item.value)),
       }),
       {},
     );
+    if (issuerAuth.decodedPayload.version !== "1.0")
+      throw new MDLParseError("The issuerAuth version must be '1.0'");
 
     return new IssuerSignedDocument(issuerAuth.decodedPayload.docType, {
       ...doc,

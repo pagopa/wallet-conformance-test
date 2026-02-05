@@ -11,10 +11,10 @@ import z from "zod";
  */
 export const issuerSignedSchema = z.object({
   issuerAuth: z.tuple([
-    z.instanceof(Buffer),
-    z.map(z.number(), z.instanceof(Buffer)),
-    z.instanceof(Buffer),
-    z.instanceof(Buffer),
+    z.instanceof(Uint8Array),
+    z.map(z.number(), z.instanceof(Uint8Array)),
+    z.instanceof(Uint8Array),
+    z.instanceof(Uint8Array),
   ]),
   nameSpaces: z.record(z.string(), z.array(z.instanceof(Tagged))),
 });
