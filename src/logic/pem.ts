@@ -144,10 +144,97 @@ export async function createCertificate(
   return cert;
 }
 
+/**
+ * Creates an X.509 certificate signed by an issuer (CA) key pair.
+ *
+ * Unlike {@link createCertificate}, which produces a self-signed certificate,
+ * this function uses `X509CertificateGenerator.create()` so the resulting
+ * certificate is signed by a different issuer key.
+ *
+ * @param issuerKeyPair - The issuer's key pair used to sign the certificate.
+ * @param issuerSubject - The issuer's distinguished name (e.g. "CN=TrustAnchor").
+ * @param subjectKeyPair - The subject's key pair whose public key is certified.
+ * @param subjectName - The subject's distinguished name.
+ * @param isCA - Whether this certificate is a CA certificate (BasicConstraints).
+ * @returns The signed X.509 certificate.
+ */
+export async function createSignedCertificate(
+  issuerKeyPair: KeyPair,
+  issuerSubject: string,
+  subjectKeyPair: KeyPair,
+  subjectName: string,
+  isCA: boolean,
+): Promise<x509.X509Certificate> {
+  const signingAlgorithm = {
+    hash: "SHA-256",
+    name: "ECDSA",
+    namedCurve: "P-256",
+  };
+
+  const signingKey = await crypto.subtle.importKey(
+    "jwk",
+    issuerKeyPair.privateKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign"],
+  );
+
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    subjectKeyPair.publicKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["verify"],
+  );
+
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
+
+  const extensions: x509.Extension[] = [
+    new x509.BasicConstraintsExtension(isCA, undefined, true),
+    new x509.KeyUsagesExtension(
+      isCA
+        ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.digitalSignature
+        : x509.KeyUsageFlags.digitalSignature,
+      true,
+    ),
+    await x509.SubjectKeyIdentifierExtension.create(publicKey),
+  ];
+
+  if (!isCA) {
+    extensions.push(
+      new x509.ExtendedKeyUsageExtension(
+        [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
+        false,
+      ),
+    );
+  }
+
+  const cert = await x509.X509CertificateGenerator.create({
+    extensions,
+    issuer: issuerSubject,
+    subject: subjectName,
+    notAfter,
+    notBefore,
+    publicKey,
+    signingAlgorithm,
+    signingKey,
+  });
+
+  return cert;
+}
+
 export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
   const certificate =
     typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
   return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
+}
+
+/**
+ * Returns `true` if any certificate in the given base64-DER array is expired.
+ */
+export function hasAnyCertificateExpired(x5cChain: string[]): boolean {
+  return x5cChain.some((cert) => hasX509CertificateExpired(cert));
 }
 
 /**
