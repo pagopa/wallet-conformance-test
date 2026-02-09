@@ -1,15 +1,9 @@
 import { PresentationTestConfiguration } from "#/config";
-import {
-  ItWalletCredentialVerifierMetadata,
-  itWalletEntityStatementClaimsSchema,
-} from "@pagopa/io-wallet-oid-federation";
+import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import { createLogger, loadConfigWithHierarchy, loadJwks } from "@/logic";
-import {
-  FetchMetadataDefaultStep,
-  FetchMetadataStepResponse,
-} from "@/step/fetch-metadata-step";
+import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResult,
@@ -55,17 +49,18 @@ export class WalletPresentationOrchestratorFlow {
       }),
     );
 
-    this.fetchMetadataStep = presentationConfig.fetchMetadata?.stepClass
-      ? new presentationConfig.fetchMetadata.stepClass(this.config, this.log)
-      : new FetchMetadataDefaultStep(this.config, this.log);
-
-    this.authorizationRequestStep = presentationConfig.authorize?.stepClass
-      ? new presentationConfig.authorize.stepClass(this.config, this.log)
-      : new AuthorizationRequestDefaultStep(this.config, this.log);
-
-    this.redirectUriStep = presentationConfig.redirectUri?.stepClass
-      ? new presentationConfig.redirectUri.stepClass(this.config, this.log)
-      : new RedirectUriDefaultStep(this.config, this.log);
+    this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
+      this.config,
+      this.log,
+    );
+    this.authorizationRequestStep = new presentationConfig.authorizeStepClass(
+      this.config,
+      this.log,
+    );
+    this.redirectUriStep = new presentationConfig.redirectUriStepClass(
+      this.config,
+      this.log,
+    );
   }
 
   getLog(): typeof this.log {
@@ -80,7 +75,7 @@ export class WalletPresentationOrchestratorFlow {
     try {
       this.log.info("Starting Test Presentation Flow...");
 
-      const fetchMetadataResult = await this.fetchVerifierMetadata();
+      const fetchMetadataResult = await this.fetchMetadataStep.run();
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
@@ -132,22 +127,17 @@ export class WalletPresentationOrchestratorFlow {
     verifierMetadata: ItWalletCredentialVerifierMetadata,
     walletAttestation: AttestationResponse,
   ) {
-    const authorizationOptions = this.presentationConfig.authorize?.options;
-
     const authorizationRequestResponse =
       await this.authorizationRequestStep.run({
-        authorizeRequestUrl:
-          authorizationOptions?.authorizeRequestUrl ||
-          this.config.presentation.authorize_request_url,
         credentials,
-        verifierMetadata:
-          authorizationOptions?.verifierMetadata || verifierMetadata,
-        walletAttestation:
-          authorizationOptions?.walletAttestation || walletAttestation,
+        verifierMetadata,
+        walletAttestation,
       });
 
     if (!authorizationRequestResponse.response) {
-      throw new Error("Authorization Request response is missing or contains an error");
+      throw new Error(
+        "Authorization Request response is missing or contains an error",
+      );
     }
 
     return authorizationRequestResponse;
@@ -187,26 +177,6 @@ export class WalletPresentationOrchestratorFlow {
     }
 
     return rpMetadata;
-  }
-
-  private async fetchVerifierMetadata(): Promise<FetchMetadataStepResponse> {
-    const fetchMetadataOptions = this.presentationConfig.fetchMetadata?.options;
-
-    this.log.debug(
-      "Fetch Metadata Options: ",
-      JSON.stringify(fetchMetadataOptions),
-    );
-
-    const baseUrl = this.prepareBaseUrl();
-
-    return await this.fetchMetadataStep.run({
-      baseUrl: fetchMetadataOptions?.baseUrl || baseUrl,
-      entityStatementClaimsSchema:
-        fetchMetadataOptions?.entityStatementClaimsSchema ||
-        itWalletEntityStatementClaimsSchema,
-      wellKnownPath:
-        fetchMetadataOptions?.wellKnownPath || "/.well-known/openid-federation",
-    });
   }
 
   private async loadWalletAttestation(trustAnchorBaseUrl: string) {
@@ -255,28 +225,5 @@ export class WalletPresentationOrchestratorFlow {
       credential: pid.compact,
       dpopJwk: privateKey,
     };
-  }
-
-  private prepareBaseUrl(): string {
-    if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
-      );
-      const clientId = authorizeUrl.searchParams.get("client_id");
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      const baseUrl = new URL(clientId);
-      this.log.info(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
-      );
-      return baseUrl.href;
-    }
-
-    return this.config.presentation.verifier;
   }
 }

@@ -17,6 +17,7 @@ import path from "path";
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
 import { FetchMetadataDefaultStep } from "@/step";
+import { StepFlow } from "@/step/step-flow";
 import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,
@@ -26,15 +27,18 @@ import {
 } from "@/step/issuance";
 import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
+import { Config } from "@/types";
 
-type CustomStepsMap = Record<string, StepClass>;
 /**
  * Type for step class constructors
+ * All step classes must extend StepFlow and accept config and logger
  */
-type StepClass = new (...args: any[]) => {
-  run: (...args: any[]) => Promise<any>;
-};
-type StepOptionsMap = Record<string, Record<string, unknown>>;
+export type StepClass = new (
+  config: Config,
+  logger: ReturnType<typeof createLogger>,
+) => StepFlow;
+
+export type CustomStepsMap = Record<string, StepClass>;
 
 /**
  * Base step classes for inheritance checking
@@ -146,108 +150,16 @@ export class TestLoader {
 
     return customSteps;
   }
-
-  /**
-   * Auto-discovers step options from step-options.ts or inline exports
-   * Inline options have precedence over centralized options
-   * @internal - Used by test-metadata helpers
-   */
-  async discoverStepOptions(
-    directory: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _customSteps: CustomStepsMap,
-  ): Promise<StepOptionsMap> {
-    const stepOptions: StepOptionsMap = {};
-
-    // 1. Load centralized step-options.ts if present
-    const stepOptionsPath = path.join(directory, "step-options.ts");
-    try {
-      const optionsModule = await import(stepOptionsPath);
-
-      // Named exports correspond to step types
-      for (const [stepType, options] of Object.entries(optionsModule)) {
-        if (
-          stepType !== "default" &&
-          typeof options === "object" &&
-          options !== null
-        ) {
-          stepOptions[stepType] = options as Record<string, unknown>;
-          this.log.info(
-            `Auto-detected centralized options: ${stepType} from step-options.ts`,
-          );
-        }
-      }
-    } catch (error) {
-      // step-options.ts is optional
-    }
-
-    // 2. Load inline options from custom step files
-    const customStepPattern = this.config.testing.custom_step_pattern;
-    const tsFiles = await glob(path.join(directory, customStepPattern), {
-      ignore: ["**/*.spec.ts", "**/step-options.ts"],
-    });
-
-    for (const tsFile of tsFiles) {
-      try {
-        const module = await import(tsFile);
-        const fileName = path.basename(tsFile);
-
-        // If there's an export named "options"
-        if (module.options && typeof module.options === "object") {
-          // Find the corresponding step class to determine step type
-          let foundStepClasses = 0;
-          for (const [, exportValue] of Object.entries(module)) {
-            if (this.isStepClass(exportValue)) {
-              const stepType = this.inferStepTypeFromExtends(exportValue);
-              if (stepType) {
-                foundStepClasses++;
-
-                // If multiple step classes exist in same file, log warning
-                if (foundStepClasses > 1) {
-                  this.log.warn(
-                    `Multiple step classes found in ${fileName}. Inline options will be applied to the first step class only.`,
-                  );
-                  break;
-                }
-
-                // Merge with centralized options (inline has precedence)
-                stepOptions[stepType] = {
-                  ...stepOptions[stepType],
-                  ...module.options,
-                };
-                this.log.info(
-                  `Auto-detected inline options for ${stepType} from ${fileName}`,
-                );
-              }
-            }
-          }
-        }
-      } catch (error) {
-        // Log only meaningful errors
-        const isModuleNotFound =
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "MODULE_NOT_FOUND";
-        const isNodeModules = tsFile.includes("node_modules");
-
-        if (!isModuleNotFound && !isNodeModules) {
-          this.log.warn(
-            `Failed to import ${path.basename(tsFile)} for options: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-      }
-    }
-
-    return stepOptions;
-  }
-
   /**
    * Checks if a class extends a specific base class
    * Uses prototype chain inspection
+   * @param childClass The class to check
+   * @param baseClass The base class to check against
+   * @returns true if childClass extends baseClass
    */
   private extendsClass(childClass: unknown, baseClass: unknown): boolean {
     try {
-      // Type guard to ensure childClass and baseClass have prototype
+      // Type guard to ensure both are constructor functions
       if (
         !childClass ||
         typeof childClass !== "function" ||
@@ -257,17 +169,22 @@ export class TestLoader {
         return false;
       }
 
-      let proto = (childClass as any).prototype;
+      // Cast to constructors for prototype access
+      const childConstructor = childClass as new (
+        ...args: unknown[]
+      ) => unknown;
+      const baseConstructor = baseClass as new (...args: unknown[]) => unknown;
+      let proto = childConstructor.prototype;
 
       // Walk up the prototype chain
       while (proto) {
         // Direct comparison with base class prototype
-        if (proto === (baseClass as any).prototype) {
+        if (proto === baseConstructor.prototype) {
           return true;
         }
 
         // Also check constructor reference
-        if (proto.constructor === baseClass) {
+        if (proto.constructor === baseConstructor) {
           return true;
         }
 
@@ -277,7 +194,7 @@ export class TestLoader {
       return false;
     } catch (error) {
       this.log.warn(
-        `Error checking inheritance for ${(childClass as any)?.name}:`,
+        `Error checking inheritance for ${(childClass as { name?: string })?.name}:`,
         error,
       );
       return false;

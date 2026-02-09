@@ -3,7 +3,6 @@ import {
   AccessTokenRequest,
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
@@ -69,33 +68,35 @@ export class WalletIssuanceOrchestratorFlow {
       }),
     );
 
-    this.fetchMetadataStep = issuanceConfig.fetchMetadata?.stepClass
-      ? new issuanceConfig.fetchMetadata.stepClass(this.config, this.log)
-      : new FetchMetadataDefaultStep(this.config, this.log);
+    this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
+      this.config,
+      this.log,
+    );
 
-    this.pushedAuthorizationRequestStep = issuanceConfig
-      .pushedAuthorizationRequest?.stepClass
-      ? new issuanceConfig.pushedAuthorizationRequest.stepClass(
-          this.config,
-          this.log,
-        )
-      : new PushedAuthorizationRequestDefaultStep(this.config, this.log);
+    this.pushedAuthorizationRequestStep =
+      new issuanceConfig.pushedAuthorizationRequestStepClass(
+        this.config,
+        this.log,
+      );
 
-    this.authorizeStep = issuanceConfig.authorize?.stepClass
-      ? new issuanceConfig.authorize.stepClass(this.config, this.log)
-      : new AuthorizeDefaultStep(this.config, this.log);
+    this.authorizeStep = new issuanceConfig.authorizeStepClass(
+      this.config,
+      this.log,
+    );
+    this.tokenRequestStep = new issuanceConfig.tokenRequestStepClass(
+      this.config,
+      this.log,
+    );
 
-    this.tokenRequestStep = issuanceConfig.tokenRequest?.stepClass
-      ? new issuanceConfig.tokenRequest.stepClass(this.config, this.log)
-      : new TokenRequestDefaultStep(this.config, this.log);
+    this.nonceRequestStep = new issuanceConfig.nonceRequestStepClass(
+      this.config,
+      this.log,
+    );
 
-    this.nonceRequestStep = issuanceConfig.nonceRequest?.stepClass
-      ? new issuanceConfig.nonceRequest.stepClass(this.config, this.log)
-      : new NonceRequestDefaultStep(this.config, this.log);
-
-    this.credentialRequestStep = issuanceConfig.credentialRequest?.stepClass
-      ? new issuanceConfig.credentialRequest.stepClass(this.config, this.log)
-      : new CredentialRequestDefaultStep(this.config, this.log);
+    this.credentialRequestStep = new issuanceConfig.credentialRequestStepClass(
+      this.config,
+      this.log,
+    );
   }
 
   getLog(): typeof this.log {
@@ -114,21 +115,7 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
-      const fetchMetadataOptions = this.issuanceConfig.fetchMetadata?.options;
-
-      this.log.debug(
-        "Fetch Metadata Options: ",
-        JSON.stringify(fetchMetadataOptions),
-      );
-      const fetchMetadataResponse = await this.fetchMetadataStep.run({
-        baseUrl: this.config.issuance.url,
-        entityStatementClaimsSchema:
-          fetchMetadataOptions?.entityStatementClaimsSchema ||
-          itWalletEntityStatementClaimsSchema,
-        wellKnownPath:
-          fetchMetadataOptions?.wellKnownPath ||
-          "/.well-known/openid-federation",
-      });
+      const fetchMetadataResponse = await this.fetchMetadataStep.run();
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
       this.log.info("Loading Wallet Attestation...");
@@ -189,36 +176,25 @@ export class WalletIssuanceOrchestratorFlow {
 
       this.log.info("Sending Pushed Authorization Request...");
 
-      const pushedAuthorizationRequestOptions =
-        this.issuanceConfig.pushedAuthorizationRequest?.options;
-
       const pushedAuthorizationRequestResponse =
         await this.pushedAuthorizationRequestStep.run({
-          clientId:
-            pushedAuthorizationRequestOptions?.clientId ??
-            walletAttestationResponse.unitKey.publicKey.kid,
-          codeVerifier:
-            pushedAuthorizationRequestOptions?.codeVerifier ??
-            "example_code_verifier",
+          clientId: walletAttestationResponse.unitKey.publicKey.kid,
           credentialConfigurationId:
             this.issuanceConfig.credentialConfigurationId,
-          popAttestation:
-            pushedAuthorizationRequestOptions?.popAttestation ??
-            clientAttestationDPoP,
+          popAttestation: clientAttestationDPoP,
           pushedAuthorizationRequestEndpoint:
-            pushedAuthorizationRequestOptions?.pushedAuthorizationRequestEndpoint ??
             entityStatementClaims.metadata?.oauth_authorization_server
               ?.pushed_authorization_request_endpoint,
-          walletAttestation:
-            pushedAuthorizationRequestOptions?.walletAttestation ??
-            walletAttestationResponse,
+          walletAttestation: walletAttestationResponse,
         });
 
       if (!pushedAuthorizationRequestResponse.response) {
         throw new Error("Pushed Authorization Request failed");
       }
 
-      const authorizeOptions = this.issuanceConfig.authorize?.options;
+      this.log.info(
+        `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
+      );
 
       let personIdentificationData: Credential;
       const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
@@ -257,58 +233,37 @@ export class WalletIssuanceOrchestratorFlow {
 
       const authorizeResponse = await this.authorizeStep.run({
         authorizationEndpoint:
-          authorizeOptions?.authorizationEndpoint ??
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.authorization_endpoint,
-        baseUrl: authorizeOptions?.baseUrl ?? this.config.issuance.url,
-        clientId:
-          authorizeOptions?.clientId ??
-          walletAttestationResponse.unitKey.publicKey.kid,
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [
           {
             credential: personIdentificationData.compact,
             keyPair: credentialKeyPair,
           },
         ],
-        requestUri:
-          authorizeOptions?.requestUri ??
-          pushedAuthorizationRequestResponse.response?.request_uri,
-        rpMetadata:
-          authorizeOptions?.rpMetadata ??
-          entityStatementClaims.metadata?.openid_credential_verifier,
-        walletAttestation:
-          pushedAuthorizationRequestOptions?.walletAttestation ??
-          walletAttestationResponse,
+        requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
+        rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
+        walletAttestation: walletAttestationResponse,
       });
 
-      const tokenRequestOptions = this.issuanceConfig.tokenRequest?.options;
-
-      const accessTokenRequest: AccessTokenRequest =
-        tokenRequestOptions?.accessTokenRequest ?? {
-          code: authorizeResponse.response?.authorizeResponse?.code,
-          code_verifier:
-            pushedAuthorizationRequestOptions?.codeVerifier ??
-            "example_code_verifier",
-          grant_type: "authorization_code",
-          redirect_uri: authorizeResponse.response?.requestObject?.response_uri,
-        };
+      const accessTokenRequest: AccessTokenRequest = {
+        code: authorizeResponse.response?.authorizeResponse?.code,
+        code_verifier: pushedAuthorizationRequestResponse.codeVerifier,
+        grant_type: "authorization_code",
+        redirect_uri: authorizeResponse.response?.requestObject?.response_uri,
+      };
       const tokenResponse = await this.tokenRequestStep.run({
         accessTokenEndpoint:
-          tokenRequestOptions?.accessTokenEndpoint ??
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.token_endpoint,
         accessTokenRequest,
-        popAttestation:
-          tokenRequestOptions?.popAttestation ?? clientAttestationDPoP,
-        walletAttestation:
-          tokenRequestOptions?.walletAttestation ?? walletAttestationResponse,
+        popAttestation: clientAttestationDPoP,
+        walletAttestation: walletAttestationResponse,
       });
-
-      const nonceRequestOptions = this.issuanceConfig.nonceRequest?.options;
 
       const nonceResponse = await this.nonceRequestStep.run({
         nonceEndpoint:
-          nonceRequestOptions?.nonceEndpoint ??
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.nonce_endpoint,
       });
@@ -316,29 +271,16 @@ export class WalletIssuanceOrchestratorFlow {
       const nonce = nonceResponse.response?.nonce as
         | undefined
         | { c_nonce: string };
-      const credentialRequestOptions =
-        this.issuanceConfig.credentialRequest?.options;
 
       const credentialResponse = await this.credentialRequestStep.run({
-        accessToken:
-          credentialRequestOptions?.accessToken ??
-          tokenResponse.response?.access_token ??
-          "",
-        baseUrl: credentialRequestOptions?.baseUrl ?? this.config.issuance.url,
-        clientId:
-          credentialRequestOptions?.clientId ??
-          walletAttestationResponse.unitKey.publicKey.kid,
-        credentialIdentifier:
-          credentialRequestOptions?.credentialIdentifier ??
-          this.issuanceConfig.credentialConfigurationId,
+        accessToken: tokenResponse.response?.access_token ?? "",
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
         credentialRequestEndpoint:
-          credentialRequestOptions?.credentialRequestEndpoint ??
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        nonce: credentialRequestOptions?.nonce ?? nonce?.c_nonce ?? "",
-        walletAttestation:
-          credentialRequestOptions?.walletAttestation ??
-          walletAttestationResponse,
+        nonce: nonce?.c_nonce ?? "",
+        walletAttestation: walletAttestationResponse,
       });
 
       // Save credential to disk if configured

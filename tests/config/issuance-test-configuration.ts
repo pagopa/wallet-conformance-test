@@ -1,107 +1,46 @@
-import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
+import { FetchMetadataDefaultStep } from "@/step";
 import {
   AuthorizeDefaultStep,
-  AuthorizeStepOptions,
   CredentialRequestDefaultStep,
-  CredentialRequestStepOptions,
   NonceRequestDefaultStep,
-  NonceRequestStepOptions,
   PushedAuthorizationRequestDefaultStep,
-  PushedAuthorizationRequestOptions,
   TokenRequestDefaultStep,
-  TokenRequestStepOptions,
 } from "@/step/issuance";
 
 /**
  * Configuration class for Issuer conformance tests
  */
 export class IssuerTestConfiguration {
-  public readonly authorize?: {
-    options?: AuthorizeStepOptions;
-    stepClass: typeof AuthorizeDefaultStep;
-  };
+  public readonly authorizeStepClass: typeof AuthorizeDefaultStep;
   public readonly credentialConfigurationId: string;
 
-  public readonly credentialRequest?: {
-    options?: CredentialRequestStepOptions;
-    stepClass: typeof CredentialRequestDefaultStep;
-  };
-  public readonly fetchMetadata?: {
-    options?: FetchMetadataOptions;
-    stepClass: typeof FetchMetadataDefaultStep;
-  };
+  public readonly credentialRequestStepClass: typeof CredentialRequestDefaultStep;
+  public readonly fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
   public readonly name: string;
-  public readonly nonceRequest?: {
-    options?: NonceRequestStepOptions;
-    stepClass: typeof NonceRequestDefaultStep;
-  };
-  public readonly pushedAuthorizationRequest?: {
-    options?: PushedAuthorizationRequestOptions;
-    stepClass: typeof PushedAuthorizationRequestDefaultStep;
-  };
-  public readonly tokenRequest?: {
-    options?: TokenRequestStepOptions;
-    stepClass: typeof TokenRequestDefaultStep;
-  };
+  public readonly nonceRequestStepClass: typeof NonceRequestDefaultStep;
+  public readonly pushedAuthorizationRequestStepClass: typeof PushedAuthorizationRequestDefaultStep;
+  public readonly tokenRequestStepClass: typeof TokenRequestDefaultStep;
 
   constructor(config: {
-    authorize?: {
-      options?: AuthorizeStepOptions;
-      stepClass: typeof AuthorizeDefaultStep;
-    };
+    authorizeStepClass: typeof AuthorizeDefaultStep;
     credentialConfigurationId: string;
-    credentialRequest?: {
-      options?: CredentialRequestStepOptions;
-      stepClass: typeof CredentialRequestDefaultStep;
-    };
-    fetchMetadata?: {
-      options?: FetchMetadataOptions;
-      stepClass?: typeof FetchMetadataDefaultStep;
-    };
+    credentialRequestStepClass: typeof CredentialRequestDefaultStep;
+    fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
     name: string;
-    nonceRequest?: {
-      options?: NonceRequestStepOptions;
-      stepClass: typeof NonceRequestDefaultStep;
-    };
-    pushedAuthorizationRequest?: {
-      options?: PushedAuthorizationRequestOptions;
-      stepClass?: typeof PushedAuthorizationRequestDefaultStep;
-    };
-    tokenRequest?: {
-      options?: TokenRequestStepOptions;
-      stepClass: typeof TokenRequestDefaultStep;
-    };
+    nonceRequestStepClass: typeof NonceRequestDefaultStep;
+    pushedAuthorizationRequestStepClass: typeof PushedAuthorizationRequestDefaultStep;
+    tokenRequestStepClass: typeof TokenRequestDefaultStep;
   }) {
     this.name = config.name;
     this.credentialConfigurationId = config.credentialConfigurationId;
 
-    this.fetchMetadata = {
-      options: config.fetchMetadata?.options,
-      stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataDefaultStep,
-    };
-    this.pushedAuthorizationRequest = {
-      options: config.pushedAuthorizationRequest?.options,
-      stepClass:
-        config.pushedAuthorizationRequest?.stepClass ??
-        PushedAuthorizationRequestDefaultStep,
-    };
-    this.authorize = {
-      options: config.authorize?.options,
-      stepClass: config.authorize?.stepClass ?? AuthorizeDefaultStep,
-    };
-    this.tokenRequest = {
-      options: config.tokenRequest?.options,
-      stepClass: config.tokenRequest?.stepClass ?? TokenRequestDefaultStep,
-    };
-    this.nonceRequest = {
-      options: config.nonceRequest?.options,
-      stepClass: config.nonceRequest?.stepClass ?? NonceRequestDefaultStep,
-    };
-    this.credentialRequest = {
-      options: config.credentialRequest?.options,
-      stepClass:
-        config.credentialRequest?.stepClass ?? CredentialRequestDefaultStep,
-    };
+    this.fetchMetadataStepClass = config.fetchMetadataStepClass;
+    this.pushedAuthorizationRequestStepClass =
+      config.pushedAuthorizationRequestStepClass;
+    this.authorizeStepClass = config.authorizeStepClass;
+    this.tokenRequestStepClass = config.tokenRequestStepClass;
+    this.nonceRequestStepClass = config.nonceRequestStepClass;
+    this.credentialRequestStepClass = config.credentialRequestStepClass;
   }
 
   static createCustom(
@@ -112,26 +51,15 @@ export class IssuerTestConfiguration {
 
   static createDefault(): IssuerTestConfiguration {
     return new IssuerTestConfiguration({
-      authorize: {
-        stepClass: AuthorizeDefaultStep,
-      },
+      authorizeStepClass: AuthorizeDefaultStep,
       credentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
-      credentialRequest: {
-        stepClass: CredentialRequestDefaultStep,
-      },
-      fetchMetadata: {
-        stepClass: FetchMetadataDefaultStep,
-      },
+      credentialRequestStepClass: CredentialRequestDefaultStep,
+      fetchMetadataStepClass: FetchMetadataDefaultStep,
       name: "Issuance Happy Flow",
-      nonceRequest: {
-        stepClass: NonceRequestDefaultStep,
-      },
-      pushedAuthorizationRequest: {
-        stepClass: PushedAuthorizationRequestDefaultStep,
-      },
-      tokenRequest: {
-        stepClass: TokenRequestDefaultStep,
-      },
+      nonceRequestStepClass: NonceRequestDefaultStep,
+      pushedAuthorizationRequestStepClass:
+        PushedAuthorizationRequestDefaultStep,
+      tokenRequestStepClass: TokenRequestDefaultStep,
     });
   }
 }

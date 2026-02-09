@@ -13,101 +13,78 @@ import path from "path";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
+import { FetchMetadataDefaultStep } from "@/step/fetch-metadata-step";
+import {
+  PushedAuthorizationRequestDefaultStep,
+  TokenRequestDefaultStep,
+} from "@/step/issuance";
+import { AuthorizeDefaultStep } from "@/step/issuance/authorize-step";
+import { CredentialRequestDefaultStep } from "@/step/issuance/credential-request-step";
+import { NonceRequestDefaultStep } from "@/step/issuance/nonce-request-step";
+import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
+import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
+import { Config } from "@/types";
 
 import { IssuerTestConfiguration } from "./issuance-test-configuration";
 import { PresentationTestConfiguration } from "./presentation-test-configuration";
-import { testLoader } from "./test-loader";
+import { type CustomStepsMap, type StepClass, testLoader } from "./test-loader";
 
 const log = createLogger().withTag("test-metadata");
 
 /**
+ * Type-safe helper to get a step class from discovered steps or use default fallback
+ * @param discovered Map of discovered custom steps
+ * @param key Key to look up in the discovered steps
+ * @param fallback Default step class to use if not found
+ * @returns The discovered step class or fallback
+ */
+function getStepClass<T extends StepClass>(
+  discovered: CustomStepsMap,
+  key: string,
+  fallback: T,
+): T {
+  const discoveredStep = discovered[key];
+  if (discoveredStep) {
+    // Runtime validation: discovered step should be compatible with fallback
+    return discoveredStep as T;
+  }
+  return fallback;
+}
+
+/**
  * Helper to define and auto-register issuance test
  * Registers test configuration when called at module load time
- * Auto-discovers custom steps and options from the caller's directory
- * @param name Unique test name (used for registry lookup and display)
+ * Auto-discovers custom steps from the directory specified in steps_mapping
+ * @param name Unique test name (must match a key in config.ini [steps_mapping])
  */
 export async function defineIssuanceTest(
   name: string,
 ): Promise<IssuerTestConfiguration[]> {
   try {
-    // Get caller's directory to scan for custom steps/options
-    const callerDir = getCallerDirectory();
-
+    // Load configuration
     const config = loadConfigWithHierarchy();
 
-    // Auto-discover custom steps and options from caller's directory
-    const customSteps = await testLoader.discoverCustomSteps(callerDir);
-    const stepOptions = await testLoader.discoverStepOptions(
-      callerDir,
-      customSteps,
-    );
+    // Resolve primary and fallback directories
+    const { fallback, primary } = resolveStepDirectories(name, config);
 
-    // Get credential types to test
-    const credentialTypes = config.issuance.credential_types;
+    // Discover custom steps from primary directory
+    let customSteps = await testLoader.discoverCustomSteps(primary);
+
+    // If fallback directory exists and is different, discover and merge steps
+    if (fallback) {
+      log.info(`Scanning default_steps_dir for missing steps: ${fallback}`);
+      const fallbackSteps = await testLoader.discoverCustomSteps(fallback);
+      customSteps = mergeStepMaps(customSteps, fallbackSteps);
+      log.info(`Merged steps from primary directory and default_steps_dir`);
+    }
 
     // Validate credential types configuration
-    validateCredentialTypes(credentialTypes);
+    validateCredentialTypes(config.issuance.credential_types);
 
-    // Register a test configuration for each credential type
-    const testConfig = credentialTypes.map((credentialType) =>
-      IssuerTestConfiguration.createCustom({
-        authorize:
-          customSteps.authorize || stepOptions.authorize
-            ? {
-                options: stepOptions.authorize as any,
-                stepClass: customSteps.authorize as any,
-              }
-            : undefined,
-        credentialConfigurationId: credentialType,
-
-        credentialRequest:
-          customSteps.credentialRequest || stepOptions.credentialRequest
-            ? {
-                options: stepOptions.credentialRequest as any,
-                stepClass: customSteps.credentialRequest as any,
-              }
-            : undefined,
-
-        fetchMetadata:
-          customSteps.fetchMetadata || stepOptions.fetchMetadata
-            ? {
-                options: stepOptions.fetchMetadata as any,
-                stepClass: customSteps.fetchMetadata as any,
-              }
-            : undefined,
-
-        name: `${name} - ${credentialType}`,
-
-        nonceRequest:
-          customSteps.nonceRequest || stepOptions.nonceRequest
-            ? {
-                options: stepOptions.nonceRequest as any,
-                stepClass: customSteps.nonceRequest as any,
-              }
-            : undefined,
-
-        pushedAuthorizationRequest:
-          customSteps.pushedAuthorizationRequest ||
-          stepOptions.pushedAuthorizationRequest
-            ? {
-                options: stepOptions.pushedAuthorizationRequest as any,
-                stepClass: customSteps.pushedAuthorizationRequest as any,
-              }
-            : undefined,
-
-        tokenRequest:
-          customSteps.tokenRequest || stepOptions.tokenRequest
-            ? {
-                options: stepOptions.tokenRequest as any,
-                stepClass: customSteps.tokenRequest as any,
-              }
-            : undefined,
-      }),
-    );
-
-    return testConfig;
+    // Build and return test configurations
+    return buildIssuanceTestConfigurations(name, customSteps, config);
   } catch (error) {
-    log.error(`Error auto-registering test ${name}:`, error);
+    log.error(`Error defining issuance test '${name}':`, error);
     throw error;
   }
 }
@@ -115,93 +92,196 @@ export async function defineIssuanceTest(
 /**
  * Helper to define and auto-register presentation test
  * Registers test configuration when called at module load time
- * Auto-discovers custom steps and options from the caller's directory
- * @param name Unique test name (used for registry lookup and display)
+ * Auto-discovers custom steps from the directory specified in steps_mapping
+ * @param name Unique test name (must match a key in config.ini [steps_mapping])
  */
 export async function definePresentationTest(
   name: string,
 ): Promise<PresentationTestConfiguration> {
-  // Get caller's directory to scan for custom steps/options
   try {
-    const callerDir = getCallerDirectory();
+    // Load configuration
+    const config = loadConfigWithHierarchy();
 
-    // Auto-discover custom steps and options from caller's directory
-    const customSteps = await testLoader.discoverCustomSteps(callerDir);
-    const stepOptions = await testLoader.discoverStepOptions(
-      callerDir,
-      customSteps,
-    );
+    // Resolve primary and fallback directories
+    const { fallback, primary } = resolveStepDirectories(name, config);
 
-    // Note: AuthorizationRequestDefaultStep is discovered as "authorizationRequest"
-    // but PresentationTestConfiguration expects "authorize" key.
-    // This mapping is intentional - see STEP_CLASS_TO_KEY documentation in test-loader.ts
-    const testConfig = PresentationTestConfiguration.createCustom({
-      authorize:
-        customSteps.authorizationRequest || stepOptions.authorizationRequest
-          ? {
-              options: stepOptions.authorizationRequest as any,
-              stepClass: customSteps.authorizationRequest as any,
-            }
-          : undefined,
+    // Discover custom steps from primary directory
+    let customSteps = await testLoader.discoverCustomSteps(primary);
 
-      name: name,
+    // If fallback directory exists and is different, discover and merge steps
+    if (fallback) {
+      log.info(`Scanning default_steps_dir for missing steps: ${fallback}`);
+      const fallbackSteps = await testLoader.discoverCustomSteps(fallback);
+      customSteps = mergeStepMaps(customSteps, fallbackSteps);
+      log.info(`Merged steps from primary directory and default_steps_dir`);
+    }
 
-      redirectUri: customSteps.redirectUri
-        ? {
-            stepClass: customSteps.redirectUri as any,
-          }
-        : undefined,
-    });
-
-    return testConfig;
+    // Build and return test configuration
+    return buildPresentationTestConfiguration(name, customSteps);
   } catch (error) {
-    log.error(`Error auto-registering test ${name}:`, error);
+    log.error(`Error defining presentation test '${name}':`, error);
     throw error;
   }
 }
 
 /**
- * Detects the caller's directory using stack trace inspection
- * Tries multiple stack depths to handle different transpilers/bundlers
- * @returns Absolute path to the caller's directory
+ * Builds issuance test configurations from custom steps and config.
+ * Creates one configuration per credential type.
+ *
+ * @param flowName The test flow name
+ * @param customSteps Discovered custom step classes
+ * @param config The loaded configuration
+ * @returns Array of test configurations
  */
-function getCallerDirectory(): string {
-  try {
-    const error = new Error();
-    const stack = error.stack?.split("\n") || [];
+function buildIssuanceTestConfigurations(
+  flowName: string,
+  customSteps: CustomStepsMap,
+  config: Config,
+): IssuerTestConfiguration[] {
+  return config.issuance.credential_types.map((credentialType) =>
+    IssuerTestConfiguration.createCustom({
+      authorizeStepClass: getStepClass(
+        customSteps,
+        "authorize",
+        AuthorizeDefaultStep,
+      ),
+      credentialConfigurationId: credentialType,
+      credentialRequestStepClass: getStepClass(
+        customSteps,
+        "credentialRequest",
+        CredentialRequestDefaultStep,
+      ),
+      fetchMetadataStepClass: getStepClass(
+        customSteps,
+        "fetchMetadata",
+        FetchMetadataDefaultStep,
+      ),
+      name: `${flowName} - ${credentialType}`,
+      nonceRequestStepClass: getStepClass(
+        customSteps,
+        "nonceRequest",
+        NonceRequestDefaultStep,
+      ),
+      pushedAuthorizationRequestStepClass: getStepClass(
+        customSteps,
+        "pushedAuthorizationRequest",
+        PushedAuthorizationRequestDefaultStep,
+      ),
+      tokenRequestStepClass: getStepClass(
+        customSteps,
+        "tokenRequest",
+        TokenRequestDefaultStep,
+      ),
+    }),
+  );
+}
 
-    // Try multiple stack depths (transpilers, bundlers might change depth)
-    // Skip 0 (Error), 1 (this function), start from 2 (actual caller)
-    for (let i = 2; i < Math.min(stack.length, 10); i++) {
-      const line = stack[i];
-      // Match both formats: (path:line:col) and at path:line:col
-      const match =
-        line?.match(/\((.+):\d+:\d+\)/) || line?.match(/at (.+):\d+:\d+/);
+/**
+ * Builds a presentation test configuration from custom steps.
+ *
+ * @param flowName The test flow name
+ * @param customSteps Discovered custom step classes
+ * @returns Presentation test configuration
+ */
+function buildPresentationTestConfiguration(
+  flowName: string,
+  customSteps: CustomStepsMap,
+): PresentationTestConfiguration {
+  return PresentationTestConfiguration.createCustom({
+    authorizeStepClass: getStepClass(
+      customSteps,
+      "authorizationRequest",
+      AuthorizationRequestDefaultStep,
+    ),
+    fetchMetadataStepClass: getStepClass(
+      customSteps,
+      "fetchMetadata",
+      FetchMetadataDefaultStep,
+    ),
+    name: flowName,
+    redirectUriStepClass: getStepClass(
+      customSteps,
+      "redirectUri",
+      RedirectUriDefaultStep,
+    ),
+  });
+}
 
-      if (match?.[1]) {
-        const filePath = match[1];
-        // Skip node_modules, internal Node.js paths, and this file
-        if (
-          !filePath.includes("node_modules") &&
-          !filePath.startsWith("node:") &&
-          !filePath.includes("test-metadata")
-        ) {
-          const directory = path.dirname(filePath);
-          log.info(`Detected caller directory: ${directory}`);
-          return directory;
-        }
-      }
-    }
+/**
+ * Creates a helpful error message when no steps directory is configured.
+ *
+ * @param flowName The test flow name
+ * @returns Formatted error message with configuration examples
+ */
+function createDirectoryErrorMessage(flowName: string): string {
+  return (
+    `No steps_mapping entry found for test '${flowName}' and no default_steps_dir configured.\n` +
+    `Please add one of the following to your config.ini:\n\n` +
+    `Option 1 - Specific mapping:\n` +
+    `[steps_mapping]\n` +
+    `${flowName} = tests/steps/version_1_0/issuance\n\n` +
+    `Option 2 - Default directory (used when specific mapping is not found):\n` +
+    `[steps_mapping]\n` +
+    `default_steps_dir = tests/steps/version_1_0\n\n` +
+    `See TEST-CONFIGURATION-GUIDE.md for details.`
+  );
+}
 
-    log.warn("Could not detect caller directory from stack trace, using cwd");
-  } catch (error) {
-    log.warn(
-      `Failed to detect caller directory: ${error instanceof Error ? error.message : String(error)}`,
+/**
+ * Merges two step maps, with primary steps taking precedence over fallback steps.
+ * This is a pure function with no side effects.
+ *
+ * @param primary Primary step map (takes precedence)
+ * @param fallback Fallback step map (used for missing steps)
+ * @returns Merged step map
+ */
+function mergeStepMaps(
+  primary: CustomStepsMap,
+  fallback: CustomStepsMap,
+): CustomStepsMap {
+  return { ...fallback, ...primary };
+}
+
+/**
+ * Resolves both primary and fallback directories for step discovery.
+ *
+ * @param flowName The test flow name
+ * @param config The loaded configuration
+ * @returns Object with primary directory path and optional fallback path
+ */
+function resolveStepDirectories(
+  flowName: string,
+  config: Config,
+): { fallback?: string; primary: string } {
+  const mappedPath = config.steps_mapping?.mapping?.[flowName];
+  const defaultPath = config.steps_mapping?.default_steps_dir;
+
+  // Validate that we have at least one path configured
+  if (!mappedPath && !defaultPath) {
+    throw new Error(createDirectoryErrorMessage(flowName));
+  }
+
+  // Resolve the primary directory
+  const primary = mappedPath
+    ? path.resolve(process.cwd(), mappedPath)
+    : path.resolve(process.cwd(), defaultPath!);
+
+  // Resolve the fallback directory (if different from primary)
+  const fallback =
+    mappedPath && defaultPath
+      ? path.resolve(process.cwd(), defaultPath)
+      : undefined;
+
+  // Log the resolution
+  if (mappedPath) {
+    log.info(`steps_mapping: resolved '${flowName}' -> ${primary}`);
+  } else {
+    log.info(
+      `steps_mapping: using default_steps_dir for '${flowName}' -> ${primary}`,
     );
   }
 
-  // Safe fallback
-  return process.cwd();
+  return { fallback: fallback !== primary ? fallback : undefined, primary };
 }
 
 /**

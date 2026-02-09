@@ -119,7 +119,7 @@ export function loadConfigWithHierarchy(
  *       variables (CONFIG_CREDENTIAL_TYPE) to filter which credential types to test.
  */
 function cliOptionsToConfig(options: CliOptions): Partial<Config> {
-  const partialConfig: Record<string, any> = {};
+  const partialConfig: Partial<Config> = {};
 
   // Map CLI options to config structure
   if (
@@ -128,7 +128,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     options.saveCredential !== undefined ||
     options.issuanceTestsDir
   ) {
-    const issuance: Record<string, unknown> = {};
+    const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
       issuance.url = options.credentialIssuerUri;
     }
@@ -144,39 +144,39 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     if (options.issuanceTestsDir) {
       issuance.tests_dir = options.issuanceTestsDir;
     }
-    partialConfig.issuance = issuance;
+    partialConfig.issuance = issuance as Config["issuance"];
   }
   if (options.presentationAuthorizeUri || options.presentationTestsDir) {
-    const presentation: Record<string, unknown> = {};
+    const presentation: Partial<Config["presentation"]> = {};
     if (options.presentationAuthorizeUri) {
       presentation.authorize_request_url = options.presentationAuthorizeUri;
     }
     if (options.presentationTestsDir) {
       presentation.tests_dir = options.presentationTestsDir;
     }
-    partialConfig.presentation = presentation;
+    partialConfig.presentation = presentation as Config["presentation"];
   }
 
   if (options.timeout !== undefined || options.maxRetries !== undefined) {
-    const network: Record<string, number> = {};
+    const network: Partial<Config["network"]> = {};
     if (options.timeout !== undefined) {
       network.timeout = options.timeout;
     }
     if (options.maxRetries !== undefined) {
       network.max_retries = options.maxRetries;
     }
-    partialConfig.network = network;
+    partialConfig.network = network as Config["network"];
   }
 
   if (options.logLevel || options.logFile) {
-    const logging: Record<string, string> = {};
+    const logging: Partial<Config["logging"]> = {};
     if (options.logLevel) {
       logging.log_level = options.logLevel;
     }
     if (options.logFile) {
       logging.log_file = options.logFile;
     }
-    partialConfig.logging = logging;
+    partialConfig.logging = logging as Config["logging"];
   }
 
   if (options.port !== undefined) {
@@ -246,6 +246,15 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | string | Record<string, unknown>
+>;
+
+/**
  * Loads configuration from an INI file
  * @param filePath Path to the INI file
  * @returns Parsed configuration object or null if file doesn't exist
@@ -257,16 +266,18 @@ function loadIniFile(filePath: string): null | Partial<Config> {
 
   try {
     const textConfig = readFileSync(filePath, "utf-8");
-    const parsed = parse(textConfig) as any;
+    const parsed = parse(textConfig) as ParsedIniConfig;
 
     // Transform steps_mapping from flat structure to nested structure
     // INI format: [steps_mapping] default_steps_dir = ... / key = value
     // Target format: { default_steps_dir: "...", mapping: { key: value } }
-    if (parsed.steps_mapping) {
-      const { default_steps_dir, ...mappings } = parsed.steps_mapping;
+    if (parsed.steps_mapping && typeof parsed.steps_mapping === "object") {
+      const stepsMappingRaw = parsed.steps_mapping as Record<string, unknown>;
+      const { default_steps_dir, ...mappings } = stepsMappingRaw;
       parsed.steps_mapping = {
-        ...(default_steps_dir && { default_steps_dir }),
-        mapping: mappings,
+        ...(default_steps_dir &&
+          typeof default_steps_dir === "string" && { default_steps_dir }),
+        mapping: mappings as Record<string, string>,
       };
     }
 
