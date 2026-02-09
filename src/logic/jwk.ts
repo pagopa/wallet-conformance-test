@@ -1,14 +1,13 @@
 import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
-  jsonWebKeySchema,
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt, exportJWK, generateKeyPair, importX509, JWK } from "jose";
+import { decodeJwt, exportJWK, generateKeyPair, importX509 } from "jose";
 import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
-import { KeyPair, KeyPairJwk } from "@/types";
+import { KeyPair, KeyPairJwk, keyPairJwkSchema } from "@/types";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
@@ -39,12 +38,12 @@ export async function createKeys(): Promise<KeyPair> {
 
   const kid = KSUID.randomSync().string;
   const exportedPair: KeyPair = {
-    privateKey: parseWithErrorHandling(jsonWebKeySchema, {
+    privateKey: parseWithErrorHandling(keyPairJwkSchema, {
       alg: "ES256",
       kid: kid,
       ...priv,
     }) as KeyPairJwk,
-    publicKey: parseWithErrorHandling(jsonWebKeySchema, {
+    publicKey: parseWithErrorHandling(keyPairJwkSchema, {
       alg: "ES256",
       kid: kid,
       ...pub,
@@ -78,7 +77,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
         throw new Error(`malformed JWK in DID: "${didUrl}"`);
 
       return parseWithErrorHandling(
-        jsonWebKeySchema,
+        keyPairJwkSchema,
         JSON.parse(Buffer.from(didJwk, "base64url").toString()),
         "malformed signer's JWK in DID",
       );
@@ -90,7 +89,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
       return jwkFromTrustChain(trustChain, kid);
     case "jwk":
       return parseWithErrorHandling(
-        jsonWebKeySchema,
+        keyPairJwkSchema,
         signer.publicJwk,
         "malformed signer's JWK",
       );
@@ -118,7 +117,7 @@ async function jwkFromCertificateChain(
   const jwk = await exportJWK(key);
 
   return parseWithErrorHandling(
-    jsonWebKeySchema,
+    keyPairJwkSchema,
     jwk,
     "malformed signer's JWK from x5c",
   );

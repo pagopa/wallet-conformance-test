@@ -21,6 +21,7 @@ import {
   CredentialRequestResponse,
   CredentialRequestStepOptions,
 } from "@/step/issuance/credential-request-step";
+import { IoWalletSdkConfig, ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultStep {
   tag = "CREDENTIAL_REQUEST";
@@ -41,6 +42,8 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
         )
       : await createKeys();
 
+    const sdkConfig = new IoWalletSdkConfig({ itWalletSpecsVersion: ItWalletSpecsVersion.V1_0 });
+
     return await this.execute<CredentialRequestExecuteResponse>(async () => {
       log.info(`Creating the Credential Request...`);
       const createCredentialRequestOptions: CredentialRequestOptions = {
@@ -48,6 +51,11 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
           signJwt: signJwtCallback([credentialKeyPair.privateKey]),
         },
         clientId: options.clientId,
+        config: {
+          ...sdkConfig,
+          isVersion: sdkConfig.isVersion,
+          itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
+        },
         credential_identifier: options.credentialIdentifier,
         issuerIdentifier: this.config.issuance.url,
         nonce: options.nonce,

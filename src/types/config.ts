@@ -9,6 +9,16 @@ export const configSchema = z.object({
     save_credential: z.coerce.boolean().optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
+    credential_offer_uri: z.string().url()
+      .startsWith("openid-credential-offer://")
+      .or(
+        z.string().url()
+        .startsWith("haip-vci://")
+      )
+      .or(
+        z.string().url()
+        .startsWith("https://")
+      )
   }),
   logging: z.object({
     log_file: z.string(),
