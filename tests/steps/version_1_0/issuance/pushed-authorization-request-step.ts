@@ -74,7 +74,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           log.debug(
             `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
           );
-          const pushedAuthorizationRequestSigned =
+          const pushedAuthorizationRequest =
             await createPushedAuthorizationRequest(createParOptions);
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
@@ -82,7 +82,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             clientAttestationDPoP: options.popAttestation,
             pushedAuthorizationRequestEndpoint:
               options.pushedAuthorizationRequestEndpoint,
-            pushedAuthorizationRequestSigned,
+            pushedAuthorizationRequest,
             walletAttestation: options.walletAttestation.attestation,
           };
 

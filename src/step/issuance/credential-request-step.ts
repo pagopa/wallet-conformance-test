@@ -2,6 +2,7 @@ import { CredentialResponse } from "@pagopa/io-wallet-oid4vci";
 
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
+import { IoWalletSdkConfig, ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 export type CredentialRequestExecuteResponse = CredentialResponse;
 
