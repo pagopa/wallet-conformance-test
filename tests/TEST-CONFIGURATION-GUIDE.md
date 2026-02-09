@@ -4,14 +4,16 @@ This comprehensive guide shows you how to configure and run conformance tests wi
 
 ## 🏗️ Architecture Overview
 
-The test system uses a **convention-over-configuration** approach with automatic discovery of custom steps and options:
+The test system uses a **convention-over-configuration** approach with automatic discovery of custom steps:
 
 ```
 Test Spec File (*.spec.ts)
     ↓
 Calls defineIssuanceTest() or definePresentationTest()
     ↓
-Auto-discovers custom steps and options from test directory
+Resolves steps_mapping[testName] from config.ini
+    ↓
+Auto-discovers custom steps from mapped directory
     ↓
 Returns test configuration(s)
     ↓
@@ -22,26 +24,37 @@ Vitest executes tests
 
 ### Key Concepts
 
-- **Auto-Discovery**: Custom steps and options are automatically discovered from the test directory using prototype chain inspection
+- **Auto-Discovery**: Custom steps are automatically discovered from directories specified in `steps_mapping` using prototype chain inspection
 - **Minimal Metadata**: Test specs only need to define a unique test `name` (string) - no object required
-- **Directory-Based Configuration**: Custom steps can be placed in the same directory as the test spec
+- **Required Mapping**: Each test MUST have a `steps_mapping` entry in `config.ini` pointing to its custom step directory
+- **Versioned Steps**: Encourages reusable, versioned step implementations shared across tests
 - **Configuration Hierarchy**: CLI options > Custom INI > Default INI
 - **Required Configuration**: `credential_types[]` must be configured in `config.ini` for issuance tests
+- **Default Step Stubs**: All default step classes now contain stub implementations that must be overridden
 
 ## 📁 Directory Structure
 
 ```
 tests/
-├── issuance/                          # Issuance test directory (configured in config.ini)
-│   └── happy-flow/
-│       ├── happy.issuance.spec.ts     # Test spec (uses defineIssuanceTest)
-│       ├── custom-authorize.ts        # Optional: Custom authorize step implementation
-│       └── step-options.ts            # Optional: Centralized step options
+├── conformance/                       # New conformance test structure
+│   ├── issuance/
+│   │   └── happy.issuance.spec.ts # Test spec (uses defineIssuanceTest)
+│   └── presentation/
+│       └── happy.presentation.spec.ts # Test spec (uses definePresentationTest)
 │
-├── presentation/                      # Presentation test directory (configured in config.ini)
-│   └── happy-flow/
-│       ├── happy.presentation.spec.ts # Test spec (uses definePresentationTest)
-│       └── step-options.ts            # Optional: Centralized step options
+├── steps/                             # Shared step implementations (versioned)
+│   └── version_1_0/                   # IT Wallet 1.0 step implementations
+│       ├── issuance/
+│       │   ├── authorize-step.ts
+│       │   ├── credential-request-step.ts
+│       │   ├── fetch-metadata-step.ts
+│       │   ├── nonce-request-step.ts
+│       │   ├── pushed-authorization-request-step.ts
+│       │   └── token-request-step.ts
+│       └── presentation/
+│           ├── authorization-request-step.ts
+│           ├── fetch-metadata-step.ts
+│           └── redirect-uri-step.ts
 │
 ├── config/
 │   ├── test-metadata.ts               # defineIssuanceTest() / definePresentationTest()
@@ -59,7 +72,7 @@ tests/
 Create a test spec file with minimal metadata - custom steps and options are automatically discovered:
 
 ```typescript
-// tests/issuance/my-test/my-test.issuance.spec.ts
+// tests/issuance/my-test.issuance.spec.ts
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 // ... other imports
@@ -74,24 +87,33 @@ testConfigs.forEach((testConfig) => {
 });
 ```
 
-### Step 2: (Optional) Add Custom Steps
+### Step 2: Add Custom Steps
 
-If you need custom step behavior, create a custom step class in the same directory:
+Create versioned steps in `tests/steps/version_X_Y/` and configure via `steps_mapping`:
 
 ```typescript
-// tests/issuance/my-test/custom-authorize.ts
+// tests/steps/version_X_Y/issuance/authorize-step.ts
 
 import { AuthorizeDefaultStep } from "@/step/issuance";
 
-export class CustomAuthorizeStep extends AuthorizeDefaultStep {
+export class AuthorizeXYStep extends AuthorizeDefaultStep {
   async run(context) {
-    // Your custom implementation
-    return super.run(context);
+    // IT Wallet 1.0 specific implementation
   }
 }
 ```
 
-The system automatically detects custom steps by inspecting the prototype chain - no registration needed!
+Then configure in `config.ini`:
+
+```ini
+[steps_mapping]
+ExampleIssuanceTest = ./tests/steps/version_X_Y/issuance
+```
+
+**Important**: 
+- Default step classes contain stub implementations that log a warning
+- You **must** override steps with custom implementations for actual functionality
+- Each test requires a `steps_mapping` entry pointing to its custom step directory
 
 ### Step 3: Run Tests
 
@@ -112,22 +134,33 @@ That's it! The test automatically discovers custom steps and configures itself w
 
 ### config.ini Structure
 
-Test directories are configured in `config.ini`:
+Test directories and step mappings are configured in `config.ini`:
 
 ```ini
 [issuance]
 url = https://issuer.example.com
-tests_dir = ./tests/issuance  # Directory for issuance test specs
+tests_dir = ./tests/conformance/issuance  # Directory for issuance test specs
 credential_types[] = dc_sd_jwt_EuropeanDisabilityCard
 
 [presentation]
 authorize_request_url = https://verifier.example.com/....
-tests_dir = ./tests/presentation  # Directory for presentation test specs
+tests_dir = ./tests/conformance/presentation  # Directory for presentation test specs
+
+[steps_mapping]
+# Map test flows to shared step directories (optional)
+# Format: FlowName = ./path/to/steps
+HappyFlowIssuance = ./tests/steps/version_1_0/issuance
+HappyFlowPresentation = ./tests/steps/version_1_0/presentation
 
 [testing]
 spec_pattern = **/*.spec.ts  # Pattern for test spec files
 custom_step_pattern = **/*.ts  # Pattern for custom step files
 ```
+
+**`steps_mapping` Section:**
+- Maps test flow names to shared step directories
+- Steps are discovered from mapped directory instead of test directory
+- Allows reusing versioned step implementations across multiple tests
 
 ### CLI Overrides
 
@@ -165,41 +198,70 @@ The system automatically creates one test configuration per credential type for 
 
 ### Custom Step Implementation
 
-Custom steps are automatically discovered by the `TestLoader` based on prototype chain inspection:
+Custom steps are automatically discovered by the `TestLoader` based on prototype chain inspection.
 
+#### Step Discovery Location
+
+Steps are discovered from the directory specified in `steps_mapping`:
+
+**Shared Steps Directory** (Versioned, reusable via `steps_mapping`):
 ```
-tests/issuance/my-test/
-├── my-test.issuance.spec.ts   # Test spec
-├── custom-authorize.ts         # Custom authorize step (auto-discovered)
-├── custom-token.ts             # Custom token step (auto-discovered)
-└── step-options.ts             # Centralized step options (optional)
+tests/steps/version_1_0/issuance/
+├── authorize-step.ts           # AuthorizeITWallet1_0Step
+├── token-request-step.ts       # TokenRequestITWallet1_0Step
+└── ...
 ```
 
-#### Example: Custom Step Class
+**Configuration Required:**
+Each test must have a `steps_mapping` entry in `config.ini` that specifies the directory containing its custom steps.
+
+#### Example: Shared Versioned Steps
 
 ```typescript
-// tests/issuance/my-test/custom-authorize.ts
+// tests/steps/version_1_0/issuance/authorize-step.ts
 
 import { AuthorizeDefaultStep, AuthorizeStepOptions } from "@/step/issuance";
 
-export class CustomAuthorizeStep extends AuthorizeDefaultStep {
-  async run(context) {
-    // Pre-processing
-    console.log("Custom authorize step running");
+export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
+  async run(options: AuthorizeStepOptions) {
+    const log = this.log.withTag(this.tag);
+    log.info("Starting IT Wallet 1.0 Authorize Step");
     
-    // Call parent implementation
-    const result = await super.run(context);
+    // IT Wallet 1.0 specific implementation
+    // ...
     
-    // Post-processing
-    return result;
+    return this.execute(async () => {
+      // Implementation details
+    });
   }
 }
 ```
 
+**Configure in config.ini:**
+```ini
+[steps_mapping]
+# Optional: Default directory used for:
+# 1. Tests without specific mapping
+# 2. Fallback for missing steps in specific directories
+default_steps_dir = ./tests/steps/version_1_0
+
+# Specific mappings take precedence over default
+HappyFlowIssuance = ./tests/steps/version_1_0/issuance
+```
+
 **How it works:**
-1. `TestLoader.discoverCustomSteps()` scans the test directory
-2. Uses prototype chain inspection to detect which base class each custom step extends
-3. Automatically maps it to the correct step type (e.g., `CustomAuthorizeStep` → `authorize`)
+1. When `defineIssuanceTest("HappyFlowIssuance")` is called
+2. `TestLoader` checks `config.steps_mapping.mapping["HappyFlowIssuance"]`
+3. Finds `./tests/steps/version_1_0/issuance`
+4. Scans that directory for custom steps (e.g., `AuthorizeITWallet1_0Step`)
+5. **If any steps are missing**, scans `default_steps_dir` for them
+6. Merges steps (specific directory steps have priority)
+7. Auto-discovers and maps to test configuration
+
+**Fallback mechanisms:**
+- **Directory fallback**: If no specific mapping exists, uses `config.steps_mapping.default_steps_dir`
+- **Step fallback**: Missing steps in specific directory are searched in `default_steps_dir`
+- **Default stub**: If step not found anywhere, uses stub implementation (logs warning)
 
 #### Available Base Classes for Extension
 
@@ -213,58 +275,126 @@ export class CustomAuthorizeStep extends AuthorizeDefaultStep {
 
 **Presentation Steps:**
 - `FetchMetadataDefaultStep` → `fetchMetadata`
-- `AuthorizationRequestDefaultStep` → `authorize` (internal: `authorizationRequest`)
+- `AuthorizationRequestDefaultStep` → `authorizationRequest` (mapped to `authorize` in config)
 - `RedirectUriDefaultStep` → `redirectUri`
 
-### Step Options
+**Important Notes:**
+- All default step classes now contain **stub implementations** that only log warnings
+- You **must** extend and override these steps with actual implementations
+- See `tests/steps/version_1_0/` for reference implementations
 
-You can configure step options in two ways:
+### Step Discovery and Mapping
 
-#### 1. Centralized Options File
+**Discovery Process:**
 
-```typescript
-// tests/issuance/my-test/step-options.ts
+When you call `defineIssuanceTest("MyTestFlow")` or `definePresentationTest("MyTestFlow")`:
 
-export const authorize = {
-  timeout: 30000,
-  customOption: "value"
-};
+1. **Resolve primary steps directory**: 
+   - **First**: Checks `config.steps_mapping.mapping["MyTestFlow"]` for specific mapping
+   - **Second**: Falls back to `config.steps_mapping.default_steps_dir` if no mapping
+   - **Third**: Throws error if neither is configured
 
-export const tokenRequest = {
-  retries: 3
-};
+2. **Discover steps from primary directory**:
+   - Scans the resolved directory for custom step implementations
+   
+3. **Merge with default steps (if applicable)**:
+   - If `default_steps_dir` is configured AND different from primary directory
+   - Scans `default_steps_dir` for additional steps
+   - Merges: primary steps take priority, default steps fill gaps
+   
+4. **Use stub for missing steps**:
+   - Any steps not found in either location use default stub implementations
+
+**Example Configuration:**
+
+```ini
+[steps_mapping]
+# Default directory for shared steps
+# Used as: 1) Fallback when no mapping exists
+#          2) Source for missing steps in specific directories
+default_steps_dir = ./tests/steps/version_1_0
+
+# Specific mappings (take precedence over default)
+HappyFlowIssuance = ./tests/steps/version_1_0/issuance
+HappyFlowPresentation = ./tests/steps/version_1_0/presentation
+
+# MyCustomTest will use default_steps_dir entirely
+# MyPartialTest would use its directory + missing steps from default_steps_dir
 ```
 
-#### 2. Inline Options (in Custom Step File)
-
-```typescript
-// tests/issuance/my-test/custom-authorize.ts
-
-import { AuthorizeDefaultStep } from "@/step/issuance";
-
-export class CustomAuthorizeStep extends AuthorizeDefaultStep {
-  // ... implementation
-}
-
-// Inline options (has precedence over centralized options)
-export const options = {
-  timeout: 30000,
-  customOption: "value"
-};
+**Workflow with specific mapping + step merge:**
+```
+defineIssuanceTest("MyPartialTest")
+    ↓
+Check steps_mapping.mapping["MyPartialTest"]
+    ↓
+Found: ./tests/custom/my-partial-test (has only AuthorizeStep)
+    ↓
+Discover steps from ./tests/custom/my-partial-test
+    ↓
+Found: authorize
+    ↓
+Check if default_steps_dir exists and is different
+    ↓
+Found: ./tests/steps/version_1_0 (has all 6 steps)
+    ↓
+Merge: keep authorize from primary, add missing 5 from default
+    ↓
+Result: 6 steps (1 custom + 5 from default)
 ```
 
-**Precedence**: Inline options > Centralized options
+**Workflow with default_steps_dir fallback:**
+```
+defineIssuanceTest("MyCustomTest")
+    ↓
+Check steps_mapping.mapping["MyCustomTest"]
+    ↓
+Not found → Use steps_mapping.default_steps_dir
+    ↓
+Found: ./tests/steps/version_1_0
+    ↓
+Discover all steps from default directory
+    ↓
+Use shared steps from default directory
+```
+
+**Workflow with no configuration:**
+```
+defineIssuanceTest("MyCustomTest")
+    ↓
+Check steps_mapping.mapping["MyCustomTest"]
+    ↓
+Not found → Check steps_mapping.default_steps_dir
+    ↓
+Not found
+    ↓
+Throw Error: No steps_mapping entry or default_steps_dir configured
+```
 
 ### Auto-Discovery Process
 
-When you call `defineIssuanceTest("MyTest")`:
+When you call `defineIssuanceTest("MyTest")` or `definePresentationTest("MyTest")`:
 
-1. **Caller Directory Detection**: Determines the test directory using stack trace inspection
+1. **Steps Directory Resolution**: 
+   - First looks up `config.steps_mapping.mapping["MyTest"]` for specific mapping
+   - If not found, falls back to `config.steps_mapping.default_steps_dir`
+   - Throws error if neither is configured
+   
 2. **Custom Step Discovery**: Scans for `.ts` files matching `custom_step_pattern` (default: `**/*.ts`)
+   - Excludes `**/*.spec.ts` (test files)
+   - Reads and imports each TypeScript file
+
 3. **Prototype Chain Inspection**: Checks which base class each export extends
+   - Uses `Object.getPrototypeOf()` to walk the prototype chain
+   - Compares against known base classes (e.g., `AuthorizeDefaultStep`)
+
 4. **Step Type Mapping**: Maps discovered steps to configuration keys
-5. **Options Discovery**: Loads both centralized (`step-options.ts`) and inline options
-6. **Configuration Creation**: Builds `IssuerTestConfiguration` with discovered customizations
+   - `AuthorizeITWallet1_0Step extends AuthorizeDefaultStep` → `authorize`
+   - `CustomTokenStep extends TokenRequestDefaultStep` → `tokenRequest`
+
+5. **Configuration Creation**: Builds `IssuerTestConfiguration` or `PresentationTestConfiguration`
+   - Injects discovered custom steps
+   - Uses default steps for any non-overridden steps (with stub warning)
 
 **File Patterns (configurable in config.ini):**
 - `spec_pattern`: Pattern for test spec files (default: `**/*.spec.ts`)
@@ -272,7 +402,9 @@ When you call `defineIssuanceTest("MyTest")`:
 
 **Excluded from discovery:**
 - `**/*.spec.ts` - Test spec files
-- `**/step-options.ts` - Options configuration file
+
+**No longer used:**
+- `**/step-options.ts` - Step options have been removed in this refactoring
 
 ## 📝 Test Execution Reference
 
@@ -374,9 +506,10 @@ Defines and creates issuance test configurations with automatic discovery of cus
 
 **Important**: 
 - Requires `credential_types[]` to be configured in `config.ini` [issuance] section
-- Throws an error if `credential_types` is empty
-- Automatically discovers custom steps from the caller's directory
-- Automatically discovers step options from `step-options.ts` or inline exports
+- Requires `steps_mapping[name]` to be configured in `config.ini` [steps_mapping] section
+- Throws an error if `credential_types` is empty or `steps_mapping` entry is missing
+- Automatically discovers custom steps from the directory specified in `steps_mapping[name]`
+- **Does NOT discover step options** - options system has been removed
 
 **Example**:
 ```typescript
@@ -409,7 +542,9 @@ describe(`[${testConfig.name}] Tests`, () => {
 
 ### `TestLoader` (Internal)
 
-Internal utility class that handles auto-discovery of custom steps and options.
+Internal utility class that handles auto-discovery of custom steps.
+
+**Important**: Step options discovery has been removed in this refactoring.
 
 #### `testLoader.discoverCustomSteps(directory)`
 
@@ -422,17 +557,20 @@ Scans a directory for custom step implementations using prototype chain inspecti
 
 **Internal use only** - Called automatically by `defineIssuanceTest()` and `definePresentationTest()`
 
-#### `testLoader.discoverStepOptions(directory, customSteps)`
+**How It Works**:
+1. Scans directory for `.ts` files (excluding `*.spec.ts`)
+2. Imports each file and inspects exports
+3. Checks if export extends a known base class via prototype chain
+4. Maps to step type (e.g., `AuthorizeDefaultStep` → `authorize`)
 
-Scans for step options in centralized `step-options.ts` or inline exports.
-
-**Parameters**:
-- `directory` (string): Absolute path to scan
-- `customSteps` (Record<string, any>): Previously discovered custom steps
-
-**Returns**: `Promise<Record<string, any>>` - Map of step type to options object
-
-**Internal use only** - Called automatically by `defineIssuanceTest()` and `definePresentationTest()`
+**Example Discovered Steps**:
+```typescript
+{
+  "authorize": AuthorizeITWallet1_0Step,
+  "tokenRequest": TokenRequestITWallet1_0Step,
+  "credentialRequest": CredentialRequestITWallet1_0Step
+}
+```
 
 ---
 
@@ -464,30 +602,135 @@ Scans for step options in centralized `step-options.ts` or inline exports.
 
 ### Custom step not detected
 
-**Cause**: Custom step doesn't extend a recognized base class or file is excluded.
+**Cause**: Custom step doesn't extend a recognized base class, file is excluded, or wrong discovery directory.
 
 **Solution**:
 1. Ensure your custom step extends one of the base classes:
    - Issuance: `FetchMetadataDefaultStep`, `PushedAuthorizationRequestDefaultStep`, `AuthorizeDefaultStep`, etc.
    - Presentation: `AuthorizationRequestDefaultStep`, `RedirectUriDefaultStep`, etc.
-2. Check that the file is not named `*.spec.ts` or `step-options.ts` (excluded from discovery)
+2. Check that the file is not named `*.spec.ts` (excluded from discovery)
 3. Verify the file matches `custom_step_pattern` in config.ini (default: `**/*.ts`)
 4. Make sure the custom step class is exported: `export class MyCustomStep extends BaseStep { ... }`
+5. **Check `steps_mapping` configuration**: If your test uses `steps_mapping`, ensure the mapped directory contains the step implementations
+6. **Verify discovery directory**: Check logs to see which directory is being scanned for steps
 
-### Step options not applied
+**Debug Steps:**
+```bash
+# Check what directory is being scanned
+wct test:issuance --log-level DEBUG
 
-**Cause**: Options file not detected or naming mismatch.
+# Look for log entries like:
+# [TestLoader] steps_mapping: resolved 'MyTest' -> /path/to/steps
+
+# If steps_mapping is missing, you'll get an error:
+# Error: No steps_mapping entry found for test 'MyTest'
+```
+
+### Missing steps_mapping configuration
+
+**Cause**: Test name not found in `[steps_mapping]` section of config.ini.
+
+**Symptoms**:
+```
+Error: No steps_mapping entry found for test 'MyTestName'.
+Please add the following to your config.ini:
+
+[steps_mapping]
+MyTestName = tests/steps/version_1_0/issuance
+```
 
 **Solution**:
-1. For centralized options, create `step-options.ts` in the test directory:
-   ```typescript
-   export const authorize = { timeout: 30000 };
+1. **Add mapping to config.ini**: Add the test name to `[steps_mapping]` section
+   ```ini
+   [steps_mapping]
+   MyTestName = ./tests/steps/version_1_0/issuance
    ```
-2. For inline options, export `options` in the same file as your custom step:
-   ```typescript
-   export const options = { timeout: 30000 };
+2. **Or use default_steps_dir**: Configure a default directory that will be used as fallback
+   ```ini
+   [steps_mapping]
+   default_steps_dir = ./tests/steps/version_1_0
    ```
-3. Ensure the export name matches the step type (e.g., `authorize`, `tokenRequest`, not `authorizeOptions`)
+3. **Create step directory**: Ensure the mapped directory exists and contains your custom step implementations
+4. **Match test name**: The key in `steps_mapping` must exactly match the name passed to `defineIssuanceTest()` or `definePresentationTest()`
+
+### Partial step implementation (using step merge)
+
+**Use Case**: You want to customize only some steps and use default implementations for others.
+
+**Example Scenario**:
+```
+You have a custom AuthorizeStep but want to reuse all other steps from version_1_0
+```
+
+**Solution**:
+```ini
+[steps_mapping]
+# Default directory with all step implementations
+default_steps_dir = ./tests/steps/version_1_0
+
+# Your test directory with only AuthorizeStep
+MyPartialTest = ./tests/my-partial-test
+```
+
+**Directory Structure**:
+```
+tests/
+├── my-partial-test/
+│   └── authorize-step.ts        # Only this step is custom
+└── steps/version_1_0/
+    ├── authorize-step.ts        # Will be ignored (overridden)
+    ├── token-request-step.ts    # Will be used
+    ├── credential-request-step.ts # Will be used
+    └── ...                      # All other steps will be used
+```
+
+**How it works**:
+1. System discovers `AuthorizeStep` from `./tests/my-partial-test`
+2. System discovers all steps from `./tests/steps/version_1_0` (default_steps_dir)
+3. Merges with priority: custom steps override default steps
+4. Result: Your custom `AuthorizeStep` + 5 default steps from version_1_0
+
+**Benefits**:
+- Reuse existing step implementations
+- Override only what you need
+- Maintain consistency across tests
+- Easier maintenance and updates
+
+### Default steps log warnings
+
+**Cause**: Test is using default step stubs that only log warnings.
+
+**Symptoms**:
+```
+[STEP_NAME] Method not implemented.
+```
+
+**Solution**:
+1. **Implement custom steps**: Default steps now contain only stub implementations
+2. **Use shared versioned steps**: Configure `steps_mapping` to use pre-implemented steps:
+   ```ini
+   [steps_mapping]
+   MyTest = ./tests/steps/version_1_0/issuance
+   ```
+3. **Create your own implementation**: Extend the default step class and override the `run()` method
+4. See `tests/steps/version_1_0/` for reference implementations
+
+### Step signature/interface mismatch
+
+**Cause**: Step implementations don't match the expected interface after refactoring.
+
+**Symptoms**:
+- Type errors when extending step classes
+- Missing required parameters in `run()` method
+
+**Solution**:
+1. Check the base class signature - it may have changed in this refactoring
+2. Update your step implementation to match the new signature
+3. Refer to `tests/steps/version_1_0/` for updated examples
+4. Common changes:
+   - Some step options interfaces have been simplified
+   - Return types may have been updated
+   - Parameter passing may have changed
 
 ### "Error checking inheritance" or unexpected discovery behavior
 
@@ -501,82 +744,8 @@ Scans for step options in centralized `step-options.ts` or inline exports.
 
 ---
 
-## 🔄 Migration from Legacy System
-
-If you have tests using the old `test.config.ts` or registry-based system:
-
-### Before (Legacy Registry System)
-```typescript
-// tests/test.config.ts
-const testConfig = IssuerTestConfiguration.createCustom({
-  name: "My Test",
-  credentialConfigurationId: "dc_sd_jwt_MyCredential",
-});
-issuerRegistry.registerTest(HAPPY_FLOW_NAME, testConfig);
-
-// tests/issuance/my-test.spec.ts
-import "../test.config";
-issuerRegistry.get(HAPPY_FLOW_NAME).forEach((testConfig) => {
-  // tests
-});
-```
-
-### After (New Auto-Discovery System)
-```typescript
-// tests/issuance/my-test/my-test.issuance.spec.ts
-import { defineIssuanceTest } from "#/config/test-metadata";
-
-// Define and get test configurations (auto-discovers custom steps)
-const testConfigs = await defineIssuanceTest("MyTest");
-
-// Use the returned configurations
-testConfigs.forEach((testConfig) => {
-  describe(`[${testConfig.name}] Tests`, () => {
-    // tests
-  });
-});
-```
-
-**Key Changes:**
-1. **No centralized config file**: Each test is self-contained
-2. **No manual registration**: `defineIssuanceTest()` returns configurations directly
-3. **No registry lookups**: Configurations returned from define function
-4. **Automatic discovery**: Custom steps are found via prototype chain inspection
-5. **Directory-based customization**: Custom steps and options live with the test
-
-**Credential Types:**
-- Previously: Configured in test metadata or `test.config.ts`
-- Now: Exclusively configured in `config.ini` [issuance] section
-
-**Custom Steps:**
-- Previously: Manually specified in test configuration object
-- Now: Automatically discovered from test directory using `extends` detection
-
-**Benefits:**
-- No centralized `test.config.ts` file to maintain
-- Tests are self-contained and easier to understand
-- Easier to add new tests (just create a new file)
-- Configuration co-located with test implementation
-- Less boilerplate code
-- Type-safe step detection via prototype chain
-
-### Migration Checklist
-
-- [ ] Remove centralized `test.config.ts` file
-- [ ] Update test specs to use `await defineIssuanceTest()` or `await definePresentationTest()`
-- [ ] Remove `export const testName` and registry imports
-- [ ] Use returned configurations instead of `registry.get()`
-- [ ] Move custom step classes to test directory (optional)
-- [ ] Create `step-options.ts` for step configuration (optional)
-- [ ] Move credential types to `config.ini` [issuance] section
-- [ ] Update test file naming to match pattern (e.g., `*.issuance.spec.ts`)
-- [ ] Test auto-discovery is working correctly
-
----
-
 ## 📖 Additional Resources
 
 - [IT Wallet Documentation](https://italia.github.io/eid-wallet-it-docs/)
 - [Credential Issuer Test Matrix](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans-credential-issuer.html)
 - [Credential Verifier Test Matrix](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans-presentation.html)
-- [CLAUDE.md](../CLAUDE.md) - Developer guide for this codebase
