@@ -25,6 +25,13 @@ export const configSchema = z.object({
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),
+  steps_mapping: z
+    .object({
+      default_steps_dir: z.string().optional(),
+      mapping: z.record(z.string(), z.string()).optional().default({}),
+    })
+    .optional()
+    .default({ mapping: {} }),
   testing: z
     .object({
       custom_step_pattern: z.string().default("**/*.ts"),

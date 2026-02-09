@@ -54,6 +54,9 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.presentationTestsDir) {
     env.CONFIG_PRESENTATION_TESTS_DIR = options.presentationTestsDir;
   }
+  if (options.stepsMapping) {
+    env.CONFIG_STEPS_MAPPING = options.stepsMapping;
+  }
 
   return env;
 }
@@ -105,6 +108,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--presentation-tests-dir <path>",
       "Override directory for presentation test specs",
+    )
+    .option(
+      "--steps-mapping <mapping>",
+      "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation)",
     );
 }
 

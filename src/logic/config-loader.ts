@@ -21,6 +21,7 @@ export interface CliOptions {
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
   saveCredential?: boolean;
+  stepsMapping?: string;
   timeout?: number;
 }
 
@@ -182,6 +183,22 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     partialConfig.trust_anchor = { port: options.port };
   }
 
+  if (options.stepsMapping) {
+    const mappings: Record<string, string> = {};
+    const pairs = options.stepsMapping.split(",");
+    for (const pair of pairs) {
+      const [key, value] = pair.split("=").map((s) => s.trim());
+      if (key && value) {
+        mappings[key] = value;
+      }
+    }
+    if (Object.keys(mappings).length > 0) {
+      partialConfig.steps_mapping = {
+        mapping: mappings,
+      };
+    }
+  }
+
   return partialConfig as Partial<Config>;
 }
 
@@ -240,7 +257,20 @@ function loadIniFile(filePath: string): null | Partial<Config> {
 
   try {
     const textConfig = readFileSync(filePath, "utf-8");
-    return parse(textConfig) as Partial<Config>;
+    const parsed = parse(textConfig) as any;
+
+    // Transform steps_mapping from flat structure to nested structure
+    // INI format: [steps_mapping] default_steps_dir = ... / key = value
+    // Target format: { default_steps_dir: "...", mapping: { key: value } }
+    if (parsed.steps_mapping) {
+      const { default_steps_dir, ...mappings } = parsed.steps_mapping;
+      parsed.steps_mapping = {
+        ...(default_steps_dir && { default_steps_dir }),
+        mapping: mappings,
+      };
+    }
+
+    return parsed as Partial<Config>;
   } catch (e) {
     const err = e as Error;
     throw new Error(`Failed to parse INI file ${filePath}: ${err.message}`);
@@ -300,6 +330,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_PRESENTATION_TESTS_DIR) {
     options.presentationTestsDir = process.env.CONFIG_PRESENTATION_TESTS_DIR;
+  }
+  if (process.env.CONFIG_STEPS_MAPPING) {
+    options.stepsMapping = process.env.CONFIG_STEPS_MAPPING;
   }
 
   return options;
