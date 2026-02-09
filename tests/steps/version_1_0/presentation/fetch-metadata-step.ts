@@ -6,6 +6,7 @@ import { fetchWithRetries } from "@/logic";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataExecuteResponse,
+  FetchMetadataOptions,
   FetchMetadataStepResponse,
 } from "@/step/fetch-metadata-step";
 
@@ -29,9 +30,9 @@ import {
 export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
   tag = "FETCH METADATA";
 
-  async run(): Promise<FetchMetadataStepResponse> {
+  async run(options: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
     const log = this.log.withTag(this.tag);
-    const url = `${this.prepareBaseUrl()}/.well-known/openid-federation`;
+    const url = `${options.baseUrl}/.well-known/openid-federation`;
 
     log.info("Discovering metadata...");
     log.info(`Fetching metadata from ${url}`);
@@ -72,28 +73,5 @@ export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
         status: res.response.status,
       };
     });
-  }
-
-  private prepareBaseUrl(): string {
-    if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
-      );
-      const clientId = authorizeUrl.searchParams.get("client_id");
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      const baseUrl = new URL(clientId);
-      this.log.info(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
-      );
-      return baseUrl.href;
-    }
-
-    return this.config.presentation.verifier;
   }
 }

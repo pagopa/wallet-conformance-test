@@ -11,6 +11,10 @@ export type FetchMetadataStepResponse = StepResult & {
   response?: FetchMetadataExecuteResponse;
 };
 
+export interface FetchMetadataOptions {
+  baseUrl: string;
+}
+
 /**
  * Flow step to fetch issuer or verifier metadata from the well-known endpoint.
  * It retrieves the entity statement JWT and its claims.
@@ -28,7 +32,7 @@ export type FetchMetadataStepResponse = StepResult & {
  */
 export class FetchMetadataDefaultStep extends StepFlow {
   tag = "FetchMetadata";
-  run(): Promise<FetchMetadataStepResponse> {
+  run(_: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
     this.log.warn("Method not implemented.");
     return Promise.resolve({ success: false });
   }

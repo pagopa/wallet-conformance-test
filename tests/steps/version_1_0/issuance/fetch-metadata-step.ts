@@ -6,6 +6,7 @@ import { fetchWithRetries } from "@/logic";
 import {
   FetchMetadataDefaultStep,
   FetchMetadataExecuteResponse,
+  FetchMetadataOptions,
   FetchMetadataStepResponse,
 } from "@/step/fetch-metadata-step";
 
@@ -29,9 +30,9 @@ import {
 export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
   tag = "FETCH METADATA";
 
-  async run(): Promise<FetchMetadataStepResponse> {
+  async run(options: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
     const log = this.log.withTag(this.tag);
-    const url = `${this.config.issuance.url}/.well-known/openid-federation`;
+    const url = `${options.baseUrl}/.well-known/openid-federation`;
 
     log.info("Discovering metadata...");
     log.info(`Fetching metadata from ${url}`);
