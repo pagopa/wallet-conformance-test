@@ -9,7 +9,6 @@ import {
   fetchWithRetries,
   getEncryptJweCallback,
   partialCallbacks,
-  signJwtCallback,
   verifyJwt,
 } from "@/logic";
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
@@ -28,7 +27,6 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
 
     log.info(`Starting Authorize Step`);
 
-    const { unitKey } = options.walletAttestation;
     const authorizeUrl = `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`;
 
     return this.execute<AuthorizeExecuteResponse>(async () => {

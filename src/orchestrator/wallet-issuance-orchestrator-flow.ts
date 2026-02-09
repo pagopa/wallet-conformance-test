@@ -3,6 +3,7 @@ import {
   AccessTokenRequest,
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
+import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
@@ -199,6 +200,19 @@ export class WalletIssuanceOrchestratorFlow {
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
+      this.log.info(
+        `Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`,
+      );
+      const credentialOffer = await resolveCredentialOffer({
+        callbacks: { fetch },
+        credentialOffer: this.config.issuance.credential_offer_uri,
+      });
+      this.log.debug(
+        "Recieved Credential Offer:\n",
+        JSON.stringify(credentialOffer),
+      );
+
+      this.log.info("Loading credentials...");
       let personIdentificationData: Credential;
       const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
 
@@ -243,6 +257,7 @@ export class WalletIssuanceOrchestratorFlow {
           {
             credential: personIdentificationData.compact,
             keyPair: credentialKeyPair,
+            typ: "dc+sd-jwt",
           },
         ],
         requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
@@ -273,6 +288,7 @@ export class WalletIssuanceOrchestratorFlow {
         grant_type: "authorization_code",
         redirect_uri: authorizeResponse.response.requestObject.response_uri,
       };
+
       const tokenResponse = await this.tokenRequestStep.run({
         accessTokenEndpoint:
           entityStatementClaims.metadata?.oauth_authorization_server
