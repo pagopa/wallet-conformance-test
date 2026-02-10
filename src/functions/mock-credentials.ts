@@ -3,7 +3,7 @@ import type { DisclosureFrame } from "@sd-jwt/types";
 import { Document } from "@auth0/mdl";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { encode, Tagged } from "cbor";
+import { decode, encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -36,10 +36,17 @@ export async function createMockMdoc(
     subject,
   );
 
+  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
+
   const document = await new Document("org.iso.18013.5.1.mDL")
     .addIssuerNameSpace("org.iso.18013.5.1", {
-      issuing_authority: "wallet_lab",
-      issuing_country: "IT",
+      birth_date: "1980-01-10",
+      birth_place: "Roma",
+      expiry_date: expiration.toISOString().slice(0, 10),
+      family_name: "Rossi",
+      given_name: "Mario",
+      nationalities: ["IT"],
+      personal_administrative_number: "XX00000XX",
     })
     .useDigestAlgorithm("SHA-256")
     .addValidityInfo({
@@ -62,7 +69,7 @@ export async function createMockMdoc(
   const nameSpaces = Object.entries(document.issuerSigned.nameSpaces).reduce(
     (prev, [nameSpace, items]) => ({
       ...prev,
-      [nameSpace]: items.map((item) => new Tagged(24, item.dataItem.buffer)),
+      [nameSpace]: items.map((item) => new Tagged(24, item.encode())),
     }),
     {},
   );
