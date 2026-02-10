@@ -128,6 +128,13 @@ export class WalletIssuanceOrchestratorFlow {
       });
       this.log.info("Wallet Attestation Loaded.");
 
+      this.log.info(`Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`);
+      const credentialOffer = await resolveCredentialOffer({
+        callbacks: { fetch },
+        credentialOffer: this.config.issuance.credential_offer_uri,
+      });
+      this.log.debug("Recieved Credential Offer:\n", JSON.stringify(credentialOffer));
+
       this.log.info("Creating Client Attestation DPoP...");
       const callbacks = {
         ...partialCallbacks,
@@ -151,7 +158,7 @@ export class WalletIssuanceOrchestratorFlow {
         const supportedIds = Object.keys(credentialConfigsSupported);
         const requestedId = this.issuanceConfig.credentialConfigurationId;
 
-        if (!supportedIds.includes(requestedId)) {
+        if (!supportedIds.includes(requestedId) || !credentialOffer.credential_configuration_ids.includes(requestedId)) {
           throw new Error(
             `Credential configuration '${requestedId}' is not supported by the issuer.\n` +
               `Supported credential configurations: ${supportedIds.join(", ")}\n` +
@@ -197,15 +204,8 @@ export class WalletIssuanceOrchestratorFlow {
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
-      this.log.info(`Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`);
-      const credentialOffer = await resolveCredentialOffer({
-        callbacks: { fetch },
-        credentialOffer: this.config.issuance.credential_offer_uri,
-      });
-      this.log.debug("Recieved Credential Offer:\n", JSON.stringify(credentialOffer));
-
       this.log.info("Loading credentials...")
-    	let personIdentificationData: Credential;
+      let personIdentificationData: Credential;
       const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
 
       try {
@@ -287,9 +287,7 @@ export class WalletIssuanceOrchestratorFlow {
         accessToken: tokenResponse.response?.access_token ?? "",
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialRequestEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.credential_endpoint,
+        credentialRequestEndpoint: credentialOffer.credential_issuer,
         nonce: nonce?.c_nonce ?? "",
         walletAttestation: walletAttestationResponse,
       });
