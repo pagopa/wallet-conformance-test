@@ -78,7 +78,12 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
           );
           const pushedAuthorizationRequest =
-            await createPushedAuthorizationRequest(createParOptions);
+            await createPushedAuthorizationRequest({
+              ...createParOptions,
+              authorizationServerMetadata: {
+                require_signed_request_object: true
+              }
+            });
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,
