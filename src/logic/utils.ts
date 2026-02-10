@@ -1,6 +1,5 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { X509Certificate, X509CertificateGenerator } from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";

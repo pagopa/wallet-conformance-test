@@ -47,12 +47,7 @@ export async function createVpTokenMdoc({
 
   const deviceResponse = await DeviceResponse.from(issuerMDoc)
     .usingPresentationDefinition(presentationDefinition)
-    .usingSessionTranscriptForOID4VP(
-      walletNonce,
-      clientId,
-      responseUri,
-      nonce,
-    )
+    .usingSessionTranscriptForOID4VP(walletNonce, clientId, responseUri, nonce)
     .authenticateWithSignature(devicePrivateKey, "ES256")
     .sign();
 
@@ -92,7 +87,7 @@ export function parseMdoc(credential: Buffer): IssuerSignedDocument {
     const nameSpaces = Object.entries(doc.nameSpaces).reduce(
       (prev, [nameSpace, items]) => ({
         ...prev,
-        [nameSpace]: items.map((item) => new Tagged(24, item.value)),
+        [nameSpace]: items.map((item) => decode(item.value)),
       }),
       {},
     );
