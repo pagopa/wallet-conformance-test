@@ -71,6 +71,7 @@ export async function createVpTokenMdoc({
  */
 export function parseMdoc(credential: Buffer): IssuerSignedDocument {
   try {
+    const x = decode(credential)
     const doc = parseWithErrorHandling(
       issuerSignedSchema,
       decode(credential),
