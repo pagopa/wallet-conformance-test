@@ -101,10 +101,24 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
   }
 }
 
+/**
+ * Converts a Base64 encoded DER certificate to PEM format.
+ *
+ * @param certificate The Base64 encoded DER certificate.
+ * @returns The certificate in PEM format.
+ */
 function convertBase64DerToPem(certificate: string): string {
   return `-----BEGIN CERTIFICATE-----\n${certificate}\n-----END CERTIFICATE-----`;
 }
 
+/**
+ * Extracts a JWK from a certificate chain (x5c).
+ *
+ * @param x5c An array of Base64 encoded DER certificates. The first certificate is used.
+ * @param alg The algorithm used for the key.
+ * @returns A promise that resolves to the extracted JWK.
+ * @throws An error if the certificate chain is missing or empty.
+ */
 async function jwkFromCertificateChain(
   x5c: string[] | undefined,
   alg: string,

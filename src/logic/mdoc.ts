@@ -12,6 +12,16 @@ import { decode, Tagged } from "cbor";
 
 import { issuerSignedSchema, KeyPair } from "@/types";
 
+/**
+ * Creates a Verifiable Presentation (VP) token in mdoc format.
+ *
+ * This function generates a `DeviceResponse` according to the OID4VP standard.
+ * The response includes the selected credentials from the mdoc, authenticated
+ * with the device's private key.
+ *
+ * @param options The options for creating the mdoc VP token.
+ * @returns A promise that resolves to an object containing the `DeviceResponse` encoded as a CBOR map.
+ */
 export async function createVpTokenMdoc({
   clientId,
   credential,

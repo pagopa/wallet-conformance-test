@@ -27,6 +27,15 @@ export const partialCallbacks: Pick<
   verifyJwt,
 };
 
+/**
+ * Fetches a resource with a specified number of retries on failure.
+ *
+ * @param url The URL of the resource to fetch.
+ * @param network The network configuration, including timeout and max retries.
+ * @param init Optional request initialization options.
+ * @returns A promise that resolves to the fetch response and the number of attempts made.
+ * @throws An error if the request times out or fails after all retries.
+ */
 export async function fetchWithRetries(
   url: Request | string | URL,
   network: Config["network"],
@@ -96,6 +105,15 @@ export const loadJsonDumps = (
   }
 };
 
+/**
+ * Loads a certificate from a file, or creates and saves it if it doesn't exist.
+ *
+ * @param certPath The directory path where the certificate is stored.
+ * @param filename The name of the certificate file.
+ * @param keyPair The key pair to use if creating a new certificate.
+ * @param subject The subject name to use if creating a new certificate.
+ * @returns A promise that resolves to the certificate in PEM format.
+ */
 export async function loadCertificate(
   certPath: string,
   filename: string,
