@@ -1,12 +1,13 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
+import { X509Certificate, X509CertificateGenerator } from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveKeys, verifyJwt } from ".";
+import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
 
 // Re-export config loading functions
 export {
@@ -95,6 +96,42 @@ export const loadJsonDumps = (
   }
 };
 
+export async function loadCertificate(
+  certPath: string,
+  filename: string,
+  keyPair: KeyPair,
+  subject: string,
+): Promise<string> {
+  try {
+    if (!existsSync(certPath))
+      mkdirSync(certPath, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories ${certPath}: ${err.message}`,
+    );
+  }
+
+  try {
+    const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
+    const certDerBase64 = certPem
+      .replace("-----BEGIN CERTIFICATE-----", "")
+      .replace("-----END CERTIFICATE-----", "")
+      .replace(/\s+/g, "")
+      .trim();
+
+    return certDerBase64;
+  } catch {
+    return await createAndSaveCertificate(
+      `${certPath}/${filename}`,
+      keyPair,
+      subject,
+    );
+  }
+}
+
 /**
  * Loads or generates JWKS saving it to a file.
  * @param jwksPath The directory path where JWKS files are stored.
@@ -123,6 +160,28 @@ export async function loadJwks(
   } catch {
     return await createAndSaveKeys(`${jwksPath}/${filename}`);
   }
+}
+
+export async function loadJwksWithSelfSignedX5c(
+  trust: Config["trust"],
+  namePrefix: string,
+): Promise<KeyPair> {
+  const signedJwks = await loadJwks(
+    trust.federation_trust_anchors_jwks_path,
+    `${namePrefix}_jwks`,
+  );
+
+  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
+    signedJwks.publicKey.x5c = [
+      await loadCertificate(
+        trust.ca_cert_path,
+        `${namePrefix}_cert`,
+        signedJwks,
+        trust.certificate_subject,
+      ),
+    ];
+
+  return signedJwks;
 }
 
 /**
