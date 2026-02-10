@@ -67,7 +67,7 @@ function setLogOptions(
         .replace(/%\(utc\)/, logObj.date.toUTCString())
         .replace(/%\(date\)/, logObj.date.toISOString())
         .replace(/%\(tag\)/, logObj.tag)
-        .replace(/%\(levelname\)/, logObj.type.toUpperCase().padEnd(5, ' '))
+        .replace(/%\(levelname\)/, logObj.type.toUpperCase().padEnd(5, " "))
         .replace(/%\(message\)/, logObj.args.join(" ") ?? "");
 
     reporters.push({

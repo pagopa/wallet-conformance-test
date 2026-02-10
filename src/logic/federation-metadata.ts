@@ -7,7 +7,7 @@ import {
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback } from "./jwt";
-import { loadJsonDumps, loadJwks } from "./utils";
+import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<ItWalletEntityConfigurationClaimsOptions, "exp" | "iat">;
@@ -58,7 +58,7 @@ export const createFederationMetadata = async (
  * @returns The signed federation metadata JWT as a string.
  */
 export const createTrustAnchorMetadata = async (options: {
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
 }): Promise<string> => {
   const placeholders = {
@@ -66,10 +66,11 @@ export const createTrustAnchorMetadata = async (options: {
     trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
   const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
-  const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
-    "trust_anchor_jwks",
+  const signedJwks = await loadJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor",
   );
+
   return await createFederationMetadata({
     claims,
     entityPublicJwk: signedJwks.publicKey,
@@ -138,8 +139,8 @@ export const createSubordinateTrustAnchorMetadata = async (
  * Options for creating subordinate wallet metadata.
  */
 export interface CreateSubordinateWalletUnitMetadataOptions {
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   sub: string;
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
   walletBackupStoragePath: string;
 }
@@ -153,10 +154,11 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 export const createSubordinateWalletUnitMetadata = async (
   options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
-  const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
-    "trust_anchor_jwks",
+  const signedJwks = await loadJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor",
   );
+
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
     "wallet_unit_jwks",

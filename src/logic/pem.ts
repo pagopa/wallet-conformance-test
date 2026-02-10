@@ -1,0 +1,59 @@
+import * as x509 from "@peculiar/x509";
+import { writeFileSync } from "node:fs";
+
+import { KeyPair } from "@/types";
+
+export async function createAndSaveCertificate(
+  fileName: string,
+  keyPair: KeyPair,
+  subject: string,
+): Promise<string> {
+  // Import JWK -> CryptoKey
+  const signingAlgorithm = {
+    hash: "SHA-256",
+    name: "ECDSA",
+    namedCurve: "P-256",
+  };
+
+  const privateKey = await crypto.subtle.importKey(
+    "jwk",
+    keyPair.privateKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign"],
+  );
+
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    keyPair.publicKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["verify"],
+  );
+
+  const keys = { privateKey, publicKey };
+
+  // Create self-signed cert (X.509)
+  const now = new Date();
+  const cert = await x509.X509CertificateGenerator.createSelfSigned({
+    extensions: [
+      new x509.BasicConstraintsExtension(false, undefined, true),
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature, true),
+      new x509.ExtendedKeyUsageExtension(
+        [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
+        false,
+      ),
+      await x509.SubjectKeyIdentifierExtension.create(publicKey),
+    ],
+    keys,
+    name: subject,
+    notBefore: now,
+    signingAlgorithm,
+  });
+
+  // Export certificate to PEM
+  const certDer = Buffer.from(cert.rawData).toString("base64");
+
+  writeFileSync(fileName, cert.toString("pem"));
+  return certDer;
+}
