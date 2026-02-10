@@ -39,28 +39,26 @@ export async function createVpTokenMdoc({
   queryId: string;
   responseUri: string;
 }) {
-  {
-    const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
-    const issuerMDoc = new MDoc([issuerSigned]).encode();
-    const walletNonce = Buffer.from(
-      crypto.getRandomValues(new Uint8Array(16)),
-    ).toString("base64url");
+  const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
+  const issuerMDoc = new MDoc([issuerSigned]).encode();
+  const walletNonce = Buffer.from(
+    crypto.getRandomValues(new Uint8Array(16)),
+  ).toString("base64url");
 
-    const deviceResponse = await DeviceResponse.from(issuerMDoc)
-      .usingPresentationDefinition(presentationDefinition)
-      .usingSessionTranscriptForOID4VP(
-        walletNonce,
-        clientId,
-        responseUri,
-        nonce,
-      )
-      .authenticateWithSignature(devicePrivateKey, "ES256")
-      .sign();
+  const deviceResponse = await DeviceResponse.from(issuerMDoc)
+    .usingPresentationDefinition(presentationDefinition)
+    .usingSessionTranscriptForOID4VP(
+      walletNonce,
+      clientId,
+      responseUri,
+      nonce,
+    )
+    .authenticateWithSignature(devicePrivateKey, "ES256")
+    .sign();
 
-    return {
-      [queryId]: deviceResponse.encode(),
-    };
-  }
+  return {
+    [queryId]: deviceResponse.encode(),
+  };
 }
 
 /**

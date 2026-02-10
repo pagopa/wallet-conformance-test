@@ -22,9 +22,9 @@ export async function createMockMdoc(
   backupPath: string,
   credentialsPath: string,
 ): Promise<Credential> {
-  const issuerKeyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
+  const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
-  const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
+  const credentialIdentifier = "mso_mdoc_mDL";
   const { publicKey: deviceKey } = await loadJwks(
     backupPath,
     `${credentialIdentifier}_jwks`,
@@ -70,16 +70,17 @@ export async function createMockMdoc(
   const compact = encode({
     issuerAuth: [
       encode(issuerAuth.protectedHeaders),
-      issuerAuth.unprotectedHeaders,
+      unprotectedHeaders,
       issuerAuth.payload,
       issuerAuth.signature,
     ],
     nameSpaces,
   }).toString("base64url");
   document.issuerSigned.nameSpaces = nameSpaces;
+
   writeFileSync(`${credentialsPath}/${credentialIdentifier}`, compact);
   return {
-    compact: compact,
+    compact,
     parsed: document,
     typ: "mso_mdoc",
   };
