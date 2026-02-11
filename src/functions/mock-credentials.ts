@@ -9,6 +9,7 @@ import { writeFileSync } from "node:fs";
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  loadCertificate,
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
@@ -92,6 +93,12 @@ export async function createMockSdJwt(
 
   const vct = "urn:eudi:pid:1";
   const vctIntegrity = await generateSRIHash(vct);
+  const certificate = loadCertificate(
+    backupPath,
+    "issuer_cert",
+    issuer.keyPair,
+    "CN=test_issuer",
+  );
 
   const credential = await sdjwt.issue(
     {
@@ -115,6 +122,7 @@ export async function createMockSdJwt(
         kid: issuer.keyPair.privateKey.kid,
         trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
+        x5c: certificate,
       },
     },
   );
