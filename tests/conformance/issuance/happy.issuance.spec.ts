@@ -1,9 +1,6 @@
 /* eslint-disable max-lines-per-function */
-import { issuerRegistry } from "#/config";
 
-// Import test configuration - this will register all configurations
-import "../test.config";
-
+import { defineIssuanceTest } from "#/config/test-metadata";
 import { SDJwt } from "@sd-jwt/core";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -21,12 +18,11 @@ import {
 } from "@/step/issuance";
 import { AttestationResponse } from "@/types";
 
-import { HAPPY_FLOW_ISSUANCE_NAME } from "../test.config";
+// Define and auto-register test configuration
+const testConfigs = await defineIssuanceTest("HappyFlowIssuance");
 
-// Get the test configuration from the registry
-// The configuration must be registered before running the tests
-issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
-  describe(`[${testConfig.name}] Credential Issuer Tests`, async () => {
+testConfigs.forEach((testConfig) => {
+  describe(`[${testConfig.name}] Credential Issuer Tests`, () => {
     const orchestrator: WalletIssuanceOrchestratorFlow =
       new WalletIssuanceOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
@@ -63,7 +59,9 @@ issuerRegistry.get(HAPPY_FLOW_ISSUANCE_NAME).forEach((testConfig) => {
         baseLog.info("");
       } catch (e) {
         baseLog.error("❌ Issuance flow failed with error:", e);
-        baseLog.error("❌ Your implementation did not complete the issuance flow.");
+        baseLog.error(
+          "❌ Your implementation did not complete the issuance flow.",
+        );
         baseLog.error("========================================");
         throw e;
       } finally {

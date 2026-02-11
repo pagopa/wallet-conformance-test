@@ -1,4 +1,3 @@
-import { fetchWithRetries } from "@/logic";
 import { StepFlow, StepResult } from "@/step";
 
 export interface NonceRequestExecuteResponse {
@@ -18,30 +17,15 @@ export interface NonceRequestStepOptions {
 
 export type NonceResponsePayload = Record<string, unknown>;
 
+/**
+ * Flow step to request a nonce from the issuer's nonce endpoint.
+ * The nonce is typically used in subsequent requests to ensure freshness and prevent replay attacks.
+ */
 export class NonceRequestDefaultStep extends StepFlow {
   tag = "NONCE_REQUEST";
 
-  async run(options: NonceRequestStepOptions): Promise<NonceRequestResponse> {
-    const log = this.log.withTag(this.tag);
-
-    log.info(`Starting Nonce Request Step`);
-
-    return this.execute<NonceRequestExecuteResponse>(async () => {
-      log.info("Fetching Nonce from", options.nonceEndpoint);
-      const fetchNonce = await fetchWithRetries(
-        options.nonceEndpoint,
-        this.config.network,
-        {
-          method: "POST",
-        },
-      );
-
-      return {
-        attempts: fetchNonce.attempts,
-        cacheControl: fetchNonce.response.headers.get("Cache-Control"),
-        contentType: fetchNonce.response.headers.get("Content-Type"),
-        nonce: await fetchNonce.response.json(),
-      };
-    });
+  async run(_: NonceRequestStepOptions): Promise<NonceRequestResponse> {
+    this.log.warn("Method not implemented.");
+    return Promise.resolve({ success: false });
   }
 }

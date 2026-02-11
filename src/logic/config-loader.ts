@@ -13,12 +13,15 @@ export interface CliOptions {
   credentialIssuerUri?: string;
   credentialTypes?: string;
   fileIni?: string;
+  issuanceTestsDir?: string;
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
   port?: number;
   presentationAuthorizeUri?: string;
+  presentationTestsDir?: string;
   saveCredential?: boolean;
+  stepsMapping?: string;
   timeout?: number;
 }
 
@@ -116,15 +119,16 @@ export function loadConfigWithHierarchy(
  *       variables (CONFIG_CREDENTIAL_TYPE) to filter which credential types to test.
  */
 function cliOptionsToConfig(options: CliOptions): Partial<Config> {
-  const partialConfig: Record<string, any> = {};
+  const partialConfig: Partial<Config> = {};
 
   // Map CLI options to config structure
   if (
     options.credentialIssuerUri ||
     options.credentialTypes ||
-    options.saveCredential !== undefined
+    options.saveCredential !== undefined ||
+    options.issuanceTestsDir
   ) {
-    const issuance: Record<string, unknown> = {};
+    const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
       issuance.url = options.credentialIssuerUri;
     }
@@ -137,38 +141,62 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     if (options.saveCredential !== undefined) {
       issuance.save_credential = options.saveCredential;
     }
-    partialConfig.issuance = issuance;
+    if (options.issuanceTestsDir) {
+      issuance.tests_dir = options.issuanceTestsDir;
+    }
+    partialConfig.issuance = issuance as Config["issuance"];
   }
-  if (options.presentationAuthorizeUri) {
-    partialConfig.presentation = {
-      authorize_request_url: options.presentationAuthorizeUri,
-    };
+  if (options.presentationAuthorizeUri || options.presentationTestsDir) {
+    const presentation: Partial<Config["presentation"]> = {};
+    if (options.presentationAuthorizeUri) {
+      presentation.authorize_request_url = options.presentationAuthorizeUri;
+    }
+    if (options.presentationTestsDir) {
+      presentation.tests_dir = options.presentationTestsDir;
+    }
+    partialConfig.presentation = presentation as Config["presentation"];
   }
 
   if (options.timeout !== undefined || options.maxRetries !== undefined) {
-    const network: Record<string, number> = {};
+    const network: Partial<Config["network"]> = {};
     if (options.timeout !== undefined) {
       network.timeout = options.timeout;
     }
     if (options.maxRetries !== undefined) {
       network.max_retries = options.maxRetries;
     }
-    partialConfig.network = network;
+    partialConfig.network = network as Config["network"];
   }
 
   if (options.logLevel || options.logFile) {
-    const logging: Record<string, string> = {};
+    const logging: Partial<Config["logging"]> = {};
     if (options.logLevel) {
       logging.log_level = options.logLevel;
     }
     if (options.logFile) {
       logging.log_file = options.logFile;
     }
-    partialConfig.logging = logging;
+    partialConfig.logging = logging as Config["logging"];
   }
 
   if (options.port !== undefined) {
     partialConfig.trust_anchor = { port: options.port };
+  }
+
+  if (options.stepsMapping) {
+    const mappings: Record<string, string> = {};
+    const pairs = options.stepsMapping.split(",");
+    for (const pair of pairs) {
+      const [key, value] = pair.split("=").map((s) => s.trim());
+      if (key && value) {
+        mappings[key] = value;
+      }
+    }
+    if (Object.keys(mappings).length > 0) {
+      partialConfig.steps_mapping = {
+        mapping: mappings,
+      };
+    }
   }
 
   return partialConfig as Partial<Config>;
@@ -218,6 +246,15 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | string | Record<string, unknown>
+>;
+
+/**
  * Loads configuration from an INI file
  * @param filePath Path to the INI file
  * @returns Parsed configuration object or null if file doesn't exist
@@ -229,7 +266,22 @@ function loadIniFile(filePath: string): null | Partial<Config> {
 
   try {
     const textConfig = readFileSync(filePath, "utf-8");
-    return parse(textConfig) as Partial<Config>;
+    const parsed = parse(textConfig) as ParsedIniConfig;
+
+    // Transform steps_mapping from flat structure to nested structure
+    // INI format: [steps_mapping] default_steps_dir = ... / key = value
+    // Target format: { default_steps_dir: "...", mapping: { key: value } }
+    if (parsed.steps_mapping && typeof parsed.steps_mapping === "object") {
+      const stepsMappingRaw = parsed.steps_mapping as Record<string, unknown>;
+      const { default_steps_dir, ...mappings } = stepsMappingRaw;
+      parsed.steps_mapping = {
+        ...(default_steps_dir &&
+          typeof default_steps_dir === "string" && { default_steps_dir }),
+        mapping: mappings as Record<string, string>,
+      };
+    }
+
+    return parsed as Partial<Config>;
   } catch (e) {
     const err = e as Error;
     throw new Error(`Failed to parse INI file ${filePath}: ${err.message}`);
@@ -283,6 +335,15 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_SAVE_CREDENTIAL) {
     options.saveCredential = process.env.CONFIG_SAVE_CREDENTIAL === "true";
+  }
+  if (process.env.CONFIG_ISSUANCE_TESTS_DIR) {
+    options.issuanceTestsDir = process.env.CONFIG_ISSUANCE_TESTS_DIR;
+  }
+  if (process.env.CONFIG_PRESENTATION_TESTS_DIR) {
+    options.presentationTestsDir = process.env.CONFIG_PRESENTATION_TESTS_DIR;
+  }
+  if (process.env.CONFIG_STEPS_MAPPING) {
+    options.stepsMapping = process.env.CONFIG_STEPS_MAPPING;
   }
 
   return options;

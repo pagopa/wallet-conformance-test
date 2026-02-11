@@ -1,52 +1,31 @@
-import { FetchMetadataDefaultStep, FetchMetadataOptions } from "@/step";
-import {
-  AuthorizationRequestDefaultStep,
-  AuthorizationRequestOptions,
-} from "@/step/presentation/authorization-request-step";
+import { FetchMetadataDefaultStep } from "@/step";
+import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
 
-import { TestConfiguration } from "./test-registry";
-
 interface PresentationTestConfigurationOptions {
-  authorize?: {
-    options?: Partial<AuthorizationRequestOptions>;
-    stepClass?: typeof AuthorizationRequestDefaultStep;
-  };
-  fetchMetadata?: {
-    options?: Partial<FetchMetadataOptions>;
-    stepClass?: typeof FetchMetadataDefaultStep;
-  };
+  authorizeStepClass: typeof AuthorizationRequestDefaultStep;
+  fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
   name: string;
-  redirectUri?: {
-    stepClass?: typeof RedirectUriDefaultStep;
-  };
+  redirectUriStepClass: typeof RedirectUriDefaultStep;
 }
 
 /**
  * Configuration class for Presentation conformance tests
  */
-export class PresentationTestConfiguration implements TestConfiguration {
-  public readonly authorize: PresentationTestConfigurationOptions["authorize"];
-  public readonly fetchMetadata: PresentationTestConfigurationOptions["fetchMetadata"];
+export class PresentationTestConfiguration {
+  public readonly authorizeStepClass: PresentationTestConfigurationOptions["authorizeStepClass"];
+  public readonly fetchMetadataStepClass: PresentationTestConfigurationOptions["fetchMetadataStepClass"];
   public readonly name: string;
-  public readonly redirectUri: PresentationTestConfigurationOptions["redirectUri"];
+  public readonly redirectUriStepClass: PresentationTestConfigurationOptions["redirectUriStepClass"];
 
   constructor(config: PresentationTestConfigurationOptions) {
     this.name = config.name;
-
-    this.fetchMetadata = {
-      options: config.fetchMetadata?.options,
-      stepClass: config.fetchMetadata?.stepClass ?? FetchMetadataDefaultStep,
-    };
-
-    this.authorize = {
-      options: config.authorize?.options,
-      stepClass: config.authorize?.stepClass ?? AuthorizationRequestDefaultStep,
-    };
-
-    this.redirectUri = {
-      stepClass: config.redirectUri?.stepClass ?? RedirectUriDefaultStep,
-    };
+    this.fetchMetadataStepClass =
+      config.fetchMetadataStepClass ?? FetchMetadataDefaultStep;
+    this.authorizeStepClass =
+      config.authorizeStepClass ?? AuthorizationRequestDefaultStep;
+    this.redirectUriStepClass =
+      config.redirectUriStepClass ?? RedirectUriDefaultStep;
   }
 
   static createCustom(
@@ -57,16 +36,10 @@ export class PresentationTestConfiguration implements TestConfiguration {
 
   static createDefault(): PresentationTestConfiguration {
     return new PresentationTestConfiguration({
-      authorize: {
-        stepClass: AuthorizationRequestDefaultStep,
-      },
-      fetchMetadata: {
-        stepClass: FetchMetadataDefaultStep,
-      },
+      authorizeStepClass: AuthorizationRequestDefaultStep,
+      fetchMetadataStepClass: FetchMetadataDefaultStep,
       name: "Presentation Happy Flow",
-      redirectUri: {
-        stepClass: RedirectUriDefaultStep,
-      },
+      redirectUriStepClass: RedirectUriDefaultStep,
     });
   }
 }

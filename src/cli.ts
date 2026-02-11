@@ -48,6 +48,15 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.saveCredential !== undefined) {
     env.CONFIG_SAVE_CREDENTIAL = options.saveCredential.toString();
   }
+  if (options.issuanceTestsDir) {
+    env.CONFIG_ISSUANCE_TESTS_DIR = options.issuanceTestsDir;
+  }
+  if (options.presentationTestsDir) {
+    env.CONFIG_PRESENTATION_TESTS_DIR = options.presentationTestsDir;
+  }
+  if (options.stepsMapping) {
+    env.CONFIG_STEPS_MAPPING = options.stepsMapping;
+  }
 
   return env;
 }
@@ -91,6 +100,18 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--save-credential",
       "Save the received credential to disk after test issuance",
+    )
+    .option(
+      "--issuance-tests-dir <path>",
+      "Override directory for issuance test specs",
+    )
+    .option(
+      "--presentation-tests-dir <path>",
+      "Override directory for presentation test specs",
+    )
+    .option(
+      "--steps-mapping <mapping>",
+      "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation)",
     );
 }
 
