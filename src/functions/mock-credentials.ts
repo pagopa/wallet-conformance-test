@@ -1,7 +1,9 @@
 import type { DisclosureFrame } from "@sd-jwt/types";
 
+import { Document } from "@auth0/mdl";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { decode, encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -9,10 +11,87 @@ import { writeFileSync } from "node:fs";
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  loadCertificate,
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
 import { Credential } from "@/types";
+
+export async function createMockMdoc(
+  subject: string,
+  backupPath: string,
+  credentialsPath: string,
+): Promise<Credential> {
+  const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
+
+  const credentialIdentifier = "mso_mdoc_mDL";
+  const { publicKey: deviceKey } = await loadJwks(
+    backupPath,
+    `${credentialIdentifier}_jwks`,
+  );
+  const issuerCertificate = await loadCertificate(
+    backupPath,
+    `${credentialIdentifier}_cert`,
+    issuerKeyPair,
+    subject,
+  );
+
+  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
+
+  const document = await new Document("org.iso.18013.5.1.mDL")
+    .addIssuerNameSpace("org.iso.18013.5.1", {
+      birth_date: "1980-01-10",
+      birth_place: "Roma",
+      expiry_date: expiration.toISOString().slice(0, 10),
+      family_name: "Rossi",
+      given_name: "Mario",
+      nationalities: ["IT"],
+      personal_administrative_number: "XX00000XX",
+    })
+    .useDigestAlgorithm("SHA-256")
+    .addValidityInfo({
+      signed: new Date(),
+    })
+    .addDeviceKeyInfo({ deviceKey })
+    .sign({
+      alg: "ES256",
+      issuerCertificate,
+      issuerPrivateKey: issuerKeyPair.privateKey,
+    });
+
+  const issuerAuth = document.issuerSigned.issuerAuth;
+
+  const unprotectedHeaders = new Map<number, Buffer>();
+  issuerAuth.unprotectedHeaders.forEach((v: unknown, k: number) =>
+    unprotectedHeaders.set(k, encode(v)),
+  );
+
+  const nameSpaces = Object.entries(document.issuerSigned.nameSpaces).reduce(
+    (prev, [nameSpace, items]) => ({
+      ...prev,
+      [nameSpace]: items.map((item) => new Tagged(24, item.encode())),
+    }),
+    {},
+  );
+
+  const compact = encode({
+    issuerAuth: [
+      encode(issuerAuth.protectedHeaders),
+      unprotectedHeaders,
+      issuerAuth.payload,
+      issuerAuth.signature,
+    ],
+    nameSpaces,
+  }).toString("base64url");
+  document.issuerSigned.nameSpaces = nameSpaces;
+
+  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, compact);
+  return {
+    compact,
+    parsed: document,
+    typ: "mso_mdoc",
+  };
+}
 
 export async function createMockSdJwt(
   metadata: {

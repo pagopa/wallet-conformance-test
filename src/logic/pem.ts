@@ -3,6 +3,14 @@ import { writeFileSync } from "node:fs";
 
 import { KeyPair } from "@/types";
 
+/**
+ * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
+ *
+ * @param fileName The name of the file to save the certificate to.
+ * @param keyPair The key pair to use for signing the certificate.
+ * @param subject The subject name for the certificate.
+ * @returns A promise that resolves to the certificate in PEM format.
+ */
 export async function createAndSaveCertificate(
   fileName: string,
   keyPair: KeyPair,
