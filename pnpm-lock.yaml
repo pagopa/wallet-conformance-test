@@ -12,20 +12,20 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       '@pagopa/io-wallet-oauth2':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: 1.0.0-alpha-20260212091348
+        version: 1.0.0-alpha-20260212091348
       '@pagopa/io-wallet-oid-federation':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: 1.0.0-alpha-20260212091348
+        version: 1.0.0-alpha-20260212091348
       '@pagopa/io-wallet-oid4vci':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: 1.0.0-alpha-20260212091348
+        version: 1.0.0-alpha-20260212091348
       '@pagopa/io-wallet-oid4vp':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: 1.0.0-alpha-20260212091348
+        version: 1.0.0-alpha-20260212091348
       '@pagopa/io-wallet-utils':
-        specifier: ^0.7.6
-        version: 0.7.6
+        specifier: 1.0.0-alpha-20260212091348
+        version: 1.0.0-alpha-20260212091348
       '@peculiar/x509':
         specifier: ^1.14.3
         version: 1.14.3
@@ -404,8 +404,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@openid-federation/core@0.2.0':
-    resolution: {integrity: sha512-6tb9znTNJvFLAhcIp9XhFrgEU3Uxb42+mxQ4Fz/RKWNTEIybeq/b902OZzUm4m80RUXroNW7MU3CJutF6xSNwA==}
+  '@openid-federation/core@0.2.1':
+    resolution: {integrity: sha512-vYAi8kDNZWo/910+Z2fWTU/8+/tolNIOFU2KJhGyjTDBcPUavGLiZF8NB86K0ERHDMAGqoMKq4ExA1E9WVYywA==}
 
   '@openid4vc/oauth2@0.3.0-alpha-20250714110838':
     resolution: {integrity: sha512-SR/HP818TCMBcr9Fpi+lS7xIA65AAFxhHsrjmxnxXQjWTBUEx6P4nhZbcw6T65AAuB8I0QzE3zzz+MRAFqunwQ==}
@@ -424,20 +424,20 @@ packages:
     peerDependencies:
       eslint: ^9.30.0
 
-  '@pagopa/io-wallet-oauth2@0.7.6':
-    resolution: {integrity: sha512-m+DloYhQavEDMJigEy3NHAjTjuZudM6n04PeQfkH34SO1N3Z7iQGeN/4i/Rv9c8L7IrNVYe822kZy3gxiTfUqQ==}
+  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260212091348':
+    resolution: {integrity: sha512-fXl42RarL7ch5gs2NuuPkkbLtHTY5XSTZe2xQP/stodKn0BRsFjVxT241jzQHReP+VoQdVATOsDNuisCMpXSLQ==}
 
-  '@pagopa/io-wallet-oid-federation@0.7.6':
-    resolution: {integrity: sha512-HEaicQFGw8VW4KJbLP2WJBEnmhlDLGrRi2BxwtTUQbOAIUNX8Z2IzV5wwZlwXo5lHuXOmKxvjML8T6TGZ6dtyg==}
+  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260212091348':
+    resolution: {integrity: sha512-iqPmKpAEoVWXZtB3/dODLuHJgsrzjAO2fT7d6Uui87baooINOSqvq8ElzRMe5TsYj0jKd+UCS9WuV4HFhJU3FA==}
 
-  '@pagopa/io-wallet-oid4vci@0.7.6':
-    resolution: {integrity: sha512-14b4bmq0fmxfzIVhJYd4p21p3PX6C7PxhHGFGrUqGiyrQAdNBdoZOfJ1MH889xC1d7N7ow9eTW5Ou00HQAWC+g==}
+  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260212091348':
+    resolution: {integrity: sha512-RpqjlBUKZkcij744hiJKNTuh5GjVND0MgVeX93hiRQlmrp65TFcq1NCLaXJKx2yYvVr1NUWt92hTzCb36fyXiw==}
 
-  '@pagopa/io-wallet-oid4vp@0.7.6':
-    resolution: {integrity: sha512-ReqGLlIPhUGXBSRXyPhCY44pVFUNumtuBcRPMX+/o3Fy4k1MB2sVL7y4Cco8HGKRQMHWMnGm33aRNq26QV3LXQ==}
+  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260212091348':
+    resolution: {integrity: sha512-m3rOM7LR1wFLtudkQSVKRC95+FmgLuoSmkpdmgOin1j5igF+QC8dAbVUyqPJbTcprJoSRUgU0q08JCQADc1lpg==}
 
-  '@pagopa/io-wallet-utils@0.7.6':
-    resolution: {integrity: sha512-PD861RRVKe1d4O03tPW2d+pQsGVL2/ANMOAZIiAGop494TT0VEWxmbVNoTRupzTYTd2CCuOCU/ZQFxVjatnGtg==}
+  '@pagopa/io-wallet-utils@1.0.0-alpha-20260212091348':
+    resolution: {integrity: sha512-2U9+M5ZmQLGxOhKoiWT2kzIfxrMyg7NaLIIustryK1zctzLxWKdpL8MXFJ/Iq/uXF9HlRTcSiAV4rm9ycFexoQ==}
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
@@ -2128,7 +2128,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@openid-federation/core@0.2.0':
+  '@openid-federation/core@0.2.1':
     dependencies:
       buffer: 6.0.3
       zod: 3.25.76
@@ -2171,41 +2171,42 @@ snapshots:
       - supports-color
       - vitest
 
-  '@pagopa/io-wallet-oauth2@0.7.6':
+  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260212091348':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-utils': 0.7.6
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260212091348
       js-base64: 3.7.8
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid-federation@0.7.6':
+  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260212091348':
     dependencies:
-      '@openid-federation/core': 0.2.0
+      '@openid-federation/core': 0.2.1
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vci@0.7.6':
+  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260212091348':
     dependencies:
-      '@openid-federation/core': 0.2.0
+      '@openid-federation/core': 0.2.1
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vci': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oauth2': 0.7.6
-      '@pagopa/io-wallet-oid4vp': 0.7.6
-      '@pagopa/io-wallet-utils': 0.7.6
+      '@pagopa/io-wallet-oauth2': 1.0.0-alpha-20260212091348
+      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260212091348
+      '@pagopa/io-wallet-oid4vp': 1.0.0-alpha-20260212091348
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260212091348
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vp@0.7.6':
+  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260212091348':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vp': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oid-federation': 0.7.6
-      '@pagopa/io-wallet-utils': 0.7.6
+      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260212091348
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260212091348
       zod: 3.25.76
 
-  '@pagopa/io-wallet-utils@0.7.6':
+  '@pagopa/io-wallet-utils@1.0.0-alpha-20260212091348':
     dependencies:
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
 
