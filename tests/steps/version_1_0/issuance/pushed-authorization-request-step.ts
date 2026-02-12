@@ -81,8 +81,8 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             await createPushedAuthorizationRequest({
               ...createParOptions,
               authorizationServerMetadata: {
-                require_signed_request_object: true
-              }
+                require_signed_request_object: true,
+              },
             });
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
