@@ -1,8 +1,7 @@
 import { DcqlQuery, type DcqlQueryResult } from "dcql";
 
 import type { Logger } from "@/types/logger";
-
-import { parseCredentialFromSdJwt } from "./vpToken";
+import { parseCredentialFromMdoc, parseCredentialFromSdJwt } from "./vpToken";
 
 type DcqlMatchSuccess = Extract<
   DcqlQueryResult.CredentialMatch,
@@ -103,16 +102,19 @@ export async function validateDcqlQuery(
   logger?.info(`Dcql Query requested: ${JSON.stringify(parsedQuery)}`);
 
   const parsedCredentials = await Promise.all(
-    credentials.map((credential) => parseCredentialFromSdJwt(credential)),
+    credentials.map(async (credential) => {
+      try {
+        return await parseCredentialFromSdJwt(credential);
+      } catch {
+        return parseCredentialFromMdoc(credential);
+      }
+    }),
   );
 
   // Log credentials available in the wallet
   logger?.info(
     `Credentials available in the wallet (${parsedCredentials.length}):`,
   );
-  parsedCredentials.forEach((c, i) => {
-    logger?.info(`  [${i + 1}] format: ${c.credential_format}, vct: ${c.vct}`);
-  });
 
   // Log credentials requested by the DCQL query
   const requestedCredentials = parsedQuery.credentials;
