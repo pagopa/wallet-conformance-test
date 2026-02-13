@@ -5,14 +5,14 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 
-import { loadAttestation, loadCredentials, createMockSdJwt } from "@/functions";
+import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
   loadJwks,
   partialCallbacks,
   saveCredentialToDisk,
-  signJwtCallback
+  signJwtCallback,
 } from "@/logic";
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
@@ -116,7 +116,9 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
-      const fetchMetadataResponse = await this.fetchMetadataStep.run({ baseUrl: this.config.issuance.url });
+      const fetchMetadataResponse = await this.fetchMetadataStep.run({
+        baseUrl: this.config.issuance.url,
+      });
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
       this.log.info("Loading Wallet Attestation...");
@@ -128,12 +130,17 @@ export class WalletIssuanceOrchestratorFlow {
       });
       this.log.info("Wallet Attestation Loaded.");
 
-      this.log.info(`Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`);
+      this.log.info(
+        `Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`,
+      );
       const credentialOffer = await resolveCredentialOffer({
         callbacks: { fetch },
         credentialOffer: this.config.issuance.credential_offer_uri,
       });
-      this.log.debug("Recieved Credential Offer:\n", JSON.stringify(credentialOffer));
+      this.log.debug(
+        "Received Credential Offer:\n",
+        JSON.stringify(credentialOffer),
+      );
 
       this.log.info("Creating Client Attestation DPoP...");
       const callbacks = {
@@ -158,7 +165,10 @@ export class WalletIssuanceOrchestratorFlow {
         const supportedIds = Object.keys(credentialConfigsSupported);
         const requestedId = this.issuanceConfig.credentialConfigurationId;
 
-        if (!supportedIds.includes(requestedId) || !credentialOffer.credential_configuration_ids.includes(requestedId)) {
+        if (
+          !supportedIds.includes(requestedId) ||
+          !credentialOffer.credential_configuration_ids.includes(requestedId)
+        ) {
           throw new Error(
             `Credential configuration '${requestedId}' is not supported by the issuer.\n` +
               `Supported credential configurations: ${supportedIds.join(", ")}\n` +
@@ -204,7 +214,7 @@ export class WalletIssuanceOrchestratorFlow {
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
-      this.log.info("Loading credentials...")
+      this.log.info("Loading credentials...");
       let personIdentificationData: Credential;
       const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
 
@@ -261,7 +271,8 @@ export class WalletIssuanceOrchestratorFlow {
         code: authorizeResponse.response?.authorizeResponse?.code ?? "",
         code_verifier: pushedAuthorizationRequestResponse.codeVerifier ?? "",
         grant_type: "authorization_code",
-        redirect_uri: authorizeResponse.response?.requestObject?.response_uri ?? "",
+        redirect_uri:
+          authorizeResponse.response?.requestObject?.response_uri ?? "",
       };
 
       const tokenResponse = await this.tokenRequestStep.run({
@@ -287,7 +298,9 @@ export class WalletIssuanceOrchestratorFlow {
         accessToken: tokenResponse.response?.access_token ?? "",
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialRequestEndpoint: credentialOffer.credential_issuer,
+        credentialRequestEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.credential_endpoint,
         nonce: nonce?.c_nonce ?? "",
         walletAttestation: walletAttestationResponse,
       });

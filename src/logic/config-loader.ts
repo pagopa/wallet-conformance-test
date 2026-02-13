@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   credentialIssuerUri?: string;
+  credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
   issuanceTestsDir?: string;
@@ -24,6 +25,15 @@ export interface CliOptions {
   stepsMapping?: string;
   timeout?: number;
 }
+
+/**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | Record<string, unknown> | string
+>;
 
 /**
  * Legacy function for backward compatibility
@@ -134,7 +144,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
       issuance.url = options.credentialIssuerUri;
     }
     if (options.credentialOfferUri) {
-      issuance.credential_offer_uri = options.credentialOfferUri as unknown as string;
+      issuance.credential_offer_uri = options.credentialOfferUri;
     }
     if (options.credentialTypes) {
       issuance.credential_types = options.credentialTypes
@@ -248,15 +258,6 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 
   return result;
 }
-
-/**
- * Type for parsed INI configuration before transformation
- * The ini parser returns a structure that needs to be transformed to match Config type
- */
-type ParsedIniConfig = Record<
-  string,
-  boolean | number | string | Record<string, unknown>
->;
 
 /**
  * Loads configuration from an INI file
