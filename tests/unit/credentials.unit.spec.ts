@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
@@ -109,9 +109,7 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe(
-      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
-    );
+    expect(decoded.jwt?.payload?.vct).toBe("urn:eu.europa.ec.eudi:pid:1");
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);

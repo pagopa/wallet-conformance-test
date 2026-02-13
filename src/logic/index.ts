@@ -5,3 +5,4 @@ export * from "./logs";
 export * from "./mdoc";
 export * from "./pem";
 export * from "./utils";
+export * from "./vpToken";

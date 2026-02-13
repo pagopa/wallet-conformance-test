@@ -38,7 +38,7 @@ export async function loadCredentials(
 
   for (const file of files) {
     // Skip if the file is not a recognized credential type
-    if (!file || !types.find((name) => name === file)) {
+    if (!file || (types.length !== 0 && !types.find((name) => name === file))) {
       onIgnoreError(
         `Local credential '${file}' is not included in credential types, it will be ignored.`,
       );

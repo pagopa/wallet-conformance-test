@@ -100,7 +100,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
               type: "openid_credential",
             }),
           ),
-          // Hardcode require_signed_request_object to true as the wallet is expected to always sign the request object 
+          // Hardcode require_signed_request_object to true as the wallet is expected to always sign the request object
           // We'll need to allow overriding this in case we want to test unsigned request objects in negative test cases
           authorizationServerMetadata: {
             require_signed_request_object: true,

@@ -51,6 +51,9 @@ export async function createVpTokenMdoc({
     dcqlQuery,
     issuerSigned.docType,
   );
+  if (!presentationDefinition) {
+    return {};
+  }
 
   const deviceResponse = await DeviceResponse.from(issuerMDoc)
     .usingPresentationDefinition(presentationDefinition)
@@ -130,15 +133,13 @@ export function parseMdoc(credential: Buffer): IssuerSignedDocument {
 function convertDcqlToPresentationDefinition(
   query: DcqlQuery.Input,
   docType: string,
-): PresentationDefinition {
+): PresentationDefinition | undefined {
   const credentialQuery = query.credentials?.find(
     (c) => c.format === "mso_mdoc" && c.meta?.doctype_value === docType,
   );
 
   if (!credentialQuery) {
-    throw new Error(
-      `No credential query found for docType: ${docType} in the provided DCQL query.`,
-    );
+    return;
   }
 
   // Extract namespaces and elements from claims
