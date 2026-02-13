@@ -24,7 +24,7 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.credentialIssuerUri) {
     env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
   }
-  if (options.credentialIssuerUri) {
+  if (options.credentialOfferUri) {
     env.CONFIG_CREDENTIAL_OFFER_URI = options.credentialOfferUri;
   }
   if (options.presentationAuthorizeUri) {

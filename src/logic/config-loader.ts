@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   credentialIssuerUri?: string;
+  credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
   issuanceTestsDir?: string;
@@ -167,8 +168,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
       issuance.url = options.credentialIssuerUri;
     }
     if (options.credentialOfferUri) {
-      issuance.credential_offer_uri =
-        options.credentialOfferUri as unknown as string;
+      issuance.credential_offer_uri = options.credentialOfferUri;
     }
     if (options.credentialTypes) {
       issuance.credential_types = options.credentialTypes

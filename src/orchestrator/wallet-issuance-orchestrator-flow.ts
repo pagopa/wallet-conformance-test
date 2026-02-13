@@ -139,7 +139,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialOffer: this.config.issuance.credential_offer_uri,
       });
       this.log.debug(
-        "Recieved Credential Offer:\n",
+        "Received Credential Offer:\n",
         JSON.stringify(credentialOffer),
       );
 
@@ -315,7 +315,9 @@ export class WalletIssuanceOrchestratorFlow {
         accessToken: tokenResponse.response?.access_token ?? "",
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialRequestEndpoint: credentialOffer.credential_issuer,
+        credentialRequestEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.credential_endpoint,
         nonce: nonce?.c_nonce ?? "",
         walletAttestation: walletAttestationResponse,
       });
