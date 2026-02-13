@@ -9,11 +9,12 @@ import {
   parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
+import { DcqlQuery } from "dcql";
 
+import { buildVpToken } from "@/logic";
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { fetchWithRetries, partialCallbacks } from "@/logic/utils";
-import { AttestationResponse, KeyPair } from "@/types";
+import { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
@@ -43,11 +44,7 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: {
-    credential: string;
-    keyPair: KeyPair;
-    typ: "dc+sd-jwt" | "mso_mdoc";
-  }[];
+  credentials: CredentialWithKey[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -128,33 +125,21 @@ export class AuthorizeDefaultStep extends StepFlow {
         throw new Error("No signature key found in RP Metadata JWKS");
       }
 
-      const credentialsWithKb = await Promise.all(
-        options.credentials.map((c) =>
-          createVpTokenSdJwt({
-            client_id: options.clientId,
-            dpopJwk: c.keyPair.privateKey,
-            nonce: requestObject.nonce,
-            sdJwt: c.credential,
-          }),
-        ),
+      const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
+      if (!dcqlQuery) {
+        throw new Error("dcql_query is missing in the request object");
+      }
+      const vp_token = await buildVpToken(
+        options.credentials,
+        dcqlQuery,
+        {
+          client_id: options.clientId,
+          nonce: requestObject.nonce,
+          responseUri: responseUri,
+        },
+        this.log,
       );
-
-      /**
-       * VP Token structure:
-       * {
-       *   "0": "<Credential 1 with KB-JWT>",
-       *   "1": "<Credential 2 with KB-JWT>",
-       *   ...
-       *   "<N>": "<WIA with KB-JWT>"
-       * }
-       */
-      const vp_token = credentialsWithKb.reduce(
-        (acc, credential, index) => ({
-          ...acc,
-          [index]: credential,
-        }),
-        {},
-      );
+      log.info("VP Token built successfully from DCQL query.");
 
       log.info("Creating Authorization Response...");
       log.debug(

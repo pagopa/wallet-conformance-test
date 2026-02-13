@@ -14,6 +14,7 @@ export interface CliOptions {
   credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
+  issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
   logFile?: string;
   logLevel?: string;
@@ -101,7 +102,11 @@ export function loadConfigWithHierarchy(
 
   // Step 4b: Always set user_agent from package.json version at runtime
   mergedConfig = deepMerge(mergedConfig, {
-    network: { user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}` },
+    network: {
+      max_retries: 10,
+      timeout: 10,
+      user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
+    },
   });
 
   // Step 5: Validate the final configuration
@@ -161,7 +166,8 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     options.credentialOfferUri ||
     options.credentialTypes ||
     options.saveCredential !== undefined ||
-    options.issuanceTestsDir
+    options.issuanceTestsDir ||
+    options.issuanceCertificateSubject
   ) {
     const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
@@ -180,6 +186,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
       issuance.save_credential = options.saveCredential;
     }
     if (options.issuanceTestsDir) {
+      issuance.tests_dir = options.issuanceTestsDir;
+    }
+    if (options.issuanceCerificateSubject) {
       issuance.tests_dir = options.issuanceTestsDir;
     }
     partialConfig.issuance = issuance as Config["issuance"];
@@ -307,8 +316,10 @@ function loadIniFile(filePath: string): null | Partial<Config> {
       const stepsMappingRaw = parsed.steps_mapping as Record<string, unknown>;
       const { default_steps_dir, ...mappings } = stepsMappingRaw;
       parsed.steps_mapping = {
-        ...(default_steps_dir &&
-          typeof default_steps_dir === "string" && { default_steps_dir }),
+        default_steps_dir:
+          default_steps_dir && typeof default_steps_dir === "string"
+            ? default_steps_dir
+            : undefined,
         mapping: mappings as Record<string, string>,
       };
     }
@@ -377,6 +388,10 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_ISSUANCE_TESTS_DIR) {
     options.issuanceTestsDir = process.env.CONFIG_ISSUANCE_TESTS_DIR;
+  }
+  if (process.env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT) {
+    options.issuanceCertificateSubject =
+      process.env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT;
   }
   if (process.env.CONFIG_PRESENTATION_TESTS_DIR) {
     options.presentationTestsDir = process.env.CONFIG_PRESENTATION_TESTS_DIR;

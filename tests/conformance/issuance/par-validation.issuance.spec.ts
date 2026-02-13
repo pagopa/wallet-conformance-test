@@ -22,7 +22,6 @@ import {
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
-  createLogger,
   createQuietLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
