@@ -13,7 +13,7 @@ import {
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 
-import { issuerSignedSchema, KeyPair } from "@/types";
+import { issuerSignedSchema, VpTokenOptions } from "@/types";
 
 /**
  * Creates a Verifiable Presentation (VP) token in mdoc format.
@@ -25,22 +25,10 @@ import { issuerSignedSchema, KeyPair } from "@/types";
  * @param options The options for creating the mdoc VP token.
  * @returns A promise that resolves to an object containing the `DeviceResponse` encoded as a CBOR map.
  */
-export async function createVpTokenMdoc({
-  clientId,
-  credential,
-  dcqlQuery,
-  devicePrivateKey,
-  nonce,
-  responseUri,
-}: {
-  clientId: string;
-  credential: string;
-  dcqlQuery: DcqlQuery.Input;
-  devicePrivateKey: KeyPair["privateKey"];
-  nonce: string;
-  responseUri: string;
-}): Promise<Record<string, Buffer>> {
-  const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
+export async function createVpTokenMdoc(
+  options: VpTokenOptions,
+): Promise<Record<string, string>> {
+  const issuerSigned = parseMdoc(Buffer.from(options.credential, "base64url"));
 
   const issuerMDoc = new MDoc([issuerSigned]);
   const walletNonce = Buffer.from(
@@ -48,7 +36,7 @@ export async function createVpTokenMdoc({
   ).toString("base64url");
 
   const presentationDefinition = convertDcqlToPresentationDefinition(
-    dcqlQuery,
+    options.dcqlQuery,
     issuerSigned.docType,
   );
   if (!presentationDefinition) {
@@ -57,12 +45,17 @@ export async function createVpTokenMdoc({
 
   const deviceResponse = await DeviceResponse.from(issuerMDoc)
     .usingPresentationDefinition(presentationDefinition)
-    .usingSessionTranscriptForOID4VP(walletNonce, clientId, responseUri, nonce)
-    .authenticateWithSignature(devicePrivateKey, "ES256")
+    .usingSessionTranscriptForOID4VP(
+      walletNonce,
+      options.client_id,
+      options.responseUri,
+      options.nonce,
+    )
+    .authenticateWithSignature(options.dpopJwk, "ES256")
     .sign();
 
   return {
-    [presentationDefinition.id]: deviceResponse.encode(),
+    [presentationDefinition.id]: deviceResponse.encode().toString("base64url"),
   };
 }
 
