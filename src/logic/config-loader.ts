@@ -26,6 +26,15 @@ export interface CliOptions {
 }
 
 /**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | Record<string, unknown> | string
+>;
+
+/**
  * Legacy function for backward compatibility
  * @deprecated Use loadConfigWithHierarchy instead
  * @param fileName The path to the INI configuration file.
@@ -110,12 +119,13 @@ export function loadConfigWithHierarchy(
 }
 
 /**
- * Converts CLI options to a partial Config object
- * @param options CLI options
- * @returns Partial configuration object
- * @note The credentialType option is stored in the CliOptions but not mapped to Config
+ * Converts CLI options to a partial Config object.
+ *
+ * @param options The CLI options to convert.
+ * @returns A partial configuration object derived from the CLI options.
+ * @note The `credentialType` option is stored in the `CliOptions` but not mapped to `Config`
  *       because it's intended for test filtering rather than configuration override.
- *       Test runners should access this value directly from the CliOptions or environment
+ *       Test runners should access this value directly from the `CliOptions` or environment
  *       variables (CONFIG_CREDENTIAL_TYPE) to filter which credential types to test.
  */
 function cliOptionsToConfig(options: CliOptions): Partial<Config> {
@@ -203,10 +213,11 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
 }
 
 /**
- * Deep merges two objects, with the second object's values taking precedence
- * @param target The target object (lower priority)
- * @param source The source object (higher priority)
- * @returns The merged object
+ * Deep merges two objects, with the second object's values taking precedence.
+ *
+ * @param target The target object (lower priority).
+ * @param source The source object (higher priority).
+ * @returns The merged object.
  */
 function deepMerge<T>(target: T, source: Partial<T>): T {
   const result = { ...target };
@@ -246,18 +257,11 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Type for parsed INI configuration before transformation
- * The ini parser returns a structure that needs to be transformed to match Config type
- */
-type ParsedIniConfig = Record<
-  string,
-  boolean | number | string | Record<string, unknown>
->;
-
-/**
- * Loads configuration from an INI file
- * @param filePath Path to the INI file
- * @returns Parsed configuration object or null if file doesn't exist
+ * Loads and parses an INI configuration file.
+ *
+ * @param filePath The path to the INI file.
+ * @returns A partial configuration object if the file exists and is parsed successfully, otherwise null.
+ * @throws An error if the INI file cannot be parsed.
  */
 function loadIniFile(filePath: string): null | Partial<Config> {
   if (!existsSync(filePath)) {
@@ -289,9 +293,13 @@ function loadIniFile(filePath: string): null | Partial<Config> {
 }
 
 /**
- * Reads CLI options from environment variables
- * Environment variables are set by the CLI script
- * @returns CLI options object
+ * Reads CLI options from environment variables.
+ *
+ * This function retrieves configuration settings that have been set as environment
+ * variables, typically by a calling script or shell environment. It prefixes
+ * the environment variable names with `CONFIG_` to avoid conflicts.
+ *
+ * @returns A `CliOptions` object populated with values from the environment.
  */
 function readCliOptionsFromEnv(): CliOptions {
   const options: CliOptions = {};

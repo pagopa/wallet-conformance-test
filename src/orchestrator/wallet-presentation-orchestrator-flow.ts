@@ -1,19 +1,23 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import {
+  createMockSdJwt,
+  loadAttestation,
+  loadCredentials,
+  loadCredentialsForPresentation,
+} from "@/functions";
 import { createLogger, loadConfigWithHierarchy, loadJwks } from "@/logic";
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResult,
-  CredentialWithKey,
 } from "@/step/presentation/authorization-request-step";
 import {
   RedirectUriDefaultStep,
   RedirectUriStepResult,
 } from "@/step/presentation/redirect-uri-step";
-import { AttestationResponse, Config } from "@/types";
+import { AttestationResponse, Config, CredentialWithKey } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
@@ -75,7 +79,9 @@ export class WalletPresentationOrchestratorFlow {
     try {
       this.log.info("Starting Test Presentation Flow...");
 
-      const fetchMetadataResult = await this.fetchMetadataStep.run({ baseUrl: this.prepareBaseUrl() });
+      const fetchMetadataResult = await this.fetchMetadataStep.run({
+        baseUrl: this.prepareBaseUrl(),
+      });
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
@@ -91,14 +97,10 @@ export class WalletPresentationOrchestratorFlow {
         credentialConfigIdentifiers,
       );
 
-      const credentials: CredentialWithKey[] = await Promise.all(
-        credentialConfigIdentifiers.map(
-          async (credentialConfigIdentifier) =>
-            await this.prepareCredential(
-              trustAnchorBaseUrl,
-              credentialConfigIdentifier,
-            ),
-        ),
+      const credentials = await loadCredentialsForPresentation(
+        this.config,
+        trustAnchorBaseUrl,
+        this.log,
       );
 
       const authorizationRequestResult = await this.executeAuthorizationRequest(
@@ -193,6 +195,29 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
+  private prepareBaseUrl(): string {
+    if (!this.config.presentation.verifier) {
+      const authorizeUrl = new URL(
+        this.config.presentation.authorize_request_url,
+      );
+      const clientId = authorizeUrl.searchParams.get("client_id");
+
+      if (!clientId) {
+        throw new Error(
+          "client_id parameter not found in authorize_request_url and verifier not configured",
+        );
+      }
+
+      const baseUrl = new URL(clientId);
+      this.log.info(
+        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
+      );
+      return baseUrl.href;
+    }
+
+    return this.config.presentation.verifier;
+  }
+
   private async prepareCredential(
     trustAnchorBaseUrl: string,
     credentialIdentifier: string,
@@ -224,29 +249,7 @@ export class WalletPresentationOrchestratorFlow {
     return {
       credential: pid.compact,
       dpopJwk: privateKey,
+      typ: pid.typ,
     };
-  }
-
-  private prepareBaseUrl(): string {
-    if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
-      );
-      const clientId = authorizeUrl.searchParams.get("client_id");
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      const baseUrl = new URL(clientId);
-      this.log.info(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
-      );
-      return baseUrl.href;
-    }
-
-    return this.config.presentation.verifier;
   }
 }

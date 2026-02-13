@@ -4,11 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
-  loadJwks,
   partialCallbacks,
   saveCredentialToDisk,
   signJwtCallback,
@@ -26,7 +25,7 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
-import { AttestationResponse, Config, Credential } from "@/types";
+import { AttestationResponse, Config } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
@@ -115,7 +114,9 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
-      const fetchMetadataResponse = await this.fetchMetadataStep.run({ baseUrl: this.config.issuance.url });
+      const fetchMetadataResponse = await this.fetchMetadataStep.run({
+        baseUrl: this.config.issuance.url,
+      });
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
       this.log.info("Loading Wallet Attestation...");
@@ -196,39 +197,10 @@ export class WalletIssuanceOrchestratorFlow {
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
-      let personIdentificationData: Credential;
-      const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
-
-      try {
-        const credentials = await loadCredentials(
-          this.config.wallet.credentials_storage_path,
-          [credentialIdentifier],
-          this.log.debug,
-        );
-
-        if (credentials.dc_sd_jwt_PersonIdentificationData)
-          personIdentificationData =
-            credentials.dc_sd_jwt_PersonIdentificationData;
-        else {
-          this.log.error("missing pid: creating new one");
-          throw new Error("missing pid: creating new one");
-        }
-      } catch {
-        personIdentificationData = await createMockSdJwt(
-          {
-            iss: "https://issuer.example.com",
-            trustAnchorBaseUrl,
-            trustAnchorJwksPath:
-              this.config.trust.federation_trust_anchors_jwks_path,
-          },
-          this.config.wallet.backup_storage_path,
-          this.config.wallet.credentials_storage_path,
-        );
-      }
-
-      const credentialKeyPair = await loadJwks(
-        this.config.wallet.backup_storage_path,
-        `${credentialIdentifier}_jwks`,
+      const credentials = await loadCredentialsForPresentation(
+        this.config,
+        trustAnchorBaseUrl,
+        this.log,
       );
 
       const authorizeResponse = await this.authorizeStep.run({
@@ -236,22 +208,18 @@ export class WalletIssuanceOrchestratorFlow {
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.authorization_endpoint,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentials: [
-          {
-            credential: personIdentificationData.compact,
-            keyPair: credentialKeyPair,
-          },
-        ],
+        credentials,
         requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
         rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
         walletAttestation: walletAttestationResponse,
       });
 
       const accessTokenRequest: AccessTokenRequest = {
-        code: authorizeResponse.response?.authorizeResponse?.code,
-        code_verifier: pushedAuthorizationRequestResponse.codeVerifier,
+        code: authorizeResponse.response?.authorizeResponse?.code ?? "",
+        code_verifier: pushedAuthorizationRequestResponse.codeVerifier ?? "",
         grant_type: "authorization_code",
-        redirect_uri: authorizeResponse.response?.requestObject?.response_uri,
+        redirect_uri:
+          authorizeResponse.response?.requestObject?.response_uri ?? "",
       };
       const tokenResponse = await this.tokenRequestStep.run({
         accessTokenEndpoint:

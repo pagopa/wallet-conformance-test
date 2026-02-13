@@ -2,7 +2,7 @@ import { AuthorizationResponse } from "@pagopa/io-wallet-oid4vci";
 import { AuthorizationRequestObject } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
-import { AttestationResponse, KeyPair } from "@/types";
+import { AttestationResponse, CredentialWithKey, KeyPair } from "@/types";
 
 import { StepFlow, StepResult } from "../step-flow";
 
@@ -27,7 +27,7 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: { credential: string; keyPair: KeyPair }[];
+  credentials: CredentialWithKey[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step

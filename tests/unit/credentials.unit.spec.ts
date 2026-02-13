@@ -1,12 +1,13 @@
+import { IssuerSignedDocument } from "@auth0/mdl";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { loadCredentials } from "@/functions";
+import { createMockMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
-import { loadCertificate, loadConfig, loadJwks } from "@/logic";
+import { loadCertificate, loadConfig, loadJwks, parseMdoc } from "@/logic";
 import { KeyPairJwk } from "@/types";
 
 describe("Load Mocked Credentials", async () => {
@@ -71,6 +72,7 @@ describe("Generate Mocked Credentials", () => {
 
   afterAll(() => {
     rmSync(`${backupDir}/dc_sd_jwt_PersonIdentificationData`, { force: true });
+    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {
@@ -87,9 +89,31 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe("urn:eudi:pid:1");
+    expect(decoded.jwt?.payload?.vct).toBe("urn:eu.europa.ec.eudi:pid:1");
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
+  });
+
+  it("should create a mock MDOC using existing keys", async () => {
+    const credential = await createMockMdoc(
+      "CN=test_issuer",
+      backupDir,
+      backupDir,
+    );
+
+    expect(credential.typ).toBe("mso_mdoc");
+
+    const parsed = credential.parsed as IssuerSignedDocument;
+    expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
+    expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
+
+    const parsedCompact = parseMdoc(
+      Buffer.from(credential.compact, "base64url"),
+    );
+    expect(parsedCompact.docType).toEqual(parsed.docType);
+    expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
+      parsed.issuerSigned.issuerAuth.payload.toString(),
+    );
   });
 });

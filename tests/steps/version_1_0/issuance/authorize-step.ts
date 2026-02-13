@@ -4,8 +4,11 @@ import {
   CreateAuthorizationResponseOptions,
   parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
+import { DcqlQuery } from "dcql";
 
 import {
+  buildVpToken,
+  createVpTokenMdoc,
   fetchWithRetries,
   getEncryptJweCallback,
   partialCallbacks,
@@ -71,31 +74,30 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
 
       const credentialsWithKb = await Promise.all(
         options.credentials.map((c) =>
-          createVpTokenSdJwt({
-            client_id: options.clientId,
-            dpopJwk: c.keyPair.privateKey,
-            nonce: requestObject.nonce,
-            sdJwt: c.credential,
-          }),
+          c.typ === "dc+sd-jwt"
+            ? createVpTokenSdJwt({
+                client_id: options.clientId,
+                dpopJwk: c.dpopJwk,
+                nonce: requestObject.nonce,
+                sdJwt: c.credential,
+              })
+            : createVpTokenMdoc({
+                clientId: options.clientId,
+                credential: c.credential,
+                devicePrivateKey: c.dpopJwk,
+                nonce: requestObject.nonce,
+                responseUri: requestObject.response_uri ?? "",
+              }),
         ),
       );
 
-      /**
-       * VP Token structure:
-       * {
-       *   "0": "<Credential 1 with KB-JWT>",
-       *   "1": "<Credential 2 with KB-JWT>",
-       *   ...
-       *   "<N>": "<WIA with KB-JWT>"
-       * }
-       */
-      const vp_token = credentialsWithKb.reduce(
-        (acc, credential, index) => ({
-          ...acc,
-          [index]: credential,
-        }),
-        {},
-      );
+      const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
+      if (!dcqlQuery) {
+        throw new Error("dcql_query is missing in the request object");
+      }
+
+      const vp_token = await buildVpToken(credentialsWithKb, dcqlQuery);
+      log.info("VP Token built successfully from DCQL query.");
 
       log.info("Creating Authorization Response...");
       log.debug(
