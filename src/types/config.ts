@@ -5,20 +5,16 @@ import { z } from "zod";
  */
 export const configSchema = z.object({
   issuance: z.object({
+    credential_offer_uri: z
+      .string()
+      .url()
+      .startsWith("openid-credential-offer://")
+      .or(z.string().url().startsWith("haip-vci://"))
+      .or(z.string().url().startsWith("https://")),
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
-    credential_offer_uri: z.string().url()
-      .startsWith("openid-credential-offer://")
-      .or(
-        z.string().url()
-        .startsWith("haip-vci://")
-      )
-      .or(
-        z.string().url()
-        .startsWith("https://")
-      )
   }),
   logging: z.object({
     log_file: z.string(),

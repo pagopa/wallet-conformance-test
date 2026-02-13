@@ -78,16 +78,16 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             await createPushedAuthorizationRequest({
               ...createParOptions,
               authorizationServerMetadata: {
-                require_signed_request_object: true
-              }
+                require_signed_request_object: true,
+              },
             });
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,
             clientAttestationDPoP: options.popAttestation,
+            pushedAuthorizationRequest,
             pushedAuthorizationRequestEndpoint:
               options.pushedAuthorizationRequestEndpoint,
-            pushedAuthorizationRequest,
             walletAttestation: options.walletAttestation.attestation,
           };
 
