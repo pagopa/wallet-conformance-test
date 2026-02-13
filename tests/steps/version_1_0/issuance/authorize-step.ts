@@ -77,14 +77,14 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
           c.typ === "dc+sd-jwt"
             ? createVpTokenSdJwt({
                 client_id: options.clientId,
-                dpopJwk: c.keyPair.privateKey,
+                dpopJwk: c.dpopJwk,
                 nonce: requestObject.nonce,
                 sdJwt: c.credential,
               })
             : createVpTokenMdoc({
                 clientId: options.clientId,
                 credential: c.credential,
-                devicePrivateKey: c.keyPair.privateKey,
+                devicePrivateKey: c.dpopJwk,
                 nonce: requestObject.nonce,
                 responseUri: requestObject.response_uri ?? "",
               }),

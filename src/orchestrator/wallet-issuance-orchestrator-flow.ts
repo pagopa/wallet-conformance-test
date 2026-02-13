@@ -4,11 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
-  loadJwks,
   partialCallbacks,
   saveCredentialToDisk,
   signJwtCallback,
@@ -16,7 +15,6 @@ import {
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizeDefaultStep,
-  AuthorizeStepOptions,
   AuthorizeStepResponse,
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
@@ -199,52 +197,11 @@ export class WalletIssuanceOrchestratorFlow {
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
-      const credentials: AuthorizeStepOptions["credentials"] = [];
-
-      try {
-        const storedCredentials = await loadCredentials(
-          this.config.wallet.credentials_storage_path,
-          [],
-          this.log.debug,
-        );
-
-        for (const [key, cred] of Object.entries(storedCredentials)) {
-          const credentialKeyPair = await loadJwks(
-            this.config.wallet.backup_storage_path,
-            `${key}_jwks`,
-          );
-
-          credentials.push({
-            credential: cred.compact,
-            keyPair: credentialKeyPair,
-            typ: cred.typ,
-          });
-        }
-
-        if (credentials.length === 0) throw new Error();
-      } catch {
-        const personIdentificationData = await createMockSdJwt(
-          {
-            iss: "https://issuer.example.com",
-            trustAnchorBaseUrl,
-            trustAnchorJwksPath:
-              this.config.trust.federation_trust_anchors_jwks_path,
-          },
-          this.config.wallet.backup_storage_path,
-          this.config.wallet.credentials_storage_path,
-        );
-
-        const credentialKeyPair = await loadJwks(
-          this.config.wallet.backup_storage_path,
-          `dc_sd_jwt_PersonIdentificationData_jwks`,
-        );
-
-        credentials.push({
-          credential: personIdentificationData.compact,
-          keyPair: credentialKeyPair,
-          typ: personIdentificationData.typ,
-        });
-      }
+      const credentials = await loadCredentialsForPresentation(
+        this.config,
+        trustAnchorBaseUrl,
+        this.log,
+      );
 
       const authorizeResponse = await this.authorizeStep.run({
         authorizationEndpoint:

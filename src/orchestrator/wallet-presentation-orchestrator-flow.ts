@@ -1,19 +1,23 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import {
+  createMockSdJwt,
+  loadAttestation,
+  loadCredentials,
+  loadCredentialsForPresentation,
+} from "@/functions";
 import { createLogger, loadConfigWithHierarchy, loadJwks } from "@/logic";
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResult,
-  CredentialWithKey,
 } from "@/step/presentation/authorization-request-step";
 import {
   RedirectUriDefaultStep,
   RedirectUriStepResult,
 } from "@/step/presentation/redirect-uri-step";
-import { AttestationResponse, Config } from "@/types";
+import { AttestationResponse, Config, CredentialWithKey } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
@@ -93,14 +97,10 @@ export class WalletPresentationOrchestratorFlow {
         credentialConfigIdentifiers,
       );
 
-      const credentials: CredentialWithKey[] = await Promise.all(
-        credentialConfigIdentifiers.map(
-          async (credentialConfigIdentifier) =>
-            await this.prepareCredential(
-              trustAnchorBaseUrl,
-              credentialConfigIdentifier,
-            ),
-        ),
+      const credentials = await loadCredentialsForPresentation(
+        this.config,
+        trustAnchorBaseUrl,
+        this.log,
       );
 
       const authorizationRequestResult = await this.executeAuthorizationRequest(
@@ -249,6 +249,7 @@ export class WalletPresentationOrchestratorFlow {
     return {
       credential: pid.compact,
       dpopJwk: privateKey,
+      typ: pid.typ,
     };
   }
 }

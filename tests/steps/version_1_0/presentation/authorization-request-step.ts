@@ -5,6 +5,7 @@ import {
 import { DcqlQuery } from "dcql";
 
 import {
+  createVpTokenMdoc,
   getEncryptJweCallback,
   partialCallbacks,
   signJwtCallback,
@@ -49,13 +50,21 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       }
 
       const credentialsWithKb = await Promise.all(
-        options.credentials.map(({ credential, dpopJwk }) =>
-          createVpTokenSdJwt({
-            client_id: parsedQrCode.clientId,
-            dpopJwk,
-            nonce: requestObject.nonce,
-            sdJwt: credential,
-          }),
+        options.credentials.map((c) =>
+          c.typ === "dc+sd-jwt"
+            ? createVpTokenSdJwt({
+                client_id: parsedQrCode.clientId,
+                dpopJwk: c.dpopJwk,
+                nonce: requestObject.nonce,
+                sdJwt: c.credential,
+              })
+            : createVpTokenMdoc({
+                clientId: parsedQrCode.clientId,
+                credential: c.credential,
+                devicePrivateKey: c.dpopJwk,
+                nonce: requestObject.nonce,
+                responseUri: requestObject.response_uri ?? "",
+              }),
         ),
       );
 

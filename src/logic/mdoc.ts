@@ -40,7 +40,7 @@ export async function createVpTokenMdoc({
 }): Promise<string> {
   const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
   const presentationDefinition: PresentationDefinition = {
-    id: "dcql",
+    id: "0",
     input_descriptors: [
       {
         constraints: {
