@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   credentialIssuerUri?: string;
+  credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
   issuanceTestsDir?: string;
@@ -24,6 +25,15 @@ export interface CliOptions {
   stepsMapping?: string;
   timeout?: number;
 }
+
+/**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | Record<string, unknown> | string
+>;
 
 /**
  * Legacy function for backward compatibility
@@ -124,6 +134,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   // Map CLI options to config structure
   if (
     options.credentialIssuerUri ||
+    options.credentialOfferUri ||
     options.credentialTypes ||
     options.saveCredential !== undefined ||
     options.issuanceTestsDir
@@ -131,6 +142,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
       issuance.url = options.credentialIssuerUri;
+    }
+    if (options.credentialOfferUri) {
+      issuance.credential_offer_uri = options.credentialOfferUri;
     }
     if (options.credentialTypes) {
       issuance.credential_types = options.credentialTypes
@@ -246,15 +260,6 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Type for parsed INI configuration before transformation
- * The ini parser returns a structure that needs to be transformed to match Config type
- */
-type ParsedIniConfig = Record<
-  string,
-  boolean | number | string | Record<string, unknown>
->;
-
-/**
  * Loads configuration from an INI file
  * @param filePath Path to the INI file
  * @returns Parsed configuration object or null if file doesn't exist
@@ -301,6 +306,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_CREDENTIAL_ISSUER_URI) {
     options.credentialIssuerUri = process.env.CONFIG_CREDENTIAL_ISSUER_URI;
+  }
+  if (process.env.CONFIG_CREDENTIAL_OFFER_URI) {
+    options.credentialOfferUri = process.env.CONFIG_CREDENTIAL_OFFER_URI;
   }
   if (process.env.CONFIG_PRESENTATION_AUTHORIZE_URI) {
     options.presentationAuthorizeUri =
