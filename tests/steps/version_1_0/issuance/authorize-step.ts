@@ -4,8 +4,11 @@ import {
   CreateAuthorizationResponseOptions,
   parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
+import { DcqlQuery } from "dcql";
 
 import {
+  buildVpToken,
+  createVpTokenMdoc,
   fetchWithRetries,
   getEncryptJweCallback,
   partialCallbacks,
@@ -70,32 +73,46 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
       }
 
       const credentialsWithKb = await Promise.all(
-        options.credentials.map((c) =>
-          createVpTokenSdJwt({
-            client_id: options.clientId,
-            dpopJwk: c.keyPair.privateKey,
-            nonce: requestObject.nonce,
-            sdJwt: c.credential,
-          }),
-        ),
+        options.credentials
+          .filter((c) => c.typ === "dc+sd-jwt")
+          .map((c) =>
+            createVpTokenSdJwt({
+              client_id: options.clientId,
+              dpopJwk: c.keyPair.privateKey,
+              nonce: requestObject.nonce,
+              sdJwt: c.credential,
+            }),
+          ),
       );
 
-      /**
-       * VP Token structure:
-       * {
-       *   "0": "<Credential 1 with KB-JWT>",
-       *   "1": "<Credential 2 with KB-JWT>",
-       *   ...
-       *   "<N>": "<WIA with KB-JWT>"
-       * }
-       */
-      const vp_token = credentialsWithKb.reduce(
-        (acc, credential, index) => ({
+      const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
+      if (!dcqlQuery) {
+        throw new Error("dcql_query is missing in the request object");
+      }
+      const sdjwtVpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+
+      const deviceResponses = await Promise.all(
+        options.credentials
+          .filter((c) => c.typ === "mso_mdoc")
+          .map((c) =>
+            createVpTokenMdoc({
+              clientId: options.clientId,
+              credential: c.credential,
+              dcqlQuery: dcqlQuery,
+              devicePrivateKey: c.keyPair.privateKey,
+              nonce: requestObject.nonce,
+              responseUri: requestObject.response_uri ?? "",
+            }),
+          ),
+      );
+      const mdocVpToken = deviceResponses.reduce(
+        (acc, c) => ({
           ...acc,
-          [index]: credential,
+          ...c,
         }),
         {},
       );
+      log.info("VP Token built successfully from DCQL query.");
 
       log.info("Creating Authorization Response...");
       log.debug(
@@ -116,7 +133,10 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
           client_id: options.clientId,
           requestObject,
           rpMetadata: options.rpMetadata,
-          vp_token,
+          vp_token: {
+            ...sdjwtVpToken,
+            ...mdocVpToken,
+          },
         };
 
       const authorizationResponse = await createAuthorizationResponse(
