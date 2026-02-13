@@ -1,6 +1,6 @@
 import { DcqlQuery, type DcqlQueryResult } from "dcql";
 
-import { parseCredentialFromSdJwt } from "./vpToken";
+import { parseCredentialFromMdoc, parseCredentialFromSdJwt } from "./vpToken";
 
 type DcqlMatchSuccess = Extract<
   DcqlQueryResult.CredentialMatch,
@@ -98,7 +98,13 @@ export async function validateDcqlQuery(
   DcqlQuery.validate(parsedQuery);
 
   const parsedCredentials = await Promise.all(
-    credentials.map((credential) => parseCredentialFromSdJwt(credential)),
+    credentials.map(async (credential) => {
+      try {
+        return await parseCredentialFromSdJwt(credential);
+      } catch {
+        return parseCredentialFromMdoc(credential);
+      }
+    }),
   );
 
   const queryResult = DcqlQuery.query(parsedQuery, parsedCredentials);

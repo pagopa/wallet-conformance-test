@@ -5,10 +5,13 @@ import {
   MDoc,
 } from "@auth0/mdl";
 import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth";
-import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition";
+import {
+  PresentationDefinition,
+  PresentationDefinitionField,
+} from "@auth0/mdl/lib/mdoc/model/PresentationDefinition";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { ValidationError } from "@pagopa/io-wallet-utils";
-import { decode, Tagged } from "cbor";
+import { decode } from "cbor";
 
 import { issuerSignedSchema, KeyPair } from "@/types";
 
@@ -27,20 +30,41 @@ export async function createVpTokenMdoc({
   credential,
   devicePrivateKey,
   nonce,
-  presentationDefinition,
-  queryId,
   responseUri,
 }: {
   clientId: string;
   credential: string;
   devicePrivateKey: KeyPair["privateKey"];
   nonce: string;
-  presentationDefinition: PresentationDefinition;
-  queryId: string;
   responseUri: string;
-}) {
+}): Promise<string> {
   const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
-  const issuerMDoc = new MDoc([issuerSigned]).encode();
+  const presentationDefinition: PresentationDefinition = {
+    id: "dcql",
+    input_descriptors: [
+      {
+        constraints: {
+          fields: Object.entries(issuerSigned.issuerSigned.nameSpaces).reduce(
+            (acc, [nameSpace, items]) => {
+              acc.push(
+                ...items.map((item) => ({
+                  intent_to_retain: false,
+                  path: [`$['${nameSpace}']['${item.elementIdentifier}']`],
+                })),
+              );
+              return acc;
+            },
+            [] as PresentationDefinitionField[],
+          ),
+          limit_disclosure: "required",
+        },
+        format: { mso_mdoc: { alg: ["ES256"] } },
+        id: issuerSigned.docType,
+      },
+    ],
+  };
+
+  const issuerMDoc = new MDoc([issuerSigned]);
   const walletNonce = Buffer.from(
     crypto.getRandomValues(new Uint8Array(16)),
   ).toString("base64url");
@@ -51,9 +75,7 @@ export async function createVpTokenMdoc({
     .authenticateWithSignature(devicePrivateKey, "ES256")
     .sign();
 
-  return {
-    [queryId]: deviceResponse.encode(),
-  };
+  return deviceResponse.encode().toString("base64url");
 }
 
 /**
@@ -71,7 +93,6 @@ export async function createVpTokenMdoc({
  */
 export function parseMdoc(credential: Buffer): IssuerSignedDocument {
   try {
-    const x = decode(credential)
     const doc = parseWithErrorHandling(
       issuerSignedSchema,
       decode(credential),
@@ -107,3 +128,42 @@ export function parseMdoc(credential: Buffer): IssuerSignedDocument {
     throw new MDLParseError(`Unable to decode mdoc: ${err.message}`);
   }
 }
+
+export const presentationDefinitionMdL = {
+  id: "dcql",
+  input_descriptors: [
+    {
+      constraints: {
+        fields: [
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['family_name']"],
+          },
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['given_name']"],
+          },
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['birth_date']"],
+          },
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['birth_place']"],
+          },
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['nationalities']"],
+          },
+          {
+            intent_to_retain: false,
+            path: ["$['org.iso.18013.5.1']['fiscal_code']"],
+          },
+        ],
+        limit_disclosure: "required",
+      },
+      format: { mso_mdoc: { alg: ["ES256"] } },
+      id: "org.iso.18013.5.1.mDL",
+    },
+  ],
+};

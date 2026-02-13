@@ -1,7 +1,9 @@
+import { DeviceSignedDocument } from "@auth0/mdl";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
 import { DisclosureData } from "@sd-jwt/types";
-import { DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
+import { decode } from "cbor";
+import { DcqlMdocCredential, DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
 
@@ -42,6 +44,24 @@ export async function buildVpToken(
     },
     {} as Record<string, string>,
   );
+}
+
+export function parseCredentialFromMdoc(
+  credential: string,
+): DcqlMdocCredential {
+  const buffer = Buffer.from(credential, "base64url");
+
+  const decoded: DeviceSignedDocument | undefined = decode(buffer).documents[0];
+  if (!decoded) {
+    throw new Error("missing DeviceSignedDocument from MDoc DeviceResponse");
+  }
+
+  return {
+    credential_format: "mso_mdoc",
+    cryptographic_holder_binding: true,
+    doctype: decoded.docType,
+    namespaces: decoded.deviceSigned.nameSpaces,
+  };
 }
 
 /**
