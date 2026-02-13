@@ -10,7 +10,6 @@ import {
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { buildVpToken } from "@/logic/vpToken";
 import {
   AuthorizationRequestDefaultStep,
@@ -48,23 +47,15 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
         throw new Error("response_uri is missing in the request object");
       }
 
-      const credentialsWithKb = await Promise.all(
-        options.credentials.map(({ credential, dpopJwk }) =>
-          createVpTokenSdJwt({
-            client_id: parsedQrCode.clientId,
-            dpopJwk,
-            nonce: requestObject.nonce,
-            sdJwt: credential,
-          }),
-        ),
-      );
-
       const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
-
-      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+      const vp_token = await buildVpToken(options.credentials, dcqlQuery, {
+        client_id: parsedQrCode.clientId,
+        nonce: requestObject.nonce,
+        responseUri: responseUri,
+      });
       log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {
@@ -104,7 +95,7 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
         client_id: parsedQrCode.clientId,
         requestObject,
         rpMetadata: metadata,
-        vp_token: vpToken,
+        vp_token,
       });
 
       return {

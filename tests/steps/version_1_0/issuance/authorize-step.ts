@@ -8,14 +8,12 @@ import { DcqlQuery } from "dcql";
 
 import {
   buildVpToken,
-  createVpTokenMdoc,
   fetchWithRetries,
   getEncryptJweCallback,
   partialCallbacks,
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import {
   AuthorizeDefaultStep,
   AuthorizeExecuteResponse,
@@ -72,46 +70,15 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
         throw new Error("No signature key found in RP Metadata JWKS");
       }
 
-      const credentialsWithKb = await Promise.all(
-        options.credentials
-          .filter((c) => c.typ === "dc+sd-jwt")
-          .map((c) =>
-            createVpTokenSdJwt({
-              client_id: options.clientId,
-              dpopJwk: c.keyPair.privateKey,
-              nonce: requestObject.nonce,
-              sdJwt: c.credential,
-            }),
-          ),
-      );
-
       const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
-      const sdjwtVpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
-
-      const deviceResponses = await Promise.all(
-        options.credentials
-          .filter((c) => c.typ === "mso_mdoc")
-          .map((c) =>
-            createVpTokenMdoc({
-              clientId: options.clientId,
-              credential: c.credential,
-              dcqlQuery: dcqlQuery,
-              devicePrivateKey: c.keyPair.privateKey,
-              nonce: requestObject.nonce,
-              responseUri: requestObject.response_uri ?? "",
-            }),
-          ),
-      );
-      const mdocVpToken = deviceResponses.reduce(
-        (acc, c) => ({
-          ...acc,
-          ...c,
-        }),
-        {},
-      );
+      const vp_token = await buildVpToken(options.credentials, dcqlQuery, {
+        client_id: options.clientId,
+        nonce: requestObject.nonce,
+        responseUri: responseUri,
+      });
       log.info("VP Token built successfully from DCQL query.");
 
       log.info("Creating Authorization Response...");
@@ -133,10 +100,7 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
           client_id: options.clientId,
           requestObject,
           rpMetadata: options.rpMetadata,
-          vp_token: {
-            ...sdjwtVpToken,
-            ...mdocVpToken,
-          },
+          vp_token,
         };
 
       const authorizationResponse = await createAuthorizationResponse(

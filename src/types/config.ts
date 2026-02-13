@@ -5,6 +5,7 @@ import { z } from "zod";
  */
 export const configSchema = z.object({
   issuance: z.object({
+    certificate_subject: z.string().optional(),
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
@@ -16,9 +17,9 @@ export const configSchema = z.object({
     log_level: z.string(),
   }),
   network: z.object({
-    max_retries: z.coerce.number(),
-    timeout: z.coerce.number(),
-    user_agent: z.string(),
+    max_retries: z.coerce.number().default(10),
+    timeout: z.coerce.number().default(10),
+    user_agent: z.string().optional(),
   }),
   presentation: z.object({
     authorize_request_url: z.string().url(),

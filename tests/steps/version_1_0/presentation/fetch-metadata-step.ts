@@ -49,7 +49,10 @@ export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
       let entityStatementJwtDecoded;
       try {
         entityStatementJwtDecoded = decodeJwt(entityStatementJwt);
-        log.debug("Decoded entity statement JWT:", entityStatementJwtDecoded);
+        log.debug(
+          "Decoded entity statement JWT:",
+          JSON.stringify(entityStatementJwtDecoded),
+        );
       } catch (e) {
         log.info("Failed to decode entity statement JWT:", e);
       }

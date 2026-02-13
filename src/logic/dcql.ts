@@ -1,5 +1,7 @@
 import { DcqlQuery, type DcqlQueryResult } from "dcql";
 
+import { CredentialWithKey } from "@/types";
+
 import { parseCredentialFromMdoc, parseCredentialFromSdJwt } from "./vpToken";
 
 type DcqlMatchSuccess = Extract<
@@ -83,15 +85,15 @@ export function getDcqlQueryMatches(queryResult: DcqlQueryResult) {
  * Validates a DCQL query against a set of credentials.
  *
  * This function first parses and validates the DCQL query itself. Then, it parses
- * the provided SD-JWT credentials and checks if they can satisfy the query.
+ * the provided credentials (in SD-JWT or MDOC format) and checks if they can satisfy the query.
  *
- * @param credentials An array of credentials in SD-JWT format.
+ * @param credentials An array of credentials in SD-JWT or MDOC format.
  * @param query The DCQL query to validate.
  * @returns A promise that resolves with the query result if validation is successful.
  * @throws An error if the query is invalid or cannot be satisfied by the provided credentials.
  */
 export async function validateDcqlQuery(
-  credentials: string[],
+  credentials: CredentialWithKey[],
   query: DcqlQuery.Input,
 ) {
   const parsedQuery = DcqlQuery.parse(query);
@@ -99,11 +101,13 @@ export async function validateDcqlQuery(
 
   const parsedCredentials = await Promise.all(
     credentials.map(async (credential) => {
-      try {
-        return await parseCredentialFromSdJwt(credential);
-      } catch {
-        return parseCredentialFromMdoc(credential);
-      }
+      if (credential.typ === "dc+sd-jwt")
+        return await parseCredentialFromSdJwt(credential.credential);
+
+      if (credential.typ === "mso_mdoc")
+        return parseCredentialFromMdoc(credential.credential);
+
+      throw new Error(`credential type not implemented: ${credential.typ}`);
     }),
   );
 
