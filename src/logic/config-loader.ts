@@ -89,6 +89,11 @@ export function loadConfigWithHierarchy(
     mergedConfig = deepMerge(mergedConfig, cliConfig);
   }
 
+  // Step 4b: Always set user_agent from package.json version at runtime
+  mergedConfig = deepMerge(mergedConfig, {
+    network: { user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}` },
+  });
+
   // Step 5: Validate the final configuration
   try {
     const validatedConfig = parseWithErrorHandling(configSchema, mergedConfig);
@@ -347,4 +352,19 @@ function readCliOptionsFromEnv(): CliOptions {
   }
 
   return options;
+}
+
+/**
+ * Reads the version field from the nearest package.json in the working directory.
+ * Returns "0.0.0" if the file cannot be read or the version field is absent.
+ */
+function readPackageVersion(): string {
+  try {
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    const content = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
