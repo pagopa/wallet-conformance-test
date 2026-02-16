@@ -26,6 +26,15 @@ export interface CliOptions {
 }
 
 /**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | Record<string, unknown> | string
+>;
+
+/**
  * Legacy function for backward compatibility
  * @deprecated Use loadConfigWithHierarchy instead
  * @param fileName The path to the INI configuration file.
@@ -88,6 +97,11 @@ export function loadConfigWithHierarchy(
   if (Object.keys(cliConfig).length > 0) {
     mergedConfig = deepMerge(mergedConfig, cliConfig);
   }
+
+  // Step 4b: Always set user_agent from package.json version at runtime
+  mergedConfig = deepMerge(mergedConfig, {
+    network: { user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}` },
+  });
 
   // Step 5: Validate the final configuration
   try {
@@ -246,15 +260,6 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Type for parsed INI configuration before transformation
- * The ini parser returns a structure that needs to be transformed to match Config type
- */
-type ParsedIniConfig = Record<
-  string,
-  boolean | number | string | Record<string, unknown>
->;
-
-/**
  * Loads configuration from an INI file
  * @param filePath Path to the INI file
  * @returns Parsed configuration object or null if file doesn't exist
@@ -347,4 +352,22 @@ function readCliOptionsFromEnv(): CliOptions {
   }
 
   return options;
+}
+
+/**
+ * Reads the version field from the nearest package.json in the working directory.
+ * Returns "0.0.0" if the file cannot be read or the version field is absent.
+ */
+// NOTE: process.cwd() assumes the CLI/tests are always invoked from the
+// repository root. All project scripts (pnpm test, pnpm build, etc.) satisfy
+// this assumption, so no directory-walking is needed here.
+export function readPackageVersion(): string {
+  try {
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    const content = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }

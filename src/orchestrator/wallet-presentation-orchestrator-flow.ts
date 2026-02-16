@@ -75,7 +75,9 @@ export class WalletPresentationOrchestratorFlow {
     try {
       this.log.info("Starting Test Presentation Flow...");
 
-      const fetchMetadataResult = await this.fetchMetadataStep.run({ baseUrl: this.prepareBaseUrl() });
+      const fetchMetadataResult = await this.fetchMetadataStep.run({
+        baseUrl: this.prepareBaseUrl(),
+      });
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
@@ -193,6 +195,29 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
+  private prepareBaseUrl(): string {
+    if (!this.config.presentation.verifier) {
+      const authorizeUrl = new URL(
+        this.config.presentation.authorize_request_url,
+      );
+      const clientId = authorizeUrl.searchParams.get("client_id");
+
+      if (!clientId) {
+        throw new Error(
+          "client_id parameter not found in authorize_request_url and verifier not configured",
+        );
+      }
+
+      const baseUrl = new URL(clientId);
+      this.log.info(
+        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
+      );
+      return baseUrl.href;
+    }
+
+    return this.config.presentation.verifier;
+  }
+
   private async prepareCredential(
     trustAnchorBaseUrl: string,
     credentialIdentifier: string,
@@ -225,28 +250,5 @@ export class WalletPresentationOrchestratorFlow {
       credential: pid.compact,
       dpopJwk: privateKey,
     };
-  }
-
-  private prepareBaseUrl(): string {
-    if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
-      );
-      const clientId = authorizeUrl.searchParams.get("client_id");
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      const baseUrl = new URL(clientId);
-      this.log.info(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
-      );
-      return baseUrl.href;
-    }
-
-    return this.config.presentation.verifier;
   }
 }

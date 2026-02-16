@@ -115,7 +115,9 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
-      const fetchMetadataResponse = await this.fetchMetadataStep.run({ baseUrl: this.config.issuance.url });
+      const fetchMetadataResponse = await this.fetchMetadataStep.run({
+        baseUrl: this.config.issuance.url,
+      });
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
       this.log.info("Loading Wallet Attestation...");

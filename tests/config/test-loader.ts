@@ -17,7 +17,6 @@ import path from "path";
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
 import { FetchMetadataDefaultStep } from "@/step";
-import { StepFlow } from "@/step/step-flow";
 import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,
@@ -27,7 +26,10 @@ import {
 } from "@/step/issuance";
 import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
+import { StepFlow } from "@/step/step-flow";
 import { Config } from "@/types";
+
+export type CustomStepsMap = Record<string, StepClass>;
 
 /**
  * Type for step class constructors
@@ -37,8 +39,6 @@ export type StepClass = new (
   config: Config,
   logger: ReturnType<typeof createLogger>,
 ) => StepFlow;
-
-export type CustomStepsMap = Record<string, StepClass>;
 
 /**
  * Base step classes for inheritance checking

@@ -32,26 +32,6 @@ import { type CustomStepsMap, type StepClass, testLoader } from "./test-loader";
 const log = createLogger().withTag("test-metadata");
 
 /**
- * Type-safe helper to get a step class from discovered steps or use default fallback
- * @param discovered Map of discovered custom steps
- * @param key Key to look up in the discovered steps
- * @param fallback Default step class to use if not found
- * @returns The discovered step class or fallback
- */
-function getStepClass<T extends StepClass>(
-  discovered: CustomStepsMap,
-  key: string,
-  fallback: T,
-): T {
-  const discoveredStep = discovered[key];
-  if (discoveredStep) {
-    // Runtime validation: discovered step should be compatible with fallback
-    return discoveredStep as T;
-  }
-  return fallback;
-}
-
-/**
  * Helper to define and auto-register issuance test
  * Registers test configuration when called at module load time
  * Auto-discovers custom steps from the directory specified in steps_mapping
@@ -225,6 +205,26 @@ function createDirectoryErrorMessage(flowName: string): string {
     `default_steps_dir = tests/steps/version_1_0\n\n` +
     `See TEST-CONFIGURATION-GUIDE.md for details.`
   );
+}
+
+/**
+ * Type-safe helper to get a step class from discovered steps or use default fallback
+ * @param discovered Map of discovered custom steps
+ * @param key Key to look up in the discovered steps
+ * @param fallback Default step class to use if not found
+ * @returns The discovered step class or fallback
+ */
+function getStepClass<T extends StepClass>(
+  discovered: CustomStepsMap,
+  key: string,
+  fallback: T,
+): T {
+  const discoveredStep = discovered[key];
+  if (discoveredStep) {
+    // Runtime validation: discovered step should be compatible with fallback
+    return discoveredStep as T;
+  }
+  return fallback;
 }
 
 /**
