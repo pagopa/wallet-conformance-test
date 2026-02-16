@@ -26,6 +26,15 @@ export interface CliOptions {
 }
 
 /**
+ * Type for parsed INI configuration before transformation
+ * The ini parser returns a structure that needs to be transformed to match Config type
+ */
+type ParsedIniConfig = Record<
+  string,
+  boolean | number | Record<string, unknown> | string
+>;
+
+/**
  * Legacy function for backward compatibility
  * @deprecated Use loadConfigWithHierarchy instead
  * @param fileName The path to the INI configuration file.
@@ -249,15 +258,6 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
 
   return result;
 }
-
-/**
- * Type for parsed INI configuration before transformation
- * The ini parser returns a structure that needs to be transformed to match Config type
- */
-type ParsedIniConfig = Record<
-  string,
-  boolean | number | string | Record<string, unknown>
->;
 
 /**
  * Loads configuration from an INI file

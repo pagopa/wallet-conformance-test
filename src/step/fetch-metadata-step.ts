@@ -7,13 +7,13 @@ export interface FetchMetadataExecuteResponse {
   status: number;
 }
 
-export type FetchMetadataStepResponse = StepResult & {
-  response?: FetchMetadataExecuteResponse;
-};
-
 export interface FetchMetadataOptions {
   baseUrl: string;
 }
+
+export type FetchMetadataStepResponse = StepResult & {
+  response?: FetchMetadataExecuteResponse;
+};
 
 /**
  * Flow step to fetch issuer or verifier metadata from the well-known endpoint.
