@@ -115,5 +115,8 @@ describe("Generate Mocked Credentials", () => {
     expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
       parsed.issuerSigned.issuerAuth.payload.toString(),
     );
+    expect(parsedCompact.issuerSigned.nameSpaces).toEqual(
+      parsed.issuerSigned.nameSpaces,
+    );
   });
 });

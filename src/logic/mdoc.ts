@@ -6,11 +6,11 @@ import {
 } from "@auth0/mdl";
 import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth";
 import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { ValidationError } from "@pagopa/io-wallet-utils";
-import { decode, Tagged } from "cbor";
+import { parseWithErrorHandling, ValidationError } from "@pagopa/io-wallet-utils";
+import { decode } from "cbor";
 
 import { issuerSignedSchema, KeyPair } from "@/types";
+import { IssuerSignedItem } from "@auth0/mdl/lib/mdoc/IssuerSignedItem";
 
 /**
  * Creates a Verifiable Presentation (VP) token in mdoc format.
@@ -87,7 +87,7 @@ export function parseMdoc(credential: Buffer): IssuerSignedDocument {
     const nameSpaces = Object.entries(doc.nameSpaces).reduce(
       (prev, [nameSpace, items]) => ({
         ...prev,
-        [nameSpace]: items.map((item) => decode(item.value)),
+        [nameSpace]: items.map((item) => new IssuerSignedItem(decode(item.value))),
       }),
       {},
     );
