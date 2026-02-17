@@ -2,13 +2,23 @@ import { IssuerSignedDocument } from "@auth0/mdl";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createMockMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
-import { loadCertificate, loadConfig, loadJwks, parseMdoc } from "@/logic";
+import {
+  createKeys,
+  createVpTokenMdoc,
+  loadCertificate,
+  loadConfig,
+  loadJwks,
+  parseMdoc,
+} from "@/logic";
 import { KeyPairJwk } from "@/types";
+
+const backupDir = "./tests/mocked-data/backup";
 
 describe("Load Mocked Credentials", async () => {
   afterAll(async () =>
@@ -61,7 +71,6 @@ describe("Load Mocked Credentials", async () => {
 });
 
 describe("Generate Mocked Credentials", () => {
-  const backupDir = "./tests/mocked-data/backup";
   const config = loadConfig("./config.ini");
   const iss = "https://issuer.example.com";
   const metadata = {
@@ -118,5 +127,73 @@ describe("Generate Mocked Credentials", () => {
     expect(parsedCompact.issuerSigned.nameSpaces).toEqual(
       parsed.issuerSigned.nameSpaces,
     );
+  });
+});
+
+describe("createVpTokenMdoc", () => {
+  afterAll(() => {
+    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
+  });
+
+  it("should throw if no matching credential query found", async () => {
+    const keyPair = await createKeys();
+
+    const dcqlQuery: DcqlQuery.Input = {
+      credentials: [
+        {
+          claims: [{ path: ["org.iso.18013.5.1", "family_name"] }],
+          format: "mso_mdoc",
+          id: "query_1",
+          meta: { doctype_value: "org.iso.18013.5.1.mDL" },
+        },
+      ],
+    };
+
+    await expect(
+      createVpTokenMdoc({
+        clientId: "client_id",
+        credential: "invalid_credential",
+        dcqlQuery,
+        devicePrivateKey: keyPair.privateKey,
+        nonce: "nonce",
+        responseUri: "https://example.com",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("should generate device response when matching credential found", async () => {
+    const keyPair = await createKeys();
+    const credential = await createMockMdoc("CN=Test", backupDir, backupDir);
+
+    if (!credential.compact) {
+      throw new Error("Credential compact is empty");
+    }
+
+    const dcqlQuery: DcqlQuery.Input = {
+      credentials: [
+        {
+          claims: [
+            { path: ["org.iso.18013.5.1", "family_name"] },
+            { path: ["org.iso.18013.5.1", "given_name"] },
+          ],
+          format: "mso_mdoc",
+          id: "query_mdl",
+          meta: { doctype_value: "org.iso.18013.5.1.mDL" },
+        },
+      ],
+    };
+
+    const result = await createVpTokenMdoc({
+      clientId: "client_id",
+      credential: credential.compact,
+      dcqlQuery,
+      devicePrivateKey: keyPair.privateKey,
+      nonce: "nonce",
+      responseUri: "https://example.com",
+    });
+
+    expect(result).toHaveProperty("query_mdl");
+    expect(result["query_mdl"]).toBeDefined();
+    // Further decoding check if needed, but existence suggests success of flow
   });
 });
