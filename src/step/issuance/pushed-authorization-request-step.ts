@@ -1,4 +1,7 @@
-import { PushedAuthorizationResponse } from "@pagopa/io-wallet-oauth2";
+import {
+  CreatePushedAuthorizationRequestOptions,
+  PushedAuthorizationResponse,
+} from "@pagopa/io-wallet-oauth2";
 
 import { StepFlow, StepResult } from "@/step";
 import { AttestationResponse } from "@/types";
@@ -40,6 +43,13 @@ export interface PushedAuthorizationRequestStepOptions {
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
    */
   walletAttestation: Omit<AttestationResponse, "created">;
+
+  /**
+   * Optional overrides for CreatePushedAuthorizationRequestOptions.
+   * When provided, these values will be spread over the computed defaults,
+   * allowing tests to override any PAR parameter (e.g. clientId, audience, redirectUri).
+   */
+  createParOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
 }
 
 /**
@@ -51,6 +61,8 @@ export interface PushedAuthorizationRequestStepOptions {
  */
 export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   tag = "PUSHED_AUTHORIZATION_REQUEST";
+
+  protected parRequestOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
 
   async run(
     _: PushedAuthorizationRequestStepOptions,

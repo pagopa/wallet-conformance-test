@@ -68,21 +68,26 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             responseMode: "query",
           };
 
+          const finalParOptions = {
+            ...createParOptions,
+            ...this.parRequestOverrides,
+          };
+
           log.info(
             `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
           );
           log.debug(
             `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
           );
-          const pushedAuthorizationRequestSigned =
-            await createPushedAuthorizationRequest(createParOptions);
+          const pushedAuthorizationRequest =
+            await createPushedAuthorizationRequest(finalParOptions);
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,
             clientAttestationDPoP: options.popAttestation,
             pushedAuthorizationRequestEndpoint:
               options.pushedAuthorizationRequestEndpoint,
-            pushedAuthorizationRequestSigned,
+            pushedAuthorizationRequest,
             walletAttestation: options.walletAttestation.attestation,
           };
 
