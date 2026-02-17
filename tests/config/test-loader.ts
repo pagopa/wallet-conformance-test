@@ -107,19 +107,40 @@ export class TestLoader {
     const customSteps: CustomStepsMap = {};
     const customStepPattern = this.config.testing.custom_step_pattern;
 
-    // Find all .ts files (excluding .spec.ts and step-options.ts)
-    const tsFiles = await glob(path.join(directory, customStepPattern), {
+    // Normalize path for glob (use forward slashes on all platforms)
+    // glob expects forward slashes even on Windows
+    const normalizedDirectory = directory.replace(/\\/g, "/");
+    const searchPattern = `${normalizedDirectory}/${customStepPattern}`;
+    this.log.info(`Searching for custom steps in: ${searchPattern}`);
+    
+    const tsFiles = await glob(searchPattern, {
       ignore: ["**/*.spec.ts", "**/step-options.ts"],
     });
+
+    this.log.debug(`Found ${tsFiles.length} TypeScript files to scan`);
+    if (tsFiles.length > 0) {
+      this.log.debug(`Files found: ${tsFiles.join(", ")}`);
+    }
 
     for (const tsFile of tsFiles) {
       try {
         // Convert file path to URL for cross-platform import compatibility (Windows backslash support)
-        const fileUrl = pathToFileURL(path.resolve(tsFile)).href;
-        const module = await import(fileUrl);
+        const resolvedPath = path.resolve(tsFile);
+        const fileUrl = pathToFileURL(resolvedPath).href;
+        // Add timestamp to force fresh import (bypass cache)
+        const urlWithTimestamp = `${fileUrl}?t=${Date.now()}`;
+        
+        this.log.debug(`Attempting to import: ${tsFile}`);
+        this.log.debug(`  Resolved path: ${resolvedPath}`);
+        this.log.debug(`  File URL: ${urlWithTimestamp}`);
+        
+        const module = await import(urlWithTimestamp);
         const fileName = path.basename(tsFile);
 
         // Check all exports for step classes
+        const exportNames = Object.keys(module);
+        this.log.debug(`  Module loaded, exports: ${exportNames.join(", ")}`);
+        
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (this.isStepClass(exportValue)) {
             const stepType = this.inferStepTypeFromExtends(exportValue);
@@ -136,17 +157,17 @@ export class TestLoader {
           }
         }
       } catch (error) {
-        // Log only if it's not a common ignorable error and not from node_modules
-        const isModuleNotFound =
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "MODULE_NOT_FOUND";
+        // Log the error with full details for debugging
         const isNodeModules = tsFile.includes("node_modules");
-
-        if (!isModuleNotFound && !isNodeModules) {
-          this.log.warn(
-            `Failed to import ${path.basename(tsFile)}: ${error instanceof Error ? error.message : String(error)}`,
+        
+        if (!isNodeModules) {
+          this.log.error(
+            `Failed to import ${path.basename(tsFile)}:`,
+            error instanceof Error ? error.message : String(error),
           );
+          if (error instanceof Error && error.stack) {
+            this.log.error(`  Stack: ${error.stack}`);
+          }
         }
       }
     }
