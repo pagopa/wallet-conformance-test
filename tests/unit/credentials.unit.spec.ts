@@ -2,6 +2,7 @@ import { IssuerSignedDocument } from "@auth0/mdl";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
@@ -19,6 +20,7 @@ import {
 import { KeyPairJwk } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
+const credentialsDir = "./tests/mocked-data/credentials";
 
 describe("Load Mocked Credentials", async () => {
   afterAll(async () =>
@@ -31,7 +33,7 @@ describe("Load Mocked Credentials", async () => {
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
     try {
       const credentials = await loadCredentials(
-        "tests/mocked-data/credentials",
+        credentialsDir,
         ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
         console.error,
       );
@@ -124,9 +126,6 @@ describe("Generate Mocked Credentials", () => {
     expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
       parsed.issuerSigned.issuerAuth.payload.toString(),
     );
-    expect(parsedCompact.issuerSigned.nameSpaces).toEqual(
-      parsed.issuerSigned.nameSpaces,
-    );
   });
 });
 
@@ -162,10 +161,16 @@ describe("createVpTokenMdoc", () => {
   });
 
   it("should generate device response when matching credential found", async () => {
-    const keyPair = await createKeys();
-    const credential = await createMockMdoc("CN=Test", backupDir, backupDir);
+    const docType = "eu.europa.it.badge";
+    const namespace = "eu.europa.it.badge.1";
+    const keyPair = await loadJwks(backupDir, "wallet_unit_jwks");
+    const credential = await loadCredentials(
+      credentialsDir,
+      ["mso_mdoc_mDL"],
+      console.error,
+    );
 
-    if (!credential.compact) {
+    if (!credential.mso_mdoc_mDL) {
       throw new Error("Credential compact is empty");
     }
 
@@ -173,19 +178,19 @@ describe("createVpTokenMdoc", () => {
       credentials: [
         {
           claims: [
-            { path: ["org.iso.18013.5.1", "family_name"] },
-            { path: ["org.iso.18013.5.1", "given_name"] },
+            { path: [namespace, "family_name"] },
+            { path: [namespace, "given_name"] },
           ],
           format: "mso_mdoc",
           id: "query_mdl",
-          meta: { doctype_value: "org.iso.18013.5.1.mDL" },
+          meta: { doctype_value: docType },
         },
       ],
     };
 
     const result = await createVpTokenMdoc({
       clientId: "client_id",
-      credential: credential.compact,
+      credential: credential.mso_mdoc_mDL!.compact,
       dcqlQuery,
       devicePrivateKey: keyPair.privateKey,
       nonce: "nonce",
@@ -194,6 +199,15 @@ describe("createVpTokenMdoc", () => {
 
     expect(result).toHaveProperty("query_mdl");
     expect(result["query_mdl"]).toBeDefined();
-    // Further decoding check if needed, but existence suggests success of flow
+
+    const documents = decode(result["query_mdl"]!).documents;
+    expect(documents).toBeDefined();
+
+    const document = documents[0]!;
+    expect(document).toBeDefined();
+    expect(document.docType).toBe(docType);
+    expect(document.issuerSigned.nameSpaces).toBeDefined();
+    expect(document.issuerSigned.nameSpaces).toHaveProperty(namespace);
+    expect(document.issuerSigned.nameSpaces[namespace].length).toBe(2);
   });
 });

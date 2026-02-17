@@ -1,9 +1,9 @@
 import type { DisclosureFrame } from "@sd-jwt/types";
 
-import { Document } from "@auth0/mdl";
+import { DataItem, Document } from "@auth0/mdl";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { encode } from "cbor";
+import { encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -53,9 +53,21 @@ export async function createMockMdoc(
     });
 
   const issuerSigned = document.prepare().get("issuerSigned");
+
+  const nameSpaces = new Map<string, Tagged[]>();
+  for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
+    string,
+    DataItem[]
+  >) {
+    nameSpaces.set(
+      namespace,
+      items.map((item) => new Tagged(24, item.buffer)),
+    );
+  }
+
   const cborIssuerSigned = encode({
     issuerAuth: issuerSigned["issuerAuth"],
-    nameSpaces: issuerSigned["nameSpaces"],
+    nameSpaces,
   });
   const compact = cborIssuerSigned.toString("base64url");
 

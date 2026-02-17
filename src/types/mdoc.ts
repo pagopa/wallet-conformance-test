@@ -16,5 +16,5 @@ export const issuerSignedSchema = z.object({
     z.instanceof(Uint8Array),
     z.instanceof(Uint8Array),
   ]),
-  nameSpaces: z.record(z.string(), z.array(z.any())),
+  nameSpaces: z.record(z.string(), z.array(z.instanceof(Tagged))),
 });
