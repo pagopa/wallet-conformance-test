@@ -13,6 +13,7 @@
 
 import { glob } from "glob";
 import path from "path";
+import { pathToFileURL } from "url";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
@@ -113,7 +114,9 @@ export class TestLoader {
 
     for (const tsFile of tsFiles) {
       try {
-        const module = await import(tsFile);
+        // Convert file path to URL for cross-platform import compatibility (Windows backslash support)
+        const fileUrl = pathToFileURL(path.resolve(tsFile)).href;
+        const module = await import(fileUrl);
         const fileName = path.basename(tsFile);
 
         // Check all exports for step classes
