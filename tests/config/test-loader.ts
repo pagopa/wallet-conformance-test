@@ -112,7 +112,7 @@ export class TestLoader {
     const normalizedDirectory = directory.replace(/\\/g, "/");
     const searchPattern = `${normalizedDirectory}/${customStepPattern}`;
     this.log.info(`Searching for custom steps in: ${searchPattern}`);
-    
+
     const tsFiles = await glob(searchPattern, {
       ignore: ["**/*.spec.ts", "**/step-options.ts"],
     });
@@ -129,18 +129,18 @@ export class TestLoader {
         const fileUrl = pathToFileURL(resolvedPath).href;
         // Add timestamp to force fresh import (bypass cache)
         const urlWithTimestamp = `${fileUrl}?t=${Date.now()}`;
-        
+
         this.log.debug(`Attempting to import: ${tsFile}`);
         this.log.debug(`  Resolved path: ${resolvedPath}`);
         this.log.debug(`  File URL: ${urlWithTimestamp}`);
-        
+
         const module = await import(urlWithTimestamp);
         const fileName = path.basename(tsFile);
 
         // Check all exports for step classes
         const exportNames = Object.keys(module);
         this.log.debug(`  Module loaded, exports: ${exportNames.join(", ")}`);
-        
+
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (this.isStepClass(exportValue)) {
             const stepType = this.inferStepTypeFromExtends(exportValue);
@@ -159,7 +159,7 @@ export class TestLoader {
       } catch (error) {
         // Log the error with full details for debugging
         const isNodeModules = tsFile.includes("node_modules");
-        
+
         if (!isNodeModules) {
           this.log.error(
             `Failed to import ${path.basename(tsFile)}:`,

@@ -9,6 +9,8 @@ import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
 import {
+  buildCertPath,
+  buildJwksPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   loadCertificate,
@@ -17,7 +19,7 @@ import {
 } from "@/logic";
 import { Credential } from "@/types";
 
-export async function createMockMdoc(
+export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
@@ -27,11 +29,11 @@ export async function createMockMdoc(
   const credentialIdentifier = "mso_mdoc_mDL";
   const { publicKey: deviceKey } = await loadJwks(
     backupPath,
-    `${credentialIdentifier}_jwks`,
+    buildJwksPath(credentialIdentifier),
   );
   const issuerCertificate = await loadCertificate(
     backupPath,
-    `${credentialIdentifier}_cert`,
+    buildCertPath(credentialIdentifier),
     issuerKeyPair,
     subject,
   );
@@ -116,7 +118,7 @@ export async function createMockSdJwt(
   const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
   const { publicKey: unitKey } = await loadJwks(
     backupPath,
-    `${credentialIdentifier}_jwks`,
+    buildJwksPath(credentialIdentifier),
   );
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);

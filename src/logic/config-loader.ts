@@ -124,6 +124,24 @@ export function loadConfigWithHierarchy(
 }
 
 /**
+ * Reads the version field from the nearest package.json in the working directory.
+ * Returns "0.0.0" if the file cannot be read or the version field is absent.
+ */
+// NOTE: process.cwd() assumes the CLI/tests are always invoked from the
+// repository root. All project scripts (pnpm test, pnpm build, etc.) satisfy
+// this assumption, so no directory-walking is needed here.
+export function readPackageVersion(): string {
+  try {
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    const content = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+/**
  * Converts CLI options to a partial Config object.
  *
  * @param options The CLI options to convert.
@@ -360,22 +378,4 @@ function readCliOptionsFromEnv(): CliOptions {
   }
 
   return options;
-}
-
-/**
- * Reads the version field from the nearest package.json in the working directory.
- * Returns "0.0.0" if the file cannot be read or the version field is absent.
- */
-// NOTE: process.cwd() assumes the CLI/tests are always invoked from the
-// repository root. All project scripts (pnpm test, pnpm build, etc.) satisfy
-// this assumption, so no directory-walking is needed here.
-export function readPackageVersion(): string {
-  try {
-    const pkgPath = path.resolve(process.cwd(), "package.json");
-    const content = readFileSync(pkgPath, "utf-8");
-    const pkg = JSON.parse(content) as { version?: string };
-    return pkg.version ?? "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
 }

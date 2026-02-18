@@ -104,6 +104,14 @@ export const loadJsonDumps = (
   }
 };
 
+export function buildCertPath(pathPrefix: string): string {
+  return `${pathPrefix}_cert`;
+}
+
+export function buildJwksPath(pathPrefix: string): string {
+  return `${pathPrefix}_jwks`;
+}
+
 /**
  * Loads a certificate from a file, or creates and saves it if it doesn't exist.
  *
@@ -185,14 +193,14 @@ export async function loadJwksWithSelfSignedX5c(
 ): Promise<KeyPair> {
   const signedJwks = await loadJwks(
     trust.federation_trust_anchors_jwks_path,
-    `${namePrefix}_jwks`,
+    buildJwksPath(namePrefix),
   );
 
   if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
     signedJwks.publicKey.x5c = [
       await loadCertificate(
         trust.ca_cert_path,
-        `${namePrefix}_cert`,
+        buildCertPath(namePrefix),
         signedJwks,
         trust.certificate_subject,
       ),

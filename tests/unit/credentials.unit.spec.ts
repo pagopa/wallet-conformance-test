@@ -7,9 +7,10 @@ import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { createMockMdoc, loadCredentials } from "@/functions";
+import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
 import {
+  buildJwksPath,
   createKeys,
   createVpTokenMdoc,
   loadCertificate,
@@ -89,7 +90,7 @@ describe("Generate Mocked Credentials", () => {
   it("should create a mock SD-JWT using existing keys", async () => {
     const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
     const unitKey: KeyPairJwk = (
-      await loadJwks(backupDir, `${credentialIdentifier}_jwks`)
+      await loadJwks(backupDir, buildJwksPath(credentialIdentifier))
     ).publicKey;
 
     const credential = await createMockSdJwt(metadata, backupDir, backupDir);
@@ -107,7 +108,7 @@ describe("Generate Mocked Credentials", () => {
   });
 
   it("should create a mock MDOC using existing keys", async () => {
-    const credential = await createMockMdoc(
+    const credential = await createMockMdlMdoc(
       "CN=test_issuer",
       backupDir,
       backupDir,
