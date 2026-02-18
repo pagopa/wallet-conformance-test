@@ -1,6 +1,7 @@
 import {
   createAuthorizationResponse,
   fetchAuthorizationRequest,
+  parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
 import { DcqlQuery } from "dcql";
 
@@ -32,11 +33,16 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       const authorizeRequestUrl =
         this.config.presentation.authorize_request_url;
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
-      const { parsedAuthorizeRequest, parsedQrCode } =
+      const { requestObjectJwt, parsedQrCode } =
         await fetchAuthorizationRequest({
+          callbacks: { fetch },
           authorizeRequestUrl,
-          callbacks: { verifyJwt },
         });
+
+      const parsedAuthorizeRequest = await parseAuthorizeRequest({
+        requestObjectJwt,
+        callbacks: { verifyJwt },
+      });
 
       const requestObject = parsedAuthorizeRequest.payload;
       log.info(

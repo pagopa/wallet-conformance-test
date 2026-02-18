@@ -1,5 +1,7 @@
 import {
+  CredentialRequestOptionsV1_0,
   WalletAttestationOptions,
+  WalletAttestationOptionsV1_0,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -14,6 +16,7 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { IoWalletSdkConfig, ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 /**
  * Loads a wallet attestation from the filesystem.
@@ -93,21 +96,28 @@ export const loadAttestation = async (options: {
       signedJwks: providerKeyPair,
     });
 
-    const attestationOptions: WalletAttestationOptions = {
-      dpopJwkPublic: unitKeyPair.publicKey,
-      issuer: wallet.wallet_provider_base_url,
-      signer: {
-        trustChain: [wpEntityConfiguration, taEntityConfiguration],
-        walletProviderJwkPublicKid: providerKeyPair.privateKey.kid,
-      },
-      walletLink: `${wallet.wallet_provider_base_url}/wallet`,
-      walletName: wallet.wallet_name,
-    };
     const callbacks = {
       ...partialCallbacks,
       signJwt: signJwtCallback([providerKeyPair.privateKey]),
     };
-    const provider = new WalletProvider({ callbacks });
+
+    const attestationOptions: WalletAttestationOptionsV1_0 = {
+      dpopJwkPublic: unitKeyPair.publicKey,
+      issuer: wallet.wallet_provider_base_url,
+      authenticatorAssuranceLevel: "substantial",
+      signer: {
+        trustChain: [wpEntityConfiguration, taEntityConfiguration],
+        kid: providerKeyPair.privateKey.kid,
+        alg: providerKeyPair.privateKey.alg || "ES256",
+        method: "federation" as const,
+      },
+      walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+      walletName: wallet.wallet_name,
+      callbacks,
+    };
+    const provider = new WalletProvider(new IoWalletSdkConfig({
+        itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
+    }));
     const attestation =
       await provider.createItWalletAttestationJwt(attestationOptions);
     writeFileSync(attestationPath, attestation);
