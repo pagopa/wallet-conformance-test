@@ -25,6 +25,13 @@ export interface PushedAuthorizationRequestStepOptions {
   clientId: string;
 
   /**
+   * Optional overrides for CreatePushedAuthorizationRequestOptions.
+   * When provided, these values will be spread over the computed defaults,
+   * allowing tests to override any PAR parameter (e.g. clientId, audience, redirectUri).
+   */
+  createParOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
+
+  /**
    * Credential Configuration ID for the requested credential
    */
   credentialConfigurationId: string;
@@ -43,13 +50,6 @@ export interface PushedAuthorizationRequestStepOptions {
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
    */
   walletAttestation: Omit<AttestationResponse, "created">;
-
-  /**
-   * Optional overrides for CreatePushedAuthorizationRequestOptions.
-   * When provided, these values will be spread over the computed defaults,
-   * allowing tests to override any PAR parameter (e.g. clientId, audience, redirectUri).
-   */
-  createParOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
 }
 
 /**

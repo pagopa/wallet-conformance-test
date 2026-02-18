@@ -28,18 +28,18 @@ import {
 } from "@/step/issuance";
 import { AttestationResponse, Config, Credential } from "@/types";
 
-export type UntilParResponseContext = {
+export type UntilAuthorizeResponseContext = UntilParResponseContext & {
+  authorizeResponse: AuthorizeStepResponse;
+};
+
+export interface UntilParResponseContext {
   entityStatementClaims: any;
   fetchMetadataResponse: FetchMetadataStepResponse;
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
   pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
   walletAttestationResponse: AttestationResponse;
-};
-
-export type UntilAuthorizeResponseContext = UntilParResponseContext & {
-  authorizeResponse: AuthorizeStepResponse;
-};
+}
 
 export type UntilTokenResponseContext = UntilAuthorizeResponseContext & {
   tokenResponse: TokenRequestResponse;
@@ -118,6 +118,146 @@ export class WalletIssuanceOrchestratorFlow {
 
   getLog(): typeof this.log {
     return this.log;
+  }
+
+  async issuance(): Promise<{
+    authorizeResponse: AuthorizeStepResponse;
+    credentialResponse: CredentialRequestResponse;
+    fetchMetadataResponse: FetchMetadataStepResponse;
+    nonceResponse: NonceRequestResponse;
+    pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+    tokenResponse: TokenRequestResponse;
+    walletAttestationResponse: AttestationResponse;
+  }> {
+    try {
+      this.log.info("Starting Test Issuance Flow...");
+
+      const {
+        authorizeResponse,
+        entityStatementClaims,
+        fetchMetadataResponse,
+        pushedAuthorizationRequestResponse,
+        tokenResponse,
+        walletAttestationResponse,
+      } = await this.untilTokenResponse();
+
+      const nonceResponse = await this.nonceRequestStep.run({
+        nonceEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.nonce_endpoint,
+      });
+
+      const nonce = nonceResponse.response?.nonce as
+        | undefined
+        | { c_nonce: string };
+
+      const credentialResponse = await this.credentialRequestStep.run({
+        accessToken: tokenResponse.response?.access_token ?? "",
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+        credentialRequestEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.credential_endpoint,
+        nonce: nonce?.c_nonce ?? "",
+        walletAttestation: walletAttestationResponse,
+      });
+
+      // Save credential to disk if configured
+      // Currently, only the first credential is saved because we support requesting one at a time
+      const firstCredential = credentialResponse.response?.credentials?.[0];
+      if (this.config.issuance.save_credential && firstCredential?.credential) {
+        const savedPath = saveCredentialToDisk(
+          this.config.wallet.credentials_storage_path,
+          this.issuanceConfig.credentialConfigurationId,
+          firstCredential.credential,
+        );
+        if (savedPath) {
+          this.log.info(`Credential saved to disk: ${savedPath}`);
+        } else {
+          this.log.error("Failed to save credential to disk");
+        }
+      }
+
+      return {
+        authorizeResponse,
+        credentialResponse,
+        fetchMetadataResponse,
+        nonceResponse,
+        pushedAuthorizationRequestResponse,
+        tokenResponse,
+        walletAttestationResponse,
+      };
+    } catch (e) {
+      this.log.error("Error in Issuer Flow Tests!", e);
+      throw e;
+    }
+  }
+
+  async untilAuthorizeResponse(): Promise<UntilAuthorizeResponseContext> {
+    const parCtx = await this.untilParResponse();
+    const {
+      entityStatementClaims,
+      pushedAuthorizationRequestResponse,
+      walletAttestationResponse,
+    } = parCtx;
+
+    this.log.info(
+      `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
+    );
+
+    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
+    let personIdentificationData: Credential;
+    const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
+
+    try {
+      const credentials = await loadCredentials(
+        this.config.wallet.credentials_storage_path,
+        [credentialIdentifier],
+        this.log.debug,
+      );
+
+      if (credentials.dc_sd_jwt_PersonIdentificationData)
+        personIdentificationData =
+          credentials.dc_sd_jwt_PersonIdentificationData;
+      else {
+        this.log.error("missing pid: creating new one");
+        throw new Error("missing pid: creating new one");
+      }
+    } catch {
+      personIdentificationData = await createMockSdJwt(
+        {
+          iss: "https://issuer.example.com",
+          trustAnchorBaseUrl,
+          trustAnchorJwksPath:
+            this.config.trust.federation_trust_anchors_jwks_path,
+        },
+        this.config.wallet.backup_storage_path,
+        this.config.wallet.credentials_storage_path,
+      );
+    }
+
+    const credentialKeyPair = await loadJwks(
+      this.config.wallet.backup_storage_path,
+      `${credentialIdentifier}_jwks`,
+    );
+
+    const authorizeResponse = await this.authorizeStep.run({
+      authorizationEndpoint:
+        entityStatementClaims.metadata?.oauth_authorization_server
+          ?.authorization_endpoint,
+      clientId: walletAttestationResponse.unitKey.publicKey.kid,
+      credentials: [
+        {
+          credential: personIdentificationData.compact,
+          keyPair: credentialKeyPair,
+        },
+      ],
+      requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
+      rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
+      walletAttestation: walletAttestationResponse,
+    });
+
+    return { ...parCtx, authorizeResponse };
   }
 
   async untilParResponse(): Promise<UntilParResponseContext> {
@@ -209,73 +349,6 @@ export class WalletIssuanceOrchestratorFlow {
     };
   }
 
-  async untilAuthorizeResponse(): Promise<UntilAuthorizeResponseContext> {
-    const parCtx = await this.untilParResponse();
-    const {
-      entityStatementClaims,
-      pushedAuthorizationRequestResponse,
-      walletAttestationResponse,
-    } = parCtx;
-
-    this.log.info(
-      `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
-    );
-
-    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
-    let personIdentificationData: Credential;
-    const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
-
-    try {
-      const credentials = await loadCredentials(
-        this.config.wallet.credentials_storage_path,
-        [credentialIdentifier],
-        this.log.debug,
-      );
-
-      if (credentials.dc_sd_jwt_PersonIdentificationData)
-        personIdentificationData =
-          credentials.dc_sd_jwt_PersonIdentificationData;
-      else {
-        this.log.error("missing pid: creating new one");
-        throw new Error("missing pid: creating new one");
-      }
-    } catch {
-      personIdentificationData = await createMockSdJwt(
-        {
-          iss: "https://issuer.example.com",
-          trustAnchorBaseUrl,
-          trustAnchorJwksPath:
-            this.config.trust.federation_trust_anchors_jwks_path,
-        },
-        this.config.wallet.backup_storage_path,
-        this.config.wallet.credentials_storage_path,
-      );
-    }
-
-    const credentialKeyPair = await loadJwks(
-      this.config.wallet.backup_storage_path,
-      `${credentialIdentifier}_jwks`,
-    );
-
-    const authorizeResponse = await this.authorizeStep.run({
-      authorizationEndpoint:
-        entityStatementClaims.metadata?.oauth_authorization_server
-          ?.authorization_endpoint,
-      clientId: walletAttestationResponse.unitKey.publicKey.kid,
-      credentials: [
-        {
-          credential: personIdentificationData.compact,
-          keyPair: credentialKeyPair,
-        },
-      ],
-      requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
-      rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
-      walletAttestation: walletAttestationResponse,
-    });
-
-    return { ...parCtx, authorizeResponse };
-  }
-
   async untilTokenResponse(): Promise<UntilTokenResponseContext> {
     const authorizeCtx = await this.untilAuthorizeResponse();
     const {
@@ -303,78 +376,5 @@ export class WalletIssuanceOrchestratorFlow {
     });
 
     return { ...authorizeCtx, tokenResponse };
-  }
-
-  async issuance(): Promise<{
-    authorizeResponse: AuthorizeStepResponse;
-    credentialResponse: CredentialRequestResponse;
-    fetchMetadataResponse: FetchMetadataStepResponse;
-    nonceResponse: NonceRequestResponse;
-    pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
-    tokenResponse: TokenRequestResponse;
-    walletAttestationResponse: AttestationResponse;
-  }> {
-    try {
-      this.log.info("Starting Test Issuance Flow...");
-
-      const {
-        entityStatementClaims,
-        fetchMetadataResponse,
-        pushedAuthorizationRequestResponse,
-        tokenResponse,
-        walletAttestationResponse,
-        authorizeResponse,
-      } = await this.untilTokenResponse();
-
-      const nonceResponse = await this.nonceRequestStep.run({
-        nonceEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.nonce_endpoint,
-      });
-
-      const nonce = nonceResponse.response?.nonce as
-        | undefined
-        | { c_nonce: string };
-
-      const credentialResponse = await this.credentialRequestStep.run({
-        accessToken: tokenResponse.response?.access_token ?? "",
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialRequestEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.credential_endpoint,
-        nonce: nonce?.c_nonce ?? "",
-        walletAttestation: walletAttestationResponse,
-      });
-
-      // Save credential to disk if configured
-      // Currently, only the first credential is saved because we support requesting one at a time
-      const firstCredential = credentialResponse.response?.credentials?.[0];
-      if (this.config.issuance.save_credential && firstCredential?.credential) {
-        const savedPath = saveCredentialToDisk(
-          this.config.wallet.credentials_storage_path,
-          this.issuanceConfig.credentialConfigurationId,
-          firstCredential.credential,
-        );
-        if (savedPath) {
-          this.log.info(`Credential saved to disk: ${savedPath}`);
-        } else {
-          this.log.error("Failed to save credential to disk");
-        }
-      }
-
-      return {
-        authorizeResponse,
-        credentialResponse,
-        fetchMetadataResponse,
-        nonceResponse,
-        pushedAuthorizationRequestResponse,
-        tokenResponse,
-        walletAttestationResponse,
-      };
-    } catch (e) {
-      this.log.error("Error in Issuer Flow Tests!", e);
-      throw e;
-    }
   }
 }
