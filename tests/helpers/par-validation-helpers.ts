@@ -53,19 +53,6 @@ export async function createFakeAttestationResponse(): Promise<
 }
 
 /**
- * Returns a GenerateRandomCallback that always returns the UTF-8 encoding of
- * `fixedValue`.  Used to produce a deterministic `jti` for replay-attack tests.
- *
- * @deprecated Prefer passing `jti` directly via withParOverrides({ jti: "..." }).
- */
-export function fixedJtiGenerateRandom(
-  fixedValue: string,
-): GenerateRandomCallback {
-  return (_byteLength: number): Uint8Array =>
-    new TextEncoder().encode(fixedValue);
-}
-
-/**
  * Returns a SignJwtCallback that signs the JWT normally but then mutates
  * a claim in the payload without re-signing (breaking the cryptographic
  * signature integrity).
@@ -159,7 +146,7 @@ export function signWithWrongAlgHeader(
   realPublicKey: KeyPairJwk,
 ): SignJwtCallback {
   return async (_signer, { header, payload }) => {
-    let key: CryptoKey;
+    let key: Awaited<ReturnType<typeof importJWK>>;
     let signerJwk: Jwk;
 
     // If requesting RS256 but the real key is EC, generate a proper RSA key

@@ -201,7 +201,7 @@ export class WalletIssuanceOrchestratorFlow {
       walletAttestationResponse,
     } = parCtx;
 
-    this.log.info(
+    this.log.debug(
       `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
     );
 
