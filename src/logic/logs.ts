@@ -8,6 +8,11 @@ import { openSync, writeFileSync } from "node:fs";
 
 import { Logger } from "@/types";
 
+/**
+ * Creates a new logger instance with default settings.
+ *
+ * @returns A new `Logger` instance.
+ */
 export function createLogger(): Logger {
   return newLogger({
     formatOptions: {
@@ -19,6 +24,12 @@ export function createLogger(): Logger {
   });
 }
 
+/**
+ * Converts a log level string to its corresponding numeric code.
+ *
+ * @param level The log level string (e.g., "debug", "info", "error").
+ * @returns The numeric code for the log level.
+ */
 function levelCode(level: string): number {
   switch (level.toLowerCase()) {
     case "debug":
@@ -37,6 +48,12 @@ function levelCode(level: string): number {
   }
 }
 
+/**
+ * Creates a new logger instance with the specified options.
+ *
+ * @param options The options to use for the new logger.
+ * @returns A new `Logger` instance.
+ */
 function newLogger(options?: Partial<ConsolaOptions>): Logger {
   return Object.assign(createConsola({ ...options, fancy: true }), {
     nl,
@@ -47,10 +64,19 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
   });
 }
 
+/**
+ * Writes a newline character to the standard output.
+ */
 function nl() {
   process.stdout.write("\n");
 }
 
+/**
+ * Sets the log options for the logger.
+ *
+ * @param this The logger instance.
+ * @param options The options to set.
+ */
 function setLogOptions(
   this: Logger,
   options: { format?: string; level?: string; path?: string },
@@ -93,6 +119,12 @@ function setLogOptions(
   if (reporters.length > 0) this.setReporters(reporters);
 }
 
+/**
+ * Logs a "Test completed" message with a success or failure icon.
+ *
+ * @param this The logger instance.
+ * @param success Whether the test was successful.
+ */
 function testCompleted(this: Logger, success = true) {
   if (success) {
     this.info("Test completed ✅");
@@ -102,10 +134,22 @@ function testCompleted(this: Logger, success = true) {
   this.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
+/**
+ * Logs a "Test failed" message.
+ *
+ * @param this The logger instance.
+ */
 function testFailed(this: Logger) {
   this.error("Test failed ❌");
 }
 
+/**
+ * Creates a new logger instance with an additional tag.
+ *
+ * @param this The logger instance.
+ * @param tag The tag to add.
+ * @returns A new `Logger` instance with the added tag.
+ */
 function withTag(this: Logger, tag: string): Logger {
   const log = createConsola({
     ...this.options,

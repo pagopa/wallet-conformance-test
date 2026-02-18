@@ -2,7 +2,12 @@ import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
-import { createLogger, loadConfigWithHierarchy, loadJwks } from "@/logic";
+import {
+  buildJwksPath,
+  createLogger,
+  loadConfigWithHierarchy,
+  loadJwks,
+} from "@/logic";
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizationRequestDefaultStep,
@@ -243,7 +248,7 @@ export class WalletPresentationOrchestratorFlow {
 
     const { privateKey } = await loadJwks(
       this.config.wallet.backup_storage_path,
-      `${credentialIdentifier}_jwks`,
+      buildJwksPath(credentialIdentifier),
     );
 
     return {
