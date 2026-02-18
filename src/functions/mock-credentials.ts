@@ -46,6 +46,8 @@ export async function createMockMdlMdoc(
     .useDigestAlgorithm("SHA-256")
     .addValidityInfo({
       signed: new Date(),
+      validFrom: new Date(),
+      validUntil: expiration,
     })
     .addDeviceKeyInfo({ deviceKey })
     .sign({
