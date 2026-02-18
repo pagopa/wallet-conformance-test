@@ -2,9 +2,9 @@ import { StepFlow, StepResult } from "./step-flow";
 
 export interface FetchMetadataExecuteResponse {
   entityStatementClaims?: any;
-  entityStatementJwt?: string;
-  headers: Headers;
+  headers?: Headers;
   status: number;
+  discoveredVia?: "federation" | "oid4vci";
 }
 
 export type FetchMetadataStepResponse = StepResult & {

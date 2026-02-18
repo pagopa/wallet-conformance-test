@@ -68,9 +68,9 @@ export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
 
       return {
         entityStatementClaims,
-        entityStatementJwt,
         headers: res.response.headers,
         status: res.response.status,
+        discoveredVia: "federation",
       };
     });
   }
