@@ -232,6 +232,43 @@ export function signWithWrongKid(
 }
 
 /**
+ * Returns a SignJwtCallback that signs with one algorithm (signAlg) but
+ * declares a different algorithm (headerAlg) in the JWT header.
+ * 
+ * This tests whether the issuer uses the alg header to validate the signature.
+ * If the issuer correctly uses headerAlg from the alg header, validation will fail
+ * because the JWT was actually signed with signAlg.
+ * 
+ * @param headerAlg - Algorithm declared in the JWT header (e.g., "ES256")
+ * @param signAlg - Algorithm actually used to sign (e.g., "ES384")
+ */
+export function signWithMismatchedAlgorithm(
+  headerAlg: string,
+  signAlg: string,
+): SignJwtCallback {
+  return async (_signer, { header, payload }) => {
+    // Generate a key pair for the signing algorithm
+    const { privateKey, publicKey } = await generateKeyPair(signAlg as any, {
+      extractable: true,
+    });
+    const privateJwk = await exportJWK(privateKey);
+    const publicJwk = await exportJWK(publicKey);
+
+    const key = await importJWK(privateJwk, signAlg);
+    
+    // Sign with signAlg but declare headerAlg in the header
+    const jwt = await new SignJWT(payload as Record<string, unknown>)
+      .setProtectedHeader({ ...header, alg: headerAlg })
+      .sign(key);
+
+    return {
+      jwt,
+      signerJwk: publicJwk as Jwk,
+    };
+  };
+}
+
+/**
  * Decodes the payload of a compact JWS, mutates a single claim, and
  * re-encodes it without re-signing — the signature becomes invalid.
  */

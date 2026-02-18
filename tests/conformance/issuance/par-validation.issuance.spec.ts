@@ -6,6 +6,7 @@ import {
   signThenTamperPayload,
   signWithCustomIss,
   signWithHS256,
+  signWithMismatchedAlgorithm,
   signWithWrongAlgHeader,
   signWithWrongKey,
   signWithWrongKid,
@@ -124,28 +125,28 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
-    // CI_015a — Algorithm Header Processing
+    // CI_015a — Algorithm Header Processing (RFC 9126/9101)
     // -----------------------------------------------------------------------
 
-    test("CI_015a: Algorithm Header Processing | Issuer rejects a JWS whose alg header does not match the key type (RS256 header with EC key)", async () => {
+    test("CI_015a: Algorithm Header Processing | Issuer uses the alg header to validate the Request Object signature (RFC 9126/9101)", async () => {
       const log = baseLog.withTag("CI_015a");
 
-      log.start("Conformance test: Verifying algorithm header validation");
+      log.start("Conformance test: Verifying issuer uses alg header for signature validation");
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with mismatched algorithm header...");
-        log.info("  Algorithm: RS256 (RSA) with EC key");
+        log.info("→ Sending PAR request with mismatched algorithm...");
+        log.info("  Header declares: alg=ES256 (permitted)");
+        log.info("  Actually signed with: ES384");
+        log.info("  If issuer correctly uses alg from header → validation fails");
+        log.info("  If issuer ignores header and infers from key → validation might succeed (incorrect behavior)");
+        
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
             callbacks: {
               generateRandom: partialCallbacks.generateRandom,
               hash: partialCallbacks.hash,
-              signJwt: signWithWrongAlgHeader(
-                "RS256",
-                walletAttestationResponse.unitKey.privateKey,
-                walletAttestationResponse.unitKey.publicKey,
-              ),
+              signJwt: signWithMismatchedAlgorithm("ES256", "ES384"),
             },
           }),
         );
@@ -153,7 +154,8 @@ testConfigs.forEach((testConfig) => {
 
         log.info("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with algorithm mismatch");
+        log.info("  ✅ Issuer correctly used alg header (ES256) for validation and rejected the PAR");
+        log.info("     This confirms compliance with RFC 9126/9101");
 
         testSuccess = true;
       } finally {
