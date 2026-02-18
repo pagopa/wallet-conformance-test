@@ -25,6 +25,11 @@ export interface PushedAuthorizationRequestStepOptions {
   clientId: string;
 
   /**
+   * Code verifier used in the Pushed Authorization Request, it will be generated internally
+   */
+  codeVerifier?: string;
+
+  /**
    * Optional overrides for CreatePushedAuthorizationRequestOptions.
    * When provided, these values will be spread over the computed defaults,
    * allowing tests to override any PAR parameter (e.g. clientId, audience, redirectUri).
@@ -61,8 +66,6 @@ export interface PushedAuthorizationRequestStepOptions {
  */
 export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   tag = "PUSHED_AUTHORIZATION_REQUEST";
-
-  protected parRequestOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
 
   async run(
     _: PushedAuthorizationRequestStepOptions,

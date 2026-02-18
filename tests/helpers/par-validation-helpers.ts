@@ -295,9 +295,12 @@ export function withParOverrides(
   overrides: Partial<CreatePushedAuthorizationRequestOptions>,
 ): typeof PushedAuthorizationRequestDefaultStep {
   return class extends StepClass {
-    constructor(config: Config, logger: ReturnType<typeof createLogger>) {
-      super(config, logger);
-      this.parRequestOverrides = overrides;
+    async run(options: any): Promise<any> {
+      const enhancedOptions = {
+        ...options,
+        createParOverrides: overrides,
+      };
+      return super.run(enhancedOptions);
     }
   } as typeof PushedAuthorizationRequestDefaultStep;
 }

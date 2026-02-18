@@ -10,25 +10,14 @@ import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestExecuteResponse,
   PushedAuthorizationRequestResponse,
+  PushedAuthorizationRequestStepOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
-import { AttestationResponse } from "@/types";
-
-export interface PushedAuthorizationRequestStepOptions {
-  clientId: string;
-  codeVerifier: string;
-  credentialConfigurationId: string;
-  popAttestation: string;
-  pushedAuthorizationRequestEndpoint: string;
-  walletAttestation: Omit<AttestationResponse, "created">;
-}
 
 export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizationRequestDefaultStep {
-  tag = "PUSHED_AUTHORIZATION_REQUEST";
 
   async run(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
-    const codeVerifier = "example_code_verifier";
 
     const result =
       await this.execute<PushedAuthorizationRequestExecuteResponse>(
@@ -63,14 +52,14 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
                 publicJwk: unitKey.publicKey,
               },
             },
-            pkceCodeVerifier: codeVerifier,
+            pkceCodeVerifier: options.codeVerifier,
             redirectUri: "https://client.example.org/cb",
             responseMode: "query",
           };
 
           const finalParOptions = {
             ...createParOptions,
-            ...this.parRequestOverrides,
+            ...options.createParOverrides,
           };
 
           log.info(
@@ -95,7 +84,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             `Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`,
           );
 
-          log.info(`PKCE code verifier ${codeVerifier}`);
+          log.info(`PKCE code verifier ${pushedAuthorizationRequestSigned.codeVerifier}`);
 
           return await fetchPushedAuthorizationResponse(fetchOptions);
         },
@@ -103,7 +92,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
 
     return {
       ...result,
-      codeVerifier,
+      codeVerifier: result.response?.codeVerifier,
     };
   }
 }
