@@ -28,12 +28,11 @@ import {
 } from "@/step/issuance";
 import { AttestationResponse, Config, Credential } from "@/types";
 
-export type UntilAuthorizeResponseContext = UntilParResponseContext & {
+export type RunThroughAuthorizeContext = RunThroughParContext & {
   authorizeResponse: AuthorizeStepResponse;
 };
 
-export interface UntilParResponseContext {
-  entityStatementClaims: any;
+export interface RunThroughParContext {
   fetchMetadataResponse: FetchMetadataStepResponse;
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
@@ -41,7 +40,7 @@ export interface UntilParResponseContext {
   walletAttestationResponse: AttestationResponse;
 }
 
-export type UntilTokenResponseContext = UntilAuthorizeResponseContext & {
+export type RunThroughTokenContext = RunThroughAuthorizeContext & {
   tokenResponse: TokenRequestResponse;
 };
 
@@ -134,12 +133,13 @@ export class WalletIssuanceOrchestratorFlow {
 
       const {
         authorizeResponse,
-        entityStatementClaims,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
         walletAttestationResponse,
-      } = await this.untilTokenResponse();
+      } = await this.runThroughToken();
+      const entityStatementClaims =
+        fetchMetadataResponse.response?.entityStatementClaims;
 
       const nonceResponse = await this.nonceRequestStep.run({
         nonceEndpoint:
@@ -193,13 +193,21 @@ export class WalletIssuanceOrchestratorFlow {
     }
   }
 
-  async untilAuthorizeResponse(): Promise<UntilAuthorizeResponseContext> {
-    const parCtx = await this.untilParResponse();
+  /**
+   * Executes the full issuance flow from the beginning through the authorize step.
+   * Each call starts a new flow from step 1.
+   * Warning: Do NOT call this after runThroughPar() on the same instance — both
+   * methods re-execute from scratch and will cause duplicate PAR requests.
+   */
+  async runThroughAuthorize(): Promise<RunThroughAuthorizeContext> {
+    const parCtx = await this.runThroughPar();
     const {
-      entityStatementClaims,
+      fetchMetadataResponse,
       pushedAuthorizationRequestResponse,
       walletAttestationResponse,
     } = parCtx;
+    const entityStatementClaims =
+      fetchMetadataResponse.response?.entityStatementClaims;
 
     this.log.debug(
       `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
@@ -260,7 +268,13 @@ export class WalletIssuanceOrchestratorFlow {
     return { ...parCtx, authorizeResponse };
   }
 
-  async untilParResponse(): Promise<UntilParResponseContext> {
+  /**
+   * Executes the full issuance flow from the beginning through the PAR step.
+   * Each call starts a new flow from step 1.
+   * Warning: Do NOT call this and then runThroughToken() on the same instance —
+   * both methods re-execute from scratch and will cause duplicate PAR requests.
+   */
+  async runThroughPar(): Promise<RunThroughParContext> {
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: this.config.issuance.url,
     });
@@ -340,7 +354,6 @@ export class WalletIssuanceOrchestratorFlow {
     }
 
     return {
-      entityStatementClaims,
       fetchMetadataResponse,
       popAttestation,
       pushedAuthorizationRequestEndpoint,
@@ -349,15 +362,23 @@ export class WalletIssuanceOrchestratorFlow {
     };
   }
 
-  async untilTokenResponse(): Promise<UntilTokenResponseContext> {
-    const authorizeCtx = await this.untilAuthorizeResponse();
+  /**
+   * Executes the full issuance flow from the beginning through the token request step.
+   * Each call starts a new flow from step 1.
+   * Warning: Do NOT call this after runThroughPar() or runThroughAuthorize() on the
+   * same instance — all methods re-execute from scratch and will cause duplicate requests.
+   */
+  async runThroughToken(): Promise<RunThroughTokenContext> {
+    const authorizeCtx = await this.runThroughAuthorize();
     const {
       authorizeResponse,
-      entityStatementClaims,
+      fetchMetadataResponse,
       popAttestation,
       pushedAuthorizationRequestResponse,
       walletAttestationResponse,
     } = authorizeCtx;
+    const entityStatementClaims =
+      fetchMetadataResponse.response?.entityStatementClaims;
 
     const accessTokenRequest: AccessTokenRequest = {
       code: authorizeResponse.response?.authorizeResponse?.code,

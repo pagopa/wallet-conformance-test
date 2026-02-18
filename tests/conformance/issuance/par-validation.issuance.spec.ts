@@ -56,7 +56,7 @@ testConfigs.forEach((testConfig) => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
 
       const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
-      const ctx = await orchestrator.untilParResponse();
+      const ctx = await orchestrator.runThroughPar();
 
       walletAttestationResponse = ctx.walletAttestationResponse;
       popAttestation = ctx.popAttestation;
