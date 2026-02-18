@@ -159,7 +159,8 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Validating Entity Statement claims...");
-        const entityClaims = fetchMetadataResponse.response?.entityStatementClaims;
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
         log.info("  ✅ Entity Statement claims retrieved");
 
         log.info(
@@ -202,7 +203,8 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Validating Entity Statement claims...");
-        const entityClaims = fetchMetadataResponse.response?.entityStatementClaims;
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
         log.info("  ✅ Entity Statement claims retrieved");
 
         log.info("→ Validating Credential Issuer metadata structure...");
@@ -252,7 +254,8 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.info("→ Validating Entity Statement claims...");
-        const entityClaims = fetchMetadataResponse.response?.entityStatementClaims;
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
         log.info("  ✅ Entity Statement claims retrieved");
 
         log.info("→ Checking openid_credential_verifier metadata...");

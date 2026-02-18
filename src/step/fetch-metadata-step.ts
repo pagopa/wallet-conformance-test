@@ -1,10 +1,10 @@
 import { StepFlow, StepResult } from "./step-flow";
 
 export interface FetchMetadataExecuteResponse {
+  discoveredVia?: "federation" | "oid4vci";
   entityStatementClaims?: any;
   headers?: Headers;
   status: number;
-  discoveredVia?: "federation" | "oid4vci";
 }
 
 export interface FetchMetadataOptions {

@@ -33,15 +33,15 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       const authorizeRequestUrl =
         this.config.presentation.authorize_request_url;
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
-      const { requestObjectJwt, parsedQrCode } =
+      const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
-          callbacks: { fetch },
           authorizeRequestUrl,
+          callbacks: { fetch },
         });
 
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
-        requestObjectJwt,
         callbacks: { verifyJwt },
+        requestObjectJwt,
       });
 
       const requestObject = parsedAuthorizeRequest.payload;
