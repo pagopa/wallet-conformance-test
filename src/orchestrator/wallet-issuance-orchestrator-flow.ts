@@ -26,23 +26,14 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
-import { AttestationResponse, Config, Credential } from "@/types";
-
-export type RunThroughAuthorizeContext = RunThroughParContext & {
-  authorizeResponse: AuthorizeStepResponse;
-};
-
-export interface RunThroughParContext {
-  fetchMetadataResponse: FetchMetadataStepResponse;
-  popAttestation: string;
-  pushedAuthorizationRequestEndpoint: string;
-  pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
-  walletAttestationResponse: AttestationResponse;
-}
-
-export type RunThroughTokenContext = RunThroughAuthorizeContext & {
-  tokenResponse: TokenRequestResponse;
-};
+import {
+  AttestationResponse,
+  Config,
+  Credential,
+  RunThroughAuthorizeContext,
+  RunThroughParContext,
+  RunThroughTokenContext,
+} from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
