@@ -1,13 +1,27 @@
+import { IssuerSignedDocument } from "@auth0/mdl";
 import { ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { decode } from "cbor";
+import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { loadCredentials } from "@/functions";
+import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
-import { loadCertificate, loadConfig, loadJwks } from "@/logic";
+import {
+  buildJwksPath,
+  createKeys,
+  createVpTokenMdoc,
+  loadCertificate,
+  loadConfig,
+  loadJwks,
+  parseMdoc,
+} from "@/logic";
 import { KeyPairJwk } from "@/types";
+
+const backupDir = "./tests/mocked-data/backup";
+const credentialsDir = "./tests/mocked-data/credentials";
 
 describe("Load Mocked Credentials", async () => {
   afterAll(async () =>
@@ -20,7 +34,7 @@ describe("Load Mocked Credentials", async () => {
   it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
     try {
       const credentials = await loadCredentials(
-        "tests/mocked-data/credentials",
+        credentialsDir,
         ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
         console.error,
       );
@@ -60,7 +74,6 @@ describe("Load Mocked Credentials", async () => {
 });
 
 describe("Generate Mocked Credentials", () => {
-  const backupDir = "./tests/mocked-data/backup";
   const config = loadConfig("./config.ini");
   const iss = "https://issuer.example.com";
   const metadata = {
@@ -71,12 +84,13 @@ describe("Generate Mocked Credentials", () => {
 
   afterAll(() => {
     rmSync(`${backupDir}/dc_sd_jwt_PersonIdentificationData`, { force: true });
+    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {
     const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
     const unitKey: KeyPairJwk = (
-      await loadJwks(backupDir, `${credentialIdentifier}_jwks`)
+      await loadJwks(backupDir, buildJwksPath(credentialIdentifier))
     ).publicKey;
 
     const credential = await createMockSdJwt(metadata, backupDir, backupDir);
@@ -91,5 +105,110 @@ describe("Generate Mocked Credentials", () => {
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
+  });
+
+  it("should create a mock MDOC using existing keys", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      backupDir,
+      backupDir,
+    );
+
+    expect(credential.typ).toBe("mso_mdoc");
+
+    const parsed = credential.parsed as IssuerSignedDocument;
+    expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
+    expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
+
+    const parsedCompact = parseMdoc(
+      Buffer.from(credential.compact, "base64url"),
+    );
+    expect(parsedCompact.docType).toEqual(parsed.docType);
+    expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
+      parsed.issuerSigned.issuerAuth.payload.toString(),
+    );
+  });
+});
+
+describe("createVpTokenMdoc", () => {
+  afterAll(() => {
+    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
+  });
+
+  it("should throw if no matching credential query found", async () => {
+    const keyPair = await createKeys();
+
+    const dcqlQuery: DcqlQuery.Input = {
+      credentials: [
+        {
+          claims: [{ path: ["org.iso.18013.5.1", "family_name"] }],
+          format: "mso_mdoc",
+          id: "query_1",
+          meta: { doctype_value: "org.iso.18013.5.1.mDL" },
+        },
+      ],
+    };
+
+    await expect(
+      createVpTokenMdoc({
+        clientId: "client_id",
+        credential: "invalid_credential",
+        dcqlQuery,
+        devicePrivateKey: keyPair.privateKey,
+        nonce: "nonce",
+        responseUri: "https://example.com",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("should generate device response when matching credential found", async () => {
+    const docType = "eu.europa.it.badge";
+    const namespace = "eu.europa.it.badge.1";
+    const keyPair = await loadJwks(backupDir, "wallet_unit_jwks");
+    const credential = await loadCredentials(
+      credentialsDir,
+      ["mso_mdoc_mDL"],
+      console.error,
+    );
+
+    if (!credential.mso_mdoc_mDL) {
+      throw new Error("Credential compact is empty");
+    }
+
+    const dcqlQuery: DcqlQuery.Input = {
+      credentials: [
+        {
+          claims: [
+            { path: [namespace, "family_name"] },
+            { path: [namespace, "given_name"] },
+          ],
+          format: "mso_mdoc",
+          id: "query_mdl",
+          meta: { doctype_value: docType },
+        },
+      ],
+    };
+
+    const result = await createVpTokenMdoc({
+      clientId: "client_id",
+      credential: credential.mso_mdoc_mDL!.compact,
+      dcqlQuery,
+      devicePrivateKey: keyPair.privateKey,
+      nonce: "nonce",
+      responseUri: "https://example.com",
+    });
+
+    expect(result).toHaveProperty("query_mdl");
+    expect(result["query_mdl"]).toBeDefined();
+
+    const documents = decode(result["query_mdl"]!).documents;
+    expect(documents).toBeDefined();
+
+    const document = documents[0]!;
+    expect(document).toBeDefined();
+    expect(document.docType).toBe(docType);
+    expect(document.issuerSigned.nameSpaces).toBeDefined();
+    expect(document.issuerSigned.nameSpaces).toHaveProperty(namespace);
+    expect(document.issuerSigned.nameSpaces[namespace].length).toBe(2);
   });
 });

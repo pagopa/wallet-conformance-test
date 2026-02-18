@@ -26,6 +26,16 @@ export interface CreateFederationMetadataOptions {
   signedJwks: KeyPair;
 }
 
+/**
+ * Creates a signed JWT representing an entity's configuration in an OIDC federation.
+ *
+ * This function generates an "entity statement" which is a JWT that contains metadata
+ * about an entity (like a wallet or trust anchor), including its public keys (JWKS).
+ * The statement is signed by one of the entity's keys.
+ *
+ * @param options The options for creating the federation metadata.
+ * @returns A promise that resolves to the signed federation metadata JWT.
+ */
 export const createFederationMetadata = async (
   options: CreateFederationMetadataOptions,
 ): Promise<string> => {

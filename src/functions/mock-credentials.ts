@@ -1,18 +1,87 @@
 import type { DisclosureFrame } from "@sd-jwt/types";
 
+import { DataItem, Document } from "@auth0/mdl";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
 import {
+  buildCertPath,
+  buildJwksPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  loadCertificate,
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
 import { Credential } from "@/types";
+
+export async function createMockMdlMdoc(
+  subject: string,
+  backupPath: string,
+  credentialsPath: string,
+): Promise<Credential> {
+  const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
+
+  const credentialIdentifier = "mso_mdoc_mDL";
+  const { publicKey: deviceKey } = await loadJwks(
+    backupPath,
+    buildJwksPath(credentialIdentifier),
+  );
+  const issuerCertificate = await loadCertificate(
+    backupPath,
+    buildCertPath(credentialIdentifier),
+    issuerKeyPair,
+    subject,
+  );
+
+  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
+  const claims = loadJsonDumps("mDL.json", { expiration });
+
+  const document = await new Document("org.iso.18013.5.1.mDL")
+    .addIssuerNameSpace("org.iso.18013.5.1", claims)
+    .useDigestAlgorithm("SHA-256")
+    .addValidityInfo({
+      signed: new Date(),
+      validFrom: new Date(),
+      validUntil: expiration,
+    })
+    .addDeviceKeyInfo({ deviceKey })
+    .sign({
+      alg: "ES256",
+      issuerCertificate,
+      issuerPrivateKey: issuerKeyPair.privateKey,
+    });
+
+  const issuerSigned = document.prepare().get("issuerSigned");
+
+  const nameSpaces = new Map<string, Tagged[]>();
+  for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
+    string,
+    DataItem[]
+  >) {
+    nameSpaces.set(
+      namespace,
+      items.map((item) => new Tagged(24, item.buffer)),
+    );
+  }
+
+  const cborIssuerSigned = encode({
+    issuerAuth: issuerSigned["issuerAuth"],
+    nameSpaces,
+  });
+  const compact = cborIssuerSigned.toString("base64url");
+
+  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, compact);
+  return {
+    compact,
+    parsed: document,
+    typ: "mso_mdoc",
+  };
+}
 
 export async function createMockSdJwt(
   metadata: {
@@ -51,7 +120,7 @@ export async function createMockSdJwt(
   const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
   const { publicKey: unitKey } = await loadJwks(
     backupPath,
-    `${credentialIdentifier}_jwks`,
+    buildJwksPath(credentialIdentifier),
   );
 
   const signer = await ES256.getSigner(issuer.keyPair.privateKey);
@@ -84,6 +153,7 @@ export async function createMockSdJwt(
       "family_name",
       "given_name",
       "birth_date",
+      "expiry_date",
       "birth_place",
       "nationalities",
       "personal_administrative_number",

@@ -68,6 +68,8 @@ type DcqlMatchSuccess = Extract<
  *     }
  *   ]
  * ]
+ * @param queryResult The result of a DCQL query.
+ * @returns An array of successful credential matches.
  */
 export function getDcqlQueryMatches(queryResult: DcqlQueryResult) {
   const matches = Object.entries(queryResult.credential_matches).filter(
@@ -77,6 +79,17 @@ export function getDcqlQueryMatches(queryResult: DcqlQueryResult) {
   return matches as [string, DcqlMatchSuccess][];
 }
 
+/**
+ * Validates a DCQL query against a set of credentials.
+ *
+ * This function first parses and validates the DCQL query itself. Then, it parses
+ * the provided SD-JWT credentials and checks if they can satisfy the query.
+ *
+ * @param credentials An array of credentials in SD-JWT format.
+ * @param query The DCQL query to validate.
+ * @returns A promise that resolves with the query result if validation is successful.
+ * @throws An error if the query is invalid or cannot be satisfied by the provided credentials.
+ */
 export async function validateDcqlQuery(
   credentials: string[],
   query: DcqlQuery.Input,

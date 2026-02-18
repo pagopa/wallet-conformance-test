@@ -15,6 +15,7 @@ import {
 } from "@pagopa/io-wallet-utils";
 
 import {
+  buildJwksPath,
   createAndSaveKeys,
   createKeys,
   partialCallbacks,
@@ -42,7 +43,9 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
     log.info(`Generating new key pair for credential...`);
     const credentialKeyPair = this.config.issuance.save_credential
       ? await createAndSaveKeys(
-          `${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}_jwks`,
+          buildJwksPath(
+            `${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}`,
+          ),
         )
       : await createKeys();
 
