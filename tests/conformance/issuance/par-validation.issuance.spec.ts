@@ -40,7 +40,7 @@ const testConfigs = await defineIssuanceTest("PARValidation");
 // ---------------------------------------------------------------------------
 
 testConfigs.forEach((testConfig) => {
-  describe.skip(`[${testConfig.name}] PAR Request Object Validation`, () => {
+  describe(`[${testConfig.name}] PAR Request Object Validation`, () => {
     const baseLog = createLogger().withTag("PAR-Validation");
 
     let walletAttestationResponse: AttestationResponse;
@@ -667,7 +667,7 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        const FIXED_JTI = "conformance-test-fixed-jti-replay-attack";
+        const FIXED_JTI = `conformance-test-jti-${crypto.randomUUID()}`
         log.info("→ Creating PAR step with fixed jti...");
         log.info(`  jti: ${FIXED_JTI}`);
 
