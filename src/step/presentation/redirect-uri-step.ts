@@ -1,9 +1,9 @@
-import { CreateOpenid4vpAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
+import { CreateAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
 
 import { StepFlow, type StepResult } from "@/step/step-flow";
 
 export interface RedirectUriOptions {
-  authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
+  authorizationResponse: CreateAuthorizationResponseResult;
   responseUri: string;
 }
 

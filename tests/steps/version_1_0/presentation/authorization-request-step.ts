@@ -5,12 +5,7 @@ import {
 } from "@pagopa/io-wallet-oid4vp";
 import { DcqlQuery } from "dcql";
 
-import {
-  getEncryptJweCallback,
-  partialCallbacks,
-  signJwtCallback,
-  verifyJwt,
-} from "@/logic";
+import { getEncryptJweCallback, partialCallbacks, verifyJwt } from "@/logic";
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { buildVpToken } from "@/logic/vpToken";
 import {
@@ -97,6 +92,8 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       const { unitKey } = options.walletAttestation;
 
       const authorizationResponse = await createAuthorizationResponse({
+        authorization_encrypted_response_alg,
+        authorization_encrypted_response_enc,
         callbacks: {
           ...partialCallbacks,
           encryptJwe: getEncryptJweCallback(encryptionKey, {
@@ -105,11 +102,11 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
             kid: encryptionKey.kid,
             typ: "oauth-authz-req+jwt",
           }),
-          signJwt: signJwtCallback([unitKey.privateKey]),
         },
-        client_id: parsedQrCode.clientId,
         requestObject,
-        rpMetadata: metadata,
+        rpJwks: {
+          jwks: metadata.jwks,
+        },
         vp_token: vpToken,
       });
 

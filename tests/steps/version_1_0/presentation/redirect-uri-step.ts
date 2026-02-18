@@ -25,7 +25,7 @@ export class RedirectUriITWallet1_0Step extends RedirectUriDefaultStep {
       log.info(`Fetching authorization response from: ${options.responseUri}`);
       const { redirect_uri } = await fetchAuthorizationResponse({
         authorizationResponseJarm:
-          options.authorizationResponse.jarm.responseJwt,
+          options.authorizationResponse.jarm.responseJwe,
         callbacks: {
           ...partialCallbacks.fetch,
         },

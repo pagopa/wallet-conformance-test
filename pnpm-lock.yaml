@@ -12,20 +12,20 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       '@pagopa/io-wallet-oauth2':
-        specifier: 1.0.0-alpha-20260216163830
-        version: 1.0.0-alpha-20260216163830
+        specifier: 1.0.0-alpha-20260218170802
+        version: 1.0.0-alpha-20260218170802
       '@pagopa/io-wallet-oid-federation':
-        specifier: 1.0.0-alpha-20260216163830
-        version: 1.0.0-alpha-20260216163830
+        specifier: 1.0.0-alpha-20260218170802
+        version: 1.0.0-alpha-20260218170802
       '@pagopa/io-wallet-oid4vci':
-        specifier: 1.0.0-alpha-20260216163830
-        version: 1.0.0-alpha-20260216163830
+        specifier: 1.0.0-alpha-20260218170802
+        version: 1.0.0-alpha-20260218170802
       '@pagopa/io-wallet-oid4vp':
-        specifier: 1.0.0-alpha-20260216163830
-        version: 1.0.0-alpha-20260216163830
+        specifier: 1.0.0-alpha-20260218170802
+        version: 1.0.0-alpha-20260218170802
       '@pagopa/io-wallet-utils':
-        specifier: 1.0.0-alpha-20260216163830
-        version: 1.0.0-alpha-20260216163830
+        specifier: 1.0.0-alpha-20260218170802
+        version: 1.0.0-alpha-20260218170802
       '@peculiar/x509':
         specifier: ^1.14.3
         version: 1.14.3
@@ -424,20 +424,20 @@ packages:
     peerDependencies:
       eslint: ^9.30.0
 
-  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260216163830':
-    resolution: {integrity: sha512-s+v6nmdPZqLDR8ySl9mxeX2QlWo8skhHFOHOVLns65pFXeAJffkwGiT4Ht9mJOo7nJmPJlj4McxBoahjoxvubQ==}
+  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260218170802':
+    resolution: {integrity: sha512-W16jzmCSJsHqhxYsTA9oF9P4azgnIHOjP3fkquGhN86AIWW678jGKiB73U63njDiG45yXkRzVDXoSb61ZsWn7w==}
 
-  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260216163830':
-    resolution: {integrity: sha512-hn/0vFxFEdg0YGW+4lPObweXa+80jNxUA96zaIn58ECC254H5IZ5RM3SZ/X2/g5MMCJZ+jKiEmFMXu1/8ll8nw==}
+  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260218170802':
+    resolution: {integrity: sha512-8kRK9EQlOjFioRg8cYq/7KTLop+CGCN7yXLLNoVYG59wP3OIslVHSWza87Hx0PtZC4eg7rE2mqdnPEdKF+JveQ==}
 
-  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260216163830':
-    resolution: {integrity: sha512-dj6K/P+pH0BY7XvvamXzdxQeLIU+xLd1rXhHP5aKtKp7Y/2VOq52/pxspKv+fr66eZWB/ShxcNRrHkSElmQFIA==}
+  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260218170802':
+    resolution: {integrity: sha512-2YO7u3oQchDvQRkGyKColSTE4CxImjGjkGmwfWVDH1o5GktzHwD8/OpPs+ZICuDglxXQw4dOWEJq07Sx84KrNg==}
 
-  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260216163830':
-    resolution: {integrity: sha512-2cK8X/g5hMcB7XkBBtQYVokHwnp+Cr9UELL7FgfZAdKf8qjeh3mp4UC/MYQDS2/EhSezvqZ6XfJBJGXIp9v4iQ==}
+  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260218170802':
+    resolution: {integrity: sha512-kkC4ghVdxKLCkrAGoLe/7zzGw/o8EAhHrzf+nUrzd1M5cRMaNp6oi8OxYhJrsyKDFmN3JP/XZWtnJAnj6ylslg==}
 
-  '@pagopa/io-wallet-utils@1.0.0-alpha-20260216163830':
-    resolution: {integrity: sha512-woCR7DjK46iAIhGxXj5iDEWveeXY2JQpsJjgRMb7IxVmnuloOYXy8eYna3rU9pwXVrW4dtlCg1lvAK9QWu+WYg==}
+  '@pagopa/io-wallet-utils@1.0.0-alpha-20260218170802':
+    resolution: {integrity: sha512-sRp/1pMcCgUYsWsOP78Ew6G29KHHHLVGwP9esmgSo0bk2NaR9BQlpC356BZ8iIsxbv0NKPa0J6xtLL9pzlcZqQ==}
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
@@ -2171,42 +2171,42 @@ snapshots:
       - supports-color
       - vitest
 
-  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260216163830':
+  '@pagopa/io-wallet-oauth2@1.0.0-alpha-20260218170802':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260216163830
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260218170802
       js-base64: 3.7.8
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260216163830':
+  '@pagopa/io-wallet-oid-federation@1.0.0-alpha-20260218170802':
     dependencies:
       '@openid-federation/core': 0.2.1
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260216163830':
+  '@pagopa/io-wallet-oid4vci@1.0.0-alpha-20260218170802':
     dependencies:
       '@openid-federation/core': 0.2.1
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vci': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oauth2': 1.0.0-alpha-20260216163830
-      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260216163830
-      '@pagopa/io-wallet-oid4vp': 1.0.0-alpha-20260216163830
-      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260216163830
+      '@pagopa/io-wallet-oauth2': 1.0.0-alpha-20260218170802
+      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260218170802
+      '@pagopa/io-wallet-oid4vp': 1.0.0-alpha-20260218170802
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260218170802
       zod: 3.25.76
 
-  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260216163830':
+  '@pagopa/io-wallet-oid4vp@1.0.0-alpha-20260218170802':
     dependencies:
       '@openid4vc/oauth2': 0.3.0-alpha-20250714110838
       '@openid4vc/openid4vp': 0.3.0-alpha-20250714110838
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
-      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260216163830
-      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260216163830
+      '@pagopa/io-wallet-oid-federation': 1.0.0-alpha-20260218170802
+      '@pagopa/io-wallet-utils': 1.0.0-alpha-20260218170802
       zod: 3.25.76
 
-  '@pagopa/io-wallet-utils@1.0.0-alpha-20260216163830':
+  '@pagopa/io-wallet-utils@1.0.0-alpha-20260218170802':
     dependencies:
       '@openid4vc/utils': 0.3.0-alpha-20250714110838
 

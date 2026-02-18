@@ -2,7 +2,7 @@ import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-f
 
 import {
   type AuthorizationRequestObject,
-  type CreateOpenid4vpAuthorizationResponseResult,
+  type CreateAuthorizationResponseResult,
   type Openid4vpAuthorizationRequestHeader,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
@@ -30,7 +30,7 @@ export interface AuthorizationRequestOptions {
 
 export interface AuthorizationRequestStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
-  authorizationResponse: CreateOpenid4vpAuthorizationResponseResult;
+  authorizationResponse: CreateAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: AuthorizationRequestObject;
   responseUri: string;
