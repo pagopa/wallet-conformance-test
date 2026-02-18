@@ -299,7 +299,7 @@ testConfigs.forEach((testConfig) => {
             callbacks: {
               generateRandom: partialCallbacks.generateRandom,
               hash: partialCallbacks.hash,
-              signJwt: signWithHS256("conformance-test-hmac-secret"),
+              signJwt: signWithHS256("conformance-test-hmac-value"),
             },
           }),
         );
@@ -478,6 +478,8 @@ testConfigs.forEach((testConfig) => {
           "  request_uri: urn:ietf:params:oauth:request_uri:ci-023-test",
         );
         // Custom fetch that injects request_uri into the form-encoded POST body
+        // Capture original fetch to prevent infinite recursion if fetch is monkey-patched
+        const originalFetch = fetch;
         const customFetch: typeof fetch = async (input, init) => {
           if (init?.body != null) {
             const params = new URLSearchParams(init.body.toString());
@@ -485,9 +487,9 @@ testConfigs.forEach((testConfig) => {
               "request_uri",
               "urn:ietf:params:oauth:request_uri:ci-023-test",
             );
-            return fetch(input, { ...init, body: params.toString() });
+            return originalFetch(input, { ...init, body: params.toString() });
           }
-          return fetch(input, init);
+          return originalFetch(input, init);
         };
 
         let rejected = false;
@@ -534,6 +536,8 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Sending PAR request without redirectUri...");
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
+            // Intentionally cast: we need to send an absent redirectUri to verify
+            // the issuer enforces this mandatory parameter (CI_024).
             redirectUri: undefined as unknown as string,
           }),
         );

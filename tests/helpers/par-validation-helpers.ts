@@ -11,6 +11,20 @@ import { PushedAuthorizationRequestDefaultStep } from "@/step/issuance/pushed-au
 import { AttestationResponse, Config, KeyPairJwk } from "@/types";
 
 /**
+ * JWA algorithm identifier union.
+ * Used to constrain algorithm parameters to valid JWA algorithm names.
+ */
+type JwaAlg = "RS256" | "ES256" | "ES384" | "ES512" | "HS256";
+
+/**
+ * Helper to import a KeyPairJwk for signing.
+ * Avoids repeated casts to Parameters<typeof importJWK>[0].
+ */
+async function importKeyPairJwk(key: KeyPairJwk) {
+  return importJWK(key as Parameters<typeof importJWK>[0], key.alg ?? "ES256");
+}
+
+/**
  * Creates a fake AttestationResponse whose wallet attestation JWT is signed
  * by a fresh key pair that is NOT registered with the local Trust Anchor.
  *
@@ -65,10 +79,7 @@ export function signThenTamperPayload(
   value: unknown,
 ): SignJwtCallback {
   return async (_signer, { header, payload }) => {
-    const key = await importJWK(
-      realPrivateKey as Parameters<typeof importJWK>[0],
-      realPrivateKey.alg ?? "ES256",
-    );
+    const key = await importKeyPairJwk(realPrivateKey);
     const jwt = await new SignJWT(payload as Record<string, unknown>)
       .setProtectedHeader(header)
       .sign(key);
@@ -93,10 +104,7 @@ export function signWithCustomIss(
   realPublicKey: KeyPairJwk,
 ): SignJwtCallback {
   return async (_signer, { header, payload }) => {
-    const key = await importJWK(
-      realPrivateKey as Parameters<typeof importJWK>[0],
-      realPrivateKey.alg ?? "ES256",
-    );
+    const key = await importKeyPairJwk(realPrivateKey);
     const modifiedPayload = { ...(payload as Record<string, unknown>), iss };
     const jwt = await new SignJWT(modifiedPayload)
       .setProtectedHeader(header)
@@ -126,7 +134,8 @@ export function signWithHS256(secret: string): SignJwtCallback {
 
     return {
       jwt,
-      signerJwk: { kty: "oct" } as unknown as Jwk,
+      // Cast is safe: { kty: "oct" } is structurally compatible with Jwk minimal shape
+      signerJwk: { kty: "oct" } as Jwk,
     };
   };
 }
@@ -141,7 +150,7 @@ export function signWithHS256(secret: string): SignJwtCallback {
  * so the JWT is validly formed but uses the wrong key type.
  */
 export function signWithWrongAlgHeader(
-  alg: string,
+  alg: JwaAlg,
   realPrivateKey: KeyPairJwk,
   realPublicKey: KeyPairJwk,
 ): SignJwtCallback {
@@ -161,10 +170,7 @@ export function signWithWrongAlgHeader(
       signerJwk = { ...publicJwk, kty: "RSA" } as Jwk;
     } else {
       // Otherwise use the real key with the specified algorithm
-      key = await importJWK(
-        realPrivateKey as Parameters<typeof importJWK>[0],
-        realPrivateKey.alg ?? "ES256",
-      );
+      key = await importKeyPairJwk(realPrivateKey);
       signerJwk = realPublicKey as Jwk;
     }
 
@@ -216,10 +222,7 @@ export function signWithWrongKid(
   realPublicKey: KeyPairJwk,
 ): SignJwtCallback {
   return async (_signer, { header, payload }) => {
-    const key = await importJWK(
-      realPrivateKey as Parameters<typeof importJWK>[0],
-      realPrivateKey.alg ?? "ES256",
-    );
+    const key = await importKeyPairJwk(realPrivateKey);
     const jwt = await new SignJWT(payload as Record<string, unknown>)
       .setProtectedHeader({ ...header, kid })
       .sign(key);
