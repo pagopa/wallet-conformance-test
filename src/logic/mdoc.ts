@@ -39,7 +39,7 @@ export async function createVpTokenMdoc({
   devicePrivateKey: KeyPair["privateKey"];
   nonce: string;
   responseUri: string;
-}) {
+}): Promise<{[x: string]: Buffer}>{
   const issuerSigned = parseMdoc(Buffer.from(credential, "base64url"));
 
   const issuerMDoc = new MDoc([issuerSigned]);
