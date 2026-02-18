@@ -139,13 +139,15 @@ export async function createMockSdJwt(
 
   // TODO: Check required claims for pid
   const claims = {
-    birth_date: "1980-01-10",
+    birth_date: "1980-01-01",
     birth_place: "Roma",
     expiry_date: expiration.toISOString().slice(0, 10),
     family_name: "Rossi",
+    fiscal_code: "RSSMRA80A01H501U",
     given_name: "Mario",
     nationalities: ["IT"],
     personal_administrative_number: "XX00000XX",
+    unique_identifier: "TINIT-XXXXXXXXXXXXXXXX",
   };
 
   const disclosureFrame: DisclosureFrame<typeof claims> = {
@@ -156,11 +158,13 @@ export async function createMockSdJwt(
       "expiry_date",
       "birth_place",
       "nationalities",
+      "fiscal_code",
+      "unique_identifier",
       "personal_administrative_number",
     ],
   };
 
-  const vct = "urn:eudi:pid:1";
+  const vct = "urn:eu.europa.ec.eudi:pid:1";
   const vctIntegrity = await generateSRIHash(vct);
 
   const credential = await sdjwt.issue(

@@ -101,7 +101,7 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe("urn:eudi:pid:1");
+    expect(decoded.jwt?.payload?.vct).toBe("urn:eu.europa.ec.eudi:pid:1");
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
@@ -151,10 +151,10 @@ describe("createVpTokenMdoc", () => {
 
     await expect(
       createVpTokenMdoc({
-        clientId: "client_id",
+        client_id: "client_id",
         credential: "invalid_credential",
         dcqlQuery,
-        devicePrivateKey: keyPair.privateKey,
+        dpopJwk: keyPair.privateKey,
         nonce: "nonce",
         responseUri: "https://example.com",
       }),
@@ -190,10 +190,10 @@ describe("createVpTokenMdoc", () => {
     };
 
     const result = await createVpTokenMdoc({
-      clientId: "client_id",
-      credential: credential.mso_mdoc_mDL!.compact,
+      client_id: "client_id",
+      credential: credential.mso_mdoc_mDL.compact,
       dcqlQuery,
-      devicePrivateKey: keyPair.privateKey,
+      dpopJwk: keyPair.privateKey,
       nonce: "nonce",
       responseUri: "https://example.com",
     });
@@ -201,7 +201,9 @@ describe("createVpTokenMdoc", () => {
     expect(result).toHaveProperty("query_mdl");
     expect(result["query_mdl"]).toBeDefined();
 
-    const documents = decode(result["query_mdl"]!).documents;
+    const documents = decode(
+      Buffer.from(result["query_mdl"]!, "base64url"),
+    ).documents;
     expect(documents).toBeDefined();
 
     const document = documents[0]!;

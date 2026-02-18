@@ -4,15 +4,16 @@ import {
   CreateAuthorizationResponseOptions,
   parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
+import { DcqlQuery } from "dcql";
 
 import {
+  buildVpToken,
   fetchWithRetries,
   getEncryptJweCallback,
   partialCallbacks,
   signJwtCallback,
   verifyJwt,
 } from "@/logic";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import {
   AuthorizeDefaultStep,
   AuthorizeExecuteResponse,
@@ -69,33 +70,16 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
         throw new Error("No signature key found in RP Metadata JWKS");
       }
 
-      const credentialsWithKb = await Promise.all(
-        options.credentials.map((c) =>
-          createVpTokenSdJwt({
-            client_id: options.clientId,
-            dpopJwk: c.keyPair.privateKey,
-            nonce: requestObject.nonce,
-            sdJwt: c.credential,
-          }),
-        ),
-      );
-
-      /**
-       * VP Token structure:
-       * {
-       *   "0": "<Credential 1 with KB-JWT>",
-       *   "1": "<Credential 2 with KB-JWT>",
-       *   ...
-       *   "<N>": "<WIA with KB-JWT>"
-       * }
-       */
-      const vp_token = credentialsWithKb.reduce(
-        (acc, credential, index) => ({
-          ...acc,
-          [index]: credential,
-        }),
-        {},
-      );
+      const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
+      if (!dcqlQuery) {
+        throw new Error("dcql_query is missing in the request object");
+      }
+      const vp_token = await buildVpToken(options.credentials, dcqlQuery, {
+        client_id: options.clientId,
+        nonce: requestObject.nonce,
+        responseUri: responseUri,
+      });
+      log.info("VP Token built successfully from DCQL query.");
 
       log.info("Creating Authorization Response...");
       log.debug(

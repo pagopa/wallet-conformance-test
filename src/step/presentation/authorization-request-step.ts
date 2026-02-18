@@ -7,7 +7,7 @@ import {
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
 
-import type { AttestationResponse, KeyPairJwk } from "@/types";
+import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { StepFlow, type StepResult } from "@/step/step-flow";
 
@@ -39,11 +39,6 @@ export interface AuthorizationRequestStepResponse {
 export type AuthorizationRequestStepResult = StepResult & {
   response?: AuthorizationRequestStepResponse;
 };
-
-export interface CredentialWithKey {
-  credential: string;
-  dpopJwk: KeyPairJwk;
-}
 
 /**
  * Implementation of the Authorization Request Step for OpenID4VP flow.
