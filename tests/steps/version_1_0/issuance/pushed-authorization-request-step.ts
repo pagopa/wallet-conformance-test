@@ -19,8 +19,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
 
-    const result =
-      await this.execute<PushedAuthorizationRequestExecuteResponse>(
+    return this.execute<PushedAuthorizationRequestExecuteResponse>(
         async () => {
           const log = this.log.withTag(this.tag);
 
@@ -71,6 +70,8 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           const pushedAuthorizationRequestSigned =
             await createPushedAuthorizationRequest(finalParOptions);
 
+          const codeVerifier = pushedAuthorizationRequestSigned.pkceCodeVerifier;
+
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,
             clientAttestationDPoP: options.popAttestation,
@@ -84,15 +85,13 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             `Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`,
           );
 
-          log.info(`PKCE code verifier ${pushedAuthorizationRequestSigned.codeVerifier}`);
+          log.info(`PKCE code verifier ${codeVerifier}`);
 
-          return await fetchPushedAuthorizationResponse(fetchOptions);
+          return {
+            ...(await fetchPushedAuthorizationResponse(fetchOptions)),
+            codeVerifier
+          };
         },
       );
-
-    return {
-      ...result,
-      codeVerifier: result.response?.codeVerifier,
-    };
   }
 }
