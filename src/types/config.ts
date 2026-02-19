@@ -10,7 +10,8 @@ export const configSchema = z.object({
       .url()
       .startsWith("openid-credential-offer://")
       .or(z.string().url().startsWith("haip-vci://"))
-      .or(z.string().url().startsWith("https://")),
+      .or(z.string().url().startsWith("https://"))
+      .optional(),
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
