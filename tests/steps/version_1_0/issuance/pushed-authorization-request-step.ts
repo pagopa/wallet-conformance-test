@@ -16,7 +16,7 @@ import { AttestationResponse } from "@/types";
 export interface PushedAuthorizationRequestStepOptions {
   clientId: string;
   codeVerifier: string;
-  credentialConfigurationId: string;
+  credentialConfigurationIds: string[];
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
   walletAttestation: Omit<AttestationResponse, "created">;
@@ -46,12 +46,12 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
 
           const createParOptions: CreatePushedAuthorizationRequestOptions = {
             audience: this.config.issuance.url,
-            authorization_details: [
-              {
-                credential_configuration_id: options.credentialConfigurationId,
+            authorization_details: options.credentialConfigurationIds.map(
+              (id) => ({
+                credential_configuration_id: id,
                 type: "openid_credential",
-              },
-            ],
+              }),
+            ),
             authorizationServerMetadata: {
               require_signed_request_object: true,
             },
@@ -75,7 +75,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
           );
           log.debug(
-            `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
+            `PAR request credentialConfigurationId: ${options.credentialConfigurationIds}`,
           );
           const pushedAuthorizationRequest =
             await createPushedAuthorizationRequest({

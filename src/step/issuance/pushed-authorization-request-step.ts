@@ -24,7 +24,7 @@ export interface PushedAuthorizationRequestStepOptions {
   /**
    * Credential Configuration ID for the requested credential
    */
-  credentialConfigurationId: string;
+  credentialConfigurationIds: string[];
 
   /**
    * DPoP JWT used to authenticate the client, it will be created using the wallet attestation
