@@ -65,7 +65,7 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
           itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
         },
         credential_identifier: options.credentialIdentifier,
-        issuerIdentifier: this.config.issuance.url,
+        issuerIdentifier: options.baseUrl,
         nonce: options.nonce,
         signer: {
           alg: "ES256",

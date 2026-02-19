@@ -28,6 +28,11 @@ export interface CredentialRequestStepOptions {
   credentialIdentifier: string;
 
   /**
+   * Credential Issuer Base URL
+   */
+  baseUrl: string;
+
+  /**
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
    */
   credentialRequestEndpoint: string;
