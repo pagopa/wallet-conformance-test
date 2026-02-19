@@ -268,6 +268,7 @@ export class WalletIssuanceOrchestratorFlow {
       );
 
       const authorizeResponse = await this.authorizeStep.run({
+        baseUrl: credentialIssuer,
         authorizationEndpoint:
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.authorization_endpoint,
@@ -328,6 +329,7 @@ export class WalletIssuanceOrchestratorFlow {
         | { c_nonce: string };
 
       const credentialResponse = await this.credentialRequestStep.run({
+        baseUrl: credentialIssuer,
         accessToken: tokenResponse.response?.access_token ?? "",
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationIds[0]!,
