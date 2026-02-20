@@ -1,22 +1,18 @@
 import {
   createAuthorizationResponse,
   fetchAuthorizationRequest,
+  parseAuthorizeRequest,
 } from "@pagopa/io-wallet-oid4vp";
 import { DcqlQuery } from "dcql";
 
-import {
-  getEncryptJweCallback,
-  partialCallbacks,
-  signJwtCallback,
-  verifyJwt,
-} from "@/logic";
+import { getEncryptJweCallback, partialCallbacks, verifyJwt } from "@/logic";
 import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { buildVpToken } from "@/logic/vpToken";
 import {
   AuthorizationRequestDefaultStep,
+  AuthorizationRequestExecuteStepResponse,
   AuthorizationRequestOptions,
   AuthorizationRequestStepResponse,
-  AuthorizationRequestStepResult,
 } from "@/step/presentation/authorization-request-step";
 
 export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDefaultStep {
@@ -24,19 +20,24 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
 
   async run(
     options: AuthorizationRequestOptions,
-  ): Promise<AuthorizationRequestStepResult> {
+  ): Promise<AuthorizationRequestStepResponse> {
     const log = this.log.withTag(this.tag);
     log.info("Starting authorization request step...");
 
-    return this.execute<AuthorizationRequestStepResponse>(async () => {
+    return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
       const authorizeRequestUrl =
         this.config.presentation.authorize_request_url;
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
-      const { parsedAuthorizeRequest, parsedQrCode } =
+      const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl,
-          callbacks: { verifyJwt },
+          callbacks: { fetch },
         });
+
+      const parsedAuthorizeRequest = await parseAuthorizeRequest({
+        callbacks: { verifyJwt },
+        requestObjectJwt,
+      });
 
       const requestObject = parsedAuthorizeRequest.payload;
       log.info(
@@ -91,6 +92,8 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       const { unitKey } = options.walletAttestation;
 
       const authorizationResponse = await createAuthorizationResponse({
+        authorization_encrypted_response_alg,
+        authorization_encrypted_response_enc,
         callbacks: {
           ...partialCallbacks,
           encryptJwe: getEncryptJweCallback(encryptionKey, {
@@ -99,11 +102,11 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
             kid: encryptionKey.kid,
             typ: "oauth-authz-req+jwt",
           }),
-          signJwt: signJwtCallback([unitKey.privateKey]),
         },
-        client_id: parsedQrCode.clientId,
         requestObject,
-        rpMetadata: metadata,
+        rpJwks: {
+          jwks: metadata.jwks,
+        },
         vp_token: vpToken,
       });
 

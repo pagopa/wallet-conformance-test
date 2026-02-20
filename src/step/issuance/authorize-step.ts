@@ -4,7 +4,7 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 
 import { AttestationResponse, KeyPair } from "@/types";
 
-import { StepFlow, StepResult } from "../step-flow";
+import { StepFlow, StepResponse } from "../step-flow";
 
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
@@ -45,7 +45,7 @@ export interface AuthorizeStepOptions {
   walletAttestation: Omit<AttestationResponse, "created">;
 }
 
-export type AuthorizeStepResponse = StepResult & {
+export type AuthorizeStepResponse = StepResponse & {
   response?: AuthorizeExecuteResponse;
 };
 

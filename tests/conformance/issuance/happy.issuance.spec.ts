@@ -106,7 +106,7 @@ testConfigs.forEach((testConfig) => {
       try {
         const expectedContentType = "application/entity-statement+jwt";
         const actualContentType =
-          fetchMetadataResponse.response?.headers.get("content-type");
+          fetchMetadataResponse.response?.headers?.get("content-type");
 
         log.info("→ Validating content-type header...");
         log.info(`  Expected: ${expectedContentType}`);
@@ -139,16 +139,9 @@ testConfigs.forEach((testConfig) => {
 
         log.info("→ Checking Entity Statement JWT is present...");
         expect(
-          fetchMetadataResponse.response?.entityStatementJwt,
-        ).toBeDefined();
+          fetchMetadataResponse.response?.discoveredVia === "federation",
+        ).toBeTruthy();
         log.info("  ✅ Entity Statement JWT is present");
-
-        log.info("→ Parsing response body as JWT...");
-        const decodedData = decodeJwt(
-          fetchMetadataResponse.response?.entityStatementJwt ?? "",
-        );
-        expect(decodedData).toBeDefined();
-        log.info("  ✅ JWT successfully decoded and verified");
 
         testSuccess = true;
       } finally {
@@ -165,11 +158,10 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Parsing response body as JWT...");
-        const decodedData = decodeJwt(
-          fetchMetadataResponse.response?.entityStatementJwt ?? "",
-        );
-        log.info("  ✅ JWT successfully parsed");
+        log.info("→ Validating Entity Statement claims...");
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
+        log.info("  ✅ Entity Statement claims retrieved");
 
         log.info(
           "→ Validating required parameters (iss, sub, iat, exp, jwks, metadata)...",
@@ -187,7 +179,7 @@ testConfigs.forEach((testConfig) => {
           .refine((data) => data.metadata !== undefined, {
             message: "metadata is missing",
           })
-          .safeParse(decodedData);
+          .safeParse(entityClaims);
 
         expect(
           result.success,
@@ -210,11 +202,10 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Parsing response body as JWT...");
-        const decodedData = decodeJwt(
-          fetchMetadataResponse.response?.entityStatementJwt ?? "",
-        );
-        log.info("  ✅ JWT successfully parsed");
+        log.info("→ Validating Entity Statement claims...");
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
+        log.info("  ✅ Entity Statement claims retrieved");
 
         log.info("→ Validating Credential Issuer metadata structure...");
         log.info("  Required metadata sections:");
@@ -238,7 +229,7 @@ testConfigs.forEach((testConfig) => {
                 "metadata or federation_entity|oauth_authorization_server|openid_credential_issuer is missing",
             },
           )
-          .safeParse(decodedData);
+          .safeParse(entityClaims);
 
         expect(
           result.success,
@@ -262,11 +253,10 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Parsing response body as JWT...");
-        const decodedData = decodeJwt(
-          fetchMetadataResponse.response?.entityStatementJwt ?? "",
-        );
-        log.info("  ✅ JWT successfully parsed");
+        log.info("→ Validating Entity Statement claims...");
+        const entityClaims =
+          fetchMetadataResponse.response?.entityStatementClaims;
+        log.info("  ✅ Entity Statement claims retrieved");
 
         log.info("→ Checking openid_credential_verifier metadata...");
         const result = z
@@ -280,7 +270,7 @@ testConfigs.forEach((testConfig) => {
               data.metadata?.openid_credential_verifier !== undefined,
             { message: "metadata or openid_credential_verifier is missing" },
           )
-          .safeParse(decodedData);
+          .safeParse(entityClaims);
 
         expect(
           result.success,

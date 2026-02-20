@@ -10,7 +10,10 @@ import { signCallback } from "./jwt";
 import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
 
 export interface CreateFederationMetadataOptions {
-  claims: Omit<ItWalletEntityConfigurationClaimsOptions, "exp" | "iat">;
+  claims: Omit<
+    ItWalletEntityConfigurationClaimsOptions,
+    "exp" | "iat" | "jwks"
+  >;
 
   /**
    * The public JWK of the entity to include in the federation metadata's JWKS.

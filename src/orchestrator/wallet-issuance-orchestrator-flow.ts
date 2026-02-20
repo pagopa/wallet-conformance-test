@@ -250,11 +250,28 @@ export class WalletIssuanceOrchestratorFlow {
         walletAttestation: walletAttestationResponse,
       });
 
+      if (
+        !authorizeResponse.response ||
+        !authorizeResponse.response.authorizeResponse
+      ) {
+        throw new Error("Authorization Response not found");
+      }
+
+      if (!authorizeResponse.response.requestObject?.response_uri) {
+        throw new Error("Request Object Response URI not found");
+      }
+
+      if (!pushedAuthorizationRequestResponse.codeVerifier) {
+        throw new Error(
+          "Code Verifier not found in Pushed Authorization Request response",
+        );
+      }
+
       const accessTokenRequest: AccessTokenRequest = {
-        code: authorizeResponse.response?.authorizeResponse?.code,
+        code: authorizeResponse.response.authorizeResponse.code,
         code_verifier: pushedAuthorizationRequestResponse.codeVerifier,
         grant_type: "authorization_code",
-        redirect_uri: authorizeResponse.response?.requestObject?.response_uri,
+        redirect_uri: authorizeResponse.response.requestObject.response_uri,
       };
       const tokenResponse = await this.tokenRequestStep.run({
         accessTokenEndpoint:
