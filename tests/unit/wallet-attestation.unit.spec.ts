@@ -3,13 +3,19 @@ import { decodeJwt, importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
-import type { KeyPair } from "@/types";
+import type { Config, KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { loadConfig } from "@/logic";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 describe("Wallet Attestation Unit Test", () => {
-  const config = loadConfig("./config.ini");
+  const configWithVersion = loadConfig("./config.ini");
+  const { wallet_version : _, ...walletConfig } = configWithVersion.wallet
+  const config : Config = {
+    ...configWithVersion,
+    wallet : walletConfig
+  } 
   const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
@@ -87,7 +93,7 @@ describe("Wallet Attestation Unit Test", () => {
     });
 
     const attestation = readFileSync(
-      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_id}`,
+      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/${config.wallet.wallet_id}`,
       "utf-8",
     );
     expect(response.attestation).toBe(attestation);

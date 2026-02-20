@@ -1,5 +1,5 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
-import { ValidationError } from "@pagopa/io-wallet-utils";
+import { ItWalletSpecsVersion, ValidationError } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
@@ -18,7 +18,7 @@ import {
   loadJwks,
   parseMdoc,
 } from "@/logic";
-import { KeyPairJwk } from "@/types";
+import { Config, KeyPairJwk } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
@@ -74,7 +74,12 @@ describe("Load Mocked Credentials", async () => {
 });
 
 describe("Generate Mocked Credentials", () => {
-  const config = loadConfig("./config.ini");
+  const configWithVersion = loadConfig("./config.ini");
+  const { wallet_version : _, ...walletConfig } = configWithVersion.wallet
+  const config : Config = {
+    ...configWithVersion,
+    wallet : walletConfig
+  } 
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
@@ -83,8 +88,8 @@ describe("Generate Mocked Credentials", () => {
   };
 
   afterAll(() => {
-    rmSync(`${backupDir}/dc_sd_jwt_PersonIdentificationData`, { force: true });
-    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
+    rmSync(`${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/dc_sd_jwt_PersonIdentificationData`, { force: true });
+    rmSync(`${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`, { force: true });
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {

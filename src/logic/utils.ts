@@ -7,6 +7,7 @@ import path from "path";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 // Re-export config loading functions
 export {
@@ -71,10 +72,11 @@ export async function fetchWithRetries(
 export const loadJsonDumps = (
   fileName: string,
   placeholders: Record<string, object | string>,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
-  const filePath = path.join(dumpsDir, fileName);
+  const filePath = path.join(dumpsDir, version, fileName);
   if (!existsSync(filePath)) {
     throw new Error(`File ${fileName} not found`);
   }
@@ -220,9 +222,10 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
 ): null | string {
   try {
-    const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath);
+    const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath, version);
 
     // Ensure the directory exists
     if (!existsSync(credentialsPath)) {
@@ -236,4 +239,8 @@ export function saveCredentialToDisk(
   } catch {
     return null;
   }
+}
+
+export const parseItWalletSpecVersion = (version : string) : version is ItWalletSpecsVersion => {
+  return Object.values(ItWalletSpecsVersion).includes(version as ItWalletSpecsVersion)
 }
