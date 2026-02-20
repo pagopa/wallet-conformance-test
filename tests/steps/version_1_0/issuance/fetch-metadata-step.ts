@@ -24,7 +24,7 @@ import {
  * The response of this step includes:
  * - status: HTTP status code of the response.
  * - headers: HTTP headers of the response.
- * - entityStatementJwt: The raw entity statement JWT as a string (if decoding was successful).
+ * - discoveredVia: Always set to "federation" for this step.
  * - entityStatementClaims: The parsed claims from the entity statement JWT (if parsing was successful).
  */
 export class FetchMetadataITWallet1_0Step extends FetchMetadataDefaultStep {
