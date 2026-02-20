@@ -58,7 +58,7 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
         clientId: options.clientId,
         config: new IoWalletSdkConfig({
           itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
-        }) as CredentialRequestOptionsV1_0["config"],
+        }),
         credential_identifier: options.credentialIdentifier,
         issuerIdentifier: this.config.issuance.url,
         nonce: options.nonce,
