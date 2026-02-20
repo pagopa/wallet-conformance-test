@@ -1,5 +1,5 @@
 import { fetchWithRetries } from "@/logic";
-import { StepResult } from "@/step";
+import { StepResponse } from "@/step";
 import { NonceRequestDefaultStep } from "@/step/issuance/nonce-request-step";
 
 export interface NonceRequestExecuteResponse {
@@ -9,7 +9,7 @@ export interface NonceRequestExecuteResponse {
   nonce: NonceResponsePayload;
 }
 
-export type NonceRequestResponse = StepResult & {
+export type NonceRequestResponse = StepResponse & {
   response?: NonceRequestExecuteResponse;
 };
 

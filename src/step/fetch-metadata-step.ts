@@ -1,9 +1,9 @@
-import { StepFlow, StepResult } from "./step-flow";
+import { StepFlow, StepResponse } from "./step-flow";
 
 export interface FetchMetadataExecuteResponse {
+  discoveredVia?: "federation" | "oid4vci";
   entityStatementClaims?: any;
-  entityStatementJwt?: string;
-  headers: Headers;
+  headers?: Headers;
   status: number;
 }
 
@@ -11,7 +11,7 @@ export interface FetchMetadataOptions {
   baseUrl: string;
 }
 
-export type FetchMetadataStepResponse = StepResult & {
+export type FetchMetadataStepResponse = StepResponse & {
   response?: FetchMetadataExecuteResponse;
 };
 
@@ -23,9 +23,7 @@ export type FetchMetadataStepResponse = StepResult & {
  * If HTTP response is executed successfully, the response field contains:
  * - status: HTTP status code of the response.
  * - headers: HTTP headers of the response.
- *
- * If the entity statement JWT is successfully decoded as JWT, the response field also contains:
- * - entityStatementJwt: The raw entity statement JWT as a string.
+ * - discoveredVia: The discovery method used (e.g. "federation" or "oid4vci").
  *
  * If the entity statement claims are successfully parsed, the response field also contains:
  * - entityStatementClaims: The parsed claims from the entity statement JWT.

@@ -1,6 +1,5 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { X509Certificate, X509CertificateGenerator } from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
@@ -27,6 +26,15 @@ export const partialCallbacks: Pick<
   verifyJwt,
 };
 
+/**
+ * Fetches a resource with a specified number of retries on failure.
+ *
+ * @param url The URL of the resource to fetch.
+ * @param network The network configuration, including timeout and max retries.
+ * @param init Optional request initialization options.
+ * @returns A promise that resolves to the fetch response and the number of attempts made.
+ * @throws An error if the request times out or fails after all retries.
+ */
 export async function fetchWithRetries(
   url: Request | string | URL,
   network: Config["network"],
@@ -96,6 +104,23 @@ export const loadJsonDumps = (
   }
 };
 
+export function buildCertPath(pathPrefix: string): string {
+  return `${pathPrefix}_cert`;
+}
+
+export function buildJwksPath(pathPrefix: string): string {
+  return `${pathPrefix}_jwks`;
+}
+
+/**
+ * Loads a certificate from a file, or creates and saves it if it doesn't exist.
+ *
+ * @param certPath The directory path where the certificate is stored.
+ * @param filename The name of the certificate file.
+ * @param keyPair The key pair to use if creating a new certificate.
+ * @param subject The subject name to use if creating a new certificate.
+ * @returns A promise that resolves to the certificate in PEM format.
+ */
 export async function loadCertificate(
   certPath: string,
   filename: string,
@@ -168,14 +193,14 @@ export async function loadJwksWithSelfSignedX5c(
 ): Promise<KeyPair> {
   const signedJwks = await loadJwks(
     trust.federation_trust_anchors_jwks_path,
-    `${namePrefix}_jwks`,
+    buildJwksPath(namePrefix),
   );
 
   if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
     signedJwks.publicKey.x5c = [
       await loadCertificate(
         trust.ca_cert_path,
-        `${namePrefix}_cert`,
+        buildCertPath(namePrefix),
         signedJwks,
         trust.certificate_subject,
       ),

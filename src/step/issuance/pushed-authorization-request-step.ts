@@ -3,13 +3,13 @@ import {
   PushedAuthorizationResponse,
 } from "@pagopa/io-wallet-oauth2";
 
-import { StepFlow, StepResult } from "@/step";
+import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse;
 
-export type PushedAuthorizationRequestResponse = StepResult & {
+export type PushedAuthorizationRequestResponse = StepResponse & {
   /**
    * Code verifier used in the Pushed Authorization Request, it will be generated internally
    */

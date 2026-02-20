@@ -5,11 +5,17 @@ import {
 import {
   createCredentialRequest,
   CredentialRequestOptions,
+  CredentialRequestOptionsV1_0,
   fetchCredentialResponse,
   FetchCredentialResponseOptions,
 } from "@pagopa/io-wallet-oid4vci";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import {
+  buildJwksPath,
   createAndSaveKeys,
   createKeys,
   partialCallbacks,
@@ -37,17 +43,22 @@ export class CredentialRequestITWallet1_0Step extends CredentialRequestDefaultSt
     log.info(`Generating new key pair for credential...`);
     const credentialKeyPair = this.config.issuance.save_credential
       ? await createAndSaveKeys(
-          `${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}_jwks`,
+          buildJwksPath(
+            `${this.config.wallet.backup_storage_path}/${options.credentialIdentifier}`,
+          ),
         )
       : await createKeys();
 
     return await this.execute<CredentialRequestExecuteResponse>(async () => {
       log.info(`Creating the Credential Request...`);
-      const createCredentialRequestOptions: CredentialRequestOptions = {
+      const createCredentialRequestOptions: CredentialRequestOptionsV1_0 = {
         callbacks: {
           signJwt: signJwtCallback([credentialKeyPair.privateKey]),
         },
         clientId: options.clientId,
+        config: new IoWalletSdkConfig({
+          itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
+        }),
         credential_identifier: options.credentialIdentifier,
         issuerIdentifier: this.config.issuance.url,
         nonce: options.nonce,

@@ -6,6 +6,7 @@ import {
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
+  buildJwksPath,
   createLogger,
   loadConfigWithHierarchy,
   loadJwks,

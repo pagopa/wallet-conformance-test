@@ -103,6 +103,16 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
   }
 };
 
+/**
+ * Returns a callback function for JWE encryption.
+ *
+ * The returned callback can be used to encrypt data using the provided public key
+ * and JWE header parameters.
+ *
+ * @param publicKey The public JWK to use for encryption.
+ * @param header The JWE header parameters.
+ * @returns An `EncryptJweCallback` function.
+ */
 export function getEncryptJweCallback(
   publicKey: Jwk,
   header: JWEHeaderParameters & { alg: string; enc: string },

@@ -29,8 +29,8 @@ function getTestsDir(testType) {
   };
 
   const defaultDirMap = {
-    issuance: "./tests/issuance",
-    presentation: "./tests/presentation",
+    issuance: "./tests/conformance/issuance",
+    presentation: "./tests/conformance/presentation",
   };
 
   // CLI override via environment variable takes precedence
