@@ -202,7 +202,7 @@ export class WalletIssuanceOrchestratorFlow {
       fetchMetadataResponse.response?.entityStatementClaims;
 
     this.log.debug(
-      `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
+      `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.response?.codeVerifier}'`,
     );
 
     const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
@@ -372,11 +372,28 @@ export class WalletIssuanceOrchestratorFlow {
     const entityStatementClaims =
       fetchMetadataResponse.response?.entityStatementClaims;
 
+    if (
+      !authorizeResponse.response ||
+      !authorizeResponse.response.authorizeResponse
+    ) {
+      throw new Error("Authorization Response not found");
+    }
+
+    if (!authorizeResponse.response.requestObject?.response_uri) {
+      throw new Error("Request Object Response URI not found");
+    }
+
+    if (!pushedAuthorizationRequestResponse.response?.codeVerifier) {
+      throw new Error(
+        "Code Verifier not found in Pushed Authorization Request response",
+      );
+    }
+
     const accessTokenRequest: AccessTokenRequest = {
-      code: authorizeResponse.response?.authorizeResponse?.code,
-      code_verifier: pushedAuthorizationRequestResponse.codeVerifier,
+      code: authorizeResponse.response.authorizeResponse.code,
+      code_verifier: pushedAuthorizationRequestResponse.response.codeVerifier,
       grant_type: "authorization_code",
-      redirect_uri: authorizeResponse.response?.requestObject?.response_uri,
+      redirect_uri: authorizeResponse.response.requestObject.response_uri,
     };
 
     const tokenResponse = await this.tokenRequestStep.run({

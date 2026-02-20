@@ -70,10 +70,10 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           log.debug(
             `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
           );
-          const pushedAuthorizationRequestSigned =
+          const pushedAuthorizationRequest =
             await createPushedAuthorizationRequest(finalParOptions);
 
-          const codeVerifier = pushedAuthorizationRequestSigned.pkceCodeVerifier;
+          const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,

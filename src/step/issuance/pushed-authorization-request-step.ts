@@ -7,13 +7,15 @@ import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
-  PushedAuthorizationResponse;
-
-export type PushedAuthorizationRequestResponse = StepResponse & {
+  PushedAuthorizationResponse & {
   /**
    * Code verifier used in the Pushed Authorization Request, it will be generated internally
    */
-  codeVerifier?: string;
+  codeVerifier: string;
+
+  };
+
+export type PushedAuthorizationRequestResponse = StepResponse & {
 
   response?: PushedAuthorizationRequestExecuteResponse;
 };
