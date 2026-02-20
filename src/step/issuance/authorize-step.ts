@@ -15,14 +15,14 @@ export interface AuthorizeExecuteResponse {
 
 export interface AuthorizeStepOptions {
   /**
-   * Issuer Base URL
-   */
-  baseUrl: string;
-
-  /**
    * Authorization Endpoint URL
    */
   authorizationEndpoint: string;
+
+  /**
+   * Issuer Base URL
+   */
+  baseUrl: string;
 
   /**
    * Client ID of the OAuth2 Client

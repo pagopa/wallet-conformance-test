@@ -14,6 +14,7 @@ import {
 import { AttestationResponse } from "@/types";
 
 export interface PushedAuthorizationRequestStepOptions {
+  baseUrl: string;
   clientId: string;
   codeVerifier: string;
   credentialConfigurationIds: string[];
@@ -45,7 +46,7 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           };
 
           const createParOptions: CreatePushedAuthorizationRequestOptions = {
-            audience: this.config.issuance.url,
+            audience: options.baseUrl,
             authorization_details: options.credentialConfigurationIds.map(
               (id) => ({
                 credential_configuration_id: id,
