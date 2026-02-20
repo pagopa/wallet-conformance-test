@@ -18,11 +18,13 @@ import {
   loadJwks,
 } from "@/logic";
 import { Credential } from "@/types";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
 ): Promise<Credential> {
   const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
@@ -75,7 +77,7 @@ export async function createMockMdlMdoc(
   });
   const compact = cborIssuerSigned.toString("base64url");
 
-  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, compact);
+  writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, compact);
   return {
     compact,
     parsed: document,
@@ -91,6 +93,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
 ): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 
@@ -189,7 +192,7 @@ export async function createMockSdJwt(
     },
   );
 
-  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, credential);
+  writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, credential);
   return {
     compact: credential,
     parsed: await decodeJwt(credential),

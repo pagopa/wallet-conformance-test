@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 import { parseMdoc } from "@/logic";
 import { Credential } from "@/types";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -17,20 +18,22 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
 ): Promise<Record<string, Credential>> {
+  const pathVersion = `${path}/${version}`
   try {
-    if (!existsSync(path))
-      mkdirSync(path, {
+    if (!existsSync(pathVersion))
+      mkdirSync(pathVersion, {
         recursive: true,
       });
   } catch (e) {
     const err = e as Error;
     throw new Error(
-      `unable to find or create necessary directories ${path}: ${err.message}`,
+      `unable to find or create necessary directories ${pathVersion}: ${err.message}`,
     );
   }
 
-  const files = readdirSync(path);
+  const files = readdirSync(pathVersion);
   const credentials: Record<string, Credential> = {};
 
   for (const file of files) {
