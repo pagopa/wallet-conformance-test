@@ -15,6 +15,11 @@ export interface AuthorizeExecuteResponse {
 
 export interface AuthorizeStepOptions {
   /**
+   * Issuer Base URL
+   */
+  baseUrl: string;
+
+  /**
    * Authorization Endpoint URL
    */
   authorizationEndpoint: string;
@@ -27,7 +32,11 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: { credential: string; keyPair: KeyPair }[];
+  credentials: {
+    credential: string;
+    keyPair: KeyPair;
+    typ: "dc+sd-jwt" | "mso_mdoc";
+  }[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
