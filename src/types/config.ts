@@ -8,9 +8,9 @@ export const configSchema = z.object({
     credential_offer_uri: z
       .string()
       .url()
-      .startsWith("openid-credential-offer://")
-      .or(z.string().url().startsWith("haip-vci://"))
-      .or(z.string().url().startsWith("https://"))
+      .startsWith("https://")
+      .or(z.string().startsWith("haip-vci://"))
+      .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),

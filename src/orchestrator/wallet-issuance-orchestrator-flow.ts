@@ -116,17 +116,14 @@ export class WalletIssuanceOrchestratorFlow {
   }> {
     try {
       this.log.info("Starting Test Issuance Flow...");
-
-      const credentialOfferUri =
-        this.config.issuance.credential_offer_uri ?? this.config.issuance.url;
-      this.log.info(`Resolving Credential Offer: ${credentialOfferUri}`);
-
+      
       let credentialIssuer: string;
       let credentialConfigurationIds: string[];
-      try {
+      if (this.config.issuance.credential_offer_uri && this.config.issuance.credential_offer_uri !== "") {
+        this.log.info(`Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`);
         const credentialOffer = await resolveCredentialOffer({
           callbacks: { fetch },
-          credentialOffer: credentialOfferUri,
+          credentialOffer: this.config.issuance.credential_offer_uri,
         });
         this.log.debug(
           "Received Credential Offer:\n",
@@ -136,7 +133,9 @@ export class WalletIssuanceOrchestratorFlow {
         credentialIssuer = credentialOffer.credential_issuer;
         credentialConfigurationIds =
           credentialOffer.credential_configuration_ids;
-      } catch {
+      } else {
+        this.log.debug("Missing Credential Offer URI: using Credetntial Issuer and Credential ID from configuration");
+
         credentialIssuer = this.config.issuance.url;
         credentialConfigurationIds = [
           this.issuanceConfig.credentialConfigurationId,
