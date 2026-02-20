@@ -168,8 +168,8 @@ testConfigs.forEach((testConfig) => {
         );
         const result = z
           .object({
-            exp: z.unknown(),
-            iat: z.unknown(),
+            exp: z.number(),
+            iat: z.number(),
             iss: z.string(),
             jwks: z.any(),
             metadata: z.any(),
