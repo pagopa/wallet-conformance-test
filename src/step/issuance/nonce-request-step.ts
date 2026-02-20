@@ -1,4 +1,4 @@
-import { StepFlow, StepResult } from "@/step";
+import { StepFlow, StepResponse } from "@/step";
 
 export interface NonceRequestExecuteResponse {
   attempts: number;
@@ -7,7 +7,7 @@ export interface NonceRequestExecuteResponse {
   nonce: NonceResponsePayload;
 }
 
-export type NonceRequestResponse = StepResult & {
+export type NonceRequestResponse = StepResponse & {
   response?: NonceRequestExecuteResponse;
 };
 

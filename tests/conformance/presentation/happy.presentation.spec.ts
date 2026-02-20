@@ -4,8 +4,8 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataStepResponse } from "@/step";
-import { AuthorizationRequestStepResult } from "@/step/presentation/authorization-request-step";
-import { RedirectUriStepResult } from "@/step/presentation/redirect-uri-step";
+import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
+import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
@@ -15,9 +15,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     new WalletPresentationOrchestratorFlow(testConfig);
   const baseLog = orchestrator.getLog();
 
-  let authorizationRequestResult: AuthorizationRequestStepResult;
+  let authorizationRequestResult: AuthorizationRequestStepResponse;
   let fetchMetadataResult: FetchMetadataStepResponse;
-  let redirectUriResult: RedirectUriStepResult;
+  let redirectUriResult: RedirectUriStepResponse;
 
   beforeAll(async () => {
     baseLog.info("========================================");

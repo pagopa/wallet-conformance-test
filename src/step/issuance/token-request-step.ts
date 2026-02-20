@@ -3,12 +3,12 @@ import {
   AccessTokenResponse,
 } from "@pagopa/io-wallet-oauth2";
 
-import { StepFlow, StepResult } from "@/step";
+import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type TokenRequestExecuteResponse = AccessTokenResponse;
 
-export type TokenRequestResponse = StepResult & {
+export type TokenRequestResponse = StepResponse & {
   response?: TokenRequestExecuteResponse;
 };
 

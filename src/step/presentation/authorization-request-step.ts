@@ -9,7 +9,15 @@ import {
 
 import type { AttestationResponse, KeyPairJwk } from "@/types";
 
-import { StepFlow, type StepResult } from "@/step/step-flow";
+import { StepFlow, type StepResponse } from "@/step/step-flow";
+
+export interface AuthorizationRequestExecuteStepResponse {
+  authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
+  authorizationResponse: CreateAuthorizationResponseResult;
+  parsedQrCode: ParsedQrCode;
+  requestObject: AuthorizationRequestObject;
+  responseUri: string;
+}
 
 export interface AuthorizationRequestOptions {
   /**
@@ -28,16 +36,8 @@ export interface AuthorizationRequestOptions {
   walletAttestation: AttestationResponse;
 }
 
-export interface AuthorizationRequestStepResponse {
-  authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
-  authorizationResponse: CreateAuthorizationResponseResult;
-  parsedQrCode: ParsedQrCode;
-  requestObject: AuthorizationRequestObject;
-  responseUri: string;
-}
-
-export type AuthorizationRequestStepResult = StepResult & {
-  response?: AuthorizationRequestStepResponse;
+export type AuthorizationRequestStepResponse = StepResponse & {
+  response?: AuthorizationRequestExecuteStepResponse;
 };
 
 export interface CredentialWithKey {
@@ -55,7 +55,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
 
   async run(
     _: AuthorizationRequestOptions,
-  ): Promise<AuthorizationRequestStepResult> {
+  ): Promise<AuthorizationRequestStepResponse> {
     this.log.warn("Method not implemented.");
     return { success: false };
   }

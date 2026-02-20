@@ -1,13 +1,8 @@
 import { CreateAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
 
-import { StepFlow, type StepResult } from "@/step/step-flow";
+import { StepFlow, type StepResponse } from "@/step/step-flow";
 
-export interface RedirectUriOptions {
-  authorizationResponse: CreateAuthorizationResponseResult;
-  responseUri: string;
-}
-
-export type RedirectUriStepResponse =
+export type RedirectUriExecuteStepResponse =
   | {
       redirectUri: undefined;
       responseCode: undefined;
@@ -17,8 +12,13 @@ export type RedirectUriStepResponse =
       responseCode: string;
     };
 
-export type RedirectUriStepResult = StepResult & {
-  response?: RedirectUriStepResponse;
+export interface RedirectUriOptions {
+  authorizationResponse: CreateAuthorizationResponseResult;
+  responseUri: string;
+}
+
+export type RedirectUriStepResponse = StepResponse & {
+  response?: RedirectUriExecuteStepResponse;
 };
 
 /**
@@ -28,7 +28,7 @@ export type RedirectUriStepResult = StepResult & {
 export class RedirectUriDefaultStep extends StepFlow {
   tag = "REDIRECT URI";
 
-  async run(_: RedirectUriOptions): Promise<RedirectUriStepResult> {
+  async run(_: RedirectUriOptions): Promise<RedirectUriStepResponse> {
     this.log.warn("Method not implemented.");
     return { success: false };
   }

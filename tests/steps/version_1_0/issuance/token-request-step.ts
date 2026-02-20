@@ -8,13 +8,13 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
-import { StepResult } from "@/step";
+import { StepResponse } from "@/step";
 import { TokenRequestDefaultStep } from "@/step/issuance/token-request-step";
 import { AttestationResponse } from "@/types";
 
 export type TokenRequestExecuteResponse = AccessTokenResponse;
 
-export type TokenRequestResponse = StepResult & {
+export type TokenRequestResponse = StepResponse & {
   response?: TokenRequestExecuteResponse;
 };
 

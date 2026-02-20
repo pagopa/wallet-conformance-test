@@ -1,7 +1,7 @@
 import { createLogger } from "@/logic";
 import { Config } from "@/types";
 
-export interface StepResult {
+export interface StepResponse {
   error?: Error;
   success: boolean;
 }
@@ -17,11 +17,11 @@ export abstract class StepFlow {
     this.log = logger;
   }
 
-  abstract run(...args: unknown[]): Promise<StepResult>;
+  abstract run(...args: unknown[]): Promise<StepResponse>;
 
   protected async execute<T>(
     action: () => Promise<T>,
-  ): Promise<StepResult & { response?: T }> {
+  ): Promise<StepResponse & { response?: T }> {
     try {
       const response = await action();
       this.log.withTag(this.tag).info(`${this.tag} step succeeded ✅`);

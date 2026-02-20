@@ -3,19 +3,19 @@ import { fetchAuthorizationResponse } from "@pagopa/io-wallet-oid4vp";
 import { partialCallbacks } from "@/logic";
 import {
   RedirectUriDefaultStep,
+  RedirectUriExecuteStepResponse,
   RedirectUriOptions,
   RedirectUriStepResponse,
-  RedirectUriStepResult,
 } from "@/step/presentation/redirect-uri-step";
 
 export class RedirectUriITWallet1_0Step extends RedirectUriDefaultStep {
   tag = "REDIRECT URI";
 
-  async run(options: RedirectUriOptions): Promise<RedirectUriStepResult> {
+  async run(options: RedirectUriOptions): Promise<RedirectUriStepResponse> {
     const log = this.log.withTag(this.tag);
     log.info("Starting redirect uri step...");
 
-    return this.execute<RedirectUriStepResponse>(async () => {
+    return this.execute<RedirectUriExecuteStepResponse>(async () => {
       if (!options.authorizationResponse.jarm) {
         throw new Error(
           "JARM response is missing in the authorization response",

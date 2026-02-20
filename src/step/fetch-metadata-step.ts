@@ -1,4 +1,4 @@
-import { StepFlow, StepResult } from "./step-flow";
+import { StepFlow, StepResponse } from "./step-flow";
 
 export interface FetchMetadataExecuteResponse {
   discoveredVia?: "federation" | "oid4vci";
@@ -11,7 +11,7 @@ export interface FetchMetadataOptions {
   baseUrl: string;
 }
 
-export type FetchMetadataStepResponse = StepResult & {
+export type FetchMetadataStepResponse = StepResponse & {
   response?: FetchMetadataExecuteResponse;
 };
 
