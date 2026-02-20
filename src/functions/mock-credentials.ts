@@ -6,7 +6,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 import {
   buildCertPath,
@@ -77,6 +77,12 @@ export async function createMockMdlMdoc(
   });
   const compact = cborIssuerSigned.toString("base64url");
 
+  const pathVersion = `${credentialsPath}/${version}`
+  if (!existsSync(pathVersion)) {
+    mkdirSync(pathVersion, {
+      recursive : true
+    })
+  }
   writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, compact);
   return {
     compact,
@@ -192,6 +198,12 @@ export async function createMockSdJwt(
     },
   );
 
+  const pathVersion = `${credentialsPath}/${version}`
+  if (!existsSync(pathVersion)) {
+    mkdirSync(pathVersion, {
+      recursive : true
+    })
+  }
   writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, credential);
   return {
     compact: credential,

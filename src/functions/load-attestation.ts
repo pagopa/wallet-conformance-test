@@ -36,7 +36,7 @@ export const loadAttestation = async (options: {
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
   const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
-  const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version ? wallet.wallet_version : ItWalletSpecsVersion.V1_0}`
+  const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}`
   const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
 
   try {
