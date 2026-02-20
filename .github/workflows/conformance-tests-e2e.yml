@@ -33,6 +33,10 @@ jobs:
           node-version: "20"
           cache: "pnpm"
 
+      - name: Create config.ini from example
+        shell: bash
+        run: cp config.example.ini config.ini
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
