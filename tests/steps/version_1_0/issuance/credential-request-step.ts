@@ -4,7 +4,6 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import {
   createCredentialRequest,
-  CredentialRequestOptions,
   CredentialRequestOptionsV1_0,
   fetchCredentialResponse,
   FetchCredentialResponseOptions,
