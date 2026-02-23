@@ -118,11 +118,36 @@ describe("Generate Mocked Credentials", () => {
     ).toBe(unitKey.kid);
   });
 
-  it("should create a mock MDOC using existing keys", async () => {
+  it("should create a mock SD-JWT version 1.0.2", async () => {
+    const credential = await createMockSdJwt(metadata, backupDir, backupDir, ItWalletSpecsVersion.V1_0);
+
+    const decoded = await new SDJwtVcInstance({
+      hasher: digest,
+    }).decode(credential.compact);
+
+    expect(
+      decoded.jwt?.payload?.status
+    ).toHaveProperty('status_assertion')
+  })
+
+  it("should create a mock SD-JWT version 1.3.3", async () => {
+    const credential = await createMockSdJwt(metadata, backupDir, backupDir, ItWalletSpecsVersion.V1_3);
+
+    const decoded = await new SDJwtVcInstance({
+      hasher: digest,
+    }).decode(credential.compact);
+
+    expect(
+      decoded.jwt?.payload?.status
+    ).toHaveProperty('status_list')
+  })
+
+  it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])("should create a mock MDOC using existing keys", async (version) => {
     const credential = await createMockMdlMdoc(
       "CN=test_issuer",
       backupDir,
       backupDir,
+      version
     );
 
     expect(credential.typ).toBe("mso_mdoc");
