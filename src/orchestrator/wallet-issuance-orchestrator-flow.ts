@@ -238,7 +238,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     const credentialKeyPair = await loadJwks(
       this.config.wallet.backup_storage_path,
-      `${credentialIdentifier}_jwks`,
+      buildJwksPath(credentialIdentifier),
     );
 
     const authorizeResponse = await this.authorizeStep.run({

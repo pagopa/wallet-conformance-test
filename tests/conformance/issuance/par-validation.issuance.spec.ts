@@ -40,7 +40,7 @@ const testConfigs = await defineIssuanceTest("PARValidation");
 // ---------------------------------------------------------------------------
 
 testConfigs.forEach((testConfig) => {
-  describe.skip(`[${testConfig.name}] PAR Request Object Validation`, () => {
+  describe(`[${testConfig.name}] PAR Request Object Validation`, () => {
     const baseLog = createLogger().withTag("PAR-Validation");
 
     let walletAttestationResponse: AttestationResponse;
@@ -56,6 +56,7 @@ testConfigs.forEach((testConfig) => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
 
       const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
+      // Run through the flow up to the PAR step to extract necessary context for the tests
       const ctx = await orchestrator.runThroughPar();
 
       walletAttestationResponse = ctx.walletAttestationResponse;
@@ -130,16 +131,22 @@ testConfigs.forEach((testConfig) => {
     test("CI_015a: Algorithm Header Processing | Issuer uses the alg header to validate the Request Object signature (RFC 9126/9101)", async () => {
       const log = baseLog.withTag("CI_015a");
 
-      log.start("Conformance test: Verifying issuer uses alg header for signature validation");
+      log.start(
+        "Conformance test: Verifying issuer uses alg header for signature validation",
+      );
 
       let testSuccess = false;
       try {
         log.info("→ Sending PAR request with mismatched algorithm...");
         log.info("  Header declares: alg=ES256 (permitted)");
         log.info("  Actually signed with: ES384");
-        log.info("  If issuer correctly uses alg from header → validation fails");
-        log.info("  If issuer ignores header and infers from key → validation might succeed (incorrect behavior)");
-        
+        log.info(
+          "  If issuer correctly uses alg from header → validation fails",
+        );
+        log.info(
+          "  If issuer ignores header and infers from key → validation might succeed (incorrect behavior)",
+        );
+
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
             callbacks: {
@@ -153,7 +160,9 @@ testConfigs.forEach((testConfig) => {
 
         log.info("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly used alg header (ES256) for validation and rejected the PAR");
+        log.info(
+          "  ✅ Issuer correctly used alg header (ES256) for validation and rejected the PAR",
+        );
         log.info("     This confirms compliance with RFC 9126/9101");
 
         testSuccess = true;
@@ -497,8 +506,8 @@ testConfigs.forEach((testConfig) => {
           await fetchPushedAuthorizationResponse({
             callbacks: { fetch: customFetch },
             clientAttestationDPoP: popAttestation,
-            pushedAuthorizationRequestEndpoint,
             pushedAuthorizationRequest: signed,
+            pushedAuthorizationRequestEndpoint,
             walletAttestation: walletAttestationResponse.attestation,
           });
           log.info("  Request completed without error (unexpected)");
@@ -583,6 +592,7 @@ testConfigs.forEach((testConfig) => {
 
         testSuccess = true;
       } finally {
+        vi.useRealTimers();
         log.testCompleted(testSuccess);
       }
     });
@@ -672,7 +682,7 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        const FIXED_JTI = `conformance-test-jti-${crypto.randomUUID()}`
+        const FIXED_JTI = `conformance-test-jti-${crypto.randomUUID()}`;
         log.info("→ Creating PAR step with fixed jti...");
         log.info(`  jti: ${FIXED_JTI}`);
 

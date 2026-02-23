@@ -8,15 +8,13 @@ import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
-  /**
-   * Code verifier used in the Pushed Authorization Request, it will be generated internally
-   */
-  codeVerifier: string;
-
+    /**
+     * Code verifier used in the Pushed Authorization Request, it will be generated internally
+     */
+    codeVerifier: string;
   };
 
 export type PushedAuthorizationRequestResponse = StepResponse & {
-
   response?: PushedAuthorizationRequestExecuteResponse;
 };
 

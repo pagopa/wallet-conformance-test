@@ -4,7 +4,12 @@ import {
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
+
 import { AttestationResponse } from "./attestation-response";
+
+export type RunThroughAuthorizeContext = RunThroughParContext & {
+  authorizeResponse: AuthorizeStepResponse;
+};
 
 export interface RunThroughParContext {
   fetchMetadataResponse: FetchMetadataStepResponse;
@@ -13,10 +18,6 @@ export interface RunThroughParContext {
   pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
   walletAttestationResponse: AttestationResponse;
 }
-
-export type RunThroughAuthorizeContext = RunThroughParContext & {
-  authorizeResponse: AuthorizeStepResponse;
-};
 
 export type RunThroughTokenContext = RunThroughAuthorizeContext & {
   tokenResponse: TokenRequestResponse;

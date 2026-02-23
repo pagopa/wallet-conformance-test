@@ -1,28 +1,22 @@
 import {
   CreatePushedAuthorizationRequestOptions,
-  GenerateRandomCallback,
   Jwk,
   SignJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 
-import { createLogger } from "@/logic/logs";
-import { PushedAuthorizationRequestDefaultStep } from "@/step/issuance/pushed-authorization-request-step";
-import { AttestationResponse, Config, KeyPairJwk } from "@/types";
+import {
+  PushedAuthorizationRequestDefaultStep,
+  PushedAuthorizationRequestResponse,
+  PushedAuthorizationRequestStepOptions,
+} from "@/step/issuance/pushed-authorization-request-step";
+import { AttestationResponse, KeyPairJwk } from "@/types";
 
 /**
  * JWA algorithm identifier union.
  * Used to constrain algorithm parameters to valid JWA algorithm names.
  */
-type JwaAlg = "RS256" | "ES256" | "ES384" | "ES512" | "HS256";
-
-/**
- * Helper to import a KeyPairJwk for signing.
- * Avoids repeated casts to Parameters<typeof importJWK>[0].
- */
-async function importKeyPairJwk(key: KeyPairJwk) {
-  return importJWK(key as Parameters<typeof importJWK>[0], key.alg ?? "ES256");
-}
+type JwaAlg = "ES256" | "ES384" | "ES512" | "HS256" | "RS256";
 
 /**
  * Creates a fake AttestationResponse whose wallet attestation JWT is signed
@@ -141,6 +135,43 @@ export function signWithHS256(secret: string): SignJwtCallback {
 }
 
 /**
+ * Returns a SignJwtCallback that signs with one algorithm (signAlg) but
+ * declares a different algorithm (headerAlg) in the JWT header.
+ *
+ * This tests whether the issuer uses the alg header to validate the signature.
+ * If the issuer correctly uses headerAlg from the alg header, validation will fail
+ * because the JWT was actually signed with signAlg.
+ *
+ * @param headerAlg - Algorithm declared in the JWT header (e.g., "ES256")
+ * @param signAlg - Algorithm actually used to sign (e.g., "ES384")
+ */
+export function signWithMismatchedAlgorithm(
+  headerAlg: JwaAlg,
+  signAlg: JwaAlg,
+): SignJwtCallback {
+  return async (_signer, { header, payload }) => {
+    // Generate a key pair for the signing algorithm
+    const { privateKey, publicKey } = await generateKeyPair(signAlg, {
+      extractable: true,
+    });
+    const privateJwk = await exportJWK(privateKey);
+    const publicJwk = await exportJWK(publicKey);
+
+    const key = await importJWK(privateJwk, signAlg);
+
+    // Sign with signAlg but declare headerAlg in the header
+    const jwt = await new SignJWT(payload as Record<string, unknown>)
+      .setProtectedHeader({ ...header, alg: headerAlg })
+      .sign(key);
+
+    return {
+      jwt,
+      signerJwk: publicJwk as Jwk,
+    };
+  };
+}
+
+/**
  * Returns a SignJwtCallback that signs with the real key but overrides the
  * `alg` header to an unexpected value (e.g. "RS256").
  * The issuer should reject because the algorithm is not in the allowed set
@@ -235,43 +266,6 @@ export function signWithWrongKid(
 }
 
 /**
- * Returns a SignJwtCallback that signs with one algorithm (signAlg) but
- * declares a different algorithm (headerAlg) in the JWT header.
- * 
- * This tests whether the issuer uses the alg header to validate the signature.
- * If the issuer correctly uses headerAlg from the alg header, validation will fail
- * because the JWT was actually signed with signAlg.
- * 
- * @param headerAlg - Algorithm declared in the JWT header (e.g., "ES256")
- * @param signAlg - Algorithm actually used to sign (e.g., "ES384")
- */
-export function signWithMismatchedAlgorithm(
-  headerAlg: string,
-  signAlg: string,
-): SignJwtCallback {
-  return async (_signer, { header, payload }) => {
-    // Generate a key pair for the signing algorithm
-    const { privateKey, publicKey } = await generateKeyPair(signAlg as any, {
-      extractable: true,
-    });
-    const privateJwk = await exportJWK(privateKey);
-    const publicJwk = await exportJWK(publicKey);
-
-    const key = await importJWK(privateJwk, signAlg);
-    
-    // Sign with signAlg but declare headerAlg in the header
-    const jwt = await new SignJWT(payload as Record<string, unknown>)
-      .setProtectedHeader({ ...header, alg: headerAlg })
-      .sign(key);
-
-    return {
-      jwt,
-      signerJwk: publicJwk as Jwk,
-    };
-  };
-}
-
-/**
  * Decodes the payload of a compact JWS, mutates a single claim, and
  * re-encodes it without re-signing — the signature becomes invalid.
  */
@@ -295,12 +289,20 @@ export function withParOverrides(
   overrides: Partial<CreatePushedAuthorizationRequestOptions>,
 ): typeof PushedAuthorizationRequestDefaultStep {
   return class extends StepClass {
-    async run(options: any): Promise<any> {
-      const enhancedOptions = {
-        ...options,
-        createParOverrides: overrides,
-      };
-      return super.run(enhancedOptions);
+    async run(
+      options: PushedAuthorizationRequestStepOptions,
+    ): Promise<PushedAuthorizationRequestResponse> {
+      return super.run({ ...options, createParOverrides: overrides });
     }
   } as typeof PushedAuthorizationRequestDefaultStep;
+}
+
+/**
+ * Helper to import a KeyPairJwk for signing.
+ * Avoids repeated casts to Parameters<typeof importJWK>[0].
+ */
+async function importKeyPairJwk(
+  key: KeyPairJwk,
+): Promise<Awaited<ReturnType<typeof importJWK>>> {
+  return importJWK(key as Parameters<typeof importJWK>[0], key.alg ?? "ES256");
 }
