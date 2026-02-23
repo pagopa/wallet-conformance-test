@@ -1,10 +1,13 @@
 import {
+  createClientAttestationPopJwt,
   CreatePushedAuthorizationRequestOptions,
   Jwk,
+  JwtSignerJwk,
   SignJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 
+import { partialCallbacks, signJwtCallback } from "@/logic";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
@@ -13,10 +16,116 @@ import {
 import { AttestationResponse, KeyPairJwk } from "@/types";
 
 /**
+ * Options to build a custom OAuth-Client-Attestation-PoP JWT for negative tests.
+ */
+export interface TamperedPopOptions {
+  /** Audience (authorization server identifier) */
+  authorizationServer: string;
+  /** The wallet attestation JWT to embed in the PoP */
+  clientAttestation: string;
+  /** Override: use a specific expiry (e.g. Date in the past for an expired PoP) */
+  expiresAt?: Date;
+  /** Override: use a specific `issuedAt` */
+  issuedAt?: Date;
+  /** Override: use a fixed jti (for replay tests) */
+  jti?: string;
+  /** The real unit-key pair from the wallet attestation (used as default signer) */
+  realUnitKey: KeyPairJwk;
+  /** Override: use a completely different (wrong) key pair to sign the PoP */
+  useWrongKey?: boolean;
+  /** Override: set a custom `aud` claim instead of the real issuer */
+  wrongAud?: string;
+}
+
+/**
  * JWA algorithm identifier union.
  * Used to constrain algorithm parameters to valid JWA algorithm names.
  */
 type JwaAlg = "ES256" | "ES384" | "ES512" | "HS256" | "RS256";
+
+/**
+ * Builds a (possibly tampered) OAuth-Client-Attestation-PoP JWT.
+ *
+ * By default it creates a valid PoP. Pass overrides to produce negative test cases:
+ * - `useWrongKey: true` — sign with a fresh random key (signature won't verify against cnf.jwk)
+ * - `wrongAud` — set a bad audience claim
+ * - `expiresAt` — control the expiry (pass a past date for an expired PoP)
+ * - `jti` — fix the jti for replay tests
+ */
+export async function buildTamperedPopJwt(
+  options: TamperedPopOptions,
+): Promise<string> {
+  const {
+    authorizationServer,
+    clientAttestation,
+    expiresAt,
+    issuedAt,
+    jti,
+    realUnitKey,
+    useWrongKey,
+    wrongAud,
+  } = options;
+
+  if (useWrongKey) {
+    // Generate a fresh key that has no relation to the wallet attestation cnf.jwk
+    const { privateKey, publicKey } = await generateKeyPair("ES256", {
+      extractable: true,
+    });
+    const wrongPrivateJwk = {
+      ...(await exportJWK(privateKey)),
+      kid: "wrong-pop-key",
+      kty: "EC" as const,
+    };
+    const wrongPublicJwk = {
+      ...(await exportJWK(publicKey)),
+      kid: "wrong-pop-key",
+      kty: "EC" as const,
+    };
+
+    const customCallbacks = {
+      ...partialCallbacks,
+      signJwt: signJwtCallback([wrongPrivateJwk]),
+    };
+
+    return createClientAttestationPopJwt({
+      authorizationServer: wrongAud ?? authorizationServer,
+      callbacks: customCallbacks,
+      clientAttestation,
+      expiresAt,
+      issuedAt,
+      jti,
+      signer: {
+        alg: "ES256",
+        kid: wrongPublicJwk.kid,
+        method: "jwk",
+        publicJwk: wrongPublicJwk as Jwk,
+      },
+    });
+  }
+
+  // Use the real unit key as signer, optionally overriding aud/exp/jti
+  const realCallbacks = {
+    ...partialCallbacks,
+    signJwt: signJwtCallback([realUnitKey]),
+  };
+
+  const signer: JwtSignerJwk = {
+    alg: realUnitKey.alg ?? "ES256",
+    kid: realUnitKey.kid,
+    method: "jwk",
+    publicJwk: { ...realUnitKey, alg: undefined } as Jwk,
+  };
+
+  return createClientAttestationPopJwt({
+    authorizationServer: wrongAud ?? authorizationServer,
+    callbacks: realCallbacks,
+    clientAttestation,
+    expiresAt,
+    issuedAt,
+    jti,
+    signer,
+  });
+}
 
 /**
  * Creates a fake AttestationResponse whose wallet attestation JWT is signed
@@ -283,6 +392,10 @@ export function tamperJwtPayload(
   const tampered = Buffer.from(JSON.stringify(decoded)).toString("base64url");
   return `${headerPart}.${tampered}.${sig}`;
 }
+
+// ---------------------------------------------------------------------------
+// OAuth-Client-Attestation-PoP (CI_028) helpers
+// ---------------------------------------------------------------------------
 
 export function withParOverrides(
   StepClass: typeof PushedAuthorizationRequestDefaultStep,

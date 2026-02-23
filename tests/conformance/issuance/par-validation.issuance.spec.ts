@@ -2,6 +2,7 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import {
+  buildTamperedPopJwt,
   createFakeAttestationResponse,
   signThenTamperPayload,
   signWithCustomIss,
@@ -672,6 +673,27 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
+    // Helper: run a PAR step with an optional custom popAttestation override
+    // -----------------------------------------------------------------------
+
+    async function runParStepWithCustomPop(
+      customPopAttestation: string,
+    ): Promise<PushedAuthorizationRequestResponse> {
+      const config = loadConfigWithHierarchy();
+      const step = new testConfig.pushedAuthorizationRequestStepClass(
+        config,
+        baseLog,
+      );
+      return step.run({
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialConfigurationId,
+        popAttestation: customPopAttestation,
+        pushedAuthorizationRequestEndpoint,
+        walletAttestation: walletAttestationResponse,
+      });
+    }
+
+    // -----------------------------------------------------------------------
     // CI_027 — Replay Attack Prevention
     // -----------------------------------------------------------------------
 
@@ -709,6 +731,156 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Validating issuer rejected the replay...");
         expect(secondResult.success).toBe(false);
         log.info("  ✅ Issuer correctly rejected replayed jti");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_028 — OAuth-Client-Attestation-PoP Validation
+    // -----------------------------------------------------------------------
+
+    test("CI_028a: PoP Wrong Signing Key | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP is signed with a key that does not match cnf.jwk in the wallet attestation", async () => {
+      const log = baseLog.withTag("CI_028a");
+
+      log.start(
+        "Conformance test: PoP signed with wrong key rejected (CI_028 §5)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.info("→ Building PoP signed with a fresh random key...");
+        const tamperedPop = await buildTamperedPopJwt({
+          authorizationServer: pushedAuthorizationRequestEndpoint,
+          clientAttestation: walletAttestationResponse.attestation,
+          realUnitKey: walletAttestationResponse.unitKey.privateKey,
+          useWrongKey: true,
+        });
+        log.info("  Tampered PoP created");
+
+        log.info("→ Sending PAR request with tampered PoP...");
+        const result = await runParStepWithCustomPop(tamperedPop);
+        log.info("  Request completed");
+
+        log.info("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+        log.info(
+          "  ✅ Issuer correctly rejected PAR with wrong PoP signing key",
+        );
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(testSuccess);
+      }
+    });
+
+    test("CI_028b: PoP Wrong Audience | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP aud claim does not match the issuer identifier", async () => {
+      const log = baseLog.withTag("CI_028b");
+
+      log.start(
+        "Conformance test: PoP with wrong aud claim rejected (CI_028 §5)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.info("→ Building PoP with wrong aud claim...");
+        log.info("  aud: https://attacker.example.com");
+        const tamperedPop = await buildTamperedPopJwt({
+          authorizationServer: pushedAuthorizationRequestEndpoint,
+          clientAttestation: walletAttestationResponse.attestation,
+          realUnitKey: walletAttestationResponse.unitKey.privateKey,
+          wrongAud: "https://attacker.example.com",
+        });
+        log.info("  Tampered PoP created");
+
+        log.info("→ Sending PAR request with wrong-aud PoP...");
+        const result = await runParStepWithCustomPop(tamperedPop);
+        log.info("  Request completed");
+
+        log.info("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+        log.info("  ✅ Issuer correctly rejected PAR with wrong PoP audience");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(testSuccess);
+      }
+    });
+
+    test("CI_028c: PoP Expired | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP exp is in the past", async () => {
+      const log = baseLog.withTag("CI_028c");
+
+      log.start("Conformance test: Expired PoP rejected (CI_028 §5)");
+
+      let testSuccess = false;
+      try {
+        log.info("→ Building PoP with exp 10 minutes in the past...");
+        const pastIssuedAt = new Date(Date.now() - 11 * 60 * 1000);
+        const pastExpiresAt = new Date(Date.now() - 10 * 60 * 1000);
+        const tamperedPop = await buildTamperedPopJwt({
+          authorizationServer: pushedAuthorizationRequestEndpoint,
+          clientAttestation: walletAttestationResponse.attestation,
+          expiresAt: pastExpiresAt,
+          issuedAt: pastIssuedAt,
+          realUnitKey: walletAttestationResponse.unitKey.privateKey,
+        });
+        log.info("  Expired PoP created");
+
+        log.info("→ Sending PAR request with expired PoP...");
+        const result = await runParStepWithCustomPop(tamperedPop);
+        log.info("  Request completed");
+
+        log.info("→ Validating issuer rejected the expired PoP...");
+        expect(result.success).toBe(false);
+        log.info("  ✅ Issuer correctly rejected PAR with expired PoP");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(testSuccess);
+      }
+    });
+
+    test("CI_028d: PoP Replay Attack | Issuer rejects a second PAR request that reuses an already-seen PoP jti", async () => {
+      const log = baseLog.withTag("CI_028d");
+
+      log.start(
+        "Conformance test: Replayed PoP jti rejected (CI_028 §5 replay prevention)",
+      );
+
+      let testSuccess = false;
+      try {
+        const FIXED_POP_JTI = `conformance-test-pop-jti-${crypto.randomUUID()}`;
+        log.info("→ Building PoP with fixed jti...");
+        log.info(`  jti: ${FIXED_POP_JTI}`);
+
+        const fixedJtiPop = await buildTamperedPopJwt({
+          authorizationServer: pushedAuthorizationRequestEndpoint,
+          clientAttestation: walletAttestationResponse.attestation,
+          jti: FIXED_POP_JTI,
+          realUnitKey: walletAttestationResponse.unitKey.privateKey,
+        });
+        log.info("  PoP with fixed jti created");
+
+        // First request — should succeed (server caches the PoP jti)
+        log.info("→ Sending first PAR request with fixed-jti PoP...");
+        const firstResult = await runParStepWithCustomPop(fixedJtiPop);
+        log.info(
+          `  First request result: ${firstResult.success ? "success" : "failed"}`,
+        );
+        expect(firstResult.success).toBe(true);
+        log.info("  ✅ First request succeeded (PoP jti cached by server)");
+
+        // Second request with the same PoP jti — server must reject it
+        log.info("→ Sending second PAR request with same PoP jti...");
+        const secondResult = await runParStepWithCustomPop(fixedJtiPop);
+        log.info(
+          `  Second request result: ${secondResult.success ? "success" : "failed"}`,
+        );
+        log.info("→ Validating issuer rejected the PoP replay...");
+        expect(secondResult.success).toBe(false);
+        log.info("  ✅ Issuer correctly rejected replayed PoP jti");
 
         testSuccess = true;
       } finally {
