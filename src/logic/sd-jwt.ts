@@ -43,3 +43,8 @@ export async function createVpTokenSdJwt({
 
   return `${suffixedSdJwt}${kbJwt}`;
 }
+
+export async function generateSRIHash(content: string): Promise<string> {
+  const digest = crypto.createHash("sha256").update(content).digest("base64");
+  return `sha256-${digest}`;
+}
