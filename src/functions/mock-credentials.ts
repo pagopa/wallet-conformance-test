@@ -1,6 +1,7 @@
 import type { DisclosureFrame } from "@sd-jwt/types";
 
 import { DataItem, Document } from "@auth0/mdl";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { encode, Tagged } from "cbor";
@@ -18,13 +19,12 @@ import {
   loadJwks,
 } from "@/logic";
 import { Credential } from "@/types";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): Promise<Credential> {
   const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
@@ -77,13 +77,16 @@ export async function createMockMdlMdoc(
   });
   const compact = cborIssuerSigned.toString("base64url");
 
-  const pathVersion = `${credentialsPath}/${version}`
+  const pathVersion = `${credentialsPath}/${version}`;
   if (!existsSync(pathVersion)) {
     mkdirSync(pathVersion, {
-      recursive : true
-    })
+      recursive: true,
+    });
   }
-  writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, compact);
+  writeFileSync(
+    `${credentialsPath}/${version}/${credentialIdentifier}`,
+    compact,
+  );
   return {
     compact,
     parsed: document,
@@ -99,7 +102,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 
@@ -198,13 +201,16 @@ export async function createMockSdJwt(
     },
   );
 
-  const pathVersion = `${credentialsPath}/${version}`
+  const pathVersion = `${credentialsPath}/${version}`;
   if (!existsSync(pathVersion)) {
     mkdirSync(pathVersion, {
-      recursive : true
-    })
+      recursive: true,
+    });
   }
-  writeFileSync(`${credentialsPath}/${version}/${credentialIdentifier}`, credential);
+  writeFileSync(
+    `${credentialsPath}/${version}/${credentialIdentifier}`,
+    credential,
+  );
   return {
     compact: credential,
     parsed: await decodeJwt(credential),
