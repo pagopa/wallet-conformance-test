@@ -346,6 +346,7 @@ export class WalletIssuanceOrchestratorFlow {
     }
 
     return {
+      authorizationServer: entityStatementClaims.iss,
       fetchMetadataResponse,
       popAttestation,
       pushedAuthorizationRequestEndpoint,

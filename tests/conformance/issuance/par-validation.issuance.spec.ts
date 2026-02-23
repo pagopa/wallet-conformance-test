@@ -14,6 +14,7 @@ import {
   withSignJwtOverride,
 } from "#/helpers/par-validation-helpers";
 import {
+  createClientAttestationPopJwt,
   createPushedAuthorizationRequest,
   fetchPushedAuthorizationResponse,
   type PushedAuthorizationRequest,
@@ -47,7 +48,7 @@ testConfigs.forEach((testConfig) => {
 
     let walletAttestationResponse: AttestationResponse;
     let pushedAuthorizationRequestEndpoint: string;
-    let popAttestation: string;
+    let authorizationServer: string;
     let credentialConfigurationId: string;
 
     // -----------------------------------------------------------------------
@@ -62,7 +63,7 @@ testConfigs.forEach((testConfig) => {
       const ctx = await orchestrator.runThroughPar();
 
       walletAttestationResponse = ctx.walletAttestationResponse;
-      popAttestation = ctx.popAttestation;
+      authorizationServer = ctx.authorizationServer;
       pushedAuthorizationRequestEndpoint =
         ctx.pushedAuthorizationRequestEndpoint;
     });
@@ -73,6 +74,23 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
+    // Helper: create a fresh popAttestation JWT (avoids 60 s TTL exhaustion)
+    // -----------------------------------------------------------------------
+
+    async function createFreshPop(): Promise<string> {
+      return createClientAttestationPopJwt({
+        authorizationServer,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([
+            walletAttestationResponse.unitKey.privateKey,
+          ]),
+        },
+        clientAttestation: walletAttestationResponse.attestation,
+      });
+    }
+
+    // -----------------------------------------------------------------------
     // Helper: run a PAR step with optional walletAttestation override
     // -----------------------------------------------------------------------
 
@@ -81,11 +99,12 @@ testConfigs.forEach((testConfig) => {
       attestationOverride?: Omit<AttestationResponse, "created">,
     ): Promise<PushedAuthorizationRequestResponse> {
       const config = loadConfigWithHierarchy();
+      const freshPop = await createFreshPop();
       const step = new StepClass(config, baseLog);
       return step.run({
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationId,
-        popAttestation,
+        popAttestation: freshPop,
         pushedAuthorizationRequestEndpoint,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
       });
@@ -489,7 +508,7 @@ testConfigs.forEach((testConfig) => {
           log.info("→ Sending PAR request with request_uri...");
           await fetchPushedAuthorizationResponse({
             callbacks: { fetch: customFetch },
-            clientAttestationDPoP: popAttestation,
+            clientAttestationDPoP: await createFreshPop(),
             pushedAuthorizationRequest: signed,
             pushedAuthorizationRequestEndpoint,
             walletAttestation: walletAttestationResponse.attestation,
