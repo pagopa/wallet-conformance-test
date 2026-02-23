@@ -1,9 +1,9 @@
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 import { parseMdoc } from "@/logic";
 import { Credential } from "@/types";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -18,9 +18,9 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): Promise<Record<string, Credential>> {
-  const pathVersion = `${path}/${version}`
+  const pathVersion = `${path}/${version}`;
   try {
     if (!existsSync(pathVersion))
       mkdirSync(pathVersion, {

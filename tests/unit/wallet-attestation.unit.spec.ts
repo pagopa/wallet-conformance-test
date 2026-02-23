@@ -1,4 +1,5 @@
 import { Jwk } from "@pagopa/io-wallet-oauth2";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, test } from "vitest";
@@ -7,15 +8,14 @@ import type { Config, KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { loadConfig } from "@/logic";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 describe("Wallet Attestation Unit Test", () => {
   const configWithVersion = loadConfig("./config.ini");
-  const { wallet_version : _, ...walletConfig } = configWithVersion.wallet
-  const config : Config = {
+  const { wallet_version: _, ...walletConfig } = configWithVersion.wallet;
+  const config: Config = {
     ...configWithVersion,
-    wallet : walletConfig
-  } 
+    wallet: walletConfig,
+  };
   const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {

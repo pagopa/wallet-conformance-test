@@ -75,11 +75,11 @@ describe("Load Mocked Credentials", async () => {
 
 describe("Generate Mocked Credentials", () => {
   const configWithVersion = loadConfig("./config.ini");
-  const { wallet_version : _, ...walletConfig } = configWithVersion.wallet
-  const config : Config = {
+  const { wallet_version: _, ...walletConfig } = configWithVersion.wallet;
+  const config: Config = {
     ...configWithVersion,
-    wallet : walletConfig
-  } 
+    wallet: walletConfig,
+  };
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
@@ -88,8 +88,14 @@ describe("Generate Mocked Credentials", () => {
   };
 
   afterAll(() => {
-    rmSync(`${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/dc_sd_jwt_PersonIdentificationData`, { force: true });
-    rmSync(`${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`, { force: true });
+    rmSync(
+      `${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/dc_sd_jwt_PersonIdentificationData`,
+      { force: true },
+    );
+    rmSync(
+      `${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`,
+      { force: true },
+    );
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {

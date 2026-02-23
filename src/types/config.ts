@@ -1,6 +1,7 @@
-import { parseItWalletSpecVersion } from "@/logic";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { z } from "zod";
+
+import { parseItWalletSpecVersion } from "./version";
 
 /**
  * Represents the configuration for the wallet conformance test.
@@ -58,10 +59,17 @@ export const configSchema = z.object({
     backup_storage_path: z.string(),
     credentials_storage_path: z.string(),
     wallet_attestations_storage_path: z.string(),
-    wallet_version: z.string().optional().refine(version => !version || parseItWalletSpecVersion(version), `Admissible values for wallet version are ${Object.values(ItWalletSpecsVersion)}`).transform(version => version as ItWalletSpecsVersion | undefined),
     wallet_id: z.string(),
     wallet_name: z.string(),
     wallet_provider_base_url: z.string(),
+    wallet_version: z
+      .string()
+      .optional()
+      .refine(
+        (version) => !version || parseItWalletSpecVersion(version),
+        `Admissible values for wallet version are ${Object.values(ItWalletSpecsVersion)}`,
+      )
+      .transform((version) => version as ItWalletSpecsVersion | undefined),
   }),
 });
 
