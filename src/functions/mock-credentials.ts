@@ -41,7 +41,7 @@ export async function createMockMdlMdoc(
   );
 
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
-  const claims = loadJsonDumps("mDL.json", { expiration });
+  const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
   const document = await new Document("org.iso.18013.5.1.mDL")
     .addIssuerNameSpace("org.iso.18013.5.1", claims)
@@ -113,11 +113,15 @@ export async function createMockSdJwt(
     trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
   });
 
-  const issClaims = loadJsonDumps("issuer_metadata.json", {
-    issuer_base_url: metadata.iss,
-    public_key: keyPair.publicKey,
-    trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-  });
+  const issClaims = loadJsonDumps(
+    "issuer_metadata.json",
+    {
+      issuer_base_url: metadata.iss,
+      public_key: keyPair.publicKey,
+      trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+    },
+    version,
+  );
   const issEntityConfiguration = await createFederationMetadata({
     claims: issClaims,
     entityPublicJwk: keyPair.publicKey,
