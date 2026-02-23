@@ -331,6 +331,13 @@ export class WalletIssuanceOrchestratorFlow {
       entityStatementClaims.metadata?.oauth_authorization_server
         ?.pushed_authorization_request_endpoint;
 
+    if (!pushedAuthorizationRequestEndpoint) {
+      throw new Error(
+        "Issuer metadata is missing 'pushed_authorization_request_endpoint' " +
+          "in 'oauth_authorization_server'. Cannot perform Pushed Authorization Request.",
+      );
+    }
+
     const pushedAuthorizationRequestResponse =
       await this.pushedAuthorizationRequestStep.run({
         clientId: walletAttestationResponse.unitKey.publicKey.kid,

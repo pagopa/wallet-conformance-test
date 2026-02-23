@@ -755,7 +755,7 @@ testConfigs.forEach((testConfig) => {
       try {
         log.info("→ Building PoP signed with a fresh random key...");
         const tamperedPop = await buildTamperedPopJwt({
-          authorizationServer: pushedAuthorizationRequestEndpoint,
+          authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           useWrongKey: true,
@@ -790,7 +790,7 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Building PoP with wrong aud claim...");
         log.info("  aud: https://attacker.example.com");
         const tamperedPop = await buildTamperedPopJwt({
-          authorizationServer: pushedAuthorizationRequestEndpoint,
+          authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           wrongAud: "https://attacker.example.com",
@@ -822,7 +822,7 @@ testConfigs.forEach((testConfig) => {
         const pastIssuedAt = new Date(Date.now() - 11 * 60 * 1000);
         const pastExpiresAt = new Date(Date.now() - 10 * 60 * 1000);
         const tamperedPop = await buildTamperedPopJwt({
-          authorizationServer: pushedAuthorizationRequestEndpoint,
+          authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           expiresAt: pastExpiresAt,
           issuedAt: pastIssuedAt,
@@ -858,7 +858,7 @@ testConfigs.forEach((testConfig) => {
         log.info(`  jti: ${FIXED_POP_JTI}`);
 
         const fixedJtiPop = await buildTamperedPopJwt({
-          authorizationServer: pushedAuthorizationRequestEndpoint,
+          authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           jti: FIXED_POP_JTI,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,

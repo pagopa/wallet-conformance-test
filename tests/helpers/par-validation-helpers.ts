@@ -113,7 +113,10 @@ export async function buildTamperedPopJwt(
     alg: realUnitKey.alg ?? "ES256",
     kid: realUnitKey.kid,
     method: "jwk",
-    publicJwk: { ...realUnitKey, alg: undefined } as Jwk,
+    // Strip private key fields
+    publicJwk: (({ d, dp, dq, p, q, qi, alg: _alg, ...pub }) => pub)(
+      realUnitKey,
+    ) as Jwk,
   };
 
   return createClientAttestationPopJwt({
