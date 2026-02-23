@@ -411,6 +411,26 @@ export function withParOverrides(
 }
 
 /**
+ * Returns a step class that replaces only the `signJwt` callback while
+ * preserving `generateRandom` and `hash` from `partialCallbacks`.
+ *
+ * This avoids the shallow-merge footgun of passing a `callbacks` object to
+ * `withParOverrides` directly — doing so would silently drop `generateRandom`
+ * and `hash`, causing runtime failures unrelated to the test intent.
+ */
+export function withSignJwtOverride(
+  StepClass: typeof PushedAuthorizationRequestDefaultStep,
+  signJwt: SignJwtCallback,
+): typeof PushedAuthorizationRequestDefaultStep {
+  return withParOverrides(StepClass, {
+    callbacks: {
+      ...partialCallbacks,
+      signJwt,
+    } as CreatePushedAuthorizationRequestOptions["callbacks"],
+  });
+}
+
+/**
  * Helper to import a KeyPairJwk for signing.
  * Avoids repeated casts to Parameters<typeof importJWK>[0].
  */

@@ -11,6 +11,7 @@ import {
   signWithWrongKey,
   signWithWrongKid,
   withParOverrides,
+  withSignJwtOverride,
 } from "#/helpers/par-validation-helpers";
 import {
   createPushedAuthorizationRequest,
@@ -105,13 +106,10 @@ testConfigs.forEach((testConfig) => {
       try {
         log.info("→ Sending PAR request signed with wrong key...");
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signWithWrongKey(),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithWrongKey(),
+          ),
         );
         log.info("  Request completed");
 
@@ -149,13 +147,10 @@ testConfigs.forEach((testConfig) => {
         );
 
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signWithMismatchedAlgorithm("ES256", "ES384"),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithMismatchedAlgorithm("ES256", "ES384"),
+          ),
         );
         log.info("  Request completed");
 
@@ -222,17 +217,14 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Sending PAR request with wrong kid header...");
         log.info("  kid: wrong-kid-that-does-not-match");
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signWithWrongKid(
-                "wrong-kid-that-does-not-match",
-                walletAttestationResponse.unitKey.privateKey,
-                walletAttestationResponse.unitKey.publicKey,
-              ),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithWrongKid(
+              "wrong-kid-that-does-not-match",
+              walletAttestationResponse.unitKey.privateKey,
+              walletAttestationResponse.unitKey.publicKey,
+            ),
+          ),
         );
         log.info("  Request completed");
 
@@ -263,18 +255,15 @@ testConfigs.forEach((testConfig) => {
         log.info("  Tampering field: aud");
         log.info("  Tampered value: https://tampered.example.com");
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signThenTamperPayload(
-                walletAttestationResponse.unitKey.privateKey,
-                walletAttestationResponse.unitKey.publicKey,
-                "aud",
-                "https://tampered.example.com",
-              ),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signThenTamperPayload(
+              walletAttestationResponse.unitKey.privateKey,
+              walletAttestationResponse.unitKey.publicKey,
+              "aud",
+              "https://tampered.example.com",
+            ),
+          ),
         );
         log.info("  Request completed");
 
@@ -304,13 +293,10 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Sending PAR request signed with HS256...");
         log.info("  Algorithm: HS256 (symmetric, not allowed)");
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signWithHS256("conformance-test-hmac-value"),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithHS256("conformance-test-hmac-value"),
+          ),
         );
         log.info("  Request completed");
 
@@ -372,17 +358,14 @@ testConfigs.forEach((testConfig) => {
         log.info("→ Sending PAR request with custom iss claim...");
         log.info("  iss claim: https://attacker.example.com");
         const result = await runParStep(
-          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            callbacks: {
-              generateRandom: partialCallbacks.generateRandom,
-              hash: partialCallbacks.hash,
-              signJwt: signWithCustomIss(
-                "https://attacker.example.com",
-                walletAttestationResponse.unitKey.privateKey,
-                walletAttestationResponse.unitKey.publicKey,
-              ),
-            },
-          }),
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithCustomIss(
+              "https://attacker.example.com",
+              walletAttestationResponse.unitKey.privateKey,
+              walletAttestationResponse.unitKey.publicKey,
+            ),
+          ),
         );
         log.info("  Request completed");
 
