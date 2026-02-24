@@ -4,9 +4,11 @@ import {
   createConsola,
   LogObject,
 } from "consola";
-import { openSync, writeFileSync } from "node:fs";
+import { openSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 import { Logger } from "@/types";
+import { readPackageVersion } from "./config-loader";
 
 /**
  * Creates a new logger instance with default settings.
@@ -22,6 +24,34 @@ export function createLogger(): Logger {
     },
     level: 3,
   });
+}
+
+/**
+ * Prints a compact step-progress line:
+ *   [N/T] Step Name   ✅  Xms
+ *
+ * Always emits at info level so it is visible at the default log level.
+ *
+ * @param index    1-based step index
+ * @param total    Total number of steps in the flow
+ * @param name     Human-readable step name
+ * @param success  Whether the step succeeded
+ * @param durationMs  Elapsed time in milliseconds
+ */
+function flowStep(
+  this: Logger,
+  index: number,
+  total: number,
+  name: string,
+  success: boolean,
+  durationMs: number,
+) {
+  const counter = `[${index}/${total}]`;
+  const icon = success ? "✅" : "❌";
+  const duration = `${durationMs}ms`;
+  // Pad step name to 30 chars so columns align when names differ in length
+  const paddedName = name.padEnd(30, " ");
+  this.info(`${counter} ${paddedName} ${icon}  ${duration}`);
 }
 
 /**
@@ -56,10 +86,12 @@ function levelCode(level: string): number {
  */
 function newLogger(options?: Partial<ConsolaOptions>): Logger {
   return Object.assign(createConsola({ ...options, fancy: true }), {
+    flowStep,
     nl,
     setLogOptions,
     testCompleted,
     testFailed,
+    testSuite,
     withTag,
   });
 }
@@ -130,8 +162,8 @@ function testCompleted(this: Logger, success = true) {
     this.info("Test completed ✅");
   } else {
     this.error("Test completed ❌");
+    this.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   }
-  this.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
 /**
@@ -141,6 +173,48 @@ function testCompleted(this: Logger, success = true) {
  */
 function testFailed(this: Logger) {
   this.error("Test failed ❌");
+}
+
+/**
+ * Prints an ASCII-box boot banner that summarises the test run context:
+ *
+ *   ┌─────────────────────────────────────────────┐
+ *   │  WCT v1.0.2  •  Issuance Conformance Tests  │
+ *   │  Target   https://localhost:7071             │
+ *   │  Profile  dc_sd_jwt_EuropeanDisabilityCard   │
+ *   └─────────────────────────────────────────────┘
+ *
+ * @param options.title    Test suite title (e.g. "Issuance Conformance Tests")
+ * @param options.target   Target URL being tested
+ * @param options.profile  Credential type / flow profile
+ */
+function testSuite(
+  this: Logger,
+  options: { profile: string; target: string; title: string },
+) {
+  const version = readPackageVersion();
+  const heading = `WCT v${version}  •  ${options.title}`;
+  const targetLine = `Target   ${options.target}`;
+  const profileLine = `Profile  ${options.profile}`;
+
+  const innerWidth = Math.max(
+    heading.length,
+    targetLine.length,
+    profileLine.length,
+  );
+  // Add 4 chars of padding (2 on each side)
+  const boxWidth = innerWidth + 4;
+  const top = `┌${"─".repeat(boxWidth)}┐`;
+  const bottom = `└${"─".repeat(boxWidth)}┘`;
+  const pad = (s: string) => `│  ${s.padEnd(innerWidth, " ")}  │`;
+
+  process.stdout.write("\n");
+  process.stdout.write(`${top}\n`);
+  process.stdout.write(`${pad(heading)}\n`);
+  process.stdout.write(`${pad(targetLine)}\n`);
+  process.stdout.write(`${pad(profileLine)}\n`);
+  process.stdout.write(`${bottom}\n`);
+  process.stdout.write("\n");
 }
 
 /**
@@ -162,10 +236,12 @@ function withTag(this: Logger, tag: string): Logger {
   });
 
   return Object.assign(log, {
+    flowStep,
     nl,
     setLogOptions,
     testCompleted,
     testFailed,
+    testSuite,
     withTag,
   });
 }

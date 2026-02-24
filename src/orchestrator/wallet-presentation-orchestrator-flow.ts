@@ -68,6 +68,10 @@ export class WalletPresentationOrchestratorFlow {
     );
   }
 
+  getConfig(): Config {
+    return this.config;
+  }
+
   getLog(): typeof this.log {
     return this.log;
   }
@@ -77,10 +81,19 @@ export class WalletPresentationOrchestratorFlow {
     fetchMetadataResult: FetchMetadataStepResponse;
     redirectUriResult: RedirectUriStepResponse;
   }> {
+    const TOTAL_STEPS = 3;
     try {
       const fetchMetadataResult = await this.fetchMetadataStep.run({
         baseUrl: this.prepareBaseUrl(),
       });
+      this.log.flowStep(
+        1,
+        TOTAL_STEPS,
+        "Fetch Metadata",
+        fetchMetadataResult.success,
+        fetchMetadataResult.durationMs ?? 0,
+      );
+
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
@@ -111,9 +124,23 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       );
+      this.log.flowStep(
+        2,
+        TOTAL_STEPS,
+        "Authorization Request",
+        authorizationRequestResult.success,
+        authorizationRequestResult.durationMs ?? 0,
+      );
 
       const redirectUriResult = await this.executeRedirectUri(
         authorizationRequestResult,
+      );
+      this.log.flowStep(
+        3,
+        TOTAL_STEPS,
+        "Redirect URI",
+        redirectUriResult.success,
+        redirectUriResult.durationMs ?? 0,
       );
 
       return {
