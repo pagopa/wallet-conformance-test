@@ -1,7 +1,13 @@
 import {
+  CredentialRequestOptionsV1_0,
   WalletAttestationOptions,
+  WalletAttestationOptionsV1_0,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";
@@ -30,11 +36,12 @@ export const loadAttestation = async (options: {
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
   const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
-  const attestationPath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_id}`;
+  const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}`;
+  const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
 
   try {
-    if (!existsSync(wallet.wallet_attestations_storage_path))
-      mkdirSync(wallet.wallet_attestations_storage_path, {
+    if (!existsSync(attestationBasePath))
+      mkdirSync(attestationBasePath, {
         recursive: true,
       });
 
@@ -72,6 +79,7 @@ export const loadAttestation = async (options: {
     if (providerKeyPair.privateKey.kid !== providerKeyPair.publicKey.kid)
       throw new Error("invalid key pair: kid does not match");
 
+    //This might be moved to a step specific implementation
     const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
       entityPublicJwk: providerKeyPair.publicKey,
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
@@ -93,21 +101,30 @@ export const loadAttestation = async (options: {
       signedJwks: providerKeyPair,
     });
 
-    const attestationOptions: WalletAttestationOptions = {
-      dpopJwkPublic: unitKeyPair.publicKey,
-      issuer: wallet.wallet_provider_base_url,
-      signer: {
-        trustChain: [wpEntityConfiguration, taEntityConfiguration],
-        walletProviderJwkPublicKid: providerKeyPair.privateKey.kid,
-      },
-      walletLink: `${wallet.wallet_provider_base_url}/wallet`,
-      walletName: wallet.wallet_name,
-    };
     const callbacks = {
       ...partialCallbacks,
       signJwt: signJwtCallback([providerKeyPair.privateKey]),
     };
-    const provider = new WalletProvider({ callbacks });
+
+    const attestationOptions: WalletAttestationOptionsV1_0 = {
+      authenticatorAssuranceLevel: "substantial",
+      callbacks,
+      dpopJwkPublic: unitKeyPair.publicKey,
+      issuer: wallet.wallet_provider_base_url,
+      signer: {
+        alg: providerKeyPair.privateKey.alg || "ES256",
+        kid: providerKeyPair.privateKey.kid,
+        method: "federation" as const,
+        trustChain: [wpEntityConfiguration, taEntityConfiguration],
+      },
+      walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+      walletName: wallet.wallet_name,
+    };
+    const provider = new WalletProvider(
+      new IoWalletSdkConfig({
+        itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
+      }),
+    );
     const attestation =
       await provider.createItWalletAttestationJwt(attestationOptions);
     writeFileSync(attestationPath, attestation);

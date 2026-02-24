@@ -52,6 +52,9 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
                 type: "openid_credential",
               },
             ],
+            authorizationServerMetadata: {
+              require_signed_request_object: true,
+            },
             callbacks:
               callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
             clientId: unitKey.publicKey.kid,
@@ -74,15 +77,15 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           log.debug(
             `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
           );
-          const pushedAuthorizationRequestSigned =
+          const pushedAuthorizationRequest =
             await createPushedAuthorizationRequest(createParOptions);
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,
             clientAttestationDPoP: options.popAttestation,
+            pushedAuthorizationRequest,
             pushedAuthorizationRequestEndpoint:
               options.pushedAuthorizationRequestEndpoint,
-            pushedAuthorizationRequestSigned,
             walletAttestation: options.walletAttestation.attestation,
           };
 

@@ -103,6 +103,10 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
       );
       const createAuthorizationResponseOptions: CreateAuthorizationResponseOptions =
         {
+          authorization_encrypted_response_alg:
+            options.rpMetadata.authorization_encrypted_response_alg,
+          authorization_encrypted_response_enc:
+            options.rpMetadata.authorization_encrypted_response_enc,
           callbacks: {
             ...partialCallbacks,
             encryptJwe: getEncryptJweCallback(rpEncKey, {
@@ -111,11 +115,11 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
               kid: rpEncKey.kid,
               typ: "oauth-authz-req+jwt",
             }),
-            signJwt: signJwtCallback([unitKey.privateKey]),
           },
-          client_id: options.clientId,
           requestObject,
-          rpMetadata: options.rpMetadata,
+          rpJwks: {
+            jwks: options.rpMetadata.jwks,
+          },
           vp_token,
         };
 
@@ -131,7 +135,7 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
       log.info(`Sending authorization response to: ${responseUri}`);
       log.debug(`Authorization response iss: ${baseUrl}`);
       const sendAuthorizationResponseAndExtractCodeOptions = {
-        authorizationResponseJarm: authorizationResponse.jarm.responseJwt,
+        authorizationResponseJarm: authorizationResponse.jarm.responseJwe,
         callbacks: {
           verifyJwt,
         },

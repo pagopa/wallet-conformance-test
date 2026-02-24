@@ -11,12 +11,12 @@ import {
 import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizationRequestDefaultStep,
-  AuthorizationRequestStepResult,
+  AuthorizationRequestStepResponse,
   CredentialWithKey,
 } from "@/step/presentation/authorization-request-step";
 import {
   RedirectUriDefaultStep,
-  RedirectUriStepResult,
+  RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
 import { AttestationResponse, Config } from "@/types";
 
@@ -73,9 +73,9 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async presentation(): Promise<{
-    authorizationRequestResult: AuthorizationRequestStepResult;
+    authorizationRequestResult: AuthorizationRequestStepResponse;
     fetchMetadataResult: FetchMetadataStepResponse;
-    redirectUriResult: RedirectUriStepResult;
+    redirectUriResult: RedirectUriStepResponse;
   }> {
     try {
       this.log.info("Starting Test Presentation Flow...");
@@ -151,7 +151,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async executeRedirectUri(
-    authorizationRequestResult: AuthorizationRequestStepResult,
+    authorizationRequestResult: AuthorizationRequestStepResponse,
   ) {
     if (!authorizationRequestResult.response) {
       throw new Error("Authorization Request response is missing");

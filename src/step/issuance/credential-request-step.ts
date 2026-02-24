@@ -1,11 +1,11 @@
 import { CredentialResponse } from "@pagopa/io-wallet-oid4vci";
 
-import { StepFlow, StepResult } from "@/step";
+import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
 
 export type CredentialRequestExecuteResponse = CredentialResponse;
 
-export type CredentialRequestResponse = StepResult & {
+export type CredentialRequestResponse = StepResponse & {
   response?: CredentialResponse & {
     credentialKeyPair?: KeyPair;
   };
