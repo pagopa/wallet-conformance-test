@@ -1,12 +1,13 @@
 import type { DisclosureFrame } from "@sd-jwt/types";
 
 import { DataItem, Document } from "@auth0/mdl";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 import {
   buildCertPath,
@@ -23,6 +24,7 @@ export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): Promise<Credential> {
   const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
@@ -39,7 +41,7 @@ export async function createMockMdlMdoc(
   );
 
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
-  const claims = loadJsonDumps("mDL.json", { expiration });
+  const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
   const document = await new Document("org.iso.18013.5.1.mDL")
     .addIssuerNameSpace("org.iso.18013.5.1", claims)
@@ -75,7 +77,16 @@ export async function createMockMdlMdoc(
   });
   const compact = cborIssuerSigned.toString("base64url");
 
-  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, compact);
+  const pathVersion = `${credentialsPath}/${version}`;
+  if (!existsSync(pathVersion)) {
+    mkdirSync(pathVersion, {
+      recursive: true,
+    });
+  }
+  writeFileSync(
+    `${credentialsPath}/${version}/${credentialIdentifier}`,
+    compact,
+  );
   return {
     compact,
     parsed: document,
@@ -91,6 +102,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 
@@ -101,11 +113,15 @@ export async function createMockSdJwt(
     trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
   });
 
-  const issClaims = loadJsonDumps("issuer_metadata.json", {
-    issuer_base_url: metadata.iss,
-    public_key: keyPair.publicKey,
-    trust_anchor_base_url: metadata.trustAnchorBaseUrl,
-  });
+  const issClaims = loadJsonDumps(
+    "issuer_metadata.json",
+    {
+      issuer_base_url: metadata.iss,
+      public_key: keyPair.publicKey,
+      trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+    },
+    version,
+  );
   const issEntityConfiguration = await createFederationMetadata({
     claims: issClaims,
     entityPublicJwk: keyPair.publicKey,
@@ -162,6 +178,12 @@ export async function createMockSdJwt(
 
   const vct = "urn:eudi:pid:1";
   const vctIntegrity = await generateSRIHash(vct);
+  const certificate = await loadCertificate(
+    backupPath,
+    "issuer_cert",
+    issuer.keyPair,
+    "CN=test_issuer",
+  );
 
   const credential = await sdjwt.issue(
     {
@@ -185,11 +207,21 @@ export async function createMockSdJwt(
         kid: issuer.keyPair.privateKey.kid,
         trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
+        x5c: [certificate],
       },
     },
   );
 
-  writeFileSync(`${credentialsPath}/${credentialIdentifier}`, credential);
+  const pathVersion = `${credentialsPath}/${version}`;
+  if (!existsSync(pathVersion)) {
+    mkdirSync(pathVersion, {
+      recursive: true,
+    });
+  }
+  writeFileSync(
+    `${credentialsPath}/${version}/${credentialIdentifier}`,
+    credential,
+  );
   return {
     compact: credential,
     parsed: await decodeJwt(credential),

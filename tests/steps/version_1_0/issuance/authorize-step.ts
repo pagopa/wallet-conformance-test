@@ -129,15 +129,14 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
         throw new Error("Failed to create authorization response JARM");
       }
 
-      const baseUrl = this.config.issuance.url;
       log.info(`Sending authorization response to: ${responseUri}`);
-      log.debug(`Authorization response iss: ${baseUrl}`);
+      log.debug(`Authorization response iss: ${options.baseUrl}`);
       const sendAuthorizationResponseAndExtractCodeOptions = {
         authorizationResponseJarm: authorizationResponse.jarm.responseJwe,
         callbacks: {
           verifyJwt,
         },
-        iss: baseUrl,
+        iss: options.baseUrl,
         presentationResponseUri: responseUri,
         signer: {
           alg: "ES256",
@@ -159,7 +158,7 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
 
       return {
         authorizeResponse,
-        iss: baseUrl,
+        iss: options.baseUrl,
         requestObject,
         requestObjectJwt,
         // retryStatus: redundantFetchAuthorize.response.status,

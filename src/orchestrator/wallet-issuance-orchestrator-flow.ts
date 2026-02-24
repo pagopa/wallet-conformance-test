@@ -3,6 +3,7 @@ import {
   AccessTokenRequest,
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
+import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
@@ -116,8 +117,53 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       this.log.info("Starting Test Issuance Flow...");
 
+      let credentialIssuer: string;
+      let credentialConfigurationIds: string[];
+      if (
+        this.config.issuance.credential_offer_uri &&
+        this.config.issuance.credential_offer_uri !== ""
+      ) {
+        this.log.info(
+          `Resolving Credential Offer: ${this.config.issuance.credential_offer_uri}`,
+        );
+        const credentialOffer = await resolveCredentialOffer({
+          callbacks: { fetch },
+          credentialOffer: this.config.issuance.credential_offer_uri,
+        });
+        this.log.debug(
+          "Received Credential Offer:\n",
+          JSON.stringify(credentialOffer),
+        );
+
+        credentialIssuer = credentialOffer.credential_issuer;
+        credentialConfigurationIds =
+          credentialOffer.credential_configuration_ids;
+
+        if (credentialConfigurationIds.length === 0)
+          throw new Error(
+            "Cannot proceed: The credential offer returned no credential configuration IDs",
+          );
+      } else {
+        this.log.debug(
+          "Missing Credential Offer URI: using Credetntial Issuer and Credential ID from configuration",
+        );
+
+        credentialIssuer = this.config.issuance.url;
+        credentialConfigurationIds = [
+          this.issuanceConfig.credentialConfigurationId,
+        ];
+
+        if (credentialConfigurationIds.length === 0)
+          throw new Error(
+            "Cannot proceed: credential configuration id was not defined",
+          );
+      }
+      this.log.info(
+        `Requesting credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
+      );
+
       const fetchMetadataResponse = await this.fetchMetadataStep.run({
-        baseUrl: this.config.issuance.url,
+        baseUrl: credentialIssuer,
       });
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
@@ -161,15 +207,22 @@ export class WalletIssuanceOrchestratorFlow {
           );
         }
 
-        this.log.info(
-          `Credential configuration '${requestedId}' validated as supported by issuer`,
-        );
-      } else {
+        if (
+          this.config.issuance.credential_offer_uri &&
+          !credentialConfigurationIds.includes(requestedId)
+        ) {
+          throw new Error(
+            `Credential configuration '${requestedId}' is configured in your test but was not ` +
+              `included in the credential offer (credential_offer_uri).\n` +
+              `Offer includes: ${credentialConfigurationIds.join(", ")}\n` +
+              `Please check that your credential_offer_uri targets the correct credential.`,
+          );
+        }
+      } else
         this.log.warn(
           "Warning: Could not verify credentialConfigurationId - " +
             "credential_configurations_supported not found in issuer metadata",
         );
-      }
 
       const clientAttestationDPoP = await createClientAttestationPopJwt({
         authorizationServer: entityStatementClaims.iss,
@@ -181,9 +234,9 @@ export class WalletIssuanceOrchestratorFlow {
 
       const pushedAuthorizationRequestResponse =
         await this.pushedAuthorizationRequestStep.run({
+          baseUrl: credentialIssuer,
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
-          credentialConfigurationId:
-            this.issuanceConfig.credentialConfigurationId,
+          credentialConfigurationIds,
           popAttestation: clientAttestationDPoP,
           pushedAuthorizationRequestEndpoint:
             entityStatementClaims.metadata?.oauth_authorization_server
@@ -191,14 +244,21 @@ export class WalletIssuanceOrchestratorFlow {
           walletAttestation: walletAttestationResponse,
         });
 
-      if (!pushedAuthorizationRequestResponse.response) {
+      if (!pushedAuthorizationRequestResponse.response)
         throw new Error("Pushed Authorization Request failed");
-      }
+
+      const code_verifier = pushedAuthorizationRequestResponse.codeVerifier;
+      if (!code_verifier)
+        throw new Error(
+          "Pushed Authorization Request Step step did not return a code_verifier. " +
+            "Check the PAR Step step for errors.",
+        );
 
       this.log.info(
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
+      this.log.info("Loading credentials...");
       let personIdentificationData: Credential;
       const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
 
@@ -238,11 +298,13 @@ export class WalletIssuanceOrchestratorFlow {
         authorizationEndpoint:
           entityStatementClaims.metadata?.oauth_authorization_server
             ?.authorization_endpoint,
+        baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [
           {
             credential: personIdentificationData.compact,
             keyPair: credentialKeyPair,
+            typ: "dc+sd-jwt",
           },
         ],
         requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
@@ -250,29 +312,28 @@ export class WalletIssuanceOrchestratorFlow {
         walletAttestation: walletAttestationResponse,
       });
 
-      if (
-        !authorizeResponse.response ||
-        !authorizeResponse.response.authorizeResponse
-      ) {
-        throw new Error("Authorization Response not found");
-      }
-
-      if (!authorizeResponse.response.requestObject?.response_uri) {
-        throw new Error("Request Object Response URI not found");
-      }
-
-      if (!pushedAuthorizationRequestResponse.codeVerifier) {
+      const code = authorizeResponse.response?.authorizeResponse?.code;
+      if (!code)
         throw new Error(
-          "Code Verifier not found in Pushed Authorization Request response",
+          "Authorization step did not return a code. " +
+            "Check the authorize step for errors.",
         );
-      }
+
+      const redirect_uri =
+        authorizeResponse.response?.requestObject?.response_uri;
+      if (!redirect_uri)
+        throw new Error(
+          "Authorization step did not return a redirect_uri. " +
+            "Check the authorize step for errors.",
+        );
 
       const accessTokenRequest: AccessTokenRequest = {
-        code: authorizeResponse.response.authorizeResponse.code,
-        code_verifier: pushedAuthorizationRequestResponse.codeVerifier,
+        code,
+        code_verifier,
         grant_type: "authorization_code",
-        redirect_uri: authorizeResponse.response.requestObject.response_uri,
+        redirect_uri,
       };
+
       const tokenResponse = await this.tokenRequestStep.run({
         accessTokenEndpoint:
           entityStatementClaims.metadata?.oauth_authorization_server
@@ -281,6 +342,13 @@ export class WalletIssuanceOrchestratorFlow {
         popAttestation: clientAttestationDPoP,
         walletAttestation: walletAttestationResponse,
       });
+
+      const accessToken = tokenResponse.response?.access_token;
+      if (!accessToken)
+        throw new Error(
+          "Token step did not return a redirect_uri. " +
+            "Check the token step for errors.",
+        );
 
       const nonceResponse = await this.nonceRequestStep.run({
         nonceEndpoint:
@@ -291,15 +359,21 @@ export class WalletIssuanceOrchestratorFlow {
       const nonce = nonceResponse.response?.nonce as
         | undefined
         | { c_nonce: string };
+      if (!nonce)
+        throw new Error(
+          "Nonce step did not return a redirect_uri. " +
+            "Check the nonce step for errors.",
+        );
 
       const credentialResponse = await this.credentialRequestStep.run({
-        accessToken: tokenResponse.response?.access_token ?? "",
+        accessToken,
+        baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        nonce: nonce?.c_nonce ?? "",
+        nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
 

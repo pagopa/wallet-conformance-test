@@ -11,6 +11,7 @@ import { Config, configSchema } from "@/types";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   credentialIssuerUri?: string;
+  credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
   issuanceTestsDir?: string;
@@ -157,6 +158,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   // Map CLI options to config structure
   if (
     options.credentialIssuerUri ||
+    options.credentialOfferUri ||
     options.credentialTypes ||
     options.saveCredential !== undefined ||
     options.issuanceTestsDir
@@ -164,6 +166,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
       issuance.url = options.credentialIssuerUri;
+    }
+    if (options.credentialOfferUri) {
+      issuance.credential_offer_uri = options.credentialOfferUri;
     }
     if (options.credentialTypes) {
       issuance.credential_types = options.credentialTypes
@@ -332,6 +337,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_CREDENTIAL_ISSUER_URI) {
     options.credentialIssuerUri = process.env.CONFIG_CREDENTIAL_ISSUER_URI;
+  }
+  if (process.env.CONFIG_CREDENTIAL_OFFER_URI) {
+    options.credentialOfferUri = process.env.CONFIG_CREDENTIAL_OFFER_URI;
   }
   if (process.env.CONFIG_PRESENTATION_AUTHORIZE_URI) {
     options.presentationAuthorizeUri =
