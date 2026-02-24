@@ -65,10 +65,7 @@ export async function createMockMdlMdoc(
       recursive: true,
     });
   }
-  writeFileSync(
-    `${pathVersion}/${credentialIdentifier}`,
-    retVal.compact,
-  );
+  writeFileSync(`${pathVersion}/${credentialIdentifier}`, retVal.compact);
   return retVal;
 }
 
@@ -126,9 +123,6 @@ export async function createMockSdJwt(
       recursive: true,
     });
   }
-  writeFileSync(
-    `${pathVersion}/${credentialIdentifier}`,
-    retVal.compact,
-  );
+  writeFileSync(`${pathVersion}/${credentialIdentifier}`, retVal.compact);
   return retVal;
 }
