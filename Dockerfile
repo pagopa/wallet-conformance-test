@@ -1,5 +1,5 @@
 # Dockerfile for wallet-conformance-test CLI
-FROM node:20-alpine@sha256:6178e78b972f79c335df281f4b7674a2d85071aae2af020ffa39f0a770265435
+FROM node:22-alpine@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34
 
 # Set working directory
 WORKDIR /wallet-conformance-test
