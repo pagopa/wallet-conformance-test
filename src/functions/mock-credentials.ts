@@ -178,6 +178,12 @@ export async function createMockSdJwt(
 
   const vct = "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata";
   const vctIntegrity = await generateSRIHash(vct);
+  const certificate = await loadCertificate(
+    backupPath,
+    "issuer_cert",
+    issuer.keyPair,
+    "CN=test_issuer",
+  );
 
   const credential = await sdjwt.issue(
     {
@@ -201,6 +207,7 @@ export async function createMockSdJwt(
         kid: issuer.keyPair.privateKey.kid,
         trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
+        x5c: [certificate],
       },
     },
   );
