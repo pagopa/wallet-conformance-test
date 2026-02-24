@@ -4,6 +4,7 @@ import { DisclosureData } from "@sd-jwt/types";
 import { DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import type { Logger } from "@/types/logger";
+
 import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
 
 /**

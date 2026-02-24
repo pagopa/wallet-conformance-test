@@ -8,6 +8,7 @@ import { openSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { Logger } from "@/types";
+
 import { readPackageVersion } from "./config-loader";
 
 /**
