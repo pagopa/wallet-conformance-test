@@ -66,7 +66,7 @@ export async function createMockMdlMdoc(
     });
   }
   writeFileSync(
-    `${credentialsPath}/${version}/${credentialIdentifier}`,
+    `${pathVersion}/${credentialIdentifier}`,
     retVal.compact,
   );
   return retVal;
@@ -118,7 +118,7 @@ export async function createMockSdJwt(
     });
   }
   writeFileSync(
-    `${credentialsPath}/${ItWalletSpecsVersion.V1_0}/${credentialIdentifier}`,
+    `${pathVersion}/${credentialIdentifier}`,
     retVal.compact,
   );
   return retVal;
