@@ -16,6 +16,24 @@ export async function createAndSaveCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<string> {
+  const certificate = await createCertificate(keyPair, subject);
+  writeFileSync(fileName, certificate.toString("pem"));
+
+  // Return DER string representation of the certificate
+  return Buffer.from(certificate.rawData).toString("base64");
+}
+
+/**
+ * Creates a self-signed X.509 certificate.
+ *
+ * @param keyPair The key pair to use for signing the certificate.
+ * @param subject The subject name for the certificate.
+ * @returns A promise that resolves to the certificate object.
+ */
+export async function createCertificate(
+  keyPair: KeyPair,
+  subject: string,
+): Promise<x509.X509Certificate> {
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -59,9 +77,5 @@ export async function createAndSaveCertificate(
     signingAlgorithm,
   });
 
-  // Export certificate to PEM
-  const certDer = Buffer.from(cert.rawData).toString("base64");
-
-  writeFileSync(fileName, cert.toString("pem"));
-  return certDer;
+  return cert;
 }
