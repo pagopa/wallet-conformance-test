@@ -1,6 +1,4 @@
 import {
-  CredentialRequestOptionsV1_0,
-  WalletAttestationOptions,
   WalletAttestationOptionsV1_0,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";

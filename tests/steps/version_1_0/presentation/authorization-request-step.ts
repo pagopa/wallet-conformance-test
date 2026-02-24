@@ -89,8 +89,6 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
         throw new Error("no encryption key found in verifier metadata");
       }
 
-      const { unitKey } = options.walletAttestation;
-
       const authorizationResponse = await createAuthorizationResponse({
         authorization_encrypted_response_alg,
         authorization_encrypted_response_enc,
