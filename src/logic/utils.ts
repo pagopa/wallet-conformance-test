@@ -1,5 +1,6 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
@@ -71,10 +72,11 @@ export async function fetchWithRetries(
 export const loadJsonDumps = (
   fileName: string,
   placeholders: Record<string, object | string>,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
-  const filePath = path.join(dumpsDir, fileName);
+  const filePath = path.join(dumpsDir, version, fileName);
   if (!existsSync(filePath)) {
     throw new Error(`File ${fileName} not found`);
   }
@@ -220,9 +222,14 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
 ): null | string {
   try {
-    const credentialsPath = path.resolve(process.cwd(), credentialsStoragePath);
+    const credentialsPath = path.resolve(
+      process.cwd(),
+      credentialsStoragePath,
+      version,
+    );
 
     // Ensure the directory exists
     if (!existsSync(credentialsPath)) {
