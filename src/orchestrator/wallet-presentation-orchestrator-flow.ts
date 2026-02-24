@@ -41,10 +41,10 @@ export class WalletPresentationOrchestratorFlow {
       path: this.config.logging.log_file,
     });
 
-    this.log.info("Setting Up Wallet conformance Tests - Presentation Flow");
-    this.log.info("Configuration Loaded from config.ini");
+    this.log.debug("Setting Up Wallet conformance Tests - Presentation Flow");
+    this.log.debug("Configuration Loaded from config.ini");
 
-    this.log.info(
+    this.log.debug(
       "Configuration Loaded:\n",
       JSON.stringify({
         credentialsDir: this.config.wallet.credentials_storage_path,
@@ -78,8 +78,6 @@ export class WalletPresentationOrchestratorFlow {
     redirectUriResult: RedirectUriStepResponse;
   }> {
     try {
-      this.log.info("Starting Test Presentation Flow...");
-
       const fetchMetadataResult = await this.fetchMetadataStep.run({
         baseUrl: this.prepareBaseUrl(),
       });
@@ -93,7 +91,7 @@ export class WalletPresentationOrchestratorFlow {
       const credentialConfigIdentifiers = [
         "dc_sd_jwt_PersonIdentificationData",
       ];
-      this.log.info(
+      this.log.debug(
         "Presenting local credentials:",
         credentialConfigIdentifiers,
       );
@@ -187,7 +185,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async loadWalletAttestation(trustAnchorBaseUrl: string) {
-    this.log.info("Loading Wallet Attestation...");
+    this.log.debug("Loading Wallet Attestation...");
 
     const walletAttestation = await loadAttestation({
       trustAnchorBaseUrl,
@@ -195,7 +193,7 @@ export class WalletPresentationOrchestratorFlow {
       wallet: this.config.wallet,
     });
 
-    this.log.info("Wallet Attestation Loaded.");
+    this.log.debug("Wallet Attestation Loaded.");
 
     return walletAttestation;
   }
@@ -214,7 +212,7 @@ export class WalletPresentationOrchestratorFlow {
       }
 
       const baseUrl = new URL(clientId);
-      this.log.info(
+      this.log.debug(
         `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
       );
       return baseUrl.href;
