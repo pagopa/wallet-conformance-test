@@ -90,6 +90,13 @@ export async function createMockSdJwt(
     buildJwksPath(credentialIdentifier),
   );
 
+  const certificate = await loadCertificate(
+    backupPath,
+    "issuer_cert",
+    keyPair,
+    "CN=test_issuer",
+  );
+
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
   let retVal: Credential;
   switch (version) {
@@ -98,6 +105,7 @@ export async function createMockSdJwt(
         metadata,
         expiration,
         unitKey,
+        certificate,
         keyPair,
       );
       break;
@@ -106,6 +114,7 @@ export async function createMockSdJwt(
         metadata,
         expiration,
         unitKey,
+        certificate,
         keyPair,
       );
       break;

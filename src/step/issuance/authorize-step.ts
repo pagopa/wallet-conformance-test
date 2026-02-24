@@ -20,6 +20,11 @@ export interface AuthorizeStepOptions {
   authorizationEndpoint: string;
 
   /**
+   * Issuer Base URL
+   */
+  baseUrl: string;
+
+  /**
    * Client ID of the OAuth2 Client
    * */
   clientId: string;
@@ -27,7 +32,11 @@ export interface AuthorizeStepOptions {
   /**
    * Credential tokens produced by the issuer
    */
-  credentials: { credential: string; keyPair: KeyPair }[];
+  credentials: {
+    credential: string;
+    keyPair: KeyPair;
+    typ: "dc+sd-jwt" | "mso_mdoc";
+  }[];
 
   /**
    * Request URI obtained from the Pushed Authorization Request step

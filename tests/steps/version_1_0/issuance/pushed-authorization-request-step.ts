@@ -14,9 +14,10 @@ import {
 import { AttestationResponse } from "@/types";
 
 export interface PushedAuthorizationRequestStepOptions {
+  baseUrl: string;
   clientId: string;
   codeVerifier: string;
-  credentialConfigurationId: string;
+  credentialConfigurationIds: string[];
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
   walletAttestation: Omit<AttestationResponse, "created">;
@@ -45,13 +46,13 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
           };
 
           const createParOptions: CreatePushedAuthorizationRequestOptions = {
-            audience: this.config.issuance.url,
-            authorization_details: [
-              {
-                credential_configuration_id: options.credentialConfigurationId,
+            audience: options.baseUrl,
+            authorization_details: options.credentialConfigurationIds.map(
+              (id) => ({
+                credential_configuration_id: id,
                 type: "openid_credential",
-              },
-            ],
+              }),
+            ),
             authorizationServerMetadata: {
               require_signed_request_object: true,
             },
@@ -75,10 +76,15 @@ export class PushedAuthorizationRequestITWallet1_0Step extends PushedAuthorizati
             `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
           );
           log.debug(
-            `PAR request credentialConfigurationId: ${options.credentialConfigurationId}`,
+            `PAR request credentialConfigurationId: ${options.credentialConfigurationIds}`,
           );
           const pushedAuthorizationRequest =
-            await createPushedAuthorizationRequest(createParOptions);
+            await createPushedAuthorizationRequest({
+              ...createParOptions,
+              authorizationServerMetadata: {
+                require_signed_request_object: true,
+              },
+            });
 
           const fetchOptions: fetchPushedAuthorizationResponseOptions = {
             callbacks: partialCallbacks,

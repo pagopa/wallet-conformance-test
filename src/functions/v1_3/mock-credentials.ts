@@ -76,6 +76,7 @@ export async function buildMockSdJwt_V1_3(
   },
   expiration: Date,
   unitKey: KeyPairJwk,
+  certificate: string,
   keyPair: KeyPair,
 ): Promise<Credential> {
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
@@ -166,6 +167,7 @@ export async function buildMockSdJwt_V1_3(
         kid: issuer.keyPair.privateKey.kid,
         trust_chain: issuer.trust_chain,
         typ: "dc+sd-jwt",
+        x5c: [certificate]
       },
     },
   );
