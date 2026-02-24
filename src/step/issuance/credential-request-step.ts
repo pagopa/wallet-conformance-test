@@ -18,6 +18,11 @@ export interface CredentialRequestStepOptions {
   accessToken: string;
 
   /**
+   * Credential Issuer Base URL
+   */
+  baseUrl: string;
+
+  /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
