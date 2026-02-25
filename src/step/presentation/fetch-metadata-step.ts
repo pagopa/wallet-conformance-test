@@ -23,7 +23,9 @@ export type FetchMetadataVpStepResponse = StepResponse & {
 export class FetchMetadataVpDefaultStep extends StepFlow {
   tag = "FETCH METADATA";
 
-  async run(options: FetchMetadataVpOptions): Promise<FetchMetadataVpStepResponse> {
+  async run(
+    options: FetchMetadataVpOptions,
+  ): Promise<FetchMetadataVpStepResponse> {
     const log = this.log.withTag(this.tag);
     const url = `${options.baseUrl}/.well-known/openid-federation`;
 
@@ -42,7 +44,10 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
       let entityStatementJwtDecoded;
       try {
         entityStatementJwtDecoded = decodeJwt(entityStatementJwt);
-        log.debug("Decoded entity statement JWT:", JSON.stringify(entityStatementJwtDecoded));
+        log.debug(
+          "Decoded entity statement JWT:",
+          JSON.stringify(entityStatementJwtDecoded),
+        );
       } catch (e) {
         log.info("Failed to decode entity statement JWT:", e);
       }

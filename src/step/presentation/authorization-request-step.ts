@@ -1,23 +1,23 @@
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
-  createAuthorizationResponse,
-  fetchAuthorizationRequest,
-  parseAuthorizeRequest,
   type AuthorizationRequestObject,
+  createAuthorizationResponse,
   type CreateAuthorizationResponseResult,
+  fetchAuthorizationRequest,
   type Openid4vpAuthorizationRequestHeader,
+  parseAuthorizeRequest,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
+import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, KeyPairJwk } from "@/types";
 
-import { StepFlow, type StepResponse } from "@/step/step-flow";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
-import { DcqlQuery } from "dcql";
-import { partialCallbacks } from "@/logic/utils";
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
+import { createVpTokenSdJwt } from "@/logic/sd-jwt";
+import { partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
+import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
@@ -160,5 +160,4 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       };
     });
   }
-
 }

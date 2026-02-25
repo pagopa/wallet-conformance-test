@@ -105,7 +105,7 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         const expectedContentType = "application/entity-statement+jwt";
-        // fetchMetadata step doesn't expose the raw response, 
+        // fetchMetadata step doesn't expose the raw response,
         // so we rely on the step's success and presence of claims as an indirect validation of correct content-type handling
         expect(fetchMetadataResponse.success).toBe(true);
 

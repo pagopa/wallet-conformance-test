@@ -33,9 +33,9 @@ import { KeyPair } from "@/types/key-pair";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
-export type CredentialRequestExecuteResponse = {
+export type CredentialRequestExecuteResponse = ImmediateCredentialResponse & {
   credentialKeyPair: KeyPair;
-} & ImmediateCredentialResponse;
+};
 
 export type CredentialRequestResponse = StepResponse & {
   response?: CredentialRequestExecuteResponse;
@@ -171,22 +171,11 @@ export class CredentialRequestDefaultStep extends StepFlow {
         dpop,
       );
 
-      return { credentialKeyPair, ...credentialResponse } as CredentialRequestExecuteResponse;
+      return {
+        credentialKeyPair,
+        ...credentialResponse,
+      } as CredentialRequestExecuteResponse;
     });
-  }
-
-  private async generateCredentialKeyPair(
-    credentialIdentifier: string,
-  ): Promise<KeyPair> {
-    if (!this.config.issuance.save_credential) {
-      return createKeys();
-    }
-
-    const jwksPath = buildJwksPath(
-      `${this.config.wallet.backup_storage_path}/${credentialIdentifier}`,
-    );
-
-    return createAndSaveKeys(jwksPath);
   }
 
   private async buildCredentialRequest(
@@ -223,7 +212,8 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     return createCredentialRequest({
       ...commonOptions,
-      config: options.ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
+      config:
+        options.ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
     });
   }
 
@@ -268,5 +258,19 @@ export class CredentialRequestDefaultStep extends StepFlow {
     };
 
     return fetchCredentialResponse(fetchOptions);
+  }
+
+  private async generateCredentialKeyPair(
+    credentialIdentifier: string,
+  ): Promise<KeyPair> {
+    if (!this.config.issuance.save_credential) {
+      return createKeys();
+    }
+
+    const jwksPath = buildJwksPath(
+      `${this.config.wallet.backup_storage_path}/${credentialIdentifier}`,
+    );
+
+    return createAndSaveKeys(jwksPath);
   }
 }

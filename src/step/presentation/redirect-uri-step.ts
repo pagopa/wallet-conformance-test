@@ -1,7 +1,10 @@
-import { CreateAuthorizationResponseResult, fetchAuthorizationResponse } from "@pagopa/io-wallet-oid4vp";
+import {
+  CreateAuthorizationResponseResult,
+  fetchAuthorizationResponse,
+} from "@pagopa/io-wallet-oid4vp";
 
-import { StepFlow, type StepResponse } from "@/step/step-flow";
 import { partialCallbacks } from "@/logic";
+import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export type RedirectUriExecuteStepResponse =
   | {
@@ -69,5 +72,4 @@ export class RedirectUriDefaultStep extends StepFlow {
       };
     });
   }
-
 }
