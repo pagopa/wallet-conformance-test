@@ -73,7 +73,7 @@ export const configSchema = z.object({
         required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
       })
       .refine(
-        (version) => !version || parseItWalletSpecVersion(version),
+        (version) => parseItWalletSpecVersion(version),
         `Invalid wallet_version. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
       )
       .transform((version) => version as ItWalletSpecsVersion),
