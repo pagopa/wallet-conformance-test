@@ -118,18 +118,13 @@ export async function buildMockSdJwt_V1_0(
     verifier,
   });
 
-  // TODO: Check required claims for pid
-  const claims = {
-    birth_date: "1980-01-10",
-    birth_place: "Roma",
-    expiry_date: expiration.toISOString().slice(0, 10),
-    family_name: "Rossi",
-    given_name: "Mario",
-    nationalities: ["IT"],
-    personal_administrative_number: "XX00000XX",
-  };
+  const claims = loadJsonDumps(
+    "pid.json",
+    { expiration },
+    ItWalletSpecsVersion.V1_0,
+  );
 
-  const disclosureFrame: DisclosureFrame<typeof claims> = {
+  const disclosureFrame = {
     _sd: [
       "family_name",
       "given_name",
