@@ -45,19 +45,11 @@ export async function defineIssuanceTest(
     // Load configuration
     const config = loadConfigWithHierarchy();
 
-    // Resolve primary and fallback directories
-    const { fallback, primary } = resolveStepDirectories(name, config);
-
-    // Discover custom steps from primary directory
-    let customSteps = await testLoader.discoverCustomSteps(primary);
-
-    // If fallback directory exists and is different, discover and merge steps
-    if (fallback) {
-      log.info(`Scanning default_steps_dir for missing steps: ${fallback}`);
-      const fallbackSteps = await testLoader.discoverCustomSteps(fallback);
-      customSteps = mergeStepMaps(customSteps, fallbackSteps);
-      log.info(`Merged steps from primary directory and default_steps_dir`);
-    }
+    // Discover custom steps from the mapped directory (if any)
+    const customStepsDir = resolveStepDirectory(name, config);
+    const customSteps = customStepsDir
+      ? await testLoader.discoverCustomSteps(customStepsDir)
+      : {};
 
     // Validate credential types configuration
     validateCredentialTypes(config.issuance.credential_types);
@@ -83,19 +75,11 @@ export async function definePresentationTest(
     // Load configuration
     const config = loadConfigWithHierarchy();
 
-    // Resolve primary and fallback directories
-    const { fallback, primary } = resolveStepDirectories(name, config);
-
-    // Discover custom steps from primary directory
-    let customSteps = await testLoader.discoverCustomSteps(primary);
-
-    // If fallback directory exists and is different, discover and merge steps
-    if (fallback) {
-      log.info(`Scanning default_steps_dir for missing steps: ${fallback}`);
-      const fallbackSteps = await testLoader.discoverCustomSteps(fallback);
-      customSteps = mergeStepMaps(customSteps, fallbackSteps);
-      log.info(`Merged steps from primary directory and default_steps_dir`);
-    }
+    // Discover custom steps from the mapped directory (if any)
+    const customStepsDir = resolveStepDirectory(name, config);
+    const customSteps = customStepsDir
+      ? await testLoader.discoverCustomSteps(customStepsDir)
+      : {};
 
     // Build and return test configuration
     return buildPresentationTestConfiguration(name, customSteps);
@@ -189,26 +173,6 @@ function buildPresentationTestConfiguration(
 }
 
 /**
- * Creates a helpful error message when no steps directory is configured.
- *
- * @param flowName The test flow name
- * @returns Formatted error message with configuration examples
- */
-function createDirectoryErrorMessage(flowName: string): string {
-  return (
-    `No steps_mapping entry found for test '${flowName}' and no default_steps_dir configured.\n` +
-    `Please add one of the following to your config.ini:\n\n` +
-    `Option 1 - Specific mapping:\n` +
-    `[steps_mapping]\n` +
-    `${flowName} = tests/steps/version_1_0/issuance\n\n` +
-    `Option 2 - Default directory (used when specific mapping is not found):\n` +
-    `[steps_mapping]\n` +
-    `default_steps_dir = tests/steps/version_1_0\n\n` +
-    `See TEST-CONFIGURATION-GUIDE.md for details.`
-  );
-}
-
-/**
  * Type-safe helper to get a step class from discovered steps or use default fallback
  * @param discovered Map of discovered custom steps
  * @param key Key to look up in the discovered steps
@@ -229,60 +193,28 @@ function getStepClass<T extends StepClass>(
 }
 
 /**
- * Merges two step maps, with primary steps taking precedence over fallback steps.
- * This is a pure function with no side effects.
- *
- * @param primary Primary step map (takes precedence)
- * @param fallback Fallback step map (used for missing steps)
- * @returns Merged step map
- */
-function mergeStepMaps(
-  primary: CustomStepsMap,
-  fallback: CustomStepsMap,
-): CustomStepsMap {
-  return { ...fallback, ...primary };
-}
-
-/**
- * Resolves both primary and fallback directories for step discovery.
+ * Resolves the custom steps directory for a given flow name, if configured.
+ * Returns undefined when no steps_mapping entry exists for the flow — in that
+ * case the caller will use the built-in *DefaultStep classes automatically.
  *
  * @param flowName The test flow name
  * @param config The loaded configuration
- * @returns Object with primary directory path and optional fallback path
+ * @returns Absolute path to the custom steps directory, or undefined
  */
-function resolveStepDirectories(
+function resolveStepDirectory(
   flowName: string,
   config: Config,
-): { fallback?: string; primary: string } {
+): string | undefined {
   const mappedPath = config.steps_mapping?.mapping?.[flowName];
-  const defaultPath = config.steps_mapping?.default_steps_dir;
-
-  // Validate that we have at least one path configured
-  if (!mappedPath && !defaultPath) {
-    throw new Error(createDirectoryErrorMessage(flowName));
-  }
-
-  // Resolve the primary directory
-  const primary = mappedPath
-    ? path.resolve(process.cwd(), mappedPath)
-    : path.resolve(process.cwd(), defaultPath!);
-
-  // Resolve the fallback directory (if different from primary)
-  const fallback =
-    mappedPath && defaultPath
-      ? path.resolve(process.cwd(), defaultPath)
-      : undefined;
-
-  // Log the resolution
-  if (mappedPath) {
-    log.info(`steps_mapping: resolved '${flowName}' -> ${primary}`);
-  } else {
+  if (!mappedPath) {
     log.info(
-      `steps_mapping: using default_steps_dir for '${flowName}' -> ${primary}`,
+      `steps_mapping: no entry for '${flowName}', using built-in default steps`,
     );
+    return undefined;
   }
-
-  return { fallback: fallback !== primary ? fallback : undefined, primary };
+  const resolved = path.resolve(process.cwd(), mappedPath);
+  log.info(`steps_mapping: resolved '${flowName}' -> ${resolved}`);
+  return resolved;
 }
 
 /**

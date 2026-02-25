@@ -37,7 +37,6 @@ export const configSchema = z.object({
   }),
   steps_mapping: z
     .object({
-      default_steps_dir: z.string().optional(),
       mapping: z.record(z.string(), z.string()).optional().default({}),
     })
     .optional()
