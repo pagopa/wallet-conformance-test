@@ -48,7 +48,7 @@ export class RedirectUriDefaultStep extends StepFlow {
         authorizationResponseJarm:
           options.authorizationResponse.jarm.responseJwe,
         callbacks: {
-          ...partialCallbacks.fetch,
+          fetch: partialCallbacks.fetch,
         },
         presentationResponseUri: options.responseUri,
       });
