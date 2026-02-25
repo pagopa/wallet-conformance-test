@@ -4,8 +4,7 @@ import {
   createConsola,
   LogObject,
 } from "consola";
-import { openSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { openSync, writeFileSync } from "node:fs";
 
 import { Logger } from "@/types";
 
