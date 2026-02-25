@@ -141,7 +141,8 @@ export async function buildMockSdJwt_V1_0(
     ],
   };
 
-  const vct = "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata";
+  const vct =
+    "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata";
   const vctIntegrity = generateSRIHash(vct);
 
   const credential = await sdjwt.issue(
