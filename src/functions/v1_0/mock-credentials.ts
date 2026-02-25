@@ -142,7 +142,7 @@ export async function buildMockSdJwt_V1_0(
   };
 
   const vct = "urn:eudi:pid:1";
-  const vctIntegrity = await generateSRIHash(vct);
+  const vctIntegrity = generateSRIHash(vct);
 
   const credential = await sdjwt.issue(
     {
