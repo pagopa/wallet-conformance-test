@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { parse } from "ini";
 import { configDefaults, defineConfig } from "vitest/config";
+import "./vitest.global.setup.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
