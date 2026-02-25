@@ -68,7 +68,7 @@ export interface CredentialRequestStepOptions {
   credentialRequestEndpoint: string;
 
   /**
-   * Optional configuration for the io-wallet-sdk, if not provided the default configuration will be used
+   * Configuration for the io-wallet-sdk.
    */
   ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
