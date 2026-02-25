@@ -34,7 +34,6 @@ export type FetchMetadataStepResponse = StepResponse & {
  *
  * If HTTP response is executed successfully, the response field contains:
  * - status: HTTP status code of the response.
- * - headers: HTTP headers of the response.
  * - discoveredVia: The discovery method used (e.g. "federation" or "oid4vci").
  *
  * If the entity statement claims are successfully parsed, the response field also contains:
