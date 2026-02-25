@@ -37,6 +37,7 @@ describe("Load Mocked Credentials", async () => {
         credentialsDir,
         ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
         console.error,
+        ItWalletSpecsVersion.V1_0
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
@@ -74,12 +75,7 @@ describe("Load Mocked Credentials", async () => {
 });
 
 describe("Generate Mocked Credentials", () => {
-  const configWithVersion = loadConfig("./config.ini");
-  const { wallet_version: _, ...walletConfig } = configWithVersion.wallet;
-  const config: Config = {
-    ...configWithVersion,
-    wallet: walletConfig,
-  };
+  const config = loadConfig("./config.ini");
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
@@ -214,6 +210,7 @@ describe("createVpTokenMdoc", () => {
       credentialsDir,
       ["mso_mdoc_mDL"],
       console.error,
+      ItWalletSpecsVersion.V1_0
     );
 
     if (!credential.mso_mdoc_mDL) {

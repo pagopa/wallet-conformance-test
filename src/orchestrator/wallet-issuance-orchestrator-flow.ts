@@ -277,6 +277,7 @@ export class WalletIssuanceOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
           [credentialIdentifier],
           this.log.debug,
+          itWalletSpecsVersion,
         );
 
         if (credentials.dc_sd_jwt_PersonIdentificationData)
