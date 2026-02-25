@@ -4,6 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
@@ -163,8 +167,13 @@ export class WalletIssuanceOrchestratorFlow {
         `Requesting credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
       );
 
+      const itWalletSpecsVersion = this.config.wallet.wallet_version;
+
       const fetchMetadataResponse = await this.fetchMetadataStep.run({
         baseUrl: credentialIssuer,
+        ioWalletSdkConfig: new IoWalletSdkConfig({
+          itWalletSpecsVersion,
+        }),
       });
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
@@ -374,6 +383,9 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
+        ioWalletSdkConfig: new IoWalletSdkConfig({
+          itWalletSpecsVersion,
+        }),
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
