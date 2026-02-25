@@ -8,12 +8,18 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as tls from "node:tls"
 
 import { parse } from "ini";
 import { configDefaults, defineConfig } from "vitest/config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Set the node certificates to the system ones
+ */
+tls.setDefaultCACertificates(tls.getCACertificates('system'))
 
 /**
  * Get tests directory for a specific test type
