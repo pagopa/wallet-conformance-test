@@ -79,7 +79,7 @@
       "credential_configurations_supported": {
         "dc_sd_jwt_PersonIdentificationData": {
           "format": "dc+sd-jwt",
-          "vct": "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
+          "vct": "urn:eu.europa.ec.eudi:pid:1",
           "claims": [
             {
               "display": [
