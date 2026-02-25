@@ -13,8 +13,8 @@ import path from "path";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
-import { FetchMetadataDefaultStep } from "@/step/fetch-metadata-step";
 import {
+  FetchMetadataDefaultStep,
   PushedAuthorizationRequestDefaultStep,
   TokenRequestDefaultStep,
 } from "@/step/issuance";
@@ -22,6 +22,7 @@ import { AuthorizeDefaultStep } from "@/step/issuance/authorize-step";
 import { CredentialRequestDefaultStep } from "@/step/issuance/credential-request-step";
 import { NonceRequestDefaultStep } from "@/step/issuance/nonce-request-step";
 import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
+import { FetchMetadataVpDefaultStep } from "@/step/presentation/fetch-metadata-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
 import { Config } from "@/types";
 
@@ -175,8 +176,8 @@ function buildPresentationTestConfiguration(
     ),
     fetchMetadataStepClass: getStepClass(
       customSteps,
-      "fetchMetadata",
-      FetchMetadataDefaultStep,
+      "fetchMetadataVp",
+      FetchMetadataVpDefaultStep,
     ),
     name: flowName,
     redirectUriStepClass: getStepClass(

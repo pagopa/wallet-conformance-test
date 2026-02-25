@@ -15,12 +15,13 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
-import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
+  FetchMetadataDefaultStep,
+  FetchMetadataStepResponse,
   NonceRequestDefaultStep,
   NonceRequestResponse,
   PushedAuthorizationRequestDefaultStep,

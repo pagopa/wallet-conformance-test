@@ -3,7 +3,7 @@ import { definePresentationTest } from "#/config/test-metadata";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
-import { FetchMetadataStepResponse } from "@/step";
+import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
@@ -16,7 +16,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   const baseLog = orchestrator.getLog();
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
-  let fetchMetadataResult: FetchMetadataStepResponse;
+  let fetchMetadataResult: FetchMetadataVpStepResponse;
   let redirectUriResult: RedirectUriStepResponse;
 
   beforeAll(async () => {

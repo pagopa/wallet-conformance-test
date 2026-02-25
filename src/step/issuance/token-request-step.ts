@@ -1,8 +1,13 @@
 import {
   AccessTokenRequest,
   AccessTokenResponse,
+  createTokenDPoP,
+  CreateTokenDPoPOptions,
+  fetchTokenResponse,
+  FetchTokenResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 
+import { partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -42,8 +47,43 @@ export interface TokenRequestStepOptions {
 export class TokenRequestDefaultStep extends StepFlow {
   tag = "TOKEN_REQUEST";
 
-  async run(_: TokenRequestStepOptions): Promise<TokenRequestResponse> {
-    this.log.warn("Method not implemented.");
-    return Promise.resolve({ success: false });
+  async run(options: TokenRequestStepOptions): Promise<TokenRequestResponse> {
+    const log = this.log.withTag(this.tag);
+
+    log.info(`Starting Token Request Step`);
+
+    const { unitKey } = options.walletAttestation;
+
+    return this.execute<TokenRequestExecuteResponse>(async () => {
+      log.info(`Fetching access token from: ${options.accessTokenEndpoint}`);
+      const createTokenDPoPOptions: CreateTokenDPoPOptions = {
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk",
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST",
+          url: options.accessTokenEndpoint,
+        },
+      };
+      const tokenDPoP = await createTokenDPoP(createTokenDPoPOptions);
+
+      const fetchTokenResponseOptions: FetchTokenResponseOptions = {
+        accessTokenEndpoint: options.accessTokenEndpoint,
+        accessTokenRequest: options.accessTokenRequest,
+        callbacks: {
+          fetch,
+        },
+        clientAttestationDPoP: options.popAttestation,
+        dPoP: tokenDPoP.jwt,
+        walletAttestation: options.walletAttestation.attestation,
+      };
+      return await fetchTokenResponse(fetchTokenResponseOptions);
+    });
   }
 }

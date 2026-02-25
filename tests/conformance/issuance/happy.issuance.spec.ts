@@ -8,10 +8,10 @@ import z from "zod/v3";
 
 import { parseMdoc } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
-import { FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizeStepResponse,
   CredentialRequestResponse,
+  FetchMetadataStepResponse,
   NonceRequestResponse,
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
