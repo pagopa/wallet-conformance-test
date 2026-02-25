@@ -18,7 +18,7 @@ export interface FetchMetadataOptions {
   baseUrl: string;
 
   /**
-   * Optional configuration for the io-wallet-sdk, if not provided the default configuration will be used
+   * Configuration for the io-wallet-sdk to be used for metadata discovery.
    */
   ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 }
