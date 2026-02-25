@@ -108,7 +108,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         throw new Error("dcql_query is missing in the request object");
       }
 
-      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+      log.info("Building VP Token from DCQL query...");
+      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery, log);
       log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {

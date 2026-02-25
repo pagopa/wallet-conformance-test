@@ -1,6 +1,7 @@
 import * as path from "node:path";
 
 import { configDefaults, defineConfig } from "vitest/config";
+import "./vitest.global.setup.mjs";
 
 export default defineConfig({
   resolve: {

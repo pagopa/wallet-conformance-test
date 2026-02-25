@@ -35,10 +35,11 @@ testConfigs.forEach((testConfig) => {
     let credentialResponse: CredentialRequestResponse;
 
     beforeAll(async () => {
-      baseLog.info("========================================");
-      baseLog.info("🚀 Starting Issuance Flow Conformance Tests");
-      baseLog.info("========================================");
-      baseLog.info("");
+      baseLog.testSuite({
+        profile: testConfig.credentialConfigurationId,
+        target: orchestrator.getConfig().issuance.url,
+        title: "Issuance Conformance Tests",
+      });
 
       try {
         ({
@@ -51,18 +52,9 @@ testConfigs.forEach((testConfig) => {
           walletAttestationResponse,
         } = await orchestrator.issuance());
 
-        baseLog.info("");
-        baseLog.info("✅ Issuance flow completed");
-        baseLog.info("✅ Your implementation works correctly!");
-        baseLog.info("========================================");
-        baseLog.info("📋 Running conformance validation tests...");
-        baseLog.info("");
+        baseLog.info("Issuance flow completed successfully");
       } catch (e) {
-        baseLog.error("❌ Issuance flow failed with error:", e);
-        baseLog.error(
-          "❌ Your implementation did not complete the issuance flow.",
-        );
-        baseLog.error("========================================");
+        baseLog.error("Issuance flow failed:", e);
         throw e;
       } finally {
         // Give time for all logs to be flushed before starting tests

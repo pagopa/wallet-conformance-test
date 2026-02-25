@@ -116,7 +116,7 @@ export class TestLoader {
     // glob expects forward slashes even on Windows
     const normalizedDirectory = directory.replace(/\\/g, "/");
     const searchPattern = `${normalizedDirectory}/${customStepPattern}`;
-    this.log.info(`Searching for custom steps in: ${searchPattern}`);
+    this.log.debug(`Searching for custom steps in: ${searchPattern}`);
 
     const tsFiles = await glob(searchPattern, {
       ignore: ["**/*.spec.ts", "**/step-options.ts"],
@@ -151,7 +151,7 @@ export class TestLoader {
             const stepType = this.inferStepTypeFromExtends(exportValue);
             if (stepType) {
               customSteps[stepType] = exportValue;
-              this.log.info(
+              this.log.debug(
                 `Auto-detected custom step: ${exportName} (${fileName}) -> ${stepType}`,
               );
             } else {

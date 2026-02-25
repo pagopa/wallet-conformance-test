@@ -44,10 +44,10 @@ export class WalletPresentationOrchestratorFlow {
       path: this.config.logging.log_file,
     });
 
-    this.log.info("Setting Up Wallet conformance Tests - Presentation Flow");
-    this.log.info("Configuration Loaded from config.ini");
+    this.log.debug("Setting Up Wallet conformance Tests - Presentation Flow");
+    this.log.debug("Configuration Loaded from config.ini");
 
-    this.log.info(
+    this.log.debug(
       "Configuration Loaded:\n",
       JSON.stringify({
         credentialsDir: this.config.wallet.credentials_storage_path,
@@ -71,6 +71,10 @@ export class WalletPresentationOrchestratorFlow {
     );
   }
 
+  getConfig(): Config {
+    return this.config;
+  }
+
   getLog(): typeof this.log {
     return this.log;
   }
@@ -80,12 +84,19 @@ export class WalletPresentationOrchestratorFlow {
     fetchMetadataResult: FetchMetadataVpStepResponse;
     redirectUriResult: RedirectUriStepResponse;
   }> {
+    const TOTAL_STEPS = 3;
     try {
-      this.log.info("Starting Test Presentation Flow...");
-
       const fetchMetadataResult = await this.fetchMetadataStep.run({
         baseUrl: this.prepareBaseUrl(),
       });
+      this.log.flowStep(
+        1,
+        TOTAL_STEPS,
+        "Fetch Metadata",
+        fetchMetadataResult.success,
+        fetchMetadataResult.durationMs ?? 0,
+      );
+
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
@@ -96,7 +107,7 @@ export class WalletPresentationOrchestratorFlow {
       const credentialConfigIdentifiers = [
         "dc_sd_jwt_PersonIdentificationData",
       ];
-      this.log.info(
+      this.log.debug(
         "Presenting local credentials:",
         credentialConfigIdentifiers,
       );
@@ -116,9 +127,23 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       );
+      this.log.flowStep(
+        2,
+        TOTAL_STEPS,
+        "Authorization Request",
+        authorizationRequestResult.success,
+        authorizationRequestResult.durationMs ?? 0,
+      );
 
       const redirectUriResult = await this.executeRedirectUri(
         authorizationRequestResult,
+      );
+      this.log.flowStep(
+        3,
+        TOTAL_STEPS,
+        "Redirect URI",
+        redirectUriResult.success,
+        redirectUriResult.durationMs ?? 0,
       );
 
       return {
@@ -190,7 +215,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async loadWalletAttestation(trustAnchorBaseUrl: string) {
-    this.log.info("Loading Wallet Attestation...");
+    this.log.debug("Loading Wallet Attestation...");
 
     const walletAttestation = await loadAttestation({
       trustAnchorBaseUrl,
@@ -198,7 +223,7 @@ export class WalletPresentationOrchestratorFlow {
       wallet: this.config.wallet,
     });
 
-    this.log.info("Wallet Attestation Loaded.");
+    this.log.debug("Wallet Attestation Loaded.");
 
     return walletAttestation;
   }
@@ -217,7 +242,7 @@ export class WalletPresentationOrchestratorFlow {
       }
 
       const baseUrl = new URL(clientId);
-      this.log.info(
+      this.log.debug(
         `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
       );
       return baseUrl.href;
