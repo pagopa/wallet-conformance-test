@@ -25,7 +25,7 @@ Follow these steps to get the wallet-conformance-test tool running on your local
 
 ### Prerequisites
 
-You must have [Node.js >= 20](https://nodejs.org/en/about/previous-releases) and pnpm installed on your system.
+You must have [Node.js >= 22.19.0](https://nodejs.org/en/about/previous-releases) and pnpm installed on your system.
 
 ### Installation
 

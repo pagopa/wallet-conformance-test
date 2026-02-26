@@ -65,7 +65,8 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
         throw new Error("dcql_query is missing in the request object");
       }
 
-      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery);
+      log.info("Building VP Token from DCQL query...");
+      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery, log);
       log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {
@@ -88,8 +89,6 @@ export class AuthorizationRequestITWallet1_0Step extends AuthorizationRequestDef
       if (!encryptionKey) {
         throw new Error("no encryption key found in verifier metadata");
       }
-
-      const { unitKey } = options.walletAttestation;
 
       const authorizationResponse = await createAuthorizationResponse({
         authorization_encrypted_response_alg,

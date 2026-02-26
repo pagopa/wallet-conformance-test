@@ -112,33 +112,69 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe("urn:eudi:pid:1");
+    expect(decoded.jwt?.payload?.vct).toBe(
+      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
+    );
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
   });
 
-  it("should create a mock MDOC using existing keys", async () => {
-    const credential = await createMockMdlMdoc(
-      "CN=test_issuer",
+  it("should create a mock SD-JWT version 1.0.2", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
       backupDir,
       backupDir,
+      ItWalletSpecsVersion.V1_0,
     );
 
-    expect(credential.typ).toBe("mso_mdoc");
+    const decoded = await new SDJwtVcInstance({
+      hasher: digest,
+    }).decode(credential.compact);
 
-    const parsed = credential.parsed as IssuerSignedDocument;
-    expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
-    expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
-
-    const parsedCompact = parseMdoc(
-      Buffer.from(credential.compact, "base64url"),
-    );
-    expect(parsedCompact.docType).toEqual(parsed.docType);
-    expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
-      parsed.issuerSigned.issuerAuth.payload.toString(),
-    );
+    expect(decoded.jwt?.payload?.status).toHaveProperty("status_assertion");
   });
+
+  it("should create a mock SD-JWT version 1.3.3", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_3,
+    );
+
+    const decoded = await new SDJwtVcInstance({
+      hasher: digest,
+    }).decode(credential.compact);
+
+    expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
+  });
+
+  it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])(
+    "should create a mock MDOC using existing keys",
+    async (version) => {
+      const credential = await createMockMdlMdoc(
+        "CN=test_issuer",
+        backupDir,
+        backupDir,
+        version,
+      );
+
+      expect(credential.typ).toBe("mso_mdoc");
+
+      const parsed = credential.parsed as IssuerSignedDocument;
+      expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
+      expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
+
+      const parsedCompact = parseMdoc(
+        Buffer.from(credential.compact, "base64url"),
+      );
+      expect(parsedCompact.docType).toEqual(parsed.docType);
+      expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
+        parsed.issuerSigned.issuerAuth.payload.toString(),
+      );
+    },
+  );
 });
 
 describe("createVpTokenMdoc", () => {

@@ -17,6 +17,11 @@ export type PushedAuthorizationRequestResponse = StepResponse & {
 
 export interface PushedAuthorizationRequestStepOptions {
   /**
+   * Issuer Base URL
+   */
+  baseUrl: string;
+
+  /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
@@ -24,7 +29,7 @@ export interface PushedAuthorizationRequestStepOptions {
   /**
    * Credential Configuration ID for the requested credential
    */
-  credentialConfigurationId: string;
+  credentialConfigurationIds: string[];
 
   /**
    * DPoP JWT used to authenticate the client, it will be created using the wallet attestation
