@@ -3,6 +3,8 @@ import { decodeSdJwt } from "@sd-jwt/decode";
 import { DisclosureData } from "@sd-jwt/types";
 import { DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
+import type { Logger } from "@/types/logger";
+
 import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
 
 /**
@@ -10,14 +12,16 @@ import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
  *
  * @param credentials An array of credentials in SD-JWT format.
  * @param query The DCQL query to use for selecting credentials.
+ * @param logger An optional logger instance for diagnostic output.
  * @returns A promise that resolves to a record mapping credential query IDs to the selected credentials.
  * @throws An error if the DCQL query cannot be satisfied or if a credential index is not found.
  */
 export async function buildVpToken(
   credentials: string[],
   query: DcqlQuery.Input,
+  logger?: Logger,
 ) {
-  const queryResult = await validateDcqlQuery(credentials, query);
+  const queryResult = await validateDcqlQuery(credentials, query, logger);
   const matches = getDcqlQueryMatches(queryResult);
 
   return matches.reduce(

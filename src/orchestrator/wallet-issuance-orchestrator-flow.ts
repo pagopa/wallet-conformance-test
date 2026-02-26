@@ -4,6 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
@@ -15,12 +19,13 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
-import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
 import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
+  FetchMetadataDefaultStep,
+  FetchMetadataStepResponse,
   NonceRequestDefaultStep,
   NonceRequestResponse,
   PushedAuthorizationRequestDefaultStep,
@@ -54,12 +59,12 @@ export class WalletIssuanceOrchestratorFlow {
       path: this.config.logging.log_file,
     });
 
-    this.log.info("Setting Up Wallet conformance Tests - Issuance Flow");
-    this.log.info(
+    this.log.debug("Setting Up Wallet conformance Tests - Issuance Flow");
+    this.log.debug(
       "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
     );
 
-    this.log.info(
+    this.log.debug(
       "Configuration Loaded:\n",
       JSON.stringify({
         credentialsDir: this.config.wallet.credentials_storage_path,
@@ -101,6 +106,10 @@ export class WalletIssuanceOrchestratorFlow {
     );
   }
 
+  getConfig(): Config {
+    return this.config;
+  }
+
   getLog(): typeof this.log {
     return this.log;
   }
@@ -114,6 +123,7 @@ export class WalletIssuanceOrchestratorFlow {
     tokenResponse: TokenRequestResponse;
     walletAttestationResponse: AttestationResponse;
   }> {
+    const TOTAL_STEPS = 6;
     try {
       this.log.info("Starting Test Issuance Flow...");
 
@@ -162,21 +172,31 @@ export class WalletIssuanceOrchestratorFlow {
         `Requesting credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
       );
 
+      const itWalletSpecsVersion = this.config.wallet.wallet_version;
+
       const fetchMetadataResponse = await this.fetchMetadataStep.run({
         baseUrl: credentialIssuer,
+        ioWalletSdkConfig: new IoWalletSdkConfig({
+          itWalletSpecsVersion,
+        }),
       });
+      this.log.flowStep(
+        1,
+        TOTAL_STEPS,
+        "Fetch Metadata",
+        fetchMetadataResponse.success,
+        fetchMetadataResponse.durationMs ?? 0,
+      );
+
       const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
-      this.log.info("Loading Wallet Attestation...");
       const walletAttestationResponse = await loadAttestation({
         trustAnchorBaseUrl,
         trustAnchorJwksPath:
           this.config.trust.federation_trust_anchors_jwks_path,
         wallet: this.config.wallet,
       });
-      this.log.info("Wallet Attestation Loaded.");
 
-      this.log.info("Creating Client Attestation DPoP...");
       const callbacks = {
         ...partialCallbacks,
         signJwt: signJwtCallback([
@@ -230,8 +250,6 @@ export class WalletIssuanceOrchestratorFlow {
         clientAttestation: walletAttestationResponse.attestation,
       });
 
-      this.log.info("Sending Pushed Authorization Request...");
-
       const pushedAuthorizationRequestResponse =
         await this.pushedAuthorizationRequestStep.run({
           baseUrl: credentialIssuer,
@@ -243,6 +261,13 @@ export class WalletIssuanceOrchestratorFlow {
               ?.pushed_authorization_request_endpoint,
           walletAttestation: walletAttestationResponse,
         });
+      this.log.flowStep(
+        2,
+        TOTAL_STEPS,
+        "Pushed Authorization Request",
+        pushedAuthorizationRequestResponse.success,
+        pushedAuthorizationRequestResponse.durationMs ?? 0,
+      );
 
       if (!pushedAuthorizationRequestResponse.response)
         throw new Error("Pushed Authorization Request failed");
@@ -254,7 +279,7 @@ export class WalletIssuanceOrchestratorFlow {
             "Check the PAR Step step for errors.",
         );
 
-      this.log.info(
+      this.log.debug(
         `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.codeVerifier}'`,
       );
 
@@ -267,13 +292,14 @@ export class WalletIssuanceOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
           [credentialIdentifier],
           this.log.debug,
+          itWalletSpecsVersion,
         );
 
         if (credentials.dc_sd_jwt_PersonIdentificationData)
           personIdentificationData =
             credentials.dc_sd_jwt_PersonIdentificationData;
         else {
-          this.log.error("missing pid: creating new one");
+          this.log.debug("missing pid: creating new one");
           throw new Error("missing pid: creating new one");
         }
       } catch {
@@ -311,6 +337,13 @@ export class WalletIssuanceOrchestratorFlow {
         rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
         walletAttestation: walletAttestationResponse,
       });
+      this.log.flowStep(
+        3,
+        TOTAL_STEPS,
+        "Authorization",
+        authorizeResponse.success,
+        authorizeResponse.durationMs ?? 0,
+      );
 
       const code = authorizeResponse.response?.authorizeResponse?.code;
       if (!code)
@@ -342,6 +375,13 @@ export class WalletIssuanceOrchestratorFlow {
         popAttestation: clientAttestationDPoP,
         walletAttestation: walletAttestationResponse,
       });
+      this.log.flowStep(
+        4,
+        TOTAL_STEPS,
+        "Token Request",
+        tokenResponse.success,
+        tokenResponse.durationMs ?? 0,
+      );
 
       const accessToken = tokenResponse.response?.access_token;
       if (!accessToken)
@@ -355,6 +395,13 @@ export class WalletIssuanceOrchestratorFlow {
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.nonce_endpoint,
       });
+      this.log.flowStep(
+        5,
+        TOTAL_STEPS,
+        "Nonce Request",
+        nonceResponse.success,
+        nonceResponse.durationMs ?? 0,
+      );
 
       const nonce = nonceResponse.response?.nonce as
         | undefined
@@ -373,9 +420,19 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
+        ioWalletSdkConfig: new IoWalletSdkConfig({
+          itWalletSpecsVersion,
+        }),
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
+      this.log.flowStep(
+        6,
+        TOTAL_STEPS,
+        "Credential Request",
+        credentialResponse.success,
+        credentialResponse.durationMs ?? 0,
+      );
 
       // Save credential to disk if configured
       // Currently, only the first credential is saved because we support requesting one at a time

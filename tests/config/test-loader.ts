@@ -17,16 +17,19 @@ import { pathToFileURL } from "url";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
-import { FetchMetadataDefaultStep } from "@/step";
 import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,
+  FetchMetadataDefaultStep,
   NonceRequestDefaultStep,
   PushedAuthorizationRequestDefaultStep,
   TokenRequestDefaultStep,
 } from "@/step/issuance";
-import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
-import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
+import {
+  AuthorizationRequestDefaultStep,
+  FetchMetadataVpDefaultStep,
+  RedirectUriDefaultStep,
+} from "@/step/presentation";
 import { StepFlow } from "@/step/step-flow";
 import { Config } from "@/types";
 
@@ -55,6 +58,7 @@ const ISSUANCE_STEP_CLASSES = {
 
 const PRESENTATION_STEP_CLASSES = {
   AuthorizationRequestDefaultStep,
+  FetchMetadataVpDefaultStep,
   RedirectUriDefaultStep,
 } as const;
 
@@ -80,6 +84,7 @@ const STEP_CLASS_TO_KEY: Record<string, string> = {
   AuthorizeDefaultStep: "authorize",
   CredentialRequestDefaultStep: "credentialRequest",
   FetchMetadataDefaultStep: "fetchMetadata",
+  FetchMetadataVpDefaultStep: "fetchMetadataVp",
   NonceRequestDefaultStep: "nonceRequest",
   PushedAuthorizationRequestDefaultStep: "pushedAuthorizationRequest",
   RedirectUriDefaultStep: "redirectUri",
@@ -111,7 +116,7 @@ export class TestLoader {
     // glob expects forward slashes even on Windows
     const normalizedDirectory = directory.replace(/\\/g, "/");
     const searchPattern = `${normalizedDirectory}/${customStepPattern}`;
-    this.log.info(`Searching for custom steps in: ${searchPattern}`);
+    this.log.debug(`Searching for custom steps in: ${searchPattern}`);
 
     const tsFiles = await glob(searchPattern, {
       ignore: ["**/*.spec.ts", "**/step-options.ts"],
@@ -146,7 +151,7 @@ export class TestLoader {
             const stepType = this.inferStepTypeFromExtends(exportValue);
             if (stepType) {
               customSteps[stepType] = exportValue;
-              this.log.info(
+              this.log.debug(
                 `Auto-detected custom step: ${exportName} (${fileName}) -> ${stepType}`,
               );
             } else {

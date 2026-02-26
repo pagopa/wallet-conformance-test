@@ -1,11 +1,11 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "wct",
   "description": "",
   "main": "index.js",
   "packageManager": "pnpm@10.23.0",
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.19.0"
   },
   "files": [
     "config.ini"
@@ -52,11 +52,11 @@
   },
   "dependencies": {
     "@auth0/mdl": "^3.0.0",
-    "@pagopa/io-wallet-oauth2": "^1.0.0",
-    "@pagopa/io-wallet-oid-federation": "^1.0.0",
-    "@pagopa/io-wallet-oid4vci": "^1.0.0",
-    "@pagopa/io-wallet-oid4vp": "^1.0.0",
-    "@pagopa/io-wallet-utils": "^1.0.0",
+    "@pagopa/io-wallet-oauth2": "1.1.0-alpha-20260225131142",
+    "@pagopa/io-wallet-oid-federation": "1.1.0-alpha-20260225131142",
+    "@pagopa/io-wallet-oid4vci": "1.1.0-alpha-20260225131142",
+    "@pagopa/io-wallet-oid4vp": "1.1.0-alpha-20260225131142",
+    "@pagopa/io-wallet-utils": "1.1.0-alpha-20260225131142",
     "@peculiar/x509": "^1.14.3",
     "@sd-jwt/core": "^0.17.0",
     "@sd-jwt/crypto-nodejs": "^0.17.0",

@@ -1,4 +1,4 @@
-import { FetchMetadataDefaultStep } from "@/step";
+import { FetchMetadataDefaultStep } from "@/step/issuance";
 import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,

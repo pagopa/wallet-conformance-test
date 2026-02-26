@@ -1,4 +1,6 @@
-import { StepFlow, StepResponse } from "@/step";
+import { fetchWithRetries } from "@/logic";
+import { StepFlow } from "@/step";
+import { StepResponse } from "@/step";
 
 export interface NonceRequestExecuteResponse {
   attempts: number;
@@ -24,8 +26,27 @@ export type NonceResponsePayload = Record<string, unknown>;
 export class NonceRequestDefaultStep extends StepFlow {
   tag = "NONCE_REQUEST";
 
-  async run(_: NonceRequestStepOptions): Promise<NonceRequestResponse> {
-    this.log.warn("Method not implemented.");
-    return Promise.resolve({ success: false });
+  async run(options: NonceRequestStepOptions): Promise<NonceRequestResponse> {
+    const log = this.log.withTag(this.tag);
+
+    log.info(`Starting Nonce Request Step`);
+
+    return this.execute<NonceRequestExecuteResponse>(async () => {
+      log.info("Fetching Nonce from", options.nonceEndpoint);
+      const fetchNonce = await fetchWithRetries(
+        options.nonceEndpoint,
+        this.config.network,
+        {
+          method: "POST",
+        },
+      );
+
+      return {
+        attempts: fetchNonce.attempts,
+        cacheControl: fetchNonce.response.headers.get("Cache-Control"),
+        contentType: fetchNonce.response.headers.get("Content-Type"),
+        nonce: await fetchNonce.response.json(),
+      };
+    });
   }
 }
