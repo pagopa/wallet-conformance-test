@@ -18,7 +18,7 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): Promise<Record<string, Credential>> {
   const pathVersion = `${path}/${version}`;
   try {

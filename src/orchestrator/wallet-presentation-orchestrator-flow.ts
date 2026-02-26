@@ -8,7 +8,10 @@ import {
   loadConfigWithHierarchy,
   loadJwks,
 } from "@/logic";
-import { FetchMetadataDefaultStep, FetchMetadataStepResponse } from "@/step";
+import {
+  FetchMetadataVpDefaultStep,
+  FetchMetadataVpStepResponse,
+} from "@/step/presentation";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResponse,
@@ -23,7 +26,7 @@ import { AttestationResponse, Config } from "@/types";
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
-  private fetchMetadataStep: FetchMetadataDefaultStep;
+  private fetchMetadataStep: FetchMetadataVpDefaultStep;
   private log = createLogger();
 
   private presentationConfig: PresentationTestConfiguration;
@@ -78,7 +81,7 @@ export class WalletPresentationOrchestratorFlow {
 
   async presentation(): Promise<{
     authorizationRequestResult: AuthorizationRequestStepResponse;
-    fetchMetadataResult: FetchMetadataStepResponse;
+    fetchMetadataResult: FetchMetadataVpStepResponse;
     redirectUriResult: RedirectUriStepResponse;
   }> {
     const TOTAL_STEPS = 3;
@@ -190,7 +193,7 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private extractVerifierMetadata(
-    fetchMetadataResult: FetchMetadataStepResponse,
+    fetchMetadataResult: FetchMetadataVpStepResponse,
   ) {
     const entityStatementClaims =
       fetchMetadataResult.response?.entityStatementClaims;
@@ -252,10 +255,15 @@ export class WalletPresentationOrchestratorFlow {
     trustAnchorBaseUrl: string,
     credentialIdentifier: string,
   ): Promise<CredentialWithKey> {
+
+
+    const itWalletSpecsVersion = this.config.wallet.wallet_version;
+
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
       this.log.debug,
+      itWalletSpecsVersion
     );
 
     const pid = credentials[credentialIdentifier]

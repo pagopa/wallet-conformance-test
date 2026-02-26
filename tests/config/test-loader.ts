@@ -17,16 +17,19 @@ import { pathToFileURL } from "url";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
-import { FetchMetadataDefaultStep } from "@/step";
 import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,
+  FetchMetadataDefaultStep,
   NonceRequestDefaultStep,
   PushedAuthorizationRequestDefaultStep,
   TokenRequestDefaultStep,
 } from "@/step/issuance";
-import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
-import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
+import {
+  AuthorizationRequestDefaultStep,
+  FetchMetadataVpDefaultStep,
+  RedirectUriDefaultStep,
+} from "@/step/presentation";
 import { StepFlow } from "@/step/step-flow";
 import { Config } from "@/types";
 
@@ -55,6 +58,7 @@ const ISSUANCE_STEP_CLASSES = {
 
 const PRESENTATION_STEP_CLASSES = {
   AuthorizationRequestDefaultStep,
+  FetchMetadataVpDefaultStep,
   RedirectUriDefaultStep,
 } as const;
 
@@ -80,6 +84,7 @@ const STEP_CLASS_TO_KEY: Record<string, string> = {
   AuthorizeDefaultStep: "authorize",
   CredentialRequestDefaultStep: "credentialRequest",
   FetchMetadataDefaultStep: "fetchMetadata",
+  FetchMetadataVpDefaultStep: "fetchMetadataVp",
   NonceRequestDefaultStep: "nonceRequest",
   PushedAuthorizationRequestDefaultStep: "pushedAuthorizationRequest",
   RedirectUriDefaultStep: "redirectUri",
