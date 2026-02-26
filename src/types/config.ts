@@ -1,10 +1,20 @@
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { z } from "zod";
+
+import { parseItWalletSpecVersion } from "./version";
 
 /**
  * Represents the configuration for the wallet conformance test.
  */
 export const configSchema = z.object({
   issuance: z.object({
+    credential_offer_uri: z
+      .string()
+      .url()
+      .startsWith("https://")
+      .or(z.string().startsWith("haip-vci://"))
+      .or(z.string().startsWith("openid-credential-offer://"))
+      .optional(),
     credential_types: z.array(z.string()).optional().default([]),
     save_credential: z.coerce.boolean().optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
@@ -27,7 +37,6 @@ export const configSchema = z.object({
   }),
   steps_mapping: z
     .object({
-      default_steps_dir: z.string().optional(),
       mapping: z.record(z.string(), z.string()).optional().default({}),
     })
     .optional()
@@ -59,6 +68,15 @@ export const configSchema = z.object({
     wallet_id: z.string(),
     wallet_name: z.string(),
     wallet_provider_base_url: z.string(),
+    wallet_version: z
+      .string({
+        required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
+      })
+      .refine(
+        (version) => parseItWalletSpecVersion(version),
+        `Invalid wallet_version. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
+      )
+      .transform((version) => version as ItWalletSpecsVersion),
   }),
 });
 

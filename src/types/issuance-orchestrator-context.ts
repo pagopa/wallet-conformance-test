@@ -1,4 +1,4 @@
-import { FetchMetadataStepResponse } from "@/step";
+import { FetchMetadataStepResponse } from "@/step/issuance";
 import {
   AuthorizeStepResponse,
   PushedAuthorizationRequestResponse,
@@ -12,6 +12,7 @@ export type RunThroughAuthorizeContext = RunThroughParContext & {
 };
 
 export interface RunThroughParContext {
+  credentialIssuer: string;
   authorizationServer: string;
   fetchMetadataResponse: FetchMetadataStepResponse;
   popAttestation: string;

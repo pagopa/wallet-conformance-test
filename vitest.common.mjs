@@ -1,6 +1,6 @@
 /**
  * Common Vitest configuration factory
- * 
+ *
  * Creates test configuration for different test types (issuance, presentation)
  * with automatic tests directory resolution from config.ini
  */
@@ -9,16 +9,20 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createConsola } from "consola";
 import { parse } from "ini";
 import { configDefaults, defineConfig } from "vitest/config";
+import "./vitest.global.setup.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const log = createConsola({ level: 3 });
+
 /**
  * Get tests directory for a specific test type
  * Supports CLI override via environment variables
- * 
+ *
  * @param {string} testType - Type of test ('issuance' or 'presentation')
  * @returns {string} Tests directory path
  */
@@ -46,7 +50,7 @@ function getTestsDir(testType) {
     const config = parse(configContent);
     return config[testType]?.tests_dir || defaultDirMap[testType];
   } catch (error) {
-    console.warn(
+    log.debug(
       `Could not read config.ini, using default tests directory: ${defaultDirMap[testType]}`,
     );
     return defaultDirMap[testType];
@@ -55,7 +59,7 @@ function getTestsDir(testType) {
 
 /**
  * Create Vitest configuration for a specific test type
- * 
+ *
  * @param {string} testType - Type of test ('issuance' or 'presentation')
  * @returns {import('vitest/config').UserConfig} Vitest configuration
  */
@@ -63,8 +67,8 @@ export function createTestConfig(testType) {
   const testsDir = getTestsDir(testType);
   const includePattern = `${testsDir}/**/*.${testType}.spec.ts`;
 
-  console.log(`[${testType}] Tests directory: ${testsDir}`);
-  console.log(`[${testType}] Include pattern: ${includePattern}`);
+  log.debug(`[${testType}] Tests directory: ${testsDir}`);
+  log.debug(`[${testType}] Include pattern: ${includePattern}`);
 
   return defineConfig({
     resolve: {

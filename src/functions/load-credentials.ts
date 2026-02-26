@@ -1,3 +1,4 @@
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
@@ -17,20 +18,22 @@ export async function loadCredentials(
   path: string,
   types: string[],
   onIgnoreError: (msg: string) => void,
+  version: ItWalletSpecsVersion,
 ): Promise<Record<string, Credential>> {
+  const pathVersion = `${path}/${version}`;
   try {
-    if (!existsSync(path))
-      mkdirSync(path, {
+    if (!existsSync(pathVersion))
+      mkdirSync(pathVersion, {
         recursive: true,
       });
   } catch (e) {
     const err = e as Error;
     throw new Error(
-      `unable to find or create necessary directories ${path}: ${err.message}`,
+      `unable to find or create necessary directories ${pathVersion}: ${err.message}`,
     );
   }
 
-  const files = readdirSync(path);
+  const files = readdirSync(pathVersion);
   const credentials: Record<string, Credential> = {};
 
   for (const file of files) {
@@ -44,7 +47,7 @@ export async function loadCredentials(
 
     // First, attempt to parse the credential as a SD-JWT
     try {
-      const credential = readFileSync(`${path}/${file}`, "utf-8");
+      const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
       const parsed = await SDJwt.extractJwt(credential);
 
       credentials[file] = {
@@ -62,7 +65,7 @@ export async function loadCredentials(
 
     // If SD-JWT verification fails, attempt to parse it as an MDOC
     try {
-      const credential = readFileSync(`${path}/${file}`, "utf-8");
+      const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
       const parsed = parseMdoc(Buffer.from(credential, "base64url"));
 
       // If validation is successful, add it to the credentials record

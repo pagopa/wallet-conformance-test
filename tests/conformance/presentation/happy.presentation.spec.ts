@@ -3,7 +3,7 @@ import { definePresentationTest } from "#/config/test-metadata";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
-import { FetchMetadataStepResponse } from "@/step";
+import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
@@ -16,31 +16,23 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   const baseLog = orchestrator.getLog();
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
-  let fetchMetadataResult: FetchMetadataStepResponse;
+  let fetchMetadataResult: FetchMetadataVpStepResponse;
   let redirectUriResult: RedirectUriStepResponse;
 
   beforeAll(async () => {
-    baseLog.info("========================================");
-    baseLog.info("🚀 Starting Presentation Flow Conformance Tests");
-    baseLog.info("========================================");
-    baseLog.info("");
+    baseLog.testSuite({
+      profile: "dc_sd_jwt_PersonIdentificationData",
+      target: orchestrator.getConfig().presentation.authorize_request_url,
+      title: "Presentation Conformance Tests",
+    });
 
     try {
       ({ authorizationRequestResult, fetchMetadataResult, redirectUriResult } =
         await orchestrator.presentation());
 
-      baseLog.info("");
-      baseLog.info("✅ Presentation flow completed");
-      baseLog.info("✅ Your implementation works correctly!");
-      baseLog.info("========================================");
-      baseLog.info("📋 Running conformance validation tests...");
-      baseLog.info("");
+      baseLog.info("Presentation flow completed successfully");
     } catch (e) {
-      baseLog.error("❌ Presentation flow failed with error:", e);
-      baseLog.error(
-        "❌ Your implementation did not complete the presentation flow.",
-      );
-      baseLog.error("========================================");
+      baseLog.error("Presentation flow failed:", e);
       throw e;
     } finally {
       // Give time for all logs to be flushed before starting tests

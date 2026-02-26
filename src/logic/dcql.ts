@@ -1,5 +1,7 @@
 import { DcqlQuery, type DcqlQueryResult } from "dcql";
 
+import type { Logger } from "@/types/logger";
+
 import { parseCredentialFromSdJwt } from "./vpToken";
 
 type DcqlMatchSuccess = Extract<
@@ -87,22 +89,52 @@ export function getDcqlQueryMatches(queryResult: DcqlQueryResult) {
  *
  * @param credentials An array of credentials in SD-JWT format.
  * @param query The DCQL query to validate.
+ * @param logger An optional logger instance for diagnostic output.
  * @returns A promise that resolves with the query result if validation is successful.
  * @throws An error if the query is invalid or cannot be satisfied by the provided credentials.
  */
 export async function validateDcqlQuery(
   credentials: string[],
   query: DcqlQuery.Input,
+  logger?: Logger,
 ) {
   const parsedQuery = DcqlQuery.parse(query);
   DcqlQuery.validate(parsedQuery);
+  logger?.info(`Dcql Query requested: ${JSON.stringify(parsedQuery)}`);
 
   const parsedCredentials = await Promise.all(
     credentials.map((credential) => parseCredentialFromSdJwt(credential)),
   );
 
+  // Log credentials available in the wallet
+  logger?.info(
+    `Credentials available in the wallet (${parsedCredentials.length}):`,
+  );
+  parsedCredentials.forEach((c, i) => {
+    logger?.info(`  [${i + 1}] format: ${c.credential_format}, vct: ${c.vct}`);
+  });
+
+  // Log credentials requested by the DCQL query
+  const requestedCredentials = parsedQuery.credentials;
+  logger?.info(
+    `DCQL query requests (${requestedCredentials.length}) credential(s):`,
+  );
+  requestedCredentials.forEach((c, i) => {
+    const vctValues =
+      "meta" in c && c.meta && "vct_values" in c.meta && c.meta.vct_values
+        ? c.meta.vct_values.join(", ")
+        : "any";
+    logger?.info(
+      `  [${i + 1}] id: "${c.id}", format: ${c.format}, vct: ${vctValues}`,
+    );
+  });
+
   const queryResult = DcqlQuery.query(parsedQuery, parsedCredentials);
   if (!queryResult.can_be_satisfied) {
+    logger?.warn(
+      `Tip: verify that the credential types in the wallet satisfy the DCQL query. Mocked credentials are stored in the "data/credentials" directory.`,
+    );
+
     throw new Error(
       "DCQL query validation failed: The provided credentials do not satisfy the DCQL query",
     );
