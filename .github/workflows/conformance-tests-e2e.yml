@@ -57,7 +57,7 @@ jobs:
           AUTHORIZE_URL=$(curl -s -X POST \
             "${{ vars.CONFIG_RELYING_PARTY_URI }}" \
             -H "Content-Type: application/json" \
-            -d '{"flow_type":"cross-device","dcqlQuery":{"credentials":[{"id":"550e8400-e29b-41d4-a716-446655440000","format":"dc+sd-jwt","meta":{"vct_values":["urn:eudi:pid:1"]},"claims":[{"path":["given_name"]},{"path":["family_name"]}]}]}}' \
+            -d '{"flow_type":"cross-device","dcqlQuery":{"credentials":[{"id":"550e8400-e29b-41d4-a716-446655440000","format":"dc+sd-jwt","meta":{"vct_values":["https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata"]},"claims":[{"path":["given_name"]},{"path":["family_name"]}]}]}}' \
             | jq -r '.url')
           echo "CONFIG_PRESENTATION_AUTHORIZE_URI=$AUTHORIZE_URL" >> "$GITHUB_ENV"
 
