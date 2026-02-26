@@ -1,10 +1,10 @@
-import { FetchMetadataDefaultStep } from "@/step";
+import { FetchMetadataVpDefaultStep } from "@/step/presentation";
 import { AuthorizationRequestDefaultStep } from "@/step/presentation/authorization-request-step";
 import { RedirectUriDefaultStep } from "@/step/presentation/redirect-uri-step";
 
 interface PresentationTestConfigurationOptions {
   authorizeStepClass: typeof AuthorizationRequestDefaultStep;
-  fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
+  fetchMetadataStepClass: typeof FetchMetadataVpDefaultStep;
   name: string;
   redirectUriStepClass: typeof RedirectUriDefaultStep;
 }
@@ -21,7 +21,7 @@ export class PresentationTestConfiguration {
   constructor(config: PresentationTestConfigurationOptions) {
     this.name = config.name;
     this.fetchMetadataStepClass =
-      config.fetchMetadataStepClass ?? FetchMetadataDefaultStep;
+      config.fetchMetadataStepClass ?? FetchMetadataVpDefaultStep;
     this.authorizeStepClass =
       config.authorizeStepClass ?? AuthorizationRequestDefaultStep;
     this.redirectUriStepClass =
@@ -37,7 +37,7 @@ export class PresentationTestConfiguration {
   static createDefault(): PresentationTestConfiguration {
     return new PresentationTestConfiguration({
       authorizeStepClass: AuthorizationRequestDefaultStep,
-      fetchMetadataStepClass: FetchMetadataDefaultStep,
+      fetchMetadataStepClass: FetchMetadataVpDefaultStep,
       name: "Presentation Happy Flow",
       redirectUriStepClass: RedirectUriDefaultStep,
     });

@@ -26,7 +26,7 @@ Vitest executes tests
 
 - **Auto-Discovery**: Custom steps are automatically discovered from directories specified in `steps_mapping` using prototype chain inspection
 - **Minimal Metadata**: Test specs only need to define a unique test `name` (string) - no object required
-- **Required Mapping**: Each test MUST have a `steps_mapping` entry in `config.ini` pointing to its custom step directory
+- **Optional Mapping**: Tests may have a `steps_mapping` entry in `config.ini` pointing to a custom step directory; if omitted, built-in default step stubs are used automatically
 - **Versioned Steps**: Encourages reusable, versioned step implementations shared across tests
 - **Configuration Hierarchy**: CLI options > Custom INI > Default INI
 - **Required Configuration**: `credential_types[]` must be configured in `config.ini` for issuance tests
@@ -113,7 +113,7 @@ ExampleIssuanceTest = ./tests/steps/version_X_Y/issuance
 **Important**: 
 - Default step classes contain stub implementations that log a warning
 - You **must** override steps with custom implementations for actual functionality
-- Each test requires a `steps_mapping` entry pointing to its custom step directory
+- `steps_mapping` is optional; if omitted, all steps use built-in default stubs automatically
 
 ### Step 3: Run Tests
 
@@ -240,12 +240,7 @@ export class AuthorizeITWallet1_0Step extends AuthorizeDefaultStep {
 **Configure in config.ini:**
 ```ini
 [steps_mapping]
-# Optional: Default directory used for:
-# 1. Tests without specific mapping
-# 2. Fallback for missing steps in specific directories
-default_steps_dir = ./tests/steps/version_1_0
-
-# Specific mappings take precedence over default
+# Optional: map specific test flows to step directories
 HappyFlowIssuance = ./tests/steps/version_1_0/issuance
 ```
 
@@ -254,14 +249,10 @@ HappyFlowIssuance = ./tests/steps/version_1_0/issuance
 2. `TestLoader` checks `config.steps_mapping.mapping["HappyFlowIssuance"]`
 3. Finds `./tests/steps/version_1_0/issuance`
 4. Scans that directory for custom steps (e.g., `AuthorizeITWallet1_0Step`)
-5. **If any steps are missing**, scans `default_steps_dir` for them
-6. Merges steps (specific directory steps have priority)
-7. Auto-discovers and maps to test configuration
+5. Auto-discovers and maps to test configuration
 
-**Fallback mechanisms:**
-- **Directory fallback**: If no specific mapping exists, uses `config.steps_mapping.default_steps_dir`
-- **Step fallback**: Missing steps in specific directory are searched in `default_steps_dir`
-- **Default stub**: If step not found anywhere, uses stub implementation (logs warning)
+**Fallback mechanism:**
+- **Default stub**: If no `steps_mapping` entry exists for a test, or a step is not found in the mapped directory, the built-in default step stub is used (logs a warning)
 
 #### Available Base Classes for Extension
 
@@ -274,7 +265,7 @@ HappyFlowIssuance = ./tests/steps/version_1_0/issuance
 - `CredentialRequestDefaultStep` → `credentialRequest`
 
 **Presentation Steps:**
-- `FetchMetadataDefaultStep` → `fetchMetadata`
+- `FetchMetadataVpDefaultStep` → `fetchMetadataVp`
 - `AuthorizationRequestDefaultStep` → `authorizationRequest` (mapped to `authorize` in config)
 - `RedirectUriDefaultStep` → `redirectUri`
 
@@ -289,86 +280,44 @@ HappyFlowIssuance = ./tests/steps/version_1_0/issuance
 
 When you call `defineIssuanceTest("MyTestFlow")` or `definePresentationTest("MyTestFlow")`:
 
-1. **Resolve primary steps directory**: 
-   - **First**: Checks `config.steps_mapping.mapping["MyTestFlow"]` for specific mapping
-   - **Second**: Falls back to `config.steps_mapping.default_steps_dir` if no mapping
-   - **Third**: Throws error if neither is configured
+1. **Resolve steps directory**:
+   - Checks `config.steps_mapping.mapping["MyTestFlow"]` for a specific mapping
+   - If not found, no custom steps are loaded (built-in stubs are used, no error)
 
-2. **Discover steps from primary directory**:
+2. **Discover steps from mapped directory** (if a mapping exists):
    - Scans the resolved directory for custom step implementations
-   
-3. **Merge with default steps (if applicable)**:
-   - If `default_steps_dir` is configured AND different from primary directory
-   - Scans `default_steps_dir` for additional steps
-   - Merges: primary steps take priority, default steps fill gaps
-   
-4. **Use stub for missing steps**:
-   - Any steps not found in either location use default stub implementations
+
+3. **Use stub for missing steps**:
+   - Steps not found in the mapped directory fall back to built-in default stub implementations
 
 **Example Configuration:**
 
 ```ini
 [steps_mapping]
-# Default directory for shared steps
-# Used as: 1) Fallback when no mapping exists
-#          2) Source for missing steps in specific directories
-default_steps_dir = ./tests/steps/version_1_0
-
-# Specific mappings (take precedence over default)
 HappyFlowIssuance = ./tests/steps/version_1_0/issuance
 HappyFlowPresentation = ./tests/steps/version_1_0/presentation
-
-# MyCustomTest will use default_steps_dir entirely
-# MyPartialTest would use its directory + missing steps from default_steps_dir
 ```
 
-**Workflow with specific mapping + step merge:**
+**Workflow with specific mapping:**
 ```
-defineIssuanceTest("MyPartialTest")
+defineIssuanceTest("HappyFlowIssuance")
     ↓
-Check steps_mapping.mapping["MyPartialTest"]
+Check steps_mapping.mapping["HappyFlowIssuance"]
     ↓
-Found: ./tests/custom/my-partial-test (has only AuthorizeStep)
+Found: ./tests/steps/version_1_0/issuance
     ↓
-Discover steps from ./tests/custom/my-partial-test
+Discover custom steps from that directory
     ↓
-Found: authorize
-    ↓
-Check if default_steps_dir exists and is different
-    ↓
-Found: ./tests/steps/version_1_0 (has all 6 steps)
-    ↓
-Merge: keep authorize from primary, add missing 5 from default
-    ↓
-Result: 6 steps (1 custom + 5 from default)
+Any missing steps use built-in default stubs
 ```
 
-**Workflow with default_steps_dir fallback:**
+**Workflow with no mapping:**
 ```
 defineIssuanceTest("MyCustomTest")
     ↓
 Check steps_mapping.mapping["MyCustomTest"]
     ↓
-Not found → Use steps_mapping.default_steps_dir
-    ↓
-Found: ./tests/steps/version_1_0
-    ↓
-Discover all steps from default directory
-    ↓
-Use shared steps from default directory
-```
-
-**Workflow with no configuration:**
-```
-defineIssuanceTest("MyCustomTest")
-    ↓
-Check steps_mapping.mapping["MyCustomTest"]
-    ↓
-Not found → Check steps_mapping.default_steps_dir
-    ↓
-Not found
-    ↓
-Throw Error: No steps_mapping entry or default_steps_dir configured
+Not found → log info, use built-in default step stubs for all steps
 ```
 
 ### Auto-Discovery Process
@@ -377,8 +326,7 @@ When you call `defineIssuanceTest("MyTest")` or `definePresentationTest("MyTest"
 
 1. **Steps Directory Resolution**: 
    - First looks up `config.steps_mapping.mapping["MyTest"]` for specific mapping
-   - If not found, falls back to `config.steps_mapping.default_steps_dir`
-   - Throws error if neither is configured
+   - If not found, no custom steps are loaded (built-in stubs are used, no error thrown)
    
 2. **Custom Step Discovery**: Scans for `.ts` files matching `custom_step_pattern` (default: `**/*.ts`)
    - Excludes `**/*.spec.ts` (test files)
@@ -506,9 +454,9 @@ Defines and creates issuance test configurations with automatic discovery of cus
 
 **Important**: 
 - Requires `credential_types[]` to be configured in `config.ini` [issuance] section
-- Requires `steps_mapping[name]` to be configured in `config.ini` [steps_mapping] section
-- Throws an error if `credential_types` is empty or `steps_mapping` entry is missing
-- Automatically discovers custom steps from the directory specified in `steps_mapping[name]`
+- Throws an error if `credential_types` is empty
+- If `steps_mapping[name]` is configured, custom steps are discovered from that directory
+- If `steps_mapping[name]` is absent, all steps use built-in default stub implementations
 - **Does NOT discover step options** - options system has been removed
 
 **Example**:
@@ -621,80 +569,11 @@ wct test:issuance --log-level DEBUG
 
 # Look for log entries like:
 # [TestLoader] steps_mapping: resolved 'MyTest' -> /path/to/steps
-
-# If steps_mapping is missing, you'll get an error:
-# Error: No steps_mapping entry found for test 'MyTest'
+# or:
+# [TestLoader] steps_mapping: no entry for 'MyTest', using built-in default steps
 ```
 
-### Missing steps_mapping configuration
 
-**Cause**: Test name not found in `[steps_mapping]` section of config.ini.
-
-**Symptoms**:
-```
-Error: No steps_mapping entry found for test 'MyTestName'.
-Please add the following to your config.ini:
-
-[steps_mapping]
-MyTestName = tests/steps/version_1_0/issuance
-```
-
-**Solution**:
-1. **Add mapping to config.ini**: Add the test name to `[steps_mapping]` section
-   ```ini
-   [steps_mapping]
-   MyTestName = ./tests/steps/version_1_0/issuance
-   ```
-2. **Or use default_steps_dir**: Configure a default directory that will be used as fallback
-   ```ini
-   [steps_mapping]
-   default_steps_dir = ./tests/steps/version_1_0
-   ```
-3. **Create step directory**: Ensure the mapped directory exists and contains your custom step implementations
-4. **Match test name**: The key in `steps_mapping` must exactly match the name passed to `defineIssuanceTest()` or `definePresentationTest()`
-
-### Partial step implementation (using step merge)
-
-**Use Case**: You want to customize only some steps and use default implementations for others.
-
-**Example Scenario**:
-```
-You have a custom AuthorizeStep but want to reuse all other steps from version_1_0
-```
-
-**Solution**:
-```ini
-[steps_mapping]
-# Default directory with all step implementations
-default_steps_dir = ./tests/steps/version_1_0
-
-# Your test directory with only AuthorizeStep
-MyPartialTest = ./tests/my-partial-test
-```
-
-**Directory Structure**:
-```
-tests/
-├── my-partial-test/
-│   └── authorize-step.ts        # Only this step is custom
-└── steps/version_1_0/
-    ├── authorize-step.ts        # Will be ignored (overridden)
-    ├── token-request-step.ts    # Will be used
-    ├── credential-request-step.ts # Will be used
-    └── ...                      # All other steps will be used
-```
-
-**How it works**:
-1. System discovers `AuthorizeStep` from `./tests/my-partial-test`
-2. System discovers all steps from `./tests/steps/version_1_0` (default_steps_dir)
-3. Merges with priority: custom steps override default steps
-4. Result: Your custom `AuthorizeStep` + 5 default steps from version_1_0
-
-**Benefits**:
-- Reuse existing step implementations
-- Override only what you need
-- Maintain consistency across tests
-- Easier maintenance and updates
 
 ### Default steps log warnings
 

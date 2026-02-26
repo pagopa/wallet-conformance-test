@@ -37,7 +37,6 @@ export const configSchema = z.object({
   }),
   steps_mapping: z
     .object({
-      default_steps_dir: z.string().optional(),
       mapping: z.record(z.string(), z.string()).optional().default({}),
     })
     .optional()
@@ -70,13 +69,14 @@ export const configSchema = z.object({
     wallet_name: z.string(),
     wallet_provider_base_url: z.string(),
     wallet_version: z
-      .string()
-      .optional()
+      .string({
+        required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
+      })
       .refine(
-        (version) => !version || parseItWalletSpecVersion(version),
-        `Admissible values for wallet version are ${Object.values(ItWalletSpecsVersion)}`,
+        (version) => parseItWalletSpecVersion(version),
+        `Invalid wallet_version. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
       )
-      .transform((version) => version as ItWalletSpecsVersion | undefined),
+      .transform((version) => version as ItWalletSpecsVersion),
   }),
 });
 
