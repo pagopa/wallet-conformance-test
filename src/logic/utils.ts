@@ -72,7 +72,7 @@ export async function fetchWithRetries(
 export const loadJsonDumps = (
   fileName: string,
   placeholders: Record<string, object | string>,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
@@ -222,7 +222,7 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): null | string {
   try {
     const credentialsPath = path.resolve(

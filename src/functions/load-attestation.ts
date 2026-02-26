@@ -4,7 +4,6 @@ import {
 } from "@pagopa/io-wallet-oid4vci";
 import {
   IoWalletSdkConfig,
-  ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -34,7 +33,7 @@ export const loadAttestation = async (options: {
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
   const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
-  const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}`;
+  const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
   const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
 
   try {
@@ -83,6 +82,7 @@ export const loadAttestation = async (options: {
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
       sub: wallet.wallet_provider_base_url,
       trustAnchorBaseUrl: trustAnchorBaseUrl,
+      walletVersion: wallet.wallet_version,
     });
     const placeholders = {
       public_key: providerKeyPair.publicKey,
@@ -92,6 +92,7 @@ export const loadAttestation = async (options: {
     const wpClaims = loadJsonDumps(
       "wallet_provider_metadata.json",
       placeholders,
+      wallet.wallet_version,
     );
     const wpEntityConfiguration = await createFederationMetadata({
       claims: wpClaims,
@@ -120,7 +121,7 @@ export const loadAttestation = async (options: {
     };
     const provider = new WalletProvider(
       new IoWalletSdkConfig({
-        itWalletSpecsVersion: ItWalletSpecsVersion.V1_0,
+        itWalletSpecsVersion: wallet.wallet_version,
       }),
     );
     const attestation =

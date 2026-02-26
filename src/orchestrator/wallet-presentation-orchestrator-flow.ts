@@ -255,15 +255,13 @@ export class WalletPresentationOrchestratorFlow {
     trustAnchorBaseUrl: string,
     credentialIdentifier: string,
   ): Promise<CredentialWithKey> {
-
-
     const itWalletSpecsVersion = this.config.wallet.wallet_version;
 
     const credentials = await loadCredentials(
       this.config.wallet.credentials_storage_path,
       [credentialIdentifier],
       this.log.debug,
-      itWalletSpecsVersion
+      itWalletSpecsVersion,
     );
 
     const pid = credentials[credentialIdentifier]
@@ -277,6 +275,7 @@ export class WalletPresentationOrchestratorFlow {
           },
           this.config.wallet.backup_storage_path,
           this.config.wallet.credentials_storage_path,
+          this.config.wallet.wallet_version,
         );
 
     const { privateKey } = await loadJwks(

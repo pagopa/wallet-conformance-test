@@ -6,7 +6,6 @@ import {
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import {
   IoWalletSdkConfig,
-  ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
@@ -312,6 +311,7 @@ export class WalletIssuanceOrchestratorFlow {
           },
           this.config.wallet.backup_storage_path,
           this.config.wallet.credentials_storage_path,
+          this.config.wallet.wallet_version,
         );
       }
 
@@ -442,6 +442,7 @@ export class WalletIssuanceOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
           this.issuanceConfig.credentialConfigurationId,
           firstCredential.credential,
+          this.config.wallet.wallet_version,
         );
         if (savedPath) {
           this.log.info(`Credential saved to disk: ${savedPath}`);
