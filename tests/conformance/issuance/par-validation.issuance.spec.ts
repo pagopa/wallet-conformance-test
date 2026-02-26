@@ -50,6 +50,7 @@ testConfigs.forEach((testConfig) => {
     let pushedAuthorizationRequestEndpoint: string;
     let authorizationServer: string;
     let credentialConfigurationId: string;
+    let credentialIssuer: string;
 
     // -----------------------------------------------------------------------
     // Shared setup – run once per credential type
@@ -73,6 +74,7 @@ testConfigs.forEach((testConfig) => {
       authorizationServer = ctx.authorizationServer;
       pushedAuthorizationRequestEndpoint =
         ctx.pushedAuthorizationRequestEndpoint;
+      credentialIssuer = ctx.credentialIssuer;
     });
 
     // Restore real timers after each test that might have used fake timers
@@ -109,6 +111,7 @@ testConfigs.forEach((testConfig) => {
       const freshPop = await createFreshPop();
       const step = new StepClass(config, baseLog);
       return step.run({
+        baseUrl: config.issuance.url,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds: [credentialConfigurationId],
         popAttestation: freshPop,
@@ -694,6 +697,7 @@ testConfigs.forEach((testConfig) => {
         baseLog,
       );
       return step.run({
+        baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds: [credentialConfigurationId],
         popAttestation: customPopAttestation,

@@ -119,6 +119,11 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           responseMode: "query",
         };
 
+        const finalParOptions = {
+        ...createParOptions,
+        ...options.createParOverrides,
+      };
+
         log.info(
           `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
         );
@@ -126,12 +131,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           `PAR request credentialConfigurationId: ${options.credentialConfigurationIds}`,
         );
         const pushedAuthorizationRequest =
-          await createPushedAuthorizationRequest({
-            ...createParOptions,
-            authorizationServerMetadata: {
-              require_signed_request_object: true,
-            },
-          });
+          await createPushedAuthorizationRequest(finalParOptions);
 
         const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 
