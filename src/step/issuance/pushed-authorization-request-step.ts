@@ -120,9 +120,9 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         };
 
         const finalParOptions = {
-        ...createParOptions,
-        ...options.createParOverrides,
-      };
+          ...createParOptions,
+          ...options.createParOverrides,
+        };
 
         log.info(
           `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
