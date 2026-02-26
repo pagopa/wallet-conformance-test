@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";

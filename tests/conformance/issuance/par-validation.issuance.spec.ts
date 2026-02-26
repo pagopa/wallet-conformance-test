@@ -1,6 +1,7 @@
 /* eslint-disable max-lines-per-function */
 
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { createFreshPop } from "#/helpers";
 import {
   buildTamperedPopJwt,
   createFakeAttestationResponse,
@@ -14,7 +15,6 @@ import {
   withSignJwtOverride,
 } from "#/helpers/par-validation-helpers";
 import {
-  createClientAttestationPopJwt,
   createPushedAuthorizationRequest,
   fetchPushedAuthorizationResponse,
   type PushedAuthorizationRequest,
@@ -22,7 +22,6 @@ import {
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
-  createLogger,
   createQuietLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
@@ -80,25 +79,7 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
-    // Helper: create a fresh popAttestation JWT (avoids 60 s TTL exhaustion)
-    // -----------------------------------------------------------------------
-
-    async function createFreshPop(): Promise<string> {
-      return createClientAttestationPopJwt({
-        authorizationServer,
-        callbacks: {
-          ...partialCallbacks,
-          signJwt: signJwtCallback([
-            walletAttestationResponse.unitKey.privateKey,
-          ]),
-        },
-        clientAttestation: walletAttestationResponse.attestation,
-      });
-    }
-
-    // -----------------------------------------------------------------------
-    // Helper: run a PAR step with optional walletAttestation override.
-    // Uses a quiet logger so step-internal traces don't pollute test output.
+    // Helper: run a PAR step with optional walletAttestation override
     // -----------------------------------------------------------------------
 
     async function runParStep(
@@ -106,8 +87,11 @@ testConfigs.forEach((testConfig) => {
       attestationOverride?: Omit<AttestationResponse, "created">,
     ): Promise<PushedAuthorizationRequestResponse> {
       const config = loadConfigWithHierarchy();
-      const freshPop = await createFreshPop();
-      const step = new StepClass(config, createQuietLogger());
+      const freshPop = await createFreshPop({
+        authorizationServer,
+        walletAttestationResponse,
+      });
+      const step = new StepClass(config, baseLog);
       return step.run({
         baseUrl: config.issuance.url,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
@@ -519,7 +503,10 @@ testConfigs.forEach((testConfig) => {
           log.debug("→ Sending PAR request with request_uri...");
           await fetchPushedAuthorizationResponse({
             callbacks: { fetch: customFetch },
-            clientAttestationDPoP: await createFreshPop(),
+            clientAttestationDPoP: await createFreshPop({
+              authorizationServer,
+              walletAttestationResponse,
+            }),
             pushedAuthorizationRequest: signed,
             pushedAuthorizationRequestEndpoint,
             walletAttestation: walletAttestationResponse.attestation,
