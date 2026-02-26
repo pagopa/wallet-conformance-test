@@ -4,7 +4,8 @@ import {
   createConsola,
   LogObject,
 } from "consola";
-import { openSync, writeFileSync } from "node:fs";
+import { mkdirSync, openSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 import { Logger } from "@/types";
 
@@ -137,6 +138,7 @@ function setLogOptions(
 
   if (options.path)
     try {
+      mkdirSync(dirname(options.path), { recursive: true });
       const file = openSync(options.path, "w");
       reporters.push({
         log: (logObj) => {
