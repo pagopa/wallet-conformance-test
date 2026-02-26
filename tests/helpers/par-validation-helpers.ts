@@ -114,7 +114,7 @@ export async function buildTamperedPopJwt(
     kid: realUnitKey.kid,
     method: "jwk",
     // Strip private key fields
-    publicJwk: (({ d, dp, dq, p, q, qi, alg: _alg, ...pub }) => pub)(
+    publicJwk: (({ alg: _alg, d, dp, dq, p, q, qi, ...pub }) => pub)(
       realUnitKey,
     ) as Jwk,
   };

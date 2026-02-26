@@ -12,8 +12,8 @@ export type RunThroughAuthorizeContext = RunThroughParContext & {
 };
 
 export interface RunThroughParContext {
-  credentialIssuer: string;
   authorizationServer: string;
+  credentialIssuer: string;
   fetchMetadataResponse: FetchMetadataStepResponse;
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
