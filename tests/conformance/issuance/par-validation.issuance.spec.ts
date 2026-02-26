@@ -59,6 +59,13 @@ testConfigs.forEach((testConfig) => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
 
       const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
+
+      baseLog.testSuite({
+        profile: testConfig.credentialConfigurationId,
+        target: orchestrator.getConfig().issuance.url,
+        title: "PAR Request Object Validation Tests",
+      });
+
       // Run through the flow up to the PAR step to extract necessary context for the tests
       const ctx = await orchestrator.runThroughPar();
 
@@ -103,7 +110,7 @@ testConfigs.forEach((testConfig) => {
       const step = new StepClass(config, baseLog);
       return step.run({
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialConfigurationId,
+        credentialConfigurationIds: [credentialConfigurationId],
         popAttestation: freshPop,
         pushedAuthorizationRequestEndpoint,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
@@ -688,7 +695,7 @@ testConfigs.forEach((testConfig) => {
       );
       return step.run({
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialConfigurationId,
+        credentialConfigurationIds: [credentialConfigurationId],
         popAttestation: customPopAttestation,
         pushedAuthorizationRequestEndpoint,
         walletAttestation: walletAttestationResponse,
