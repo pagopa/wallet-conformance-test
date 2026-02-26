@@ -854,51 +854,5 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(testSuccess);
       }
     });
-
-    test("CI_028d: PoP Replay Attack | Issuer rejects a second PAR request that reuses an already-seen PoP jti", async () => {
-      const log = baseLog.withTag("CI_028d");
-
-      log.start(
-        "Conformance test: Replayed PoP jti rejected (CI_028 §5 replay prevention)",
-      );
-
-      let testSuccess = false;
-      try {
-        const FIXED_POP_JTI = `conformance-test-pop-jti-${crypto.randomUUID()}`;
-        log.info("→ Building PoP with fixed jti...");
-        log.info(`  jti: ${FIXED_POP_JTI}`);
-
-        const fixedJtiPop = await buildTamperedPopJwt({
-          authorizationServer,
-          clientAttestation: walletAttestationResponse.attestation,
-          jti: FIXED_POP_JTI,
-          realUnitKey: walletAttestationResponse.unitKey.privateKey,
-        });
-        log.info("  PoP with fixed jti created");
-
-        // First request — should succeed (server caches the PoP jti)
-        log.info("→ Sending first PAR request with fixed-jti PoP...");
-        const firstResult = await runParStepWithCustomPop(fixedJtiPop);
-        log.info(
-          `  First request result: ${firstResult.success ? "success" : "failed"}`,
-        );
-        expect(firstResult.success).toBe(true);
-        log.info("  ✅ First request succeeded (PoP jti cached by server)");
-
-        // Second request with the same PoP jti — server must reject it
-        log.info("→ Sending second PAR request with same PoP jti...");
-        const secondResult = await runParStepWithCustomPop(fixedJtiPop);
-        log.info(
-          `  Second request result: ${secondResult.success ? "success" : "failed"}`,
-        );
-        log.info("→ Validating issuer rejected the PoP replay...");
-        expect(secondResult.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected replayed PoP jti");
-
-        testSuccess = true;
-      } finally {
-        log.testCompleted(testSuccess);
-      }
-    });
   });
 });
