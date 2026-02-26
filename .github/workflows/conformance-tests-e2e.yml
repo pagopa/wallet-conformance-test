@@ -71,11 +71,9 @@ jobs:
             -Uri "${{ vars.CONFIG_RELYING_PARTY_URI }}" `
             -Method Post `
             -ContentType "application/json" `
-            -Body $body `
-            -SkipCertificateCheck
+            -Body $body
           $authorizeUrl = $response.url
           "CONFIG_PRESENTATION_AUTHORIZE_URI=$authorizeUrl" >> $env:GITHUB_ENV
-
       # ── Presentation tests ───────────────────────────────────────────────────
       - name: Run presentation tests
         shell: bash
