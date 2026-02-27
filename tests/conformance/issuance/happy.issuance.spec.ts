@@ -62,7 +62,6 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-
     // ============================================================================
     // FETCH METADATA TESTS
     // ============================================================================
@@ -71,7 +70,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_001");
       const DESCRIPTION = "Entity Configuration successfully fetched";
 
-      log.start("Conformance test: Verifying Entity Configuration availability");
+      log.start(
+        "Conformance test: Verifying Entity Configuration availability",
+      );
 
       let testSuccess = false;
       try {
@@ -93,7 +94,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_002");
       const DESCRIPTION = "Entity Configuration content-type is correct";
 
-      log.start("Conformance test: Verifying Entity Configuration content-type header");
+      log.start(
+        "Conformance test: Verifying Entity Configuration content-type header",
+      );
 
       let testSuccess = false;
       try {
@@ -112,7 +115,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_003");
       const DESCRIPTION = "Entity Configuration is cryptographically signed";
 
-      log.start("Conformance test: Verifying Entity Configuration JWT signature");
+      log.start(
+        "Conformance test: Verifying Entity Configuration JWT signature",
+      );
 
       let testSuccess = false;
       try {
@@ -135,9 +140,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_006: Fetch Metadata | Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
       const log = baseLog.withTag("CI_006");
-      const DESCRIPTION = "All required parameters (iss, sub, iat, exp, jwks, metadata) are present";
+      const DESCRIPTION =
+        "All required parameters (iss, sub, iat, exp, jwks, metadata) are present";
 
-      log.start("Conformance test: Verifying Entity Configuration mandatory parameters");
+      log.start(
+        "Conformance test: Verifying Entity Configuration mandatory parameters",
+      );
 
       let testSuccess = false;
       try {
@@ -172,9 +180,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_008: Fetch Metadata | Credential Issuer metadata", async () => {
       const log = baseLog.withTag("CI_008");
-      const DESCRIPTION = "All required metadata sections (federation_entity, oauth_authorization_server, openid_credential_issuer) are present";
+      const DESCRIPTION =
+        "All required metadata sections (federation_entity, oauth_authorization_server, openid_credential_issuer) are present";
 
-      log.start("Conformance test: Verifying Credential Issuer metadata structure");
+      log.start(
+        "Conformance test: Verifying Credential Issuer metadata structure",
+      );
 
       let testSuccess = false;
       try {
@@ -214,7 +225,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_009");
       const DESCRIPTION = "openid_credential_verifier metadata is present";
 
-      log.start("Conformance test: Verifying openid_credential_verifier metadata presence");
+      log.start(
+        "Conformance test: Verifying openid_credential_verifier metadata presence",
+      );
 
       let testSuccess = false;
       try {
@@ -385,9 +398,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_049: Authorization | Credential Issuer successfully identifies and correlates each authorization request as a direct result of a previously submitted PAR", async () => {
       const log = baseLog.withTag("CI_049");
-      const DESCRIPTION = "Authorization successful — issuer correlated PAR and authorization";
+      const DESCRIPTION =
+        "Authorization successful — issuer correlated PAR and authorization";
 
-      log.start("Conformance test: Verifying PAR and authorization request correlation");
+      log.start(
+        "Conformance test: Verifying PAR and authorization request correlation",
+      );
 
       let testSuccess = false;
       try {
@@ -417,7 +433,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
-      const DESCRIPTION = "Authorization code received (user authentication successful)";
+      const DESCRIPTION =
+        "Authorization code received (user authentication successful)";
 
       log.start("Conformance test: Verifying PID-based user authentication");
 
@@ -435,7 +452,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_055: Authorization | (Q)EAA Provider uses OpenID4VP protocol to request PID presentation from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_055");
-      const DESCRIPTION = "OpenID4VP presentation successful (authorization code received)";
+      const DESCRIPTION =
+        "OpenID4VP presentation successful (authorization code received)";
 
       log.start("Conformance test: Verifying OpenID4VP protocol usage");
 
@@ -543,7 +561,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_064");
       const DESCRIPTION = "Access Token is valid and not expired";
 
-      log.start("Conformance test: Verifying Access Token issuance and validity");
+      log.start(
+        "Conformance test: Verifying Access Token issuance and validity",
+      );
 
       let testSuccess = false;
       try {
@@ -605,7 +625,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_094");
       const DESCRIPTION = "Tokens generated and bound to DPoP key";
 
-      log.start("Conformance test: Verifying token generation with DPoP binding");
+      log.start(
+        "Conformance test: Verifying token generation with DPoP binding",
+      );
 
       let testSuccess = false;
       try {
@@ -654,7 +676,9 @@ testConfigs.forEach((testConfig) => {
       const log = baseLog.withTag("CI_101");
       const DESCRIPTION = "All tokens bound to the same DPoP key";
 
-      log.start("Conformance test: Verifying consistent DPoP key binding across tokens");
+      log.start(
+        "Conformance test: Verifying consistent DPoP key binding across tokens",
+      );
 
       let testSuccess = false;
       try {
@@ -710,9 +734,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_069: Nonce | The c_nonce parameter is provided as a string value with sufficient unpredictability to prevent guessing attacks, serving as a cryptographic challenge that the Wallet Instance uses to create proof of possession of the key (proofs claim)", async () => {
       const log = baseLog.withTag("CI_069");
-      const DESCRIPTION = "c_nonce has sufficient entropy to prevent guessing attacks";
+      const DESCRIPTION =
+        "c_nonce has sufficient entropy to prevent guessing attacks";
 
-      log.start("Conformance test: Verifying c_nonce entropy and unpredictability");
+      log.start(
+        "Conformance test: Verifying c_nonce entropy and unpredictability",
+      );
 
       let testSuccess = false;
       try {
@@ -748,9 +775,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
-      const DESCRIPTION = "Credential is cryptographically bound to Wallet Instance key";
+      const DESCRIPTION =
+        "Credential is cryptographically bound to Wallet Instance key";
 
-      log.start("Conformance test: Verifying credential issuance with key binding");
+      log.start(
+        "Conformance test: Verifying credential issuance with key binding",
+      );
 
       let testSuccess = false;
       try {
@@ -807,9 +837,12 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");
-      const DESCRIPTION = "Credential is in valid format (SD-JWT VC or mdoc-CBOR)";
+      const DESCRIPTION =
+        "Credential is in valid format (SD-JWT VC or mdoc-CBOR)";
 
-      log.start("Conformance test: Verifying credential format (SD-JWT VC or mdoc-CBOR)");
+      log.start(
+        "Conformance test: Verifying credential format (SD-JWT VC or mdoc-CBOR)",
+      );
 
       let testSuccess = false;
       try {

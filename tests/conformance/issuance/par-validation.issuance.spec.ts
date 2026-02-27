@@ -21,7 +21,6 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
-
 import {
   createLogger,
   createQuietLogger,

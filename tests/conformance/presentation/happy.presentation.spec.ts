@@ -47,7 +47,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying QR-Code URL alignment with RP metadata",
     );
 
-    const DESCRIPTION = "Relying Party correctly issues QR-Code with URL from metadata and client_id matches issuer";
+    const DESCRIPTION =
+      "Relying Party correctly issues QR-Code with URL from metadata and client_id matches issuer";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -90,7 +91,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying HTTP GET method support for request objects",
     );
 
-    const DESCRIPTION = "Relying Party supports GET method for request objects, defaults if not specified";
+    const DESCRIPTION =
+      "Relying Party supports GET method for request objects, defaults if not specified";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -132,7 +134,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying state and nonce parameter presence and format",
     );
 
-    const DESCRIPTION = "Relying Party receives and validates state and nonce values in response";
+    const DESCRIPTION =
+      "Relying Party receives and validates state and nonce values in response";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -168,7 +171,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying redirect URI functionality and response code",
     );
 
-    const DESCRIPTION = "Relying Party correctly redirects user and endpoint returns valid response_code";
+    const DESCRIPTION =
+      "Relying Party correctly redirects user and endpoint returns valid response_code";
     let testSuccess = false;
     try {
       if (!redirectUriResult.success) {
@@ -215,7 +219,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying DCQL query standard format compliance",
     );
 
-    const DESCRIPTION = "Relying Party correctly uses standard DCQL query with valid credentials array";
+    const DESCRIPTION =
+      "Relying Party correctly uses standard DCQL query with valid credentials array";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -252,7 +257,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying Wallet Attestation does not include claims parameter",
     );
 
-    const DESCRIPTION = "Relying Party correctly omits claims parameter for Wallet Attestation in DCQL query";
+    const DESCRIPTION =
+      "Relying Party correctly omits claims parameter for Wallet Attestation in DCQL query";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -309,7 +315,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying vct_values presence in DCQL credentials",
     );
 
-    const DESCRIPTION = "Relying Party correctly requires vct_values in all DCQL query credentials";
+    const DESCRIPTION =
+      "Relying Party correctly requires vct_values in all DCQL query credentials";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -365,7 +372,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying vp_token support in verifier metadata",
     );
 
-    const DESCRIPTION = "Relying Party correctly advertises vp_token in response_types_supported";
+    const DESCRIPTION =
+      "Relying Party correctly advertises vp_token in response_types_supported";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -415,7 +423,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying response_uri and redirect_uri handling",
     );
 
-    const DESCRIPTION = "Relying Party correctly provides response_uri and handles redirect_uri";
+    const DESCRIPTION =
+      "Relying Party correctly provides response_uri and handles redirect_uri";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -470,7 +479,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying JWT typ header parameter");
 
-    const DESCRIPTION = "Relying Party correctly sets JWT typ header to oauth-authz-req+jwt";
+    const DESCRIPTION =
+      "Relying Party correctly sets JWT typ header to oauth-authz-req+jwt";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -496,7 +506,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying response_mode parameter value");
 
-    const DESCRIPTION = "Relying Party correctly sets response_mode to direct_post.jwt";
+    const DESCRIPTION =
+      "Relying Party correctly sets response_mode to direct_post.jwt";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -520,7 +531,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying response_type parameter value");
 
-    const DESCRIPTION = "Relying Party correctly sets response_type to vp_token";
+    const DESCRIPTION =
+      "Relying Party correctly sets response_type to vp_token";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -546,7 +558,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying authorization response submission to response_uri",
     );
 
-    const DESCRIPTION = "Relying Party correctly sends Authorization Response to response_uri endpoint";
+    const DESCRIPTION =
+      "Relying Party correctly sends Authorization Response to response_uri endpoint";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -562,7 +575,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       log.debug("→ Verifying authorization response submission...");
       expect(redirectUriResult.success).toBe(true);
-      log.debug("  ✅ Authorization response successfully sent to response_uri");
+      log.debug(
+        "  ✅ Authorization response successfully sent to response_uri",
+      );
 
       testSuccess = true;
     } finally {
@@ -575,7 +590,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying nonce entropy requirements");
 
-    const DESCRIPTION = "Relying Party correctly provides nonce with sufficient entropy (≥32 characters)";
+    const DESCRIPTION =
+      "Relying Party correctly provides nonce with sufficient entropy (≥32 characters)";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -600,7 +616,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying JWT expiration timestamp validity");
 
-    const DESCRIPTION = "Relying Party correctly sets JWT exp parameter to a future timestamp";
+    const DESCRIPTION =
+      "Relying Party correctly sets JWT exp parameter to a future timestamp";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -615,7 +632,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const expiresAt = new Date(expTimestamp * 1000).toISOString();
       const timeUntilExpiry = expTimestamp - currentTime;
 
-      log.debug(`  Current time: ${new Date(currentTime * 1000).toISOString()}`);
+      log.debug(
+        `  Current time: ${new Date(currentTime * 1000).toISOString()}`,
+      );
       log.debug(`  Expires at: ${expiresAt}`);
       log.debug(`  Time until expiry: ${timeUntilExpiry} seconds`);
 
