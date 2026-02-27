@@ -12,11 +12,11 @@ import { Credential } from "@/types";
 import {
   buildMockMdlMdoc_V1_0,
   buildMockSdJwt_V1_0,
-} from "./v1_0/mock-credentials";
+} from "./V1_0/mock-credentials";
 import {
   buildMockMdlMdoc_V1_3,
   buildMockSdJwt_V1_3,
-} from "./v1_3/mock-credentials";
+} from "./V1_3/mock-credentials";
 
 export async function createMockMdlMdoc(
   subject: string,
