@@ -21,8 +21,10 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
+
 import {
   createLogger,
+  createQuietLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
   signJwtCallback,
@@ -44,12 +46,12 @@ const testConfigs = await defineIssuanceTest("PARValidation");
 
 testConfigs.forEach((testConfig) => {
   describe(`[${testConfig.name}] PAR Request Object Validation`, () => {
-    const baseLog = createLogger().withTag("PAR-Validation");
+    const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
+    const baseLog = orchestrator.getLog();
 
     let walletAttestationResponse: AttestationResponse;
     let pushedAuthorizationRequestEndpoint: string;
     let authorizationServer: string;
-    let credentialConfigurationId: string;
     let credentialIssuer: string;
 
     // -----------------------------------------------------------------------
@@ -57,10 +59,6 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-      credentialConfigurationId = testConfig.credentialConfigurationId;
-
-      const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
-
       baseLog.testSuite({
         profile: testConfig.credentialConfigurationId,
         target: orchestrator.getConfig().issuance.url,
@@ -100,7 +98,8 @@ testConfigs.forEach((testConfig) => {
     }
 
     // -----------------------------------------------------------------------
-    // Helper: run a PAR step with optional walletAttestation override
+    // Helper: run a PAR step with optional walletAttestation override.
+    // Uses a quiet logger so step-internal traces don't pollute test output.
     // -----------------------------------------------------------------------
 
     async function runParStep(
@@ -109,11 +108,11 @@ testConfigs.forEach((testConfig) => {
     ): Promise<PushedAuthorizationRequestResponse> {
       const config = loadConfigWithHierarchy();
       const freshPop = await createFreshPop();
-      const step = new StepClass(config, baseLog);
+      const step = new StepClass(config, createQuietLogger());
       return step.run({
         baseUrl: config.issuance.url,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialConfigurationIds: [credentialConfigurationId],
+        credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: freshPop,
         pushedAuthorizationRequestEndpoint,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
@@ -126,6 +125,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_015: Request Object Signature Validation | Issuer rejects a PAR signed with a key that does not match the wallet attestation", async () => {
       const log = baseLog.withTag("CI_015");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with invalid signature";
 
       log.start(
         "Conformance test: Verifying PAR request object signature validation",
@@ -133,22 +134,21 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request signed with wrong key...");
+        log.debug("→ Sending PAR request signed with wrong key...");
         const result = await runParStep(
           withSignJwtOverride(
             testConfig.pushedAuthorizationRequestStepClass,
             signWithWrongKey(),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with invalid signature");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -158,6 +158,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_015a: Algorithm Header Processing | Issuer uses the alg header to validate the Request Object signature (RFC 9126/9101)", async () => {
       const log = baseLog.withTag("CI_015a");
+      const DESCRIPTION =
+        "Issuer correctly used alg header (ES256) for validation and rejected the PAR";
 
       log.start(
         "Conformance test: Verifying issuer uses alg header for signature validation",
@@ -165,13 +167,13 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with mismatched algorithm...");
-        log.info("  Header declares: alg=ES256 (permitted)");
-        log.info("  Actually signed with: ES384");
-        log.info(
+        log.debug("→ Sending PAR request with mismatched algorithm...");
+        log.debug("  Header declares: alg=ES256 (permitted)");
+        log.debug("  Actually signed with: ES384");
+        log.debug(
           "  If issuer correctly uses alg from header → validation fails",
         );
-        log.info(
+        log.debug(
           "  If issuer ignores header and infers from key → validation might succeed (incorrect behavior)",
         );
 
@@ -181,18 +183,15 @@ testConfigs.forEach((testConfig) => {
             signWithMismatchedAlgorithm("ES256", "ES384"),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info(
-          "  ✅ Issuer correctly used alg header (ES256) for validation and rejected the PAR",
-        );
-        log.info("     This confirms compliance with RFC 9126/9101");
+        log.debug("     This confirms compliance with RFC 9126/9101");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -202,6 +201,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_015b: Wallet Attestation Public Key Retrieval | Issuer rejects a PAR when the wallet attestation references an unregistered key not in the trust chain", async () => {
       const log = baseLog.withTag("CI_015b");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with untrusted attestation";
 
       log.start(
         "Conformance test: Verifying wallet attestation public key retrieval",
@@ -209,26 +210,25 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Creating fake wallet attestation with unregistered key...");
+        log.debug(
+          "→ Creating fake wallet attestation with unregistered key...",
+        );
         const fakeAttestation = await createFakeAttestationResponse();
-        log.info("  Fake attestation created");
+        log.debug("  Fake attestation created");
 
-        log.info("→ Sending PAR request with fake attestation...");
+        log.debug("→ Sending PAR request with fake attestation...");
         const result = await runParStep(
           testConfig.pushedAuthorizationRequestStepClass,
           fakeAttestation,
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info(
-          "  ✅ Issuer correctly rejected PAR with untrusted attestation",
-        );
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -238,13 +238,14 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_015c: JWT Key Identifier Reference | Issuer rejects a PAR whose kid header does not match the wallet attestation public key kid", async () => {
       const log = baseLog.withTag("CI_015c");
+      const DESCRIPTION = "Issuer correctly rejected PAR with wrong kid";
 
       log.start("Conformance test: Verifying JWT key identifier reference");
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with wrong kid header...");
-        log.info("  kid: wrong-kid-that-does-not-match");
+        log.debug("→ Sending PAR request with wrong kid header...");
+        log.debug("  kid: wrong-kid-that-does-not-match");
         const result = await runParStep(
           withSignJwtOverride(
             testConfig.pushedAuthorizationRequestStepClass,
@@ -255,15 +256,14 @@ testConfigs.forEach((testConfig) => {
             ),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with wrong kid");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -273,6 +273,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_015d: Cryptographic Signature Integrity | Issuer rejects a PAR whose request JWT payload was tampered after signing", async () => {
       const log = baseLog.withTag("CI_015d");
+      const DESCRIPTION = "Issuer correctly rejected PAR with tampered payload";
 
       log.start(
         "Conformance test: Verifying cryptographic signature integrity",
@@ -280,9 +281,9 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Creating PAR request with tampered payload...");
-        log.info("  Tampering field: aud");
-        log.info("  Tampered value: https://tampered.example.com");
+        log.debug("→ Creating PAR request with tampered payload...");
+        log.debug("  Tampering field: aud");
+        log.debug("  Tampered value: https://tampered.example.com");
         const result = await runParStep(
           withSignJwtOverride(
             testConfig.pushedAuthorizationRequestStepClass,
@@ -294,15 +295,14 @@ testConfigs.forEach((testConfig) => {
             ),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the tampered request...");
+        log.debug("→ Validating issuer rejected the tampered request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with tampered payload");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -312,6 +312,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_019: Algorithm Compliance Check | Issuer rejects a PAR signed with HS256 (symmetric algorithm not allowed by spec)", async () => {
       const log = baseLog.withTag("CI_019");
+      const DESCRIPTION = "Issuer correctly rejected PAR with HS256 signature";
 
       log.start(
         "Conformance test: Verifying algorithm compliance (asymmetric only)",
@@ -319,23 +320,22 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request signed with HS256...");
-        log.info("  Algorithm: HS256 (symmetric, not allowed)");
+        log.debug("→ Sending PAR request signed with HS256...");
+        log.debug("  Algorithm: HS256 (symmetric, not allowed)");
         const result = await runParStep(
           withSignJwtOverride(
             testConfig.pushedAuthorizationRequestStepClass,
             signWithHS256("conformance-test-hmac-value"),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected symmetric algorithm...");
+        log.debug("→ Validating issuer rejected symmetric algorithm...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with HS256 signature");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -345,6 +345,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_020: Client ID Consistency | Issuer rejects a PAR whose client_id in the POST body does not match the JWT claim", async () => {
       const log = baseLog.withTag("CI_020");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with client_id mismatch";
 
       log.start(
         "Conformance test: Verifying client_id consistency between POST body and JWT",
@@ -352,8 +354,8 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with mismatched client_id...");
-        log.info(
+        log.debug("→ Sending PAR request with mismatched client_id...");
+        log.debug(
           "  client_id in POST body: mallory_client_id_that_does_not_match",
         );
         const result = await runParStep(
@@ -361,15 +363,14 @@ testConfigs.forEach((testConfig) => {
             clientId: "mallory_client_id_that_does_not_match",
           }),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with client_id mismatch");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -379,13 +380,15 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_021: Issuer-Client ID Matching | Issuer rejects a PAR whose JWT iss claim does not match client_id", async () => {
       const log = baseLog.withTag("CI_021");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with iss/client_id mismatch";
 
       log.start("Conformance test: Verifying iss claim matches client_id");
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with custom iss claim...");
-        log.info("  iss claim: https://attacker.example.com");
+        log.debug("→ Sending PAR request with custom iss claim...");
+        log.debug("  iss claim: https://attacker.example.com");
         const result = await runParStep(
           withSignJwtOverride(
             testConfig.pushedAuthorizationRequestStepClass,
@@ -396,17 +399,14 @@ testConfigs.forEach((testConfig) => {
             ),
           ),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info(
-          "  ✅ Issuer correctly rejected PAR with iss/client_id mismatch",
-        );
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -416,6 +416,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_022: Audience Claim Verification | Issuer rejects a PAR whose aud claim does not match its own issuer identifier", async () => {
       const log = baseLog.withTag("CI_022");
+      const DESCRIPTION = "Issuer correctly rejected PAR with wrong audience";
 
       log.start(
         "Conformance test: Verifying audience claim matches issuer identifier",
@@ -423,22 +424,21 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request with wrong audience...");
-        log.info("  aud claim: https://wrong.example.com");
+        log.debug("→ Sending PAR request with wrong audience...");
+        log.debug("  aud claim: https://wrong.example.com");
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
             audience: "https://wrong.example.com",
           }),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with wrong audience");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -448,6 +448,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_023: Request URI Parameter Rejection | Issuer rejects a PAR request that includes a request_uri parameter in the POST body", async () => {
       const log = baseLog.withTag("CI_023");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with request_uri parameter";
 
       log.start(
         "Conformance test: Verifying request_uri parameter is rejected in PAR",
@@ -455,7 +457,7 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Building PAR request with request_uri parameter...");
+        log.debug("→ Building PAR request with request_uri parameter...");
         // Build a normal PAR request, then use a custom fetch that injects
         // `request_uri` into the POST body before sending.
         // RFC 9126 §2.1 prohibits mixing `request` and `request_uri` in the same PAR call.
@@ -465,7 +467,7 @@ testConfigs.forEach((testConfig) => {
           audience: config.issuance.url,
           authorization_details: [
             {
-              credential_configuration_id: credentialConfigurationId,
+              credential_configuration_id: testConfig.credentialConfigurationId,
               type: "openid_credential" as const,
             },
           ],
@@ -492,10 +494,10 @@ testConfigs.forEach((testConfig) => {
 
         const signed: PushedAuthorizationRequest =
           await createPushedAuthorizationRequest(parOptions);
-        log.info("  PAR request created");
+        log.debug("  PAR request created");
 
-        log.info("→ Injecting request_uri into POST body...");
-        log.info(
+        log.debug("→ Injecting request_uri into POST body...");
+        log.debug(
           "  request_uri: urn:ietf:params:oauth:request_uri:ci-023-test",
         );
         // Custom fetch that injects request_uri into the form-encoded POST body
@@ -515,7 +517,7 @@ testConfigs.forEach((testConfig) => {
 
         let rejected = false;
         try {
-          log.info("→ Sending PAR request with request_uri...");
+          log.debug("→ Sending PAR request with request_uri...");
           await fetchPushedAuthorizationResponse({
             callbacks: { fetch: customFetch },
             clientAttestationDPoP: await createFreshPop(),
@@ -523,21 +525,18 @@ testConfigs.forEach((testConfig) => {
             pushedAuthorizationRequestEndpoint,
             walletAttestation: walletAttestationResponse.attestation,
           });
-          log.info("  Request completed without error (unexpected)");
+          log.debug("  Request completed without error (unexpected)");
         } catch {
           rejected = true;
-          log.info("  Request rejected as expected");
+          log.debug("  Request rejected as expected");
         }
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(rejected).toBe(true);
-        log.info(
-          "  ✅ Issuer correctly rejected PAR with request_uri parameter",
-        );
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -547,6 +546,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_024: Mandatory Parameters | Issuer returns an error when required PAR parameters are absent (missing redirectUri)", async () => {
       const log = baseLog.withTag("CI_024");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with missing redirectUri";
 
       log.start(
         "Conformance test: Verifying mandatory PAR parameters are enforced",
@@ -554,7 +555,7 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Sending PAR request without redirectUri...");
+        log.debug("→ Sending PAR request without redirectUri...");
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
             // Intentionally cast: we need to send an absent redirectUri to verify
@@ -562,15 +563,14 @@ testConfigs.forEach((testConfig) => {
             redirectUri: undefined as unknown as string,
           }),
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer returned an error...");
+        log.debug("→ Validating issuer returned an error...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with missing redirectUri");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -580,33 +580,33 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_025: Token Expiration | Issuer rejects a PAR request object whose exp claim is in the past", async () => {
       const log = baseLog.withTag("CI_025");
+      const DESCRIPTION = "Issuer correctly rejected PAR with expired token";
 
       log.start("Conformance test: Verifying token expiration validation");
 
       let testSuccess = false;
       try {
-        log.info("→ Freezing time 10 minutes in the past...");
+        log.debug("→ Freezing time 10 minutes in the past...");
         // Freeze time 10 minutes in the past so the SDK generates an already-expired JWT
         vi.useFakeTimers({ now: Date.now() - 10 * 60 * 1000 });
-        log.info("  Time frozen at: " + new Date(Date.now()).toISOString());
+        log.debug("  Time frozen at: " + new Date(Date.now()).toISOString());
 
-        log.info("→ Sending PAR request with expired token...");
+        log.debug("→ Sending PAR request with expired token...");
         const result = await runParStep(
           testConfig.pushedAuthorizationRequestStepClass,
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
         vi.useRealTimers();
-        log.info("→ Time restored");
+        log.debug("→ Time restored");
 
-        log.info("→ Validating issuer rejected the expired token...");
+        log.debug("→ Validating issuer rejected the expired token...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with expired token");
 
         testSuccess = true;
       } finally {
         vi.useRealTimers();
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -616,6 +616,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_026: Token Issuance Time (Future iat) | Issuer rejects a PAR whose iat is more than the clock-skew tolerance into the future", async () => {
       const log = baseLog.withTag("CI_026");
+      const DESCRIPTION = "Issuer correctly rejected PAR with future iat";
 
       log.start(
         "Conformance test: Verifying future iat validation with clock-skew tolerance",
@@ -623,27 +624,26 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Advancing time 10 minutes into the future...");
+        log.debug("→ Advancing time 10 minutes into the future...");
         // Advance the clock 10 minutes forward so iat > server_now + tolerance
         vi.useFakeTimers({ now: Date.now() + 10 * 60 * 1000 });
-        log.info("  Time advanced to: " + new Date(Date.now()).toISOString());
+        log.debug("  Time advanced to: " + new Date(Date.now()).toISOString());
 
-        log.info("→ Sending PAR request with future iat...");
+        log.debug("→ Sending PAR request with future iat...");
         const result = await runParStep(
           testConfig.pushedAuthorizationRequestStepClass,
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
         vi.useRealTimers();
-        log.info("→ Time restored");
+        log.debug("→ Time restored");
 
-        log.info("→ Validating issuer rejected the future iat...");
+        log.debug("→ Validating issuer rejected the future iat...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with future iat");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -653,6 +653,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_026a: PAR Token Time Rejection (Stale iat) | Issuer rejects a PAR whose iat is more than 5 minutes in the past", async () => {
       const log = baseLog.withTag("CI_026a");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with stale iat (>5 min)";
 
       log.start(
         "Conformance test: Verifying stale iat rejection (5-minute window)",
@@ -660,32 +662,32 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Rewinding time 6 minutes into the past...");
+        log.debug("→ Rewinding time 6 minutes into the past...");
         // Go back 6 minutes so iat exceeds the 5-minute clock-skew window
         vi.useFakeTimers({ now: Date.now() - 6 * 60 * 1000 });
-        log.info("  Time set to: " + new Date(Date.now()).toISOString());
+        log.debug("  Time set to: " + new Date(Date.now()).toISOString());
 
-        log.info("→ Sending PAR request with stale iat...");
+        log.debug("→ Sending PAR request with stale iat...");
         const result = await runParStep(
           testConfig.pushedAuthorizationRequestStepClass,
         );
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
         vi.useRealTimers();
-        log.info("→ Time restored");
+        log.debug("→ Time restored");
 
-        log.info("→ Validating issuer rejected the stale iat...");
+        log.debug("→ Validating issuer rejected the stale iat...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with stale iat (>5 min)");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
     // -----------------------------------------------------------------------
-    // Helper: run a PAR step with an optional custom popAttestation override
+    // Helper: run a PAR step with an optional custom popAttestation override.
+    // Uses a quiet logger so step-internal traces don't pollute test output.
     // -----------------------------------------------------------------------
 
     async function runParStepWithCustomPop(
@@ -694,12 +696,12 @@ testConfigs.forEach((testConfig) => {
       const config = loadConfigWithHierarchy();
       const step = new testConfig.pushedAuthorizationRequestStepClass(
         config,
-        baseLog,
+        createQuietLogger(),
       );
       return step.run({
         baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialConfigurationIds: [credentialConfigurationId],
+        credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: customPopAttestation,
         pushedAuthorizationRequestEndpoint,
         walletAttestation: walletAttestationResponse,
@@ -712,14 +714,15 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_027: Replay Attack Prevention | Issuer rejects a second PAR request that reuses an already-seen jti", async () => {
       const log = baseLog.withTag("CI_027");
+      const DESCRIPTION = "Issuer correctly rejected replayed jti";
 
       log.start("Conformance test: Verifying jti replay attack prevention");
 
       let testSuccess = false;
       try {
         const FIXED_JTI = `conformance-test-jti-${crypto.randomUUID()}`;
-        log.info("→ Creating PAR step with fixed jti...");
-        log.info(`  jti: ${FIXED_JTI}`);
+        log.debug("→ Creating PAR step with fixed jti...");
+        log.debug(`  jti: ${FIXED_JTI}`);
 
         const StepClass = withParOverrides(
           testConfig.pushedAuthorizationRequestStepClass,
@@ -727,27 +730,26 @@ testConfigs.forEach((testConfig) => {
         );
 
         // First request — should succeed (server caches the jti)
-        log.info("→ Sending first PAR request...");
+        log.debug("→ Sending first PAR request...");
         const firstResult = await runParStep(StepClass);
-        log.info(
+        log.debug(
           `  First request result: ${firstResult.success ? "success" : "failed"}`,
         );
         expect(firstResult.success).toBe(true);
-        log.info("  ✅ First request succeeded (jti cached by server)");
+        log.debug("  First request succeeded (jti cached by server)");
 
         // Second request with the same jti — server must reject it
-        log.info("→ Sending second PAR request with same jti...");
+        log.debug("→ Sending second PAR request with same jti...");
         const secondResult = await runParStep(StepClass);
-        log.info(
+        log.debug(
           `  Second request result: ${secondResult.success ? "success" : "failed"}`,
         );
-        log.info("→ Validating issuer rejected the replay...");
+        log.debug("→ Validating issuer rejected the replay...");
         expect(secondResult.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected replayed jti");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
@@ -757,6 +759,8 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_028a: PoP Wrong Signing Key | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP is signed with a key that does not match cnf.jwk in the wallet attestation", async () => {
       const log = baseLog.withTag("CI_028a");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with wrong PoP signing key";
 
       log.start(
         "Conformance test: PoP signed with wrong key rejected (CI_028 §5)",
@@ -764,33 +768,32 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Building PoP signed with a fresh random key...");
+        log.debug("→ Building PoP signed with a fresh random key...");
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           useWrongKey: true,
         });
-        log.info("  Tampered PoP created");
+        log.debug("  Tampered PoP created");
 
-        log.info("→ Sending PAR request with tampered PoP...");
+        log.debug("→ Sending PAR request with tampered PoP...");
         const result = await runParStepWithCustomPop(tamperedPop);
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info(
-          "  ✅ Issuer correctly rejected PAR with wrong PoP signing key",
-        );
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
     test("CI_028b: PoP Wrong Audience | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP aud claim does not match the issuer identifier", async () => {
       const log = baseLog.withTag("CI_028b");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with wrong PoP audience";
 
       log.start(
         "Conformance test: PoP with wrong aud claim rejected (CI_028 §5)",
@@ -798,38 +801,38 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        log.info("→ Building PoP with wrong aud claim...");
-        log.info("  aud: https://attacker.example.com");
+        log.debug("→ Building PoP with wrong aud claim...");
+        log.debug("  aud: https://attacker.example.com");
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           wrongAud: "https://attacker.example.com",
         });
-        log.info("  Tampered PoP created");
+        log.debug("  Tampered PoP created");
 
-        log.info("→ Sending PAR request with wrong-aud PoP...");
+        log.debug("→ Sending PAR request with wrong-aud PoP...");
         const result = await runParStepWithCustomPop(tamperedPop);
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the request...");
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with wrong PoP audience");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
 
     test("CI_028c: PoP Expired | Issuer rejects a PAR whose OAuth-Client-Attestation-PoP exp is in the past", async () => {
       const log = baseLog.withTag("CI_028c");
+      const DESCRIPTION = "Issuer correctly rejected PAR with expired PoP";
 
       log.start("Conformance test: Expired PoP rejected (CI_028 §5)");
 
       let testSuccess = false;
       try {
-        log.info("→ Building PoP with exp 10 minutes in the past...");
+        log.debug("→ Building PoP with exp 10 minutes in the past...");
         const pastIssuedAt = new Date(Date.now() - 11 * 60 * 1000);
         const pastExpiresAt = new Date(Date.now() - 10 * 60 * 1000);
         const tamperedPop = await buildTamperedPopJwt({
@@ -839,19 +842,18 @@ testConfigs.forEach((testConfig) => {
           issuedAt: pastIssuedAt,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
         });
-        log.info("  Expired PoP created");
+        log.debug("  Expired PoP created");
 
-        log.info("→ Sending PAR request with expired PoP...");
+        log.debug("→ Sending PAR request with expired PoP...");
         const result = await runParStepWithCustomPop(tamperedPop);
-        log.info("  Request completed");
+        log.debug("  Request completed");
 
-        log.info("→ Validating issuer rejected the expired PoP...");
+        log.debug("→ Validating issuer rejected the expired PoP...");
         expect(result.success).toBe(false);
-        log.info("  ✅ Issuer correctly rejected PAR with expired PoP");
 
         testSuccess = true;
       } finally {
-        log.testCompleted(testSuccess);
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
   });

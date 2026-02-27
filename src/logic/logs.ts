@@ -28,6 +28,17 @@ export function createLogger(): Logger {
 }
 
 /**
+ * Creates a silent logger for use in step sub-runs inside conformance tests.
+ * Step-internal logs (start, send, fetch, failure) are suppressed so that
+ * only the test-level result lines remain visible in default mode.
+ *
+ * @returns A `Logger` instance at level 0 (silent).
+ */
+export function createQuietLogger(): Logger {
+  return newLogger({ level: 0 });
+}
+
+/**
  * Prints a compact step-progress line:
  *   [N/T] Step Name   ✅  Xms
  *
@@ -50,8 +61,8 @@ function flowStep(
   const counter = `[${index}/${total}]`;
   const icon = success ? "✅" : "❌";
   const duration = `${durationMs}ms`;
-  // Pad step name to 30 chars so columns align when names differ in length
-  const paddedName = name.padEnd(30, " ");
+  // Pad step name to 25 chars so columns align when names differ in length
+  const paddedName = name.padEnd(25, " ");
   this.info(`${counter} ${paddedName} ${icon}  ${duration}`);
 }
 
@@ -154,18 +165,23 @@ function setLogOptions(
 }
 
 /**
- * Logs a "Test completed" message with a success or failure icon.
+ * Prints a single-line test result:
+ *   CI_015   ✅  Issuer correctly rejected PAR with invalid signature   118ms
  *
- * @param this The logger instance.
- * @param success Whether the test was successful.
+ * @param id          Test identifier (e.g. "CI_015")
+ * @param description Human-readable outcome description
+ * @param success     Whether the test passed
+ * @param durationMs  Optional elapsed time in milliseconds
  */
-function testCompleted(this: Logger, success = true) {
-  if (success) {
-    this.info("Test completed ✅");
-  } else {
-    this.error("Test completed ❌");
-    this.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  }
+function testCompleted(
+  this: Logger,
+  description: string,
+  success: boolean,
+  durationMs?: number,
+) {
+  const icon = success ? "✅" : "❌";
+  const timing = durationMs !== undefined ? `   ${durationMs}ms` : "";
+  this.info(`${icon}  ${description}${timing}`);
 }
 
 /**

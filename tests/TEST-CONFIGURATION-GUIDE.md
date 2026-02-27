@@ -224,7 +224,7 @@ import { TokenRequestDefaultStep, TokenRequesttepOptions } from "@/step/issuance
 export class TokenRequestCustomStep extends TokenRequestDefaultStep {
   async run(options: TokenRequestStepOptions) : Promise<TokenRequestResponse> {
     const log = this.log.withTag(this.tag);
-    log.info("Starting Custom Token Request Step");
+    log.debug("Starting Custom Token Request Step");
     
     // Custom specific implementation
     // ...
