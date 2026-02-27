@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
@@ -15,10 +15,11 @@ import {
   createVpTokenMdoc,
   loadCertificate,
   loadConfig,
+  loadJsonDumps,
   loadJwks,
   parseMdoc,
 } from "@/logic";
-import { Config, KeyPairJwk } from "@/types";
+import { KeyPairJwk } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
@@ -37,7 +38,7 @@ describe("Load Mocked Credentials", async () => {
         credentialsDir,
         ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
         console.error,
-        ItWalletSpecsVersion.V1_0
+        ItWalletSpecsVersion.V1_0,
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
@@ -116,7 +117,7 @@ describe("Generate Mocked Credentials", () => {
     ).toBe(unitKey.kid);
   });
 
-  it("should create a mock SD-JWT version 1.0.2", async () => {
+  it("should create a mock SD-JWT PID version 1.0.2", async () => {
     const credential = await createMockSdJwt(
       metadata,
       backupDir,
@@ -129,9 +130,28 @@ describe("Generate Mocked Credentials", () => {
     }).decode(credential.compact);
 
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_assertion");
+
+    const dump = loadJsonDumps(
+      "pid.json",
+      { expiration: new Date(Date.now()) },
+      ItWalletSpecsVersion.V1_0,
+    );
+
+    const claimsFromDecoded = decoded.disclosures?.reduce(
+      (prev, disclosure) => ({
+        ...prev,
+        [disclosure.key!]: disclosure.value,
+      }),
+      {},
+    );
+
+    expect(claimsFromDecoded).toEqual({
+      ...dump,
+      expiry_date: expect.any(String),
+    });
   });
 
-  it("should create a mock SD-JWT version 1.3.3", async () => {
+  it("should create a mock SD-JWT PID version 1.3.3", async () => {
     const credential = await createMockSdJwt(
       metadata,
       backupDir,
@@ -144,6 +164,25 @@ describe("Generate Mocked Credentials", () => {
     }).decode(credential.compact);
 
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
+
+    const dump = loadJsonDumps(
+      "pid.json",
+      { expiration: new Date(Date.now()) },
+      ItWalletSpecsVersion.V1_3,
+    );
+
+    const claimsFromDecoded = decoded.disclosures?.reduce(
+      (prev, disclosure) => ({
+        ...prev,
+        [disclosure.key!]: disclosure.value,
+      }),
+      {},
+    );
+
+    expect(claimsFromDecoded).toEqual({
+      ...dump,
+      expiry_date: expect.any(String),
+    });
   });
 
   it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])(
@@ -212,7 +251,7 @@ describe("createVpTokenMdoc", () => {
       credentialsDir,
       ["mso_mdoc_mDL"],
       console.error,
-      ItWalletSpecsVersion.V1_0
+      ItWalletSpecsVersion.V1_0,
     );
 
     if (!credential.mso_mdoc_mDL) {

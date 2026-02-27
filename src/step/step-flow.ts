@@ -35,7 +35,7 @@ export abstract class StepFlow {
         error instanceof Error ? error.message : String(error);
       this.log
         .withTag(this.tag)
-        .error(`${this.tag} step failed ❌: ${errorMessage}`);
+        .debug(`${this.tag} step failed: ${errorMessage}`);
       return {
         durationMs,
         error: error instanceof Error ? error : new Error(String(error)),
