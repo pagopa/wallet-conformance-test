@@ -11,26 +11,16 @@ import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
 export type PushedAuthorizationRequestExecuteResponse =
-  PushedAuthorizationResponse;
+  PushedAuthorizationResponse & {
+    /**
+     * Code verifier used in the Pushed Authorization Request, if not provided it will be generated internally
+     */
+    codeVerifier: string;
+  };
 
 export type PushedAuthorizationRequestResponse = StepResponse & {
-  /**
-   * Code verifier used in the Pushed Authorization Request, it will be generated internally
-   */
-  codeVerifier?: string;
-
   response?: PushedAuthorizationRequestExecuteResponse;
 };
-
-export interface PushedAuthorizationRequestStepOptions {
-  baseUrl: string;
-  clientId: string;
-  codeVerifier?: string;
-  credentialConfigurationIds: string[];
-  popAttestation: string;
-  pushedAuthorizationRequestEndpoint: string;
-  walletAttestation: Omit<AttestationResponse, "created">;
-}
 
 export interface PushedAuthorizationRequestStepOptions {
   /**
@@ -42,6 +32,18 @@ export interface PushedAuthorizationRequestStepOptions {
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
+
+  /**
+   * Code verifier used in the Pushed Authorization Request, if not provided it will be generated internally
+   */
+  codeVerifier?: string;
+
+  /**
+   * Optional overrides for CreatePushedAuthorizationRequestOptions.
+   * When provided, these values will be spread over the computed defaults,
+   * allowing tests to override any PAR parameter (e.g. clientId, audience, redirectUri).
+   */
+  createParOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;
 
   /**
    * Credential Configuration ID for the requested credential
@@ -77,85 +79,84 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   async run(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
-    const codeVerifier = "example_code_verifier";
+    return await this.execute<PushedAuthorizationRequestExecuteResponse>(
+      async () => {
+        const log = this.log.withTag(this.tag);
 
-    const result =
-      await this.execute<PushedAuthorizationRequestExecuteResponse>(
-        async () => {
-          const log = this.log.withTag(this.tag);
+        log.info(`Starting PushedAuthorizationRequest Step`);
 
-          log.info(`Starting PushedAuthorizationRequest Step`);
+        const { unitKey } = options.walletAttestation;
 
-          const { unitKey } = options.walletAttestation;
+        const callbacks = {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        };
 
-          const callbacks = {
-            ...partialCallbacks,
-            signJwt: signJwtCallback([unitKey.privateKey]),
-          };
-
-          const createParOptions: CreatePushedAuthorizationRequestOptions = {
-            audience: options.baseUrl,
-            authorization_details: options.credentialConfigurationIds.map(
-              (id) => ({
-                credential_configuration_id: id,
-                type: "openid_credential",
-              }),
-            ),
-            authorizationServerMetadata: {
-              require_signed_request_object: true,
+        const createParOptions: CreatePushedAuthorizationRequestOptions = {
+          audience: options.baseUrl,
+          authorization_details: options.credentialConfigurationIds.map(
+            (id) => ({
+              credential_configuration_id: id,
+              type: "openid_credential",
+            }),
+          ),
+          // Hardcode require_signed_request_object to true as the wallet is expected to always sign the request object 
+          // We'll need to allow overriding this in case we want to test unsigned request objects in negative test cases
+          authorizationServerMetadata: {
+            require_signed_request_object: true,
+          },
+          callbacks:
+            callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
+          clientId: unitKey.publicKey.kid,
+          codeChallengeMethodsSupported: ["S256"],
+          dpop: {
+            signer: {
+              alg: "ES256",
+              method: "jwk",
+              publicJwk: unitKey.publicKey,
             },
-            callbacks:
-              callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
-            clientId: unitKey.publicKey.kid,
-            codeChallengeMethodsSupported: ["S256"],
-            dpop: {
-              signer: {
-                alg: "ES256",
-                method: "jwk",
-                publicJwk: unitKey.publicKey,
-              },
-            },
-            pkceCodeVerifier: codeVerifier,
-            redirectUri: "https://client.example.org/cb",
-            responseMode: "query",
-          };
+          },
+          pkceCodeVerifier: options.codeVerifier,
+          redirectUri: "https://client.example.org/cb",
+          responseMode: "query",
+        };
 
-          log.info(
-            `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
-          );
-          log.debug(
-            `PAR request credentialConfigurationId: ${options.credentialConfigurationIds}`,
-          );
-          const pushedAuthorizationRequest =
-            await createPushedAuthorizationRequest({
-              ...createParOptions,
-              authorizationServerMetadata: {
-                require_signed_request_object: true,
-              },
-            });
+        const finalParOptions = {
+          ...createParOptions,
+          ...options.createParOverrides,
+        };
 
-          const fetchOptions: fetchPushedAuthorizationResponseOptions = {
-            callbacks: partialCallbacks,
-            clientAttestationDPoP: options.popAttestation,
-            pushedAuthorizationRequest,
-            pushedAuthorizationRequestEndpoint:
-              options.pushedAuthorizationRequestEndpoint,
-            walletAttestation: options.walletAttestation.attestation,
-          };
+        log.info(
+          `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
+        );
+        log.debug(
+          `PAR request credentialConfigurationId: ${options.credentialConfigurationIds}`,
+        );
+        const pushedAuthorizationRequest =
+          await createPushedAuthorizationRequest(finalParOptions);
 
-          log.info(
-            `Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`,
-          );
+        const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 
-          log.info(`PKCE code verifier ${codeVerifier}`);
+        const fetchOptions: fetchPushedAuthorizationResponseOptions = {
+          callbacks: partialCallbacks,
+          clientAttestationDPoP: options.popAttestation,
+          pushedAuthorizationRequest,
+          pushedAuthorizationRequestEndpoint:
+            options.pushedAuthorizationRequestEndpoint,
+          walletAttestation: options.walletAttestation.attestation,
+        };
 
-          return await fetchPushedAuthorizationResponse(fetchOptions);
-        },
-      );
+        log.info(
+          `Fetching PAR response from ${options.pushedAuthorizationRequestEndpoint}`,
+        );
 
-    return {
-      ...result,
-      codeVerifier,
-    };
+        log.debug(`PKCE code verifier ${codeVerifier}`);
+
+        return {
+          ...(await fetchPushedAuthorizationResponse(fetchOptions)),
+          codeVerifier,
+        };
+      },
+    );
   }
 }

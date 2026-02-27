@@ -13,7 +13,11 @@ export type Logger = Omit<
   ) => void;
   nl: () => void;
   setLogOptions: SetLogOptionsCallback;
-  testCompleted: (success?: boolean) => void;
+  testCompleted: (
+    description: string,
+    success: boolean,
+    durationMs?: number,
+  ) => void;
   testFailed: () => void;
   testSuite: (options: {
     profile: string;
