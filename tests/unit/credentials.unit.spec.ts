@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
@@ -181,7 +181,7 @@ describe("Generate Mocked Credentials", () => {
 
     expect(claimsFromDecoded).toEqual({
       ...dump,
-      expiry_date: expect.any(String),
+      date_of_expiry: expect.any(String),
     });
   });
 
@@ -233,10 +233,10 @@ describe("createVpTokenMdoc", () => {
 
     await expect(
       createVpTokenMdoc({
-        clientId: "client_id",
+        client_id: "client_id",
         credential: "invalid_credential",
         dcqlQuery,
-        devicePrivateKey: keyPair.privateKey,
+        dpopJwk: keyPair.privateKey,
         nonce: "nonce",
         responseUri: "https://example.com",
       }),
@@ -273,10 +273,10 @@ describe("createVpTokenMdoc", () => {
     };
 
     const result = await createVpTokenMdoc({
-      clientId: "client_id",
-      credential: credential.mso_mdoc_mDL!.compact,
+      client_id: "client_id",
+      credential: credential.mso_mdoc_mDL.compact,
       dcqlQuery,
-      devicePrivateKey: keyPair.privateKey,
+      dpopJwk: keyPair.privateKey,
       nonce: "nonce",
       responseUri: "https://example.com",
     });
@@ -284,7 +284,9 @@ describe("createVpTokenMdoc", () => {
     expect(result).toHaveProperty("query_mdl");
     expect(result["query_mdl"]).toBeDefined();
 
-    const documents = decode(result["query_mdl"]!).documents;
+    const documents = decode(
+      Buffer.from(result["query_mdl"]!, "base64url"),
+    ).documents;
     expect(documents).toBeDefined();
 
     const document = documents[0]!;

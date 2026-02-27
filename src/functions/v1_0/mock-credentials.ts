@@ -1,5 +1,3 @@
-import type { DisclosureFrame } from "@sd-jwt/types";
-
 import { DataItem, Document } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
@@ -133,6 +131,7 @@ export async function buildMockSdJwt_V1_0(
       "birth_place",
       "nationalities",
       "personal_administrative_number",
+      "tax_id_code",
     ],
   };
 
@@ -146,11 +145,6 @@ export async function buildMockSdJwt_V1_0(
       exp: Math.floor(expiration.getTime() / 1000),
       iat: Math.floor(Date.now() / 1000),
       iss: metadata.iss,
-      status: {
-        status_assertion: {
-          credential_hash_alg: "sha-256",
-        },
-      },
       sub: unitKey.kid,
       vct,
       "vct#integrity": vctIntegrity,

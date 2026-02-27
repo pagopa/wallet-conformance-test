@@ -5,7 +5,7 @@
       "country": "IT",
       "region": "Lazio"
     },
-    "expiry_date": "{{expiration}}",
+    "date_of_expiry": "{{expiration}}",
     "family_name": "Rossi",
     "given_name": "Mario",
     "nationalities": ["IT"],

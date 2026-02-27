@@ -1,5 +1,3 @@
-import type { DisclosureFrame } from "@sd-jwt/types";
-
 import { DataItem, Document } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
@@ -129,7 +127,7 @@ export async function buildMockSdJwt_V1_3(
       "family_name",
       "given_name",
       "birthdate",
-      "expiry_date",
+      "date_of_expiry",
       "place_of_birth",
       "nationalities",
       "personal_administrative_number",

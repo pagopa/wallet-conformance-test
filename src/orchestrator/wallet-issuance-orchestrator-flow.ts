@@ -6,12 +6,10 @@ import {
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
-  buildJwksPath,
   createLogger,
   loadConfigWithHierarchy,
-  loadJwks,
   partialCallbacks,
   saveCredentialToDisk,
   signJwtCallback,
@@ -33,7 +31,6 @@ import {
 import {
   AttestationResponse,
   Config,
-  Credential,
   RunThroughAuthorizeContext,
   RunThroughParContext,
   RunThroughTokenContext,
@@ -295,41 +292,11 @@ export class WalletIssuanceOrchestratorFlow {
 
     const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
     this.log.info("Loading credentials...");
-    let personIdentificationData: Credential;
-    const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
-    const itWalletSpecsVersion = this.config.wallet.wallet_version;
 
-    try {
-      const credentials = await loadCredentials(
-        this.config.wallet.credentials_storage_path,
-        [credentialIdentifier],
-        this.log.debug,
-        itWalletSpecsVersion,
-      );
-
-      if (credentials.dc_sd_jwt_PersonIdentificationData)
-        personIdentificationData =
-          credentials.dc_sd_jwt_PersonIdentificationData;
-      else {
-        this.log.debug("missing pid: creating new one");
-        throw new Error("missing pid: creating new one");
-      }
-    } catch {
-      personIdentificationData = await createMockSdJwt(
-        {
-          iss: "https://issuer.example.com",
-          trustAnchorBaseUrl,
-          trustAnchorJwksPath:
-            this.config.trust.federation_trust_anchors_jwks_path,
-        },
-        this.config.wallet.backup_storage_path,
-        this.config.wallet.credentials_storage_path,
-      );
-    }
-
-    const credentialKeyPair = await loadJwks(
-      this.config.wallet.backup_storage_path,
-      buildJwksPath(credentialIdentifier),
+    const credentials = await loadCredentialsForPresentation(
+      this.config,
+      trustAnchorBaseUrl,
+      this.log,
     );
 
     const authorizeResponse = await this.authorizeStep.run({
@@ -338,13 +305,7 @@ export class WalletIssuanceOrchestratorFlow {
           ?.authorization_endpoint,
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
-      credentials: [
-        {
-          credential: personIdentificationData.compact,
-          keyPair: credentialKeyPair,
-          typ: "dc+sd-jwt",
-        },
-      ],
+      credentials,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,

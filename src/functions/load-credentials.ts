@@ -2,8 +2,10 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
-import { parseMdoc } from "@/logic";
-import { Credential } from "@/types";
+import { buildJwksPath, loadJwks, parseMdoc } from "@/logic";
+import { Config, Credential, CredentialWithKey, Logger } from "@/types";
+
+import { createMockMdlMdoc, createMockSdJwt } from "./mock-credentials";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -38,7 +40,7 @@ export async function loadCredentials(
 
   for (const file of files) {
     // Skip if the file is not a recognized credential type
-    if (!file || !types.find((name) => name === file)) {
+    if (!file || (types.length !== 0 && !types.find((name) => name === file))) {
       onIgnoreError(
         `Local credential '${file}' is not included in credential types, it will be ignored.`,
       );
@@ -78,6 +80,76 @@ export async function loadCredentials(
       const err = e as Error;
       onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);
     }
+  }
+
+  return credentials;
+}
+
+export async function loadCredentialsForPresentation(
+  config: Config,
+  trustAnchorBaseUrl: string,
+  log: Logger,
+): Promise<CredentialWithKey[]> {
+  const credentials: CredentialWithKey[] = [];
+
+  const storedCredentials = await loadCredentials(
+    config.wallet.credentials_storage_path,
+    [],
+    log.debug,
+    config.wallet.wallet_version,
+  );
+
+  const storedCredentialsEntries = Object.entries(storedCredentials);
+  if (storedCredentialsEntries.length === 0) {
+    const personIdentificationData = await createMockSdJwt(
+      {
+        iss: "https://issuer.example.com",
+        trustAnchorBaseUrl,
+        trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      },
+      config.wallet.backup_storage_path,
+      config.wallet.credentials_storage_path,
+    );
+    const mobileDriverLicence = await createMockMdlMdoc(
+      config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+      config.wallet.backup_storage_path,
+      config.wallet.credentials_storage_path,
+    );
+
+    const pidKeyPair = await loadJwks(
+      config.wallet.backup_storage_path,
+      buildJwksPath("dc_sd_jwt_PersonIdentificationData"),
+    );
+    const mdlKeyPair = await loadJwks(
+      config.wallet.backup_storage_path,
+      buildJwksPath("mso_mdoc_mDL"),
+    );
+
+    return [
+      {
+        credential: personIdentificationData.compact,
+        dpopJwk: pidKeyPair.privateKey,
+        typ: personIdentificationData.typ,
+      },
+      {
+        credential: mobileDriverLicence.compact,
+        dpopJwk: mdlKeyPair.privateKey,
+        typ: mobileDriverLicence.typ,
+      },
+    ];
+  }
+
+  for (const [key, cred] of storedCredentialsEntries) {
+    const credentialKeyPair = await loadJwks(
+      config.wallet.backup_storage_path,
+      buildJwksPath(key),
+    );
+
+    credentials.push({
+      credential: cred.compact,
+      dpopJwk: credentialKeyPair.privateKey,
+      typ: cred.typ,
+    });
   }
 
   return credentials;
