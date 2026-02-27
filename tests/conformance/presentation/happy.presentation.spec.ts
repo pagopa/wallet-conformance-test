@@ -47,6 +47,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying QR-Code URL alignment with RP metadata",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly issues QR-Code with URL from metadata and client_id matches issuer";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -58,27 +60,27 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Checking client_id matches entity statement issuer...");
+      log.debug("→ Checking client_id matches entity statement issuer...");
       const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
       expect(parsedQrCode?.clientId).toBeDefined();
 
       // The client_id should match the issuer from the entity statement
       if (issuer) {
-        log.info(`  Expected: ${issuer}`);
-        log.info(`  Actual: ${parsedQrCode?.clientId}`);
+        log.debug(`  Expected: ${issuer}`);
+        log.debug(`  Actual: ${parsedQrCode?.clientId}`);
         expect(parsedQrCode?.clientId).toBe(issuer);
-        log.info("  ✅ client_id matches entity statement issuer");
+        log.debug("  ✅ client_id matches entity statement issuer");
       }
 
-      log.info("→ Checking request_uri format and domain validity...");
+      log.debug("→ Checking request_uri format and domain validity...");
       expect(parsedQrCode?.requestUri).toBeDefined();
-      log.info(`  request_uri: ${parsedQrCode?.requestUri}`);
+      log.debug(`  request_uri: ${parsedQrCode?.requestUri}`);
       expect(parsedQrCode?.requestUri).toMatch(/^https?:\/\/.+/);
-      log.info("  ✅ request_uri is a valid URL");
+      log.debug("  ✅ request_uri is a valid URL");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -89,6 +91,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying HTTP GET method support for request objects",
     );
 
+    const DESCRIPTION =
+      "Relying Party supports GET method for request objects, defaults if not specified";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -98,28 +102,28 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         fetchMetadataResult.response?.entityStatementClaims?.metadata;
       const verifierMetadata = metadata?.openid_credential_verifier;
 
-      log.info("→ Checking request_object_endpoint_methods configuration...");
+      log.debug("→ Checking request_object_endpoint_methods configuration...");
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response?.requestObject).toBeDefined();
 
       // If request_object_endpoint_methods is not specified or includes GET
       if (verifierMetadata?.request_object_endpoint_methods) {
-        log.info(
+        log.debug(
           `  Supported methods: ${verifierMetadata.request_object_endpoint_methods.join(", ")}`,
         );
         expect(verifierMetadata.request_object_endpoint_methods).toContain(
           "GET",
         );
-        log.info("  ✅ GET method is supported");
+        log.debug("  ✅ GET method is supported");
       } else {
-        log.info(
+        log.debug(
           "  ℹ request_object_endpoint_methods not specified (GET is default)",
         );
       }
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -130,31 +134,33 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying state and nonce parameter presence and format",
     );
 
+    const DESCRIPTION =
+      "Relying Party receives and validates state and nonce values in response";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating state parameter...");
+      log.debug("→ Validating state parameter...");
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.state).toBeDefined();
-      log.info(
+      log.debug(
         `  state: ${requestObject?.state} (length: ${requestObject?.state.length})`,
       );
       expect(requestObject?.state).toMatch(/^[a-zA-Z0-9_-]+$/);
-      log.info("  ✅ state parameter is present and valid");
+      log.debug("  ✅ state parameter is present and valid");
 
-      log.info("→ Validating nonce parameter...");
+      log.debug("→ Validating nonce parameter...");
       expect(requestObject?.nonce).toBeDefined();
-      log.info(
+      log.debug(
         `  nonce: ${requestObject?.nonce} (length: ${requestObject?.nonce.length})`,
       );
       expect(requestObject?.nonce).toMatch(/^[a-zA-Z0-9_-]+$/);
-      log.info("  ✅ nonce parameter is present and valid");
+      log.debug("  ✅ nonce parameter is present and valid");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -165,6 +171,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying redirect URI functionality and response code",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly redirects user and endpoint returns valid response_code";
     let testSuccess = false;
     try {
       if (!redirectUriResult.success) {
@@ -181,13 +189,13 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       }
       expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
-      log.info("→ Validating redirect_uri format...");
+      log.debug("→ Validating redirect_uri format...");
       const redirectUri = redirectUriResult.response?.redirectUri;
-      log.info(`  redirect_uri: ${redirectUri?.toString()}`);
+      log.debug(`  redirect_uri: ${redirectUri?.toString()}`);
       expect(redirectUri?.toString()).toMatch(/^https?:\/\/.+/);
-      log.info("  ✅ redirect_uri is a valid URL");
+      log.debug("  ✅ redirect_uri is a valid URL");
 
-      log.info("→ Checking response_code parameter...");
+      log.debug("→ Checking response_code parameter...");
       if (!redirectUriResult.response?.responseCode) {
         log.warn("  ⚠ response_code is undefined");
         log.warn(
@@ -195,12 +203,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         );
       }
       expect(redirectUriResult.response?.responseCode).toBeDefined();
-      log.info(`  response_code: ${redirectUriResult.response?.responseCode}`);
-      log.info("  ✅ response_code is present");
+      log.debug(`  response_code: ${redirectUriResult.response?.responseCode}`);
+      log.debug("  ✅ response_code is present");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -211,32 +219,34 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying DCQL query standard format compliance",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly uses standard DCQL query with valid credentials array";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Checking dcql_query presence in request object...");
+      log.debug("→ Checking dcql_query presence in request object...");
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.dcql_query).toBeDefined();
-      log.info("  ✅ dcql_query is present");
+      log.debug("  ✅ dcql_query is present");
 
-      log.info("→ Validating DCQL query structure...");
+      log.debug("→ Validating DCQL query structure...");
       const dcqlQuery = requestObject?.dcql_query;
       expect(dcqlQuery).toBeTypeOf("object");
-      log.info("  ✅ dcql_query is an object");
+      log.debug("  ✅ dcql_query is an object");
 
       // DCQL query should contain credentials array
-      log.info("→ Checking credentials array in DCQL query...");
+      log.debug("→ Checking credentials array in DCQL query...");
       expect(dcqlQuery?.credentials).toBeDefined();
       expect(Array.isArray(dcqlQuery?.credentials)).toBe(true);
-      log.info(`  Credentials count: ${dcqlQuery?.credentials.length}`);
+      log.debug(`  Credentials count: ${dcqlQuery?.credentials.length}`);
       expect(dcqlQuery?.credentials.length).toBeGreaterThan(0);
-      log.info("  ✅ credentials array is valid and non-empty");
+      log.debug("  ✅ credentials array is valid and non-empty");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -247,12 +257,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying Wallet Attestation does not include claims parameter",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly omits claims parameter for Wallet Attestation in DCQL query";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Checking DCQL query credentials for Wallet Attestation...");
+      log.debug("→ Checking DCQL query credentials for Wallet Attestation...");
       const requestObject = authorizationRequestResult.response?.requestObject;
       const dcqlQuery = requestObject?.dcql_query;
 
@@ -278,21 +290,21 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
             )
           ) {
             walletAttestationFound = true;
-            log.info(`  Credential ${index + 1}: Wallet Attestation detected`);
-            log.info(`    vct: ${cred.meta?.vct_values?.join(", ")}`);
+            log.debug(`  Credential ${index + 1}: Wallet Attestation detected`);
+            log.debug(`    vct: ${cred.meta?.vct_values?.join(", ")}`);
             expect(cred.claims).toBeUndefined();
-            log.info("    ✅ claims parameter is not present (as required)");
+            log.debug("    ✅ claims parameter is not present (as required)");
           }
         }
       });
 
       if (walletAttestationFound) {
-        log.info("  ✅ Wallet Attestation validated successfully");
+        log.debug("  ✅ Wallet Attestation validated successfully");
       }
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -303,12 +315,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying vct_values presence in DCQL credentials",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly requires vct_values in all DCQL query credentials";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info(
+      log.debug(
         "→ Validating vct_values parameter in DCQL query credentials...",
       );
       const requestObject = authorizationRequestResult.response?.requestObject;
@@ -331,11 +345,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
           };
           if (cred.meta?.vct_values) {
             hasVctValues = true;
-            log.info(`  Credential ${credentialIndex}:`);
+            log.debug(`  Credential ${credentialIndex}:`);
             expect(Array.isArray(cred.meta.vct_values)).toBe(true);
-            log.info(`    vct_values: ${cred.meta.vct_values.join(", ")}`);
+            log.debug(`    vct_values: ${cred.meta.vct_values.join(", ")}`);
             expect(cred.meta.vct_values.length).toBeGreaterThan(0);
-            log.info(
+            log.debug(
               `    ✅ vct_values is valid (${cred.meta.vct_values.length} type(s))`,
             );
           }
@@ -343,11 +357,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       });
 
       expect(hasVctValues).toBe(true);
-      log.info("  ✅ All credentials have valid vct_values");
+      log.debug("  ✅ All credentials have valid vct_values");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -358,6 +372,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying vp_token support in verifier metadata",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly advertises vp_token in response_types_supported";
     let testSuccess = false;
     try {
       expect(fetchMetadataResult.success).toBe(true);
@@ -367,7 +383,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         fetchMetadataResult.response?.entityStatementClaims?.metadata;
       const verifierMetadata = metadata?.openid_credential_verifier;
 
-      log.info("→ Checking response_types_supported in verifier metadata...");
+      log.debug("→ Checking response_types_supported in verifier metadata...");
 
       if (!verifierMetadata) {
         log.error("❌ openid_credential_verifier metadata is undefined");
@@ -388,15 +404,15 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       }
 
       expect(verifierMetadata?.response_types_supported).toBeDefined();
-      log.info(
+      log.debug(
         `  Supported types: ${verifierMetadata?.response_types_supported.join(", ")}`,
       );
       expect(verifierMetadata?.response_types_supported).toContain("vp_token");
-      log.info("  ✅ vp_token is supported");
+      log.debug("  ✅ vp_token is supported");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -407,12 +423,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying response_uri and redirect_uri handling",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly provides response_uri and handles redirect_uri";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating response_uri in request object...");
+      log.debug("→ Validating response_uri in request object...");
       const requestObject = authorizationRequestResult.response?.requestObject;
 
       if (!requestObject?.response_uri) {
@@ -422,11 +440,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         );
       }
       expect(requestObject?.response_uri).toBeDefined();
-      log.info(`  response_uri: ${requestObject?.response_uri}`);
+      log.debug(`  response_uri: ${requestObject?.response_uri}`);
       expect(requestObject?.response_uri).toMatch(/^https?:\/\/.+/);
-      log.info("  ✅ response_uri is present and valid");
+      log.debug("  ✅ response_uri is present and valid");
 
-      log.info("→ Validating redirect_uri after authorization...");
+      log.debug("→ Validating redirect_uri after authorization...");
 
       if (!redirectUriResult.success) {
         log.error("❌ Redirect URI step failed");
@@ -446,13 +464,13 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(redirectUriResult.response?.redirectUri).toBeDefined();
 
       const redirectUri = redirectUriResult.response?.redirectUri;
-      log.info(`  redirect_uri: ${redirectUri?.toString()}`);
+      log.debug(`  redirect_uri: ${redirectUri?.toString()}`);
       expect(redirectUri?.toString()).toMatch(/^https?:\/\/.+/);
-      log.info("  ✅ redirect_uri is present and valid");
+      log.debug("  ✅ redirect_uri is present and valid");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -461,23 +479,25 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying JWT typ header parameter");
 
+    const DESCRIPTION =
+      "Relying Party correctly sets JWT typ header to oauth-authz-req+jwt";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating JWT typ parameter...");
+      log.debug("→ Validating JWT typ parameter...");
       const actualTyp =
         authorizationRequestResult.response?.authorizationRequestHeader.typ;
-      log.info(`  Expected: oauth-authz-req+jwt`);
-      log.info(`  Actual: ${actualTyp}`);
+      log.debug(`  Expected: oauth-authz-req+jwt`);
+      log.debug(`  Actual: ${actualTyp}`);
 
       expect(actualTyp).toBe("oauth-authz-req+jwt");
-      log.info("  ✅ typ parameter is correct");
+      log.debug("  ✅ typ parameter is correct");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -486,21 +506,23 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying response_mode parameter value");
 
+    const DESCRIPTION =
+      "Relying Party correctly sets response_mode to direct_post.jwt";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating response_mode parameter...");
+      log.debug("→ Validating response_mode parameter...");
       const requestObject = authorizationRequestResult.response?.requestObject;
-      log.info(`  Expected: direct_post.jwt`);
-      log.info(`  Actual: ${requestObject?.response_mode}`);
+      log.debug(`  Expected: direct_post.jwt`);
+      log.debug(`  Actual: ${requestObject?.response_mode}`);
       expect(requestObject?.response_mode).toBe("direct_post.jwt");
-      log.info("  ✅ response_mode is correct");
+      log.debug("  ✅ response_mode is correct");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -509,21 +531,23 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying response_type parameter value");
 
+    const DESCRIPTION =
+      "Relying Party correctly sets response_type to vp_token";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating response_type parameter...");
+      log.debug("→ Validating response_type parameter...");
       const requestObject = authorizationRequestResult.response?.requestObject;
-      log.info(`  Expected: vp_token`);
-      log.info(`  Actual: ${requestObject?.response_type}`);
+      log.debug(`  Expected: vp_token`);
+      log.debug(`  Actual: ${requestObject?.response_type}`);
       expect(requestObject?.response_type).toBe("vp_token");
-      log.info("  ✅ response_type is correct");
+      log.debug("  ✅ response_type is correct");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -534,26 +558,30 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Conformance test: Verifying authorization response submission to response_uri",
     );
 
+    const DESCRIPTION =
+      "Relying Party correctly sends Authorization Response to response_uri endpoint";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating response_uri endpoint...");
+      log.debug("→ Validating response_uri endpoint...");
       const responseUri =
         authorizationRequestResult.response?.requestObject.response_uri;
       expect(responseUri).toBeDefined();
-      log.info(`  response_uri: ${responseUri}`);
+      log.debug(`  response_uri: ${responseUri}`);
       expect(responseUri).toMatch(/^https?:\/\/.+/);
-      log.info("  ✅ response_uri is valid");
+      log.debug("  ✅ response_uri is valid");
 
-      log.info("→ Verifying authorization response submission...");
+      log.debug("→ Verifying authorization response submission...");
       expect(redirectUriResult.success).toBe(true);
-      log.info("  ✅ Authorization response successfully sent to response_uri");
+      log.debug(
+        "  ✅ Authorization response successfully sent to response_uri",
+      );
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -562,22 +590,24 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying nonce entropy requirements");
 
+    const DESCRIPTION =
+      "Relying Party correctly provides nonce with sufficient entropy (≥32 characters)";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating nonce length (minimum 32 characters)...");
+      log.debug("→ Validating nonce length (minimum 32 characters)...");
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.nonce).toBeDefined();
-      log.info(`  nonce: ${requestObject?.nonce}`);
-      log.info(`  Length: ${requestObject?.nonce.length} characters`);
+      log.debug(`  nonce: ${requestObject?.nonce}`);
+      log.debug(`  Length: ${requestObject?.nonce.length} characters`);
       expect(requestObject?.nonce.length).toBeGreaterThanOrEqual(32);
-      log.info("  ✅ nonce has sufficient entropy (≥32 characters)");
+      log.debug("  ✅ nonce has sufficient entropy (≥32 characters)");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 
@@ -586,12 +616,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
     log.start("Conformance test: Verifying JWT expiration timestamp validity");
 
+    const DESCRIPTION =
+      "Relying Party correctly sets JWT exp parameter to a future timestamp";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
-      log.info("→ Validating exp parameter...");
+      log.debug("→ Validating exp parameter...");
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.exp).toBeDefined();
 
@@ -600,16 +632,18 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const expiresAt = new Date(expTimestamp * 1000).toISOString();
       const timeUntilExpiry = expTimestamp - currentTime;
 
-      log.info(`  Current time: ${new Date(currentTime * 1000).toISOString()}`);
-      log.info(`  Expires at: ${expiresAt}`);
-      log.info(`  Time until expiry: ${timeUntilExpiry} seconds`);
+      log.debug(
+        `  Current time: ${new Date(currentTime * 1000).toISOString()}`,
+      );
+      log.debug(`  Expires at: ${expiresAt}`);
+      log.debug(`  Time until expiry: ${timeUntilExpiry} seconds`);
 
       expect(requestObject?.exp).toBeGreaterThan(currentTime);
-      log.info("  ✅ JWT is not expired");
+      log.debug("  ✅ JWT is not expired");
 
       testSuccess = true;
     } finally {
-      log.testCompleted(testSuccess);
+      log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
 });

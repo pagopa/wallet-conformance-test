@@ -19,7 +19,7 @@ import {
   loadJwks,
   parseMdoc,
 } from "@/logic";
-import { Config, KeyPairJwk } from "@/types";
+import { KeyPairJwk } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
@@ -38,7 +38,7 @@ describe("Load Mocked Credentials", async () => {
         credentialsDir,
         ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
         console.error,
-        ItWalletSpecsVersion.V1_0
+        ItWalletSpecsVersion.V1_0,
       );
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials).length).toBe(2);
@@ -251,7 +251,7 @@ describe("createVpTokenMdoc", () => {
       credentialsDir,
       ["mso_mdoc_mDL"],
       console.error,
-      ItWalletSpecsVersion.V1_0
+      ItWalletSpecsVersion.V1_0,
     );
 
     if (!credential.mso_mdoc_mDL) {
