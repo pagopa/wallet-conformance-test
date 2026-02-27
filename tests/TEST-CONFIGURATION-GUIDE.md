@@ -53,7 +53,7 @@ tests/
 ├── conformance/                       # conformance test structure
 │   ├── issuance/
 │   │   └── happy.issuance.spec.ts # Test spec (uses defineIssuanceTest)
-│   │   └── happy.issuance.spec.ts # Test spec (uses defineIssuanceTest)
+│   │   └── par-validation.issuance.spec.ts # Test spec (uses defineIssuanceTest)
 │   └── presentation/
 │       └── happy.presentation.spec.ts # Test spec (uses definePresentationTest)
 │
