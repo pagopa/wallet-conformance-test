@@ -31,7 +31,6 @@ import {
 import {
   AttestationResponse,
   Config,
-  Credential,
   RunThroughAuthorizeContext,
   RunThroughParContext,
   RunThroughTokenContext,
