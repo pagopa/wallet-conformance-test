@@ -188,7 +188,7 @@ export class WalletIssuanceOrchestratorFlow {
       const accessToken = tokenResponse.response?.access_token;
       if (!accessToken)
         throw new Error(
-          "Token step did not return a redirect_uri. " +
+          "Token step did not return an access token. " +
             "Check the token step for errors.",
         );
 
@@ -213,7 +213,7 @@ export class WalletIssuanceOrchestratorFlow {
         | { c_nonce: string };
       if (!nonce)
         throw new Error(
-          "Nonce step did not return a redirect_uri. " +
+          "Nonce step did not return a nonce. " +
             "Check the nonce step for errors.",
         );
 

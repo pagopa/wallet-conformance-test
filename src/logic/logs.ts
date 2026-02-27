@@ -166,7 +166,7 @@ function setLogOptions(
 
 /**
  * Prints a single-line test result:
- *   CI_015   ✅  Issuer correctly rejected PAR with invalid signature   118ms
+ *   ✅  Issuer correctly rejected PAR with invalid signature   118ms
  *
  * @param id          Test identifier (e.g. "CI_015")
  * @param description Human-readable outcome description
