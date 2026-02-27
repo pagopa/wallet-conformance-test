@@ -8,6 +8,7 @@ import {
 import { AttestationResponse } from "./attestation-response";
 
 export type RunThroughAuthorizeContext = RunThroughParContext & {
+  authorizationEndpoint: string;
   authorizeResponse: AuthorizeStepResponse;
 };
 
