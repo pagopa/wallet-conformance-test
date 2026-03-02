@@ -13,6 +13,7 @@ export interface Credential {
 export interface CredentialWithKey {
   credential: string;
   dpopJwk: KeyPairJwk;
+  id: string;
   typ: "dc+sd-jwt" | "mso_mdoc";
 }
 

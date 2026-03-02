@@ -101,12 +101,8 @@ export function loadConfigWithHierarchy(
   }
 
   // Step 4b: Always set user_agent from package.json version at runtime
-  mergedConfig = deepMerge(mergedConfig, {
-    network: {
-      max_retries: 10,
-      timeout: 10,
-      user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
-    },
+  mergedConfig.network = deepMerge(mergedConfig.network, {
+    user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
   });
 
   // Step 5: Validate the final configuration

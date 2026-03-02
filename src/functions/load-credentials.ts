@@ -129,11 +129,13 @@ export async function loadCredentialsForPresentation(
       {
         credential: personIdentificationData.compact,
         dpopJwk: pidKeyPair.privateKey,
+        id: "dc_sd_jwt_PersonIdentificationData",
         typ: personIdentificationData.typ,
       },
       {
         credential: mobileDriverLicence.compact,
         dpopJwk: mdlKeyPair.privateKey,
+        id: "mso_mdoc_mDL",
         typ: mobileDriverLicence.typ,
       },
     ];
@@ -148,6 +150,7 @@ export async function loadCredentialsForPresentation(
     credentials.push({
       credential: cred.compact,
       dpopJwk: credentialKeyPair.privateKey,
+      id: key,
       typ: cred.typ,
     });
   }

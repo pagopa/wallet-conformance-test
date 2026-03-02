@@ -118,6 +118,14 @@ export async function validateDcqlQuery(
   logger?.info(
     `Credentials available in the wallet (${parsedCredentials.length}):`,
   );
+  parsedCredentials.forEach((c, i) => {
+    logger?.info(
+      `  [${i + 1}] format: ${c.credential_format},`,
+      c.credential_format !== "mso_mdoc"
+        ? `vct: ${c.vct}`
+        : `docType: ${c.doctype}`,
+    );
+  });
 
   // Log credentials requested by the DCQL query
   const requestedCredentials = parsedQuery.credentials;
@@ -129,8 +137,15 @@ export async function validateDcqlQuery(
       "meta" in c && c.meta && "vct_values" in c.meta && c.meta.vct_values
         ? c.meta.vct_values.join(", ")
         : "any";
+    const doctypeValues =
+      "meta" in c && c.meta && "doctype_value" in c.meta && c.meta.doctype_value
+        ? c.meta.doctype_value
+        : "any";
     logger?.info(
-      `  [${i + 1}] id: "${c.id}", format: ${c.format}, vct: ${vctValues}`,
+      `  [${i + 1}] id: "${c.id}", format: ${c.format},`,
+      c.format !== "mso_mdoc"
+        ? `vct: ${vctValues}`
+        : `docType: ${doctypeValues}`,
     );
   });
 
@@ -140,10 +155,93 @@ export async function validateDcqlQuery(
       `Tip: verify that the credential types in the wallet satisfy the DCQL query. Mocked credentials are stored in the "data/credentials" directory.`,
     );
 
+    const cause = formatDcqlFailCause(
+      credentials,
+      queryResult.credential_matches,
+    );
     throw new Error(
-      "DCQL query validation failed: The provided credentials do not satisfy the DCQL query",
+      `DCQL query validation failed: The provided credentials do not satisfy the DCQL query.\n${cause}`,
     );
   }
 
   return queryResult;
+}
+
+function formatDcqlFailCause(
+  credentials: CredentialWithKey[],
+  credentialMatches: Record<string, unknown>,
+): string {
+  const errorMessage: string[] = [];
+  for (const [k, result] of Object.entries(credentialMatches)) {
+    const queryResult = result as {
+      credential_query_id: string;
+      failed_credentials: unknown[];
+    };
+
+    errorMessage.push(
+      `  Query index: ${k}, query id: ${queryResult.credential_query_id}\n`,
+    );
+
+    for (const failed of queryResult.failed_credentials) {
+      const queryFailed = failed as {
+        claims: {
+          failed_claims: {
+            issues: Record<string, string[]>;
+          }[];
+          success: boolean;
+        };
+        input_credential_index: number;
+        meta: {
+          issues: Record<string, string[]>;
+          success: boolean;
+        };
+        trusted_authorities: {
+          issues: Record<string, string[]>;
+          success: boolean;
+        };
+      };
+
+      errorMessage.push(
+        `    Credential ${credentials[queryFailed.input_credential_index]?.id}:\n`,
+      );
+
+      errorMessage.push(`    → Trusted authorities `);
+      if (queryFailed.trusted_authorities.success)
+        errorMessage.push(`passed\n`);
+      else {
+        errorMessage.push(`failed ❌\n`);
+        errorMessage.push(
+          `      ${Object.entries(queryFailed.trusted_authorities.issues)
+            .map(([attribute, issues]) => `${attribute}: ${issues}`)
+            .join("\n      ")}`,
+        );
+      }
+
+      errorMessage.push(`    → Claims `);
+      if (queryFailed.claims.success) errorMessage.push(`passed\n`);
+      else {
+        errorMessage.push(`failed ❌\n`);
+
+        for (const failedClaim of queryFailed.claims.failed_claims)
+          errorMessage.push(
+            `      ${Object.entries(failedClaim.issues)
+              .map(([claim, issues]) => `${claim}: ${issues}`)
+              .join(", ")}\n`,
+          );
+      }
+
+      errorMessage.push(`    → Meta `);
+      if (queryFailed.meta.success) errorMessage.push(`passed\n`);
+      else {
+        errorMessage.push(`failed ❌\n`);
+        errorMessage.push(
+          `      ${Object.entries(queryFailed.meta.issues)
+            .map(([attribute, issues]) => `${attribute}: ${issues}`)
+            .join("\n      ")}`,
+        );
+      }
+    }
+  }
+
+  return errorMessage.join("");
 }
