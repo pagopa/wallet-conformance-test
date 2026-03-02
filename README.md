@@ -67,13 +67,13 @@ This will make the `wct` command available system-wide. You can use this command
 
 If you encounter an issue where the `wct` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
 
-2. Make the script executable:
+1. Make the script executable:
 
    ```bash
    chmod +x ./bin/wct
    ```
 
-3. Create a global symbolic link to the command:
+2. Create a global symbolic link to the command:
 
    ```bash
    pnpm link --global
