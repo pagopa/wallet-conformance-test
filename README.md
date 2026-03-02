@@ -73,7 +73,7 @@ If you encounter an issue where the `wct` command is not available system-wide a
    chmod +x ./bin/wct
    ```
 
-3. Create a global symbolic link to the command::
+3. Create a global symbolic link to the command:
 
    ```bash
    pnpm link --global
