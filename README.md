@@ -204,14 +204,11 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
 
 ##### Using Configuration File
 
-2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test.
-
-`config.ini`:
-`bash
-    [presentation]
-    verifier = ...
-    authorize_request_url = ...
-    `
+2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
+   ```bash
+   [presentation]
+   authorize_request_url = ...
+   ```
 
 3. Similarly, to test the presentation flow, you will use the `test:presentation` command:
    ```bash
