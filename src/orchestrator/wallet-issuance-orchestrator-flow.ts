@@ -6,7 +6,12 @@ import {
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import {
+  createMockSdJwt,
+  isCredentialSdJwtExpired,
+  loadAttestation,
+  loadCredentials,
+} from "@/functions";
 import {
   buildJwksPath,
   createLogger,
@@ -314,6 +319,16 @@ export class WalletIssuanceOrchestratorFlow {
         this.log.debug("missing pid: creating new one");
         throw new Error("missing pid: creating new one");
       }
+
+      if (
+        personIdentificationData.typ !== "dc+sd-jwt" ||
+        (await isCredentialSdJwtExpired(
+          personIdentificationData.parsed,
+          this.config.wallet.wallet_version,
+        ))
+      ) {
+        throw new Error("pid is expired: creating a new one");
+      }
     } catch {
       personIdentificationData = await createMockSdJwt(
         {
@@ -324,6 +339,7 @@ export class WalletIssuanceOrchestratorFlow {
         },
         this.config.wallet.backup_storage_path,
         this.config.wallet.credentials_storage_path,
+        this.config.wallet.wallet_version,
       );
     }
 

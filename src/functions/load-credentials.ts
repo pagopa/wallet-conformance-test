@@ -1,5 +1,6 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
+import { digest } from "@sd-jwt/crypto-nodejs";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 import { parseMdoc } from "@/logic";
@@ -48,7 +49,9 @@ export async function loadCredentials(
     // First, attempt to parse the credential as a SD-JWT
     try {
       const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
-      const parsed = await SDJwt.extractJwt(credential);
+      const parsed = await SDJwt.decodeSDJwt(credential, (data) =>
+        digest(data),
+      );
 
       credentials[file] = {
         compact: credential,

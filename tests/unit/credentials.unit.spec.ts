@@ -101,7 +101,12 @@ describe("Generate Mocked Credentials", () => {
       await loadJwks(backupDir, buildJwksPath(credentialIdentifier))
     ).publicKey;
 
-    const credential = await createMockSdJwt(metadata, backupDir, backupDir);
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      config.wallet.wallet_version,
+    );
 
     const decoded = await new SDJwtVcInstance({
       hasher: digest,

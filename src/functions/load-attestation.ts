@@ -6,6 +6,7 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";
@@ -64,8 +65,13 @@ export const loadAttestation = async (options: {
   );
 
   try {
+    const attestation = readFileSync(attestationPath, "utf-8");
+    const attestationJwt = await SDJwt.extractJwt(attestation);
+    const exp = attestationJwt.payload?.exp;
+    if (!exp || typeof exp !== "number" || exp < Date.now()) throw new Error();
+
     return {
-      attestation: readFileSync(attestationPath, "utf-8"),
+      attestation,
       created: false,
       providerKey: providerKeyPair,
       unitKey: unitKeyPair,
@@ -134,4 +140,10 @@ export const loadAttestation = async (options: {
       unitKey: unitKeyPair,
     };
   }
+};
+
+export const isAttestationExpired = async (attestation: string) => {
+  const attestationJwt = await SDJwt.extractJwt(attestation);
+  const exp = attestationJwt.payload?.exp;
+  if (!exp || typeof exp !== "number") throw new Error();
 };

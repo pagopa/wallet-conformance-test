@@ -1,5 +1,8 @@
+import { IssuerSignedItem } from "@auth0/mdl/lib/mdoc/IssuerSignedItem";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import z from "zod";
 
 import {
   buildCertPath,
@@ -22,7 +25,7 @@ export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): Promise<Credential> {
   const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
@@ -77,7 +80,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 
@@ -125,4 +128,39 @@ export async function createMockSdJwt(
   }
   writeFileSync(`${pathVersion}/${credentialIdentifier}`, retVal.compact);
   return retVal;
+}
+
+export async function isCredentialMdocExpired(
+  nameSpaceClaims: IssuerSignedItem[],
+  claimName: string,
+) {
+  const claimValue = nameSpaceClaims.find(
+    (claim) => claim.elementIdentifier === claimName,
+  )?.elementValue;
+
+  const parsedClaimValue = new Date(
+    z.string().date("Invalid date format").parse(claimValue),
+  );
+
+  return parsedClaimValue.getTime() < Date.now();
+}
+
+export async function isCredentialSdJwtExpired(
+  parsed: Awaited<ReturnType<typeof SDJwt.decodeSDJwt>>,
+  version: ItWalletSpecsVersion,
+) {
+  const claimName =
+    version === ItWalletSpecsVersion.V1_0 ? "expiry_date" : "date_of_expiry";
+
+  const claimValue =
+    parsed.jwt.payload?.[claimName] ??
+    parsed.disclosures.find((disclosure) =>
+      disclosure.key ? disclosure.key === claimName : false,
+    )?.value;
+
+  const parsedClaimValue = new Date(
+    z.string().datetime("Invalid date format").parse(claimValue),
+  );
+
+  return parsedClaimValue.getTime() < Date.now();
 }

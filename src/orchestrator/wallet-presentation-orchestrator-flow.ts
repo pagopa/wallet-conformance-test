@@ -1,7 +1,12 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import {
+  createMockSdJwt,
+  isCredentialSdJwtExpired,
+  loadAttestation,
+  loadCredentials,
+} from "@/functions";
 import {
   buildJwksPath,
   createLogger,
@@ -264,18 +269,27 @@ export class WalletPresentationOrchestratorFlow {
       itWalletSpecsVersion,
     );
 
-    const pid = credentials[credentialIdentifier]
-      ? credentials[credentialIdentifier]
-      : await createMockSdJwt(
-          {
-            iss: "https://issuer.example.com",
-            trustAnchorBaseUrl,
-            trustAnchorJwksPath:
-              this.config.trust.federation_trust_anchors_jwks_path,
-          },
-          this.config.wallet.backup_storage_path,
-          this.config.wallet.credentials_storage_path,
-        );
+    const maybeExpiredPid = credentials[credentialIdentifier];
+
+    const pid =
+      maybeExpiredPid &&
+      maybeExpiredPid.typ === "dc+sd-jwt" &&
+      !(await isCredentialSdJwtExpired(
+        maybeExpiredPid.parsed,
+        this.config.wallet.wallet_version,
+      ))
+        ? maybeExpiredPid
+        : await createMockSdJwt(
+            {
+              iss: "https://issuer.example.com",
+              trustAnchorBaseUrl,
+              trustAnchorJwksPath:
+                this.config.trust.federation_trust_anchors_jwks_path,
+            },
+            this.config.wallet.backup_storage_path,
+            this.config.wallet.credentials_storage_path,
+            this.config.wallet.wallet_version,
+          );
 
     const { privateKey } = await loadJwks(
       this.config.wallet.backup_storage_path,

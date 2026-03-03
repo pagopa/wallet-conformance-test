@@ -1,8 +1,15 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
-import { Jwt } from "@sd-jwt/core";
+import { SDJwt } from "@sd-jwt/core";
 
-export interface Credential {
+export type Credential = {
   compact: string;
-  parsed: IssuerSignedDocument | Jwt;
-  typ: "dc+sd-jwt" | "mso_mdoc";
-}
+} & (
+  | {
+      parsed: Awaited<ReturnType<typeof SDJwt.decodeSDJwt>>;
+      typ: "dc+sd-jwt";
+    }
+  | {
+      parsed: IssuerSignedDocument;
+      typ: "mso_mdoc";
+    }
+);
