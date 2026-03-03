@@ -79,7 +79,7 @@
       "credential_configurations_supported": {
         "dc_sd_jwt_PersonIdentificationData": {
           "format": "dc+sd-jwt",
-          "vct": "urn:eu.europa.ec.eudi:pid:1",
+          "vct": "urn:eudi:pid:it:1",
           "claims": [
             {
               "display": [

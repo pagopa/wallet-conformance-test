@@ -130,14 +130,14 @@ export async function buildMockSdJwt_V1_3(
       "family_name",
       "given_name",
       "birthdate",
-      "expiry_date",
+      "date_of_expiry",
       "place_of_birth",
       "nationalities",
       "personal_administrative_number",
     ],
   };
 
-  const vct = "urn:eudi:pid:1";
+  const vct = "urn:eudi:pid:it:1";
   const vctIntegrity = generateSRIHash(vct);
 
   const credential = await sdjwt.issue(
