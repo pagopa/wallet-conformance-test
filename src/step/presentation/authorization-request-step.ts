@@ -98,6 +98,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
           nonce: requestObject.nonce,
           responseUri: responseUri,
         },
+        this.config.wallet.wallet_version,
         this.log,
       );
       log.info("VP Token built successfully from DCQL query.");
