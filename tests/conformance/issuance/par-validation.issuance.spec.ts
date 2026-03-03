@@ -13,6 +13,7 @@ import {
   withParOverrides,
   withSignJwtOverride,
 } from "#/helpers/par-validation-helpers";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import {
   createClientAttestationPopJwt,
   createPushedAuthorizationRequest,
@@ -73,6 +74,8 @@ testConfigs.forEach((testConfig) => {
         ctx.pushedAuthorizationRequestEndpoint;
       credentialIssuer = ctx.credentialIssuer;
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     // Restore real timers after each test that might have used fake timers
     afterEach(() => {

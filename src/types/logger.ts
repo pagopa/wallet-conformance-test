@@ -24,6 +24,14 @@ export type Logger = Omit<
     target: string;
     title: string;
   }) => void;
+  testSummary: (
+    suites: {
+      durationMs: number;
+      failed: number;
+      name: string;
+      passed: number;
+    }[],
+  ) => void;
   withTag: (tag: string) => Logger;
 };
 
