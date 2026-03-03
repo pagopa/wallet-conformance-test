@@ -5,6 +5,7 @@ import {
   CreateTokenDPoPOptions,
   fetchTokenResponse,
   FetchTokenResponseOptions,
+  Jwk,
 } from "@pagopa/io-wallet-oauth2";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
@@ -27,6 +28,12 @@ export interface TokenRequestStepOptions {
    * Body to be sent as part of the Access Token Request
    */
   accessTokenRequest: AccessTokenRequest;
+
+  /**
+   * DPoP JWT used to authenticate the client,
+   * if not provided, the DPoP will be created using the wallet attestation
+   */
+  dpopProof?: { jwt: string; signerJwk: Jwk };
 
   /**
    * DPoP JWT used to authenticate the client,
@@ -71,7 +78,8 @@ export class TokenRequestDefaultStep extends StepFlow {
           url: options.accessTokenEndpoint,
         },
       };
-      const tokenDPoP = await createTokenDPoP(createTokenDPoPOptions);
+      const tokenDPoP =
+        options.dpopProof ?? (await createTokenDPoP(createTokenDPoPOptions));
 
       const fetchTokenResponseOptions: FetchTokenResponseOptions = {
         accessTokenEndpoint: options.accessTokenEndpoint,
