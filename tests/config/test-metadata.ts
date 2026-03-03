@@ -121,7 +121,7 @@ function buildIssuanceTestConfigurations(
         "fetchMetadata",
         FetchMetadataDefaultStep,
       ),
-      name: `${flowName} - ${credentialType}`,
+      name: flowName,
       nonceRequestStepClass: getStepClass(
         customSteps,
         "nonceRequest",
