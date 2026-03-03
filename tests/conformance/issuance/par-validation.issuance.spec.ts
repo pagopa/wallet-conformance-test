@@ -91,7 +91,7 @@ testConfigs.forEach((testConfig) => {
         authorizationServer,
         walletAttestationResponse,
       });
-      const step = new StepClass(config, baseLog);
+      const step = new StepClass(config, createQuietLogger());
       return step.run({
         baseUrl: config.issuance.url,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
