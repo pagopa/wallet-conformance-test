@@ -93,7 +93,7 @@
                 }
               ],
               "path": [
-                "birth_date"
+                "birthdate"
               ]
             },
             {
@@ -108,7 +108,7 @@
                 }
               ],
               "path": [
-                "birth_place"
+                "place_of_birth"
               ]
             },
             {
@@ -226,9 +226,6 @@
           "locale": "it-IT",
           "name": "PagoPA S.p.A."
         }
-      ],
-      "evidence_supported": [
-        "vouch"
       ],
       "jwks": {
         "keys": ["{{public_key}}"]
