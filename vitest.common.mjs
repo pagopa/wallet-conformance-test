@@ -83,6 +83,7 @@ export function createTestConfig(testType) {
       globalSetup: "./tests/global-setup.ts",
       hookTimeout: 120000,
       include: [includePattern],
+      reporters: ['dot']
     },
   });
 }
