@@ -1,5 +1,3 @@
-import type { DisclosureFrame } from "@sd-jwt/types";
-
 import { DataItem, Document } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
