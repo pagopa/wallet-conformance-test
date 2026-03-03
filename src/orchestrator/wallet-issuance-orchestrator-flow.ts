@@ -5,7 +5,6 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
-import it from "zod/v4/locales/it.js";
 
 import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
 import {
