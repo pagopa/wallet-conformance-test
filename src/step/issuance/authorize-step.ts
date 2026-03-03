@@ -211,18 +211,11 @@ export class AuthorizeDefaultStep extends StepFlow {
         sendAuthorizationResponseAndExtractCodeOptions,
       );
 
-      // log.info("Performing redundant fetch");
-      // const redundantFetchAuthorize = await fetchWithRetries(
-      //   authorizeUrl,
-      //   this.config.network,
-      // );
-
       return {
         authorizeResponse,
         iss: options.baseUrl,
         requestObject,
         requestObjectJwt,
-        // retryStatus: redundantFetchAuthorize.response.status,
       };
     });
   }

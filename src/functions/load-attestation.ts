@@ -2,9 +2,7 @@ import {
   WalletAttestationOptionsV1_0,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-} from "@pagopa/io-wallet-utils";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { AttestationResponse, Config } from "@/types";

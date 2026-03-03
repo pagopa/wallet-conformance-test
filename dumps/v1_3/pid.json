@@ -1,0 +1,13 @@
+{
+    "birthdate": "1980-01-10",
+    "place_of_birth": {
+      "locality": "Roma",
+      "country": "IT",
+      "region": "Lazio"
+    },
+    "expiry_date": "{{expiration}}",
+    "family_name": "Rossi",
+    "given_name": "Mario",
+    "nationalities": ["IT"],
+    "personal_administrative_number": "XX00000XX"
+  }

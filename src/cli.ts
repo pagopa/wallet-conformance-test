@@ -10,6 +10,9 @@ import { execSync } from "child_process";
 import { Command } from "commander";
 import { resolve } from "path";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version } = require("../package.json") as { version: string };
+
 /**
  * Sets environment variables from CLI options
  * @param options Commander options object
@@ -69,7 +72,7 @@ const program = new Command();
 program
   .name("wct")
   .description("Automated conformance testing for IT Wallet ecosystem services")
-  .version("1.0.0");
+  .version(version);
 
 // Common options for all test commands
 function addCommonOptions(command: Command): Command {

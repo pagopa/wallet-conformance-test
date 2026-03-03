@@ -79,6 +79,7 @@ export function createTestConfig(testType) {
     },
     test: {
       exclude: configDefaults.exclude,
+      fileParallelism: false,
       globalSetup: "./tests/global-setup.ts",
       hookTimeout: 120000,
       include: [includePattern],
