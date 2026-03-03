@@ -83,7 +83,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
       async () => {
         const log = this.log.withTag(this.tag);
 
-        log.info(`Starting PushedAuthorizationRequest Step`);
+        log.debug(`Starting PushedAuthorizationRequest Step`);
 
         const { unitKey } = options.walletAttestation;
 
