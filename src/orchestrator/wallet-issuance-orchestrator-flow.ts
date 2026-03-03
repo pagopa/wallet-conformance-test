@@ -448,7 +448,7 @@ export class WalletIssuanceOrchestratorFlow {
       );
 
     const popAttestation = await createClientAttestationPopJwt({
-      authorizationServer: entityStatementClaims.iss,
+      authorizationServer: credentialIssuer,
       callbacks,
       clientAttestation: walletAttestationResponse.attestation,
     });
