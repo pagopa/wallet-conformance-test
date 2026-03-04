@@ -90,15 +90,15 @@
       },
       "credential_configurations_supported": {
         "dc_sd_jwt_PersonIdentificationData": {
+          "authentic_sources": [
+            {
+                "entity_id": "https://authentic-source.example.com",
+                "dataset_id": "12345"
+            }
+          ],
           "format": "dc+sd-jwt",
-          "vct": "urn:eu.europa.ec.eudi:pid:it:1",
+          "vct": "urn:eudi:pid:it:1",
           "credential_metadata": {
-            "authentic_sources": [
-              {
-                  "entity_id": "https://authentic-source.example.com",
-                  "dataset_id": "12345"
-              }
-            ],
             "claims": [
               {
                 "display": [
@@ -112,7 +112,7 @@
                   }
                 ],
                 "path": [
-                  "birth_date"
+                  "birthdate"
                 ]
               },
               {
@@ -127,7 +127,7 @@
                   }
                 ],
                 "path": [
-                  "birth_place"
+                  "place_of_birth"
                 ]
               },
               {
@@ -202,7 +202,7 @@
                   }
                 ],
                 "path": [
-                  "unique_identifier"
+                  "personal_administrative_number"
                 ]
               }
             ],
@@ -215,8 +215,7 @@
                 "locale": "en-US",
                 "name": "Italian PID Provider"
               }
-            ],
-            "schema_id": "pid+dc+sd-jwt+urn:eudi:pid:it:1"
+            ]
           },
           "credential_signing_alg_values_supported": [
             "ES256",
@@ -235,6 +234,7 @@
               ]
             }
           },
+          "schema_id": "pid+dc+sd-jwt+urn:eudi:pid:it:1",
           "scope": "PersonIdentificationData"
         }
       },
