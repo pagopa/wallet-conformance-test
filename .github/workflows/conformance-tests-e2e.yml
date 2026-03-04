@@ -1,0 +1,81 @@
+name: Conformance Tests E2E
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance-tests:
+    name: Conformance Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda #v4.1.0
+        with:
+          version: "10.23.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.19.0"
+          cache: "pnpm"
+
+      - name: Create config.ini from example
+        shell: bash
+        run: cp config.example.ini config.ini
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Issuance tests ──────────────────────────────────────────────────────
+      - name: Run issuance tests
+        shell: bash
+        run: pnpm test:issuance
+        env:
+          CONFIG_CREDENTIAL_ISSUER_URI: ${{ vars.CONFIG_CREDENTIAL_ISSUER_URI }}
+
+      # ── Fetch authorize_request_url (Linux) ─────────────────────────────────
+      - name: Fetch authorize_request_url (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          AUTHORIZE_URL=$(curl -s -X POST \
+            "${{ vars.CONFIG_RELYING_PARTY_URI }}" \
+            -H "Content-Type: application/json" \
+            -d '{"flow_type":"cross-device","dcqlQuery":{"credentials":[{"id":"550e8400-e29b-41d4-a716-446655440000","format":"dc+sd-jwt","meta":{"vct_values":["https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata"]},"claims":[{"path":["given_name"]},{"path":["family_name"]}]}]}}' \
+            | jq -r '.url')
+          echo "CONFIG_PRESENTATION_AUTHORIZE_URI=$AUTHORIZE_URL" >> "$GITHUB_ENV"
+
+      # ── Fetch authorize_request_url (Windows) ───────────────────────────────
+      - name: Fetch authorize_request_url (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $body = '{"flow_type":"cross-device","dcqlQuery":{"credentials":[{"id":"550e8400-e29b-41d4-a716-446655440000","format":"dc+sd-jwt","meta":{"vct_values":["https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata"]},"claims":[{"path":["given_name"]},{"path":["family_name"]}]}]}}'
+          $response = Invoke-RestMethod `
+            -Uri "${{ vars.CONFIG_RELYING_PARTY_URI }}" `
+            -Method Post `
+            -ContentType "application/json" `
+            -Body $body
+          $authorizeUrl = $response.url
+          "CONFIG_PRESENTATION_AUTHORIZE_URI=$authorizeUrl" >> $env:GITHUB_ENV
+      # ── Presentation tests ───────────────────────────────────────────────────
+      - name: Run presentation tests
+        shell: bash
+        run: pnpm test:presentation
+        # CONFIG_PRESENTATION_AUTHORIZE_URI is set in GITHUB_ENV by the previous step
