@@ -36,8 +36,9 @@ export interface AuthorizeStepOptions {
   baseUrl: string;
 
   /**
-   * Client ID of the OAuth2 Client
-   * */
+   * thumprint of the client public key used to sign the authorization response, 
+   * thumprint of the jwk in the cnf wallet attestation
+   */
   clientId: string;
 
   /**
