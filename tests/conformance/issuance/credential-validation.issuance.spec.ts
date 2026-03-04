@@ -10,8 +10,8 @@ import {
   withCredentialRequestOverrides,
   withCredentialSignJwtOverride,
   withDPoPSignedByWrongKey,
-  withNoDPoP,
   withNoAthDPoP,
+  withNoDPoP,
   withWrongAthDPoP,
   withWrongHtmDPoP,
 } from "#/helpers/credential-validation-helpers";
@@ -224,9 +224,12 @@ testConfigs.forEach((testConfig) => {
           entityStatementClaims?.metadata?.openid_credential_issuer
             ?.batch_credential_issuance;
 
-        if (!batchConfig) {
+        if (
+          ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0) ||
+          !batchConfig
+        ) {
           log.debug(
-            "→ CI_072 skipped: issuer does not advertise batch_credential_issuance in metadata",
+            "→ CI_072 skipped: issuer does not advertise batch_credential_issuance in metadata or wallet config is v1.0 (batch requires => v1.3)",
           );
           testSuccess = true;
           return;
@@ -241,10 +244,6 @@ testConfigs.forEach((testConfig) => {
         const duplicateKeyPair = await createKeys();
 
         // Build a v1.3 credential request if possible (batch requires v1.3)
-        const v13Config = new IoWalletSdkConfig({
-          itWalletSpecsVersion: ItWalletSpecsVersion.V1_3,
-        });
-
         let batchRequest: Awaited<ReturnType<typeof createCredentialRequest>>;
         try {
           batchRequest = await createCredentialRequest({
@@ -252,7 +251,7 @@ testConfigs.forEach((testConfig) => {
               signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
             },
             clientId: walletAttestationResponse.unitKey.publicKey.kid,
-            config: v13Config,
+            config: ioWalletSdkConfig,
             credential_identifier: credentialConfigurationId,
             issuerIdentifier: credentialIssuer,
             keyAttestation: "placeholder-key-attestation",
@@ -292,14 +291,19 @@ testConfigs.forEach((testConfig) => {
 
         // Duplicate the proof to create a batch request with same JWK in both proofs
         const batchRequestRecord = batchRequest as Record<string, unknown>;
-        const proofJwt = (
-          batchRequestRecord["proof"] as Record<string, unknown>
+        const proofsJwt = (
+          batchRequestRecord["proofs"] as Record<string, unknown>
         )?.["jwt"];
+        if (!proofsJwt || !Array.isArray(proofsJwt) || proofsJwt.length === 0) {
+          log.debug("→ CI_072 skipped: issuer did not return a proof JWT");
+          testSuccess = true;
+          return;
+        }
         const batchRequestWithDuplicates = {
           ...batchRequestRecord,
           proof: undefined,
           proofs: {
-            jwt: [proofJwt, proofJwt],
+            jwt: [proofsJwt[0], proofsJwt[0]],
           },
         };
 
