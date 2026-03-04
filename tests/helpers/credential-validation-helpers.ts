@@ -240,6 +240,43 @@ export function withDPoPSignedByWrongKey(
 }
 
 /**
+ * Wraps a credential request step class to send a DPoP that has no `ath`
+ * claim at all (as if the token-endpoint DPoP were reused at the credential
+ * endpoint). The signature is valid.
+ *
+ * Used for CI_082d: issuer MUST reject because the `ath` claim is mandatory
+ * at the credential endpoint per RFC 9449.
+ */
+export function withNoAthDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const { jwt: dpop } = await createTokenDPoP({
+        // accessToken intentionally omitted → no ath claim in DPoP
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST" as const,
+          url: options.credentialRequestEndpoint,
+        },
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
  * Wraps a credential request step class to bypass DPoP entirely.
  * Sends an empty string as the DPoP proof, which the issuer cannot validate.
  *
@@ -253,41 +290,6 @@ export function withNoDPoP(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
       return super.run({ ...options, dPoPOverride: "" });
-    }
-  } as typeof CredentialRequestDefaultStep;
-}
-
-/**
- * Wraps a credential request step class to send a DPoP with `htm = "GET"`
- * (wrong HTTP method) while keeping a valid cryptographic signature.
- *
- * Used for CI_082b: issuer MUST reject because htm ≠ POST.
- */
-export function withWrongHtmDPoP(
-  StepClass: typeof CredentialRequestDefaultStep,
-): typeof CredentialRequestDefaultStep {
-  return class extends StepClass {
-    async run(
-      options: CredentialRequestStepOptions,
-    ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
-      const { jwt: dpop } = await createTokenDPoP({
-        accessToken: options.accessToken,
-        callbacks: {
-          ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
-        },
-        signer: {
-          alg: "ES256",
-          method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
-        },
-        tokenRequest: {
-          method: "GET" as const, // wrong method → htm = "GET"
-          url: options.credentialRequestEndpoint,
-        },
-      });
-      return super.run({ ...options, dPoPOverride: dpop });
     }
   } as typeof CredentialRequestDefaultStep;
 }
@@ -330,14 +332,12 @@ export function withWrongAthDPoP(
 }
 
 /**
- * Wraps a credential request step class to send a DPoP that has no `ath`
- * claim at all (as if the token-endpoint DPoP were reused at the credential
- * endpoint). The signature is valid.
+ * Wraps a credential request step class to send a DPoP with `htm = "GET"`
+ * (wrong HTTP method) while keeping a valid cryptographic signature.
  *
- * Used for CI_082d: issuer MUST reject because the `ath` claim is mandatory
- * at the credential endpoint per RFC 9449.
+ * Used for CI_082b: issuer MUST reject because htm ≠ POST.
  */
-export function withNoAthDPoP(
+export function withWrongHtmDPoP(
   StepClass: typeof CredentialRequestDefaultStep,
 ): typeof CredentialRequestDefaultStep {
   return class extends StepClass {
@@ -346,7 +346,7 @@ export function withNoAthDPoP(
     ): Promise<CredentialRequestResponse> {
       const { unitKey } = options.walletAttestation;
       const { jwt: dpop } = await createTokenDPoP({
-        // accessToken intentionally omitted → no ath claim in DPoP
+        accessToken: options.accessToken,
         callbacks: {
           ...partialCallbacks,
           signJwt: signJwtCallback([unitKey.privateKey]),
@@ -357,7 +357,7 @@ export function withNoAthDPoP(
           publicJwk: unitKey.publicKey,
         },
         tokenRequest: {
-          method: "POST" as const,
+          method: "GET" as const, // wrong method → htm = "GET"
           url: options.credentialRequestEndpoint,
         },
       });
