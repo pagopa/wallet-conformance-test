@@ -1,13 +1,11 @@
-import { afterAll, afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll } from "vitest";
 
 import type { Logger } from "@/types";
 
 /**
- * Registers `afterEach` / `afterAll` hooks that track per-test pass/fail state
- * and print a `testSummary` box at the end of the enclosing `describe` block.
- *
- * Call this once at the top of any `describe` callback — no boilerplate needed
- * in individual test specs.
+ * Registers afterEach/afterAll hooks that track per-test pass/fail state
+ * and print a testSummary box at the end of the enclosing describe block.
+ * Each suite that calls this helper gets its own summary row.
  *
  * @example
  * describe("My Suite", () => {
@@ -21,7 +19,11 @@ import type { Logger } from "@/types";
 export function useTestSummary(log: Logger, suiteName: string): void {
   let passedCount = 0;
   let failedCount = 0;
-  const suiteStartTime = Date.now();
+  let suiteStartTime: number;
+
+  beforeAll(() => {
+    suiteStartTime = Date.now();
+  });
 
   afterEach((ctx) => {
     if (ctx.task.result?.state === "pass") passedCount++;

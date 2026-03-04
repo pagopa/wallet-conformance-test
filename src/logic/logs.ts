@@ -237,7 +237,10 @@ function testSuite(
 }
 
 /**
- * Prints an ASCII-box summary of all test suites at the end of a run:
+ * Prints an ASCII-box summary for a test suite (or a combined group of suites).
+ *
+ * Typically called once per `describe` block via {@link useTestSummary}.
+ * Pass multiple entries to render a combined multi-suite table.
  *
  *   ┌────────────────────────────────────────┐
  *   │  Test Results                          │
@@ -246,7 +249,7 @@ function testSuite(
  *   │  ✅   5 passed  0 failed  ⏱ 8200ms  … │
  *   └────────────────────────────────────────┘
  *
- * @param suites  Array of suite result objects
+ * @param suites  Array of suite result objects (usually one entry per call)
  */
 function testSummary(
   this: Logger,
