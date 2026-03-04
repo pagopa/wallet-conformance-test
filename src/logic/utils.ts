@@ -244,3 +244,7 @@ export function saveCredentialToDisk(
     return null;
   }
 }
+
+export function buildAttestationPath(wallet: Config["wallet"]): string {
+  return `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+} 

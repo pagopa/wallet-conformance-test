@@ -6,14 +6,14 @@ import { describe, expect, test } from "vitest";
 import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { loadConfigWithHierarchy } from "@/logic";
+import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
   const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
-    const attestationPath = `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_id}`;
+    const attestationPath = buildAttestationPath(config.wallet);
 
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
