@@ -19,7 +19,7 @@ import type { Logger } from "@/types";
 export function useTestSummary(log: Logger, suiteName: string): void {
   let passedCount = 0;
   let failedCount = 0;
-  let suiteStartTime: number;
+  let suiteStartTime = Date.now();
 
   beforeAll(() => {
     suiteStartTime = Date.now();
