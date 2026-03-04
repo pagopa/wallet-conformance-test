@@ -9,7 +9,7 @@ import { KeyPair } from "@/types";
  * @param fileName The name of the file to save the certificate to.
  * @param keyPair The key pair to use for signing the certificate.
  * @param subject The subject name for the certificate.
- * @returns A promise that resolves to the certificate in PEM format.
+ * @returns A promise that resolves to the base64-encoded DER representation of the certificate.
  */
 export async function createAndSaveCertificate(
   fileName: string,
