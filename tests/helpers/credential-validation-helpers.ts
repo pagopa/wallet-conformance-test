@@ -27,17 +27,17 @@ import { KeyPairJwk } from "@/types";
  */
 export function signWithHS256(secret: string): SignJwtCallback {
   return async (_signer, { header, payload }) => {
-    const key = await importJWK(
-      { k: Buffer.from(secret).toString("base64url"), kty: "oct" },
-      "HS256",
-    );
+    const k = Buffer.from(secret).toString("base64url");
+    const octJwk = { k, kty: "oct" } as Jwk; // full, valid oct JWK
+
+    const key = await importJWK({ k, kty: "oct" }, "HS256");
     const jwt = await new SignJWT(payload as Record<string, unknown>)
-      .setProtectedHeader({ ...header, alg: "HS256" })
+      .setProtectedHeader({ ...header, alg: "HS256", jwk: octJwk }) // override jwk
       .sign(key);
 
     return {
       jwt,
-      signerJwk: { kty: "oct" } as Jwk,
+      signerJwk: octJwk, // matches header, includes required `k`
     };
   };
 }
