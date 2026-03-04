@@ -26,8 +26,12 @@ export function useTestSummary(log: Logger, suiteName: string): void {
   });
 
   afterEach((ctx) => {
-    if (ctx.task.result?.state === "pass") passedCount++;
-    else failedCount++;
+    const state = ctx.task.result?.state;
+    if (state === "pass") {
+      passedCount++;
+    } else if (state === "fail") {
+      failedCount++;
+    }
   });
 
   afterAll(() => {
