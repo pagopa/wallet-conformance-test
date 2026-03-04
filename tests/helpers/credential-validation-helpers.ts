@@ -258,25 +258,58 @@ export function withNoDPoP(
 }
 
 /**
- * Wraps a credential request step class to send a tampered DPoP with a
- * specific claim overridden.
+ * Wraps a credential request step class to send a DPoP with `htm = "GET"`
+ * (wrong HTTP method) while keeping a valid cryptographic signature.
  *
- * Builds a real DPoP JWT and then replaces the specified claim value.
- * Used for CI_082b (wrong htm), CI_082c (wrong ath), CI_082d (missing ath).
+ * Used for CI_082b: issuer MUST reject because htm ≠ POST.
  */
-export function withTamperedDPoPClaim(
+export function withWrongHtmDPoP(
   StepClass: typeof CredentialRequestDefaultStep,
-  claim: "ath" | "htm" | "htu",
-  value: string | undefined,
 ): typeof CredentialRequestDefaultStep {
   return class extends StepClass {
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
       const { unitKey } = options.walletAttestation;
-
-      const dpopOptions = {
+      const { jwt: dpop } = await createTokenDPoP({
         accessToken: options.accessToken,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "GET" as const, // wrong method → htm = "GET"
+          url: options.credentialRequestEndpoint,
+        },
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step class to send a DPoP whose `ath` claim
+ * contains the SHA-256 hash of a fake access token, not the real one.
+ * The signature is valid; only the `ath` value is wrong.
+ *
+ * Used for CI_082c: issuer MUST reject because ath ≠ SHA-256(real access token).
+ */
+export function withWrongAthDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const WRONG_TOKEN = "fake-access-token-for-wrong-ath-aabbccddeeff";
+      const { jwt: dpop } = await createTokenDPoP({
+        accessToken: WRONG_TOKEN, // ath = SHA-256(WRONG_TOKEN), not the real token hash
         callbacks: {
           ...partialCallbacks,
           signJwt: signJwtCallback([unitKey.privateKey]),
@@ -290,14 +323,45 @@ export function withTamperedDPoPClaim(
           method: "POST" as const,
           url: options.credentialRequestEndpoint,
         },
-      };
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
 
-      const { jwt: realDPoP } = await createTokenDPoP(dpopOptions);
-
-      // Tamper the payload: decode, mutate the target claim, re-encode (no re-sign)
-      const tamperedDPoP = tamperJwtPayload(realDPoP, claim, value);
-
-      return super.run({ ...options, dPoPOverride: tamperedDPoP });
+/**
+ * Wraps a credential request step class to send a DPoP that has no `ath`
+ * claim at all (as if the token-endpoint DPoP were reused at the credential
+ * endpoint). The signature is valid.
+ *
+ * Used for CI_082d: issuer MUST reject because the `ath` claim is mandatory
+ * at the credential endpoint per RFC 9449.
+ */
+export function withNoAthDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const { jwt: dpop } = await createTokenDPoP({
+        // accessToken intentionally omitted → no ath claim in DPoP
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST" as const,
+          url: options.credentialRequestEndpoint,
+        },
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
     }
   } as typeof CredentialRequestDefaultStep;
 }
@@ -313,25 +377,4 @@ async function importKeyPairJwk(
   key: KeyPairJwk,
 ): Promise<Awaited<ReturnType<typeof importJWK>>> {
   return importJWK(key as Parameters<typeof importJWK>[0], key.alg ?? "ES256");
-}
-
-/**
- * Decodes the payload of a compact JWS, mutates a single claim (or deletes it
- * when `value` is undefined), and re-encodes without re-signing — invalidating
- * the signature. Mirrors the same helper in par-validation-helpers.ts.
- */
-function tamperJwtPayload(jwt: string, field: string, value: unknown): string {
-  const parts = jwt.split(".");
-  if (parts.length !== 3) throw new Error("Invalid compact JWT format");
-  const [headerPart, payloadPart, sig] = parts as [string, string, string];
-
-  const decoded = JSON.parse(
-    Buffer.from(payloadPart, "base64url").toString(),
-  ) as Record<string, unknown>;
-  const mutated =
-    value === undefined
-      ? Object.fromEntries(Object.entries(decoded).filter(([k]) => k !== field))
-      : { ...decoded, [field]: value };
-  const tampered = Buffer.from(JSON.stringify(mutated)).toString("base64url");
-  return `${headerPart}.${tampered}.${sig}`;
 }

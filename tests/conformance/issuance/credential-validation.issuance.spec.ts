@@ -11,7 +11,9 @@ import {
   withCredentialSignJwtOverride,
   withDPoPSignedByWrongKey,
   withNoDPoP,
-  withTamperedDPoPClaim,
+  withNoAthDPoP,
+  withWrongAthDPoP,
+  withWrongHtmDPoP,
 } from "#/helpers/credential-validation-helpers";
 import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
 import { createCredentialRequest } from "@pagopa/io-wallet-oid4vci";
@@ -659,9 +661,7 @@ testConfigs.forEach((testConfig) => {
               "'credential_hash_alg' MUST be a string",
             ).toBe("string");
 
-            log.debug(
-              "  ✅ Credential contains a status assertion",
-            );
+            log.debug("  ✅ Credential contains a status assertion");
           }
         }
 
@@ -791,11 +791,7 @@ testConfigs.forEach((testConfig) => {
       try {
         log.debug("→ Sending credential request with DPoP htm: GET (wrong)...");
         const result = await runCredentialStep(
-          withTamperedDPoPClaim(
-            testConfig.credentialRequestStepClass,
-            "htm",
-            "GET",
-          ),
+          withWrongHtmDPoP(testConfig.credentialRequestStepClass),
         );
         log.debug("  Request completed");
 
@@ -821,11 +817,7 @@ testConfigs.forEach((testConfig) => {
           "→ Sending credential request with DPoP ath pointing to wrong access token...",
         );
         const result = await runCredentialStep(
-          withTamperedDPoPClaim(
-            testConfig.credentialRequestStepClass,
-            "ath",
-            "aW52YWxpZC1hY2Nlc3MtdG9rZW4taGFzaC10aGF0LWRvZXMtbm90LW1hdGNoLWFueXRoaW5n",
-          ),
+          withWrongAthDPoP(testConfig.credentialRequestStepClass),
         );
         log.debug("  Request completed");
 
@@ -853,11 +845,7 @@ testConfigs.forEach((testConfig) => {
           "→ Sending credential request with DPoP missing ath claim (simulating token-endpoint DPoP reuse)...",
         );
         const result = await runCredentialStep(
-          withTamperedDPoPClaim(
-            testConfig.credentialRequestStepClass,
-            "ath",
-            undefined,
-          ),
+          withNoAthDPoP(testConfig.credentialRequestStepClass),
         );
         log.debug("  Request completed");
 
