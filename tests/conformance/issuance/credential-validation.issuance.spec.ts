@@ -19,7 +19,8 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
-import { decodeJwt, exportJWK, generateKeyPair } from "jose";
+import { decodeJwt } from "@sd-jwt/decode";
+import { exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
@@ -576,6 +577,7 @@ testConfigs.forEach((testConfig) => {
 
     // -----------------------------------------------------------------------
     // CI_079 — Credential Registration
+    // Note: currwently we support only sd-jwt-vc, planned mdoc with task WLEO-1006
     // -----------------------------------------------------------------------
 
     test("CI_079: Credential Registration | Issued credential references a valid status list entry initialized as valid", async () => {
@@ -609,25 +611,56 @@ testConfigs.forEach((testConfig) => {
           const credentialJwt = credentialObj.credential;
           expect(credentialJwt).toBeDefined();
 
-          // Decode the SD-JWT to inspect claims (only the header JWT, before ~)
-          const headerJwt = credentialJwt.split("~")[0] ?? credentialJwt;
-          const claims = decodeJwt(headerJwt) as Record<string, unknown>;
-
+          const { payload } = decodeJwt(credentialJwt);
           log.debug(
-            `  Credential claims: ${JSON.stringify(Object.keys(claims))}`,
+            `  Credential claims: ${JSON.stringify(Object.keys(payload))}`,
           );
 
-          const statusClaim = claims["status"] ?? claims["credentialStatus"];
+          const statusClaim = payload["status"] as
+            | Record<string, unknown>
+            | undefined;
+          expect(
+            statusClaim,
+            "Credential MUST contain a 'status' claim",
+          ).toBeDefined();
           log.debug(`  Status claim present: ${statusClaim !== undefined}`);
 
-          if (statusClaim !== undefined) {
-            log.debug(`  Status claim: ${JSON.stringify(statusClaim)}`);
+          const specVersion = ioWalletSdkConfig.itWalletSpecsVersion;
+          if (specVersion === ItWalletSpecsVersion.V1_3) {
+            expect(
+              statusClaim?.["status_list"],
+              "V1.3 MUST contain 'status_list'",
+            ).toBeDefined();
+            const sl = statusClaim?.["status_list"] as
+              | Record<string, unknown>
+              | undefined;
+            expect(
+              typeof sl?.["idx"],
+              "'status_list.idx' MUST be a number",
+            ).toBe("number");
+            expect(
+              typeof sl?.["uri"],
+              "'status_list.uri' MUST be a string",
+            ).toBe("string");
+
             log.debug(
               "  ✅ Credential contains a status claim referencing a status list",
             );
           } else {
+            expect(
+              statusClaim?.["status_assertion"],
+              "V1.0 MUST contain 'status_assertion'",
+            ).toBeDefined();
+            const sa = statusClaim?.["status_assertion"] as
+              | Record<string, unknown>
+              | undefined;
+            expect(
+              typeof sa?.["credential_hash_alg"],
+              "'credential_hash_alg' MUST be a string",
+            ).toBe("string");
+
             log.debug(
-              "  ⚠️  No status claim found — issuer may not implement status lists (informational)",
+              "  ✅ Credential contains a status assertion",
             );
           }
         }
