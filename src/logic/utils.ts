@@ -78,7 +78,7 @@ export const loadJsonDumps = (
 
   const filePath = path.join(dumpsDir, version, fileName);
   if (!existsSync(filePath)) {
-    throw new Error(`File ${fileName} not found`);
+    throw new Error(`File ${filePath} not found`);
   }
   try {
     // Read the file and replace placeholders
@@ -101,7 +101,7 @@ export const loadJsonDumps = (
     return JSON.parse(raw);
   } catch (e) {
     throw new Error(
-      `Missing file or invalid JSON in ${fileName}: ${(e as Error).message}`,
+      `Missing file or invalid JSON in ${filePath}: ${(e as Error).message}`,
     );
   }
 };
