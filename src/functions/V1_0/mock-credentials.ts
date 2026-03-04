@@ -146,6 +146,11 @@ export async function buildMockSdJwt_V1_0(
       exp: Math.floor(expiration.getTime() / 1000),
       iat: Math.floor(Date.now() / 1000),
       iss: metadata.iss,
+      status: {
+        status_assertion: {
+          credential_hash_alg: "sha-256",
+        },
+      },
       sub: unitKey.kid,
       vct,
       "vct#integrity": vctIntegrity,
