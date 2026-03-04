@@ -36,8 +36,9 @@ export interface AuthorizeStepOptions {
   baseUrl: string;
 
   /**
-   * Client ID of the OAuth2 Client
-   * */
+   * thumprint of the client public key used to sign the authorization response, 
+   * thumprint of the jwk in the cnf wallet attestation
+   */
   clientId: string;
 
   /**
@@ -131,7 +132,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       const credentialsWithKb = await Promise.all(
         options.credentials.map((c) =>
           createVpTokenSdJwt({
-            client_id: options.clientId,
+            client_id: requestObject.client_id,
             dpopJwk: c.keyPair.privateKey,
             nonce: requestObject.nonce,
             sdJwt: c.credential,
