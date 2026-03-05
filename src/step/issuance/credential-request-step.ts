@@ -3,6 +3,7 @@ import {
   CreateTokenDPoPOptions,
 } from "@pagopa/io-wallet-oauth2";
 import {
+  BaseCredentialRequestOptions,
   createCredentialRequest,
   CredentialRequest,
   CredentialRequestOptions,
@@ -58,6 +59,13 @@ export interface CredentialRequestStepOptions {
   clientId: string;
 
   /**
+   * Optional overrides for the credential request options passed to createCredentialRequest.
+   * When provided, these values are spread over the computed defaults, allowing tests to
+   * manipulate the credential proof (e.g. swap the signJwt callback, change nonce, override signer).
+   */
+  createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions>;
+
+  /**
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
    */
   credentialIdentifier: string;
@@ -66,6 +74,13 @@ export interface CredentialRequestStepOptions {
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
    */
   credentialRequestEndpoint: string;
+
+  /**
+   * Optional pre-built DPoP JWT string.
+   * When provided, this value is used as the DPoP proof instead of building one from the unit key.
+   * Pass an invalid or empty string to simulate DPoP attack scenarios.
+   */
+  dPoPOverride?: string;
 
   /**
    * Configuration for the io-wallet-sdk.
@@ -157,7 +172,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
       );
 
       log.info("Generating DPoP...");
-      const dpop = await this.buildDPoP(options);
+      const dpop =
+        options.dPoPOverride !== undefined
+          ? options.dPoPOverride
+          : await this.buildDPoP(options);
 
       log.info(
         `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
@@ -182,7 +200,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
     options: CredentialRequestStepOptions,
     credentialKeyPair: KeyPair,
   ): Promise<CredentialRequest> {
-    const commonOptions = {
+    const baseOptions = {
       callbacks: {
         signJwt: signJwtCallback([credentialKeyPair.privateKey]),
       },
@@ -195,6 +213,11 @@ export class CredentialRequestDefaultStep extends StepFlow {
         method: "jwk" as const,
         publicJwk: credentialKeyPair.publicKey,
       },
+    };
+
+    const commonOptions = {
+      ...baseOptions,
+      ...options.createCredentialRequestOverrides,
     };
 
     if (options.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
