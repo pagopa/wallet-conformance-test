@@ -185,7 +185,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
       issuance.tests_dir = options.issuanceTestsDir;
     }
     if (options.issuanceCerificateSubject) {
-      issuance.tests_dir = options.issuanceTestsDir;
+      issuance.certificate_subject = options.issuanceCertificateSubject;
     }
     partialConfig.issuance = issuance as Config["issuance"];
   }
@@ -306,17 +306,12 @@ function loadIniFile(filePath: string): null | Partial<Config> {
     const parsed = parse(textConfig) as ParsedIniConfig;
 
     // Transform steps_mapping from flat structure to nested structure
-    // INI format: [steps_mapping] default_steps_dir = ... / key = value
-    // Target format: { default_steps_dir: "...", mapping: { key: value } }
+    // INI format: [steps_mapping] key = value
+    // Target format: { mapping: { key: value } }
     if (parsed.steps_mapping && typeof parsed.steps_mapping === "object") {
       const stepsMappingRaw = parsed.steps_mapping as Record<string, unknown>;
-      const { default_steps_dir, ...mappings } = stepsMappingRaw;
       parsed.steps_mapping = {
-        default_steps_dir:
-          default_steps_dir && typeof default_steps_dir === "string"
-            ? default_steps_dir
-            : undefined,
-        mapping: mappings as Record<string, string>,
+        mapping: stepsMappingRaw as Record<string, string>,
       };
     }
 

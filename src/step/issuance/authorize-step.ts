@@ -134,7 +134,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         options.credentials,
         dcqlQuery,
         {
-          client_id: options.clientId,
+          client_id: requestObject.client_id,
           nonce: requestObject.nonce,
           responseUri: responseUri,
         },

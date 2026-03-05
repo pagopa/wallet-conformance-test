@@ -179,7 +179,7 @@ function formatDcqlFailCause(
     };
 
     errorMessage.push(
-      `  Query index: ${k}, query id: ${queryResult.credential_query_id}\n`,
+      `\n  Query index: ${k}, query id: ${queryResult.credential_query_id}\n`,
     );
 
     for (const failed of queryResult.failed_credentials) {
@@ -202,7 +202,7 @@ function formatDcqlFailCause(
       };
 
       errorMessage.push(
-        `    Credential ${credentials[queryFailed.input_credential_index]?.id}:\n`,
+        `    Credential '${credentials[queryFailed.input_credential_index]?.id}':\n`,
       );
 
       errorMessage.push(`    → Trusted authorities `);
@@ -240,6 +240,8 @@ function formatDcqlFailCause(
             .join("\n      ")}`,
         );
       }
+
+      errorMessage.push("\n");
     }
   }
 
