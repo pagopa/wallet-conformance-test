@@ -49,9 +49,7 @@ export async function loadCredentials(
     // First, attempt to parse the credential as a SD-JWT
     try {
       const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
-      const parsed = await SDJwt.decodeSDJwt(credential, (data) =>
-        digest(data),
-      );
+      const parsed = await SDJwt.decodeSDJwt(credential, digest);
 
       credentials[file] = {
         compact: credential,

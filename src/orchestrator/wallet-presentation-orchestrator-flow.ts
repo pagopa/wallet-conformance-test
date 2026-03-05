@@ -1,5 +1,6 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 import {
   createMockSdJwt,
@@ -274,10 +275,12 @@ export class WalletPresentationOrchestratorFlow {
     const pid =
       maybeExpiredPid &&
       maybeExpiredPid.typ === "dc+sd-jwt" &&
-      !(await isCredentialSdJwtExpired(
+      !isCredentialSdJwtExpired(
         maybeExpiredPid.parsed,
-        this.config.wallet.wallet_version,
-      ))
+        this.config.wallet.wallet_version === ItWalletSpecsVersion.V1_0
+          ? "expiry_date"
+          : "date_of_expiry",
+      )
         ? maybeExpiredPid
         : await createMockSdJwt(
             {

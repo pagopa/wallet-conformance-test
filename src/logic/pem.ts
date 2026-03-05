@@ -65,3 +65,9 @@ export async function createAndSaveCertificate(
   writeFileSync(fileName, cert.toString("pem"));
   return certDer;
 }
+
+export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
+  const certificate =
+    typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
+  return certificate.notAfter.getTime() < Date.now();
+}
