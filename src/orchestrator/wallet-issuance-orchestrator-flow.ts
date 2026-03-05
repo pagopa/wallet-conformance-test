@@ -249,6 +249,7 @@ export class WalletIssuanceOrchestratorFlow {
           this.config.wallet.credentials_storage_path,
           this.issuanceConfig.credentialConfigurationId,
           firstCredential.credential,
+          this.config.wallet.wallet_version,
         );
         if (savedPath) {
           this.log.info(`Credential saved to disk: ${savedPath}`);
@@ -324,6 +325,7 @@ export class WalletIssuanceOrchestratorFlow {
         },
         this.config.wallet.backup_storage_path,
         this.config.wallet.credentials_storage_path,
+        itWalletSpecsVersion,
       );
     }
 
@@ -446,7 +448,7 @@ export class WalletIssuanceOrchestratorFlow {
       );
 
     const popAttestation = await createClientAttestationPopJwt({
-      authorizationServer: entityStatementClaims.iss,
+      authorizationServer: credentialIssuer,
       callbacks,
       clientAttestation: walletAttestationResponse.attestation,
     });

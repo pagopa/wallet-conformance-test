@@ -5,13 +5,13 @@ import {
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 
-import { loadConfig } from "../logic/utils";
+import { loadConfigWithHierarchy } from "../logic/utils";
 
 export const createServer = () => {
   const app = express();
   app.use(express.json());
 
-  const config = loadConfig("./config.ini");
+  const config = loadConfigWithHierarchy();
   const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   // federation metadata
@@ -20,6 +20,7 @@ export const createServer = () => {
       const jwt = await createTrustAnchorMetadata({
         trustAnchor: config.trust,
         trustAnchorBaseUrl,
+        walletVersion: config.wallet.wallet_version,
       });
       res.type("application/jwt").send(jwt);
     } catch (err) {
