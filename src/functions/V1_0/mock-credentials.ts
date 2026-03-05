@@ -84,6 +84,7 @@ export async function buildMockSdJwt_V1_0(
     federationTrustAnchorsJwksPath: metadata.trustAnchorJwksPath,
     sub: metadata.iss,
     trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
+    walletVersion: ItWalletSpecsVersion.V1_0,
   });
 
   const issClaims = loadJsonDumps(

@@ -22,7 +22,7 @@ export async function createMockMdlMdoc(
   subject: string,
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): Promise<Credential> {
   const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
 
@@ -77,7 +77,7 @@ export async function createMockSdJwt(
   },
   backupPath: string,
   credentialsPath: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): Promise<Credential> {
   const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
 

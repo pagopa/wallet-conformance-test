@@ -32,7 +32,7 @@ describe("Load Mocked Credentials", async () => {
     ),
   );
 
-  it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
+  it("should load a mix of valid sd-jwt and mdoc credentials V1_0", async () => {
     try {
       const credentials = await loadCredentials(
         credentialsDir,
@@ -86,13 +86,12 @@ describe("Generate Mocked Credentials", () => {
 
   afterAll(() => {
     rmSync(
-      `${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/dc_sd_jwt_PersonIdentificationData`,
+      `${backupDir}/${config.wallet.wallet_version}/dc_sd_jwt_PersonIdentificationData`,
       { force: true },
     );
-    rmSync(
-      `${backupDir}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`,
-      { force: true },
-    );
+    rmSync(`${backupDir}/${config.wallet.wallet_version}/mso_mdoc_mDL`, {
+      force: true,
+    });
   });
 
   it("should create a mock SD-JWT using existing keys", async () => {
@@ -101,7 +100,12 @@ describe("Generate Mocked Credentials", () => {
       await loadJwks(backupDir, buildJwksPath(credentialIdentifier))
     ).publicKey;
 
-    const credential = await createMockSdJwt(metadata, backupDir, backupDir);
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      config.wallet.wallet_version,
+    );
 
     const decoded = await new SDJwtVcInstance({
       hasher: digest,
@@ -181,7 +185,7 @@ describe("Generate Mocked Credentials", () => {
 
     expect(claimsFromDecoded).toEqual({
       ...dump,
-      expiry_date: expect.any(String),
+      date_of_expiry: expect.any(String),
     });
   });
 
@@ -243,7 +247,7 @@ describe("createVpTokenMdoc", () => {
     ).rejects.toThrow();
   });
 
-  it("should generate device response when matching credential found", async () => {
+  it("should generate device response when matching credential found V1_0", async () => {
     const docType = "eu.europa.it.badge";
     const namespace = "eu.europa.it.badge.1";
     const keyPair = await loadJwks(backupDir, "wallet_unit_jwks");
