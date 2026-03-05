@@ -6,7 +6,7 @@ import {
 
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
-import { signCallback } from "./jwt";
+import { signCallback, signJwtCallback } from "./jwt";
 import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
 
 export interface CreateFederationMetadataOptions {
@@ -75,18 +75,24 @@ export const createTrustAnchorMetadata = async (options: {
   trustAnchorBaseUrl: string;
   walletVersion: Config["wallet"]["wallet_version"];
 }): Promise<string> => {
+  const signedJwks = await loadJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor_jwks",
+  );
+  const trust_marks = await getTrustMarks(
+    options.trustAnchorBaseUrl,
+    signedJwks
+  );
+
   const placeholders = {
     sub: options.trustAnchorBaseUrl,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
+    trust_marks,
   };
   const claims = loadJsonDumps(
     "trust_anchor_metadata.json",
     placeholders,
     options.walletVersion,
-  );
-  const signedJwks = await loadJwksWithSelfSignedX5c(
-    options.trustAnchor,
-    "trust_anchor",
   );
 
   return await createFederationMetadata({
@@ -142,19 +148,26 @@ export interface CreateSubordinateEntityStatementOptions {
 export const createSubordinateTrustAnchorMetadata = async (
   options: CreateSubordinateEntityStatementOptions,
 ): Promise<string> => {
+  const signedJwks = await loadJwks(
+    options.federationTrustAnchorsJwksPath,
+    "trust_anchor_jwks",
+  );
+  const trust_marks = await getTrustMarks(
+    options.trustAnchorBaseUrl,
+    signedJwks
+  );
+
   const placeholders = {
     sub: options.sub,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
+    trust_marks,
   };
   const claims = loadJsonDumps(
     "trust_anchor_metadata.json",
     placeholders,
     options.walletVersion,
   );
-  const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
-    "trust_anchor_jwks",
-  );
+
   return await createFederationMetadata({
     claims,
     entityPublicJwk: options.entityPublicJwk,
@@ -199,3 +212,41 @@ export const createSubordinateWalletUnitMetadata = async (
     signedJwks,
   });
 };
+
+export async function getTrustMarks(
+  trust_anchor_base_url: string,
+  jwks: KeyPair,
+): Promise<{trust_mark: string, trust_mark_type: string}[]> {
+  const trust_mark_type = `${trust_anchor_base_url}/trust_marks/authorization_policy/credential-issuer`;
+  const trustMarkPayload = {
+    iss: trust_anchor_base_url,
+    sub: "https://conformance-test.ci.example.com",
+    trust_mark_type,
+    iat: Date.now(),
+    exp: new Date(Date.now() + 24 * 60 * 60 * 1000 * 365).getTime(),
+    logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+    organization_type: "private",
+  };
+  const trustMarkHeader = {
+    alg: jwks.privateKey.alg ?? "ES256",
+    kid: jwks.privateKey.kid
+  };
+
+  const trust_mark = await signJwtCallback([jwks.privateKey])(
+    {
+      method: "jwk",
+      publicJwk: jwks.publicKey,
+      alg: jwks.publicKey.alg ?? "ES256",
+      kid: jwks.publicKey.kid,
+    },
+    {
+      payload: trustMarkPayload,
+      header: trustMarkHeader,
+    }
+  );
+
+  return [{
+    trust_mark: trust_mark.jwt,
+    trust_mark_type,
+  }];
+}
