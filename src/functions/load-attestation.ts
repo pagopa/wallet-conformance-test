@@ -85,6 +85,7 @@ export const loadAttestation = async (options: {
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
+      wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
     const wpClaims = loadJsonDumps(
