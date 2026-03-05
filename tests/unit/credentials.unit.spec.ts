@@ -45,7 +45,7 @@ describe("Load Mocked Credentials", async () => {
     ),
   );
 
-  it("should load a mix of valid sd-jwt and mdoc credentials", async () => {
+  it("should load a mix of valid sd-jwt and mdoc credentials V1_0", async () => {
     try {
       const credentials = await loadCredentials(
         credentialsDir,
@@ -503,7 +503,7 @@ describe("Generate Mocked Credentials", () => {
 
     expect(claimsFromDecoded).toEqual({
       ...dump,
-      expiry_date: expect.any(String),
+      date_of_expiry: expect.any(String),
     });
   });
 
@@ -565,7 +565,7 @@ describe("createVpTokenMdoc", () => {
     ).rejects.toThrow();
   });
 
-  it("should generate device response when matching credential found", async () => {
+  it("should generate device response when matching credential found V1_0", async () => {
     const docType = "eu.europa.it.badge";
     const namespace = "eu.europa.it.badge.1";
     const keyPair = await loadJwks(backupDir, "wallet_unit_jwks");

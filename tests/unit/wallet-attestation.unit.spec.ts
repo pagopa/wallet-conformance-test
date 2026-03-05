@@ -7,22 +7,17 @@ import { decodeJwt, importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 
-import type { Config, KeyPair } from "@/types";
+import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { loadConfig } from "@/logic";
+import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
 
 describe("Wallet Attestation Unit Test", () => {
-  const configWithVersion = loadConfig("./config.ini");
-  const { wallet_version: _, ...walletConfig } = configWithVersion.wallet;
-  const config: Config = {
-    ...configWithVersion,
-    wallet: walletConfig,
-  };
+  const config = loadConfigWithHierarchy();
   const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
-    const attestationPath = `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version}/${config.wallet.wallet_id}`;
+    const attestationPath = buildAttestationPath(config.wallet);
 
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
@@ -96,7 +91,7 @@ describe("Wallet Attestation Unit Test", () => {
     });
 
     const attestation = readFileSync(
-      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/${config.wallet.wallet_id}`,
+      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version}/${config.wallet.wallet_id}`,
       "utf-8",
     );
     expect(response.attestation).toBe(attestation);

@@ -77,13 +77,13 @@ export async function fetchWithRetries(
 export const loadJsonDumps = (
   fileName: string,
   placeholders: Record<string, object | string>,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
   const filePath = path.join(dumpsDir, version, fileName);
   if (!existsSync(filePath)) {
-    throw new Error(`File ${fileName} not found`);
+    throw new Error(`File ${filePath} not found`);
   }
   try {
     // Read the file and replace placeholders
@@ -106,10 +106,14 @@ export const loadJsonDumps = (
     return JSON.parse(raw);
   } catch (e) {
     throw new Error(
-      `Missing file or invalid JSON in ${fileName}: ${(e as Error).message}`,
+      `Missing file or invalid JSON in ${filePath}: ${(e as Error).message}`,
     );
   }
 };
+
+export function buildAttestationPath(wallet: Config["wallet"]): string {
+  return `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+}
 
 export function buildCertPath(pathPrefix: string): string {
   return `${pathPrefix}_cert`;
@@ -274,7 +278,7 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): null | string {
   try {
     const credentialsPath = path.resolve(
