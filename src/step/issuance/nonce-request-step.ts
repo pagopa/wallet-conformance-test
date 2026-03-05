@@ -29,7 +29,7 @@ export class NonceRequestDefaultStep extends StepFlow {
   async run(options: NonceRequestStepOptions): Promise<NonceRequestResponse> {
     const log = this.log.withTag(this.tag);
 
-    log.info(`Starting Nonce Request Step`);
+    log.debug(`Starting Nonce Request Step`);
 
     return this.execute<NonceRequestExecuteResponse>(async () => {
       log.info("Fetching Nonce from", options.nonceEndpoint);
