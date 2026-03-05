@@ -8,6 +8,7 @@ import { decodeJwt } from "jose";
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  getTrustMarks,
   loadJsonDumps,
 } from "@/logic";
 import { generateSRIHash } from "@/logic/sd-jwt";
@@ -84,6 +85,10 @@ export async function buildMockSdJwt_V1_3(
     trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
     walletVersion: ItWalletSpecsVersion.V1_3,
   });
+  const trust_marks = await getTrustMarks(
+    metadata.trustAnchorBaseUrl,
+    keyPair
+  );
 
   const issClaims = loadJsonDumps(
     "issuer_metadata.json",
@@ -91,6 +96,7 @@ export async function buildMockSdJwt_V1_3(
       issuer_base_url: metadata.iss,
       public_key: keyPair.publicKey,
       trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+      trust_marks,
     },
     ItWalletSpecsVersion.V1_3,
   );
