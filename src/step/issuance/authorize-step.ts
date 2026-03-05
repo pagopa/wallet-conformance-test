@@ -36,7 +36,7 @@ export interface AuthorizeStepOptions {
   baseUrl: string;
 
   /**
-   * thumprint of the client public key used to sign the authorization response, 
+   * thumprint of the client public key used to sign the authorization response,
    * thumprint of the jwk in the cnf wallet attestation
    */
   clientId: string;
