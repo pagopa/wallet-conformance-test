@@ -72,7 +72,7 @@ export async function fetchWithRetries(
 export const loadJsonDumps = (
   fileName: string,
   placeholders: Record<string, object | string>,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ) => {
   const dumpsDir = path.resolve(process.cwd(), "./dumps");
 
@@ -105,6 +105,10 @@ export const loadJsonDumps = (
     );
   }
 };
+
+export function buildAttestationPath(wallet: Config["wallet"]): string {
+  return `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+}
 
 export function buildCertPath(pathPrefix: string): string {
   return `${pathPrefix}_cert`;
@@ -222,7 +226,7 @@ export function saveCredentialToDisk(
   credentialsStoragePath: string,
   credentialConfigurationId: string,
   credential: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_0,
+  version: ItWalletSpecsVersion,
 ): null | string {
   try {
     const credentialsPath = path.resolve(

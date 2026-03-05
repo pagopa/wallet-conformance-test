@@ -73,12 +73,17 @@ export const createFederationMetadata = async (
 export const createTrustAnchorMetadata = async (options: {
   trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
+  walletVersion: Config["wallet"]["wallet_version"];
 }): Promise<string> => {
   const placeholders = {
     sub: options.trustAnchorBaseUrl,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
-  const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
+  const claims = loadJsonDumps(
+    "trust_anchor_metadata.json",
+    placeholders,
+    options.walletVersion,
+  );
   const signedJwks = await loadJwksWithSelfSignedX5c(
     options.trustAnchor,
     "trust_anchor",
@@ -117,6 +122,11 @@ export interface CreateSubordinateEntityStatementOptions {
    * The base URL of the Trust Anchor.
    */
   trustAnchorBaseUrl: string;
+
+  /**
+   * The wallet version to use when loading JSON dumps for claim templates.
+   */
+  walletVersion: Config["wallet"]["wallet_version"];
 }
 
 /**
@@ -136,7 +146,11 @@ export const createSubordinateTrustAnchorMetadata = async (
     sub: options.sub,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
   };
-  const claims = loadJsonDumps("trust_anchor_metadata.json", placeholders);
+  const claims = loadJsonDumps(
+    "trust_anchor_metadata.json",
+    placeholders,
+    options.walletVersion,
+  );
   const signedJwks = await loadJwks(
     options.federationTrustAnchorsJwksPath,
     "trust_anchor_jwks",

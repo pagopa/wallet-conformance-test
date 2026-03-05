@@ -275,6 +275,7 @@ export class WalletPresentationOrchestratorFlow {
           },
           this.config.wallet.backup_storage_path,
           this.config.wallet.credentials_storage_path,
+          this.config.wallet.wallet_version,
         );
 
     const { privateKey } = await loadJwks(
