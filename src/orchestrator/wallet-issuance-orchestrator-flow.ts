@@ -4,9 +4,18 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
+import z from "zod";
 
-import { createMockSdJwt, loadAttestation, loadCredentials } from "@/functions";
+import {
+  createMockSdJwt,
+  isCredentialSdJwtExpired,
+  loadAttestation,
+  loadCredentials,
+} from "@/functions";
 import {
   buildJwksPath,
   createLogger,
@@ -314,6 +323,19 @@ export class WalletIssuanceOrchestratorFlow {
       else {
         this.log.debug("missing pid: creating new one");
         throw new Error("missing pid: creating new one");
+      }
+
+      if (personIdentificationData.typ !== "dc+sd-jwt")
+        throw new Error("PID is in mso_mdoc format, reissuing in sd-jwt");
+      if (
+        isCredentialSdJwtExpired(
+          personIdentificationData.parsed,
+          this.config.wallet.wallet_version === ItWalletSpecsVersion.V1_0
+            ? "expiry_date"
+            : "date_of_expiry",
+        )
+      ) {
+        throw new Error("pid is expired: creating a new one");
       }
     } catch {
       personIdentificationData = await createMockSdJwt(

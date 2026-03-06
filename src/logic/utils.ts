@@ -7,7 +7,12 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
+import {
+  createAndSaveCertificate,
+  createAndSaveKeys,
+  hasX509CertificateExpired,
+  verifyJwt,
+} from ".";
 
 // Re-export config loading functions
 export {
@@ -119,6 +124,50 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
+ * Deep merges two objects, with the second object's values taking precedence.
+ *
+ * @param target The target object (lower priority).
+ * @param source The source object (higher priority).
+ * @returns The merged object.
+ */
+export function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (sourceValue === undefined) {
+      continue;
+    }
+
+    if (
+      typeof sourceValue === "object" &&
+      sourceValue !== null &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === "object" &&
+      targetValue !== null &&
+      !Array.isArray(targetValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<
+        keyof T,
+        string
+      >];
+    } else {
+      // Override with source value
+      result[key] = sourceValue as T[Extract<keyof T, string>];
+    }
+  }
+
+  return result;
+}
+
+/**
  * Loads a certificate from a file, or creates and saves it if it doesn't exist.
  *
  * @param certPath The directory path where the certificate is stored.
@@ -152,6 +201,9 @@ export async function loadCertificate(
       .replace("-----END CERTIFICATE-----", "")
       .replace(/\s+/g, "")
       .trim();
+
+    if (hasX509CertificateExpired(certDerBase64))
+      throw new Error("Certificate has expired and has to be regenerated");
 
     return certDerBase64;
   } catch {

@@ -5,6 +5,8 @@ import path from "path";
 
 import { Config, configSchema } from "@/types";
 
+import { deepMerge } from "./utils";
+
 /**
  * Command-line options that can override configuration
  */
@@ -238,50 +240,6 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   }
 
   return partialConfig as Partial<Config>;
-}
-
-/**
- * Deep merges two objects, with the second object's values taking precedence.
- *
- * @param target The target object (lower priority).
- * @param source The source object (higher priority).
- * @returns The merged object.
- */
-function deepMerge<T>(target: T, source: Partial<T>): T {
-  const result = { ...target };
-
-  for (const key in source) {
-    if (!Object.prototype.hasOwnProperty.call(source, key)) {
-      continue;
-    }
-
-    const sourceValue = source[key];
-    const targetValue = result[key];
-
-    if (sourceValue === undefined) {
-      continue;
-    }
-
-    if (
-      typeof sourceValue === "object" &&
-      sourceValue !== null &&
-      !Array.isArray(sourceValue) &&
-      typeof targetValue === "object" &&
-      targetValue !== null &&
-      !Array.isArray(targetValue)
-    ) {
-      // Recursively merge nested objects
-      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<
-        keyof T,
-        string
-      >];
-    } else {
-      // Override with source value
-      result[key] = sourceValue as T[Extract<keyof T, string>];
-    }
-  }
-
-  return result;
 }
 
 /**
