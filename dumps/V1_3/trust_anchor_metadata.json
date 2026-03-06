@@ -1,10 +1,13 @@
 {
   "authority_hints": [],
+  "trust_marks": "{{trust_marks}}",
   "sub": "{{sub}}",
   "iss": "{{trust_anchor_base_url}}",
   "metadata": {
     "federation_entity": {
-      "contacts": ["info@pagopa.it"],
+      "contacts": [
+        "info@pagopa.it"
+      ],
       "federation_fetch_endpoint": "{{trust_anchor_base_url}}/fetch",
       "federation_resolve_endpoint": "{{trust_anchor_base_url}}/resolve",
       "federation_trust_mark_status_endpoint": "{{trust_anchor_base_url}}/trust_mark_status",

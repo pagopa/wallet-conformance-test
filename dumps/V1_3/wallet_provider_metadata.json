@@ -2,6 +2,7 @@
   "authority_hints": [
     "{{trust_anchor_base_url}}"
   ],
+  "trust_marks": "{{trust_marks}}",
   "iss": "{{wallet_provider_base_url}}",
   "sub": "{{wallet_provider_base_url}}",
   "jwks": {

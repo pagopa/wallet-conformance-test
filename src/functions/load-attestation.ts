@@ -10,6 +10,7 @@ import type { AttestationResponse, Config } from "@/types";
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  getTrustMarks,
   loadJsonDumps,
   loadJwks,
   partialCallbacks,
@@ -79,14 +80,20 @@ export const loadAttestation = async (options: {
       entityPublicJwk: providerKeyPair.publicKey,
       federationTrustAnchorsJwksPath: trustAnchorJwksPath,
       sub: wallet.wallet_provider_base_url,
-      trustAnchorBaseUrl: trustAnchorBaseUrl,
       walletVersion: wallet.wallet_version,
+      trustAnchorBaseUrl,
     });
+    const trust_marks = await getTrustMarks(
+      trustAnchorBaseUrl,
+      providerKeyPair
+    );
+
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
       wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
+      trust_marks,
     };
     const wpClaims = loadJsonDumps(
       "wallet_provider_metadata.json",
