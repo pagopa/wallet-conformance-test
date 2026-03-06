@@ -109,11 +109,13 @@ export async function loadCredentialsForPresentation(
       },
       config.wallet.backup_storage_path,
       config.wallet.credentials_storage_path,
+      config.wallet.wallet_version,
     );
     const mobileDriverLicence = await createMockMdlMdoc(
       config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
       config.wallet.backup_storage_path,
       config.wallet.credentials_storage_path,
+      config.wallet.wallet_version,
     );
 
     const pidKeyPair = await loadJwks(
