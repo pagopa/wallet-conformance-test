@@ -14,6 +14,7 @@ export interface CliOptions {
   credentialOfferUri?: string;
   credentialTypes?: string;
   fileIni?: string;
+  issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
   logFile?: string;
   logLevel?: string;
@@ -100,8 +101,8 @@ export function loadConfigWithHierarchy(
   }
 
   // Step 4b: Always set user_agent from package.json version at runtime
-  mergedConfig = deepMerge(mergedConfig, {
-    network: { user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}` },
+  mergedConfig.network = deepMerge(mergedConfig.network, {
+    user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
   });
 
   // Step 5: Validate the final configuration
@@ -161,7 +162,8 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     options.credentialOfferUri ||
     options.credentialTypes ||
     options.saveCredential !== undefined ||
-    options.issuanceTestsDir
+    options.issuanceTestsDir ||
+    options.issuanceCertificateSubject
   ) {
     const issuance: Partial<Config["issuance"]> = {};
     if (options.credentialIssuerUri) {
@@ -181,6 +183,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     }
     if (options.issuanceTestsDir) {
       issuance.tests_dir = options.issuanceTestsDir;
+    }
+    if (options.issuanceCerificateSubject) {
+      issuance.certificate_subject = options.issuanceCertificateSubject;
     }
     partialConfig.issuance = issuance as Config["issuance"];
   }
@@ -301,15 +306,12 @@ function loadIniFile(filePath: string): null | Partial<Config> {
     const parsed = parse(textConfig) as ParsedIniConfig;
 
     // Transform steps_mapping from flat structure to nested structure
-    // INI format: [steps_mapping] default_steps_dir = ... / key = value
-    // Target format: { default_steps_dir: "...", mapping: { key: value } }
+    // INI format: [steps_mapping] key = value
+    // Target format: { mapping: { key: value } }
     if (parsed.steps_mapping && typeof parsed.steps_mapping === "object") {
       const stepsMappingRaw = parsed.steps_mapping as Record<string, unknown>;
-      const { default_steps_dir, ...mappings } = stepsMappingRaw;
       parsed.steps_mapping = {
-        ...(default_steps_dir &&
-          typeof default_steps_dir === "string" && { default_steps_dir }),
-        mapping: mappings as Record<string, string>,
+        mapping: stepsMappingRaw as Record<string, string>,
       };
     }
 
@@ -377,6 +379,10 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_ISSUANCE_TESTS_DIR) {
     options.issuanceTestsDir = process.env.CONFIG_ISSUANCE_TESTS_DIR;
+  }
+  if (process.env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT) {
+    options.issuanceCertificateSubject =
+      process.env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT;
   }
   if (process.env.CONFIG_PRESENTATION_TESTS_DIR) {
     options.presentationTestsDir = process.env.CONFIG_PRESENTATION_TESTS_DIR;
