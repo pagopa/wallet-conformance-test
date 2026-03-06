@@ -8,6 +8,7 @@ import { parseItWalletSpecVersion } from "./version";
  */
 export const configSchema = z.object({
   issuance: z.object({
+    certificate_subject: z.string().optional(),
     credential_offer_uri: z
       .string()
       .url()
@@ -26,9 +27,9 @@ export const configSchema = z.object({
     log_level: z.string(),
   }),
   network: z.object({
-    max_retries: z.coerce.number(),
-    timeout: z.coerce.number(),
-    user_agent: z.string(),
+    max_retries: z.coerce.number().default(10),
+    timeout: z.coerce.number().default(10),
+    user_agent: z.string().optional(),
   }),
   presentation: z.object({
     authorize_request_url: z.string().url(),
