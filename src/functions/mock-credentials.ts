@@ -4,7 +4,6 @@ import { SDJwt } from "@sd-jwt/core";
 import { Tagged } from "cbor";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import z from "zod";
-import { boolean } from "zod/v4";
 
 import {
   buildCertPath,
