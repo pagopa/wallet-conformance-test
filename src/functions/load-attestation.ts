@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { AttestationResponse, Config } from "@/types";
 
 import {
+  buildAttestationPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   loadJsonDumps,
@@ -42,13 +43,10 @@ export const loadAttestation = async (options: {
 
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
 
-  // Cache key includes a short hash of the external TA URL so that switching
-  // between local and external TA (or between different external TAs) does not
-  // reuse a stale cached attestation.
-  const taSuffix = config.trust_anchor.external_ta_url
-    ? `-${Buffer.from(config.trust_anchor.external_ta_url).toString("base64url").slice(0, 12)}`
-    : "";
-  const attestationPath = `${attestationBasePath}/${wallet.wallet_id}${taSuffix}`;
+  const attestationPath = buildAttestationPath(
+    wallet,
+    config.trust_anchor.external_ta_url,
+  );
 
   try {
     if (!existsSync(attestationBasePath))

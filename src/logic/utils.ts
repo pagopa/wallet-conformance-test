@@ -106,8 +106,15 @@ export const loadJsonDumps = (
   }
 };
 
-export function buildAttestationPath(wallet: Config["wallet"]): string {
-  return `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+export function buildAttestationPath(
+  wallet: Config["wallet"],
+  externalTaUrl?: string,
+): string {
+  const base = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+  const suffix = externalTaUrl
+    ? `-${Buffer.from(externalTaUrl).toString("base64url").slice(0, 12)}`
+    : "";
+  return `${base}${suffix}`;
 }
 
 export function buildCertPath(pathPrefix: string): string {
