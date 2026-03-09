@@ -68,7 +68,7 @@ export const configSchema = z.object({
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),
-    wallet_provider_base_url: z.string(),
+    wallet_provider_base_url: z.string().url(),
     wallet_version: z
       .string({
         required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
