@@ -134,4 +134,43 @@ export async function registerWithExternalTrustAnchor(
       );
     }
   }
+
+  // Smoke-check: verify the external TA can serve a Subordinate Statement for this WP
+  const smokeCheckUrl = `${externalTaUrl}/fetch?sub=${encodeURIComponent(wallet.wallet_provider_base_url)}`;
+  let smokeResponse: Response;
+
+  try {
+    const {response } = await fetchWithRetries(smokeCheckUrl, network, {
+      headers: {
+        Accept: "application/entity-statement+jwt"
+      },
+      method: "GET",
+    });
+    smokeResponse = response;
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `External TA smoke-check failed — could not reach ${smokeCheckUrl}: ${err.message}.\n` +
+        `Ensure the external Trust Anchor at ${externalTaUrl} is running and ` +
+        `has the Wallet Provider registered as a subordinate.`,
+    );
+  }
+
+  if (!smokeResponse.ok) {
+    const body = await smokeResponse.text().catch(() => "");
+    throw new Error(
+      `External TA smoke-check failed — ${smokeCheckUrl} returned HTTP ${smokeResponse.status}.\n` +
+        `Response: ${body}\n` +
+        `Ensure the Wallet Provider (${wallet.wallet_provider_base_url}) is registered ` +
+        `as a subordinate under the external Trust Anchor at ${externalTaUrl}.`,
+    );
+  }
+
+  const contentType = smokeResponse.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/entity-statement+jwt")) {
+    throw new Error(
+      `External TA smoke-check failed — ${smokeCheckUrl} returned unexpected content-type '${contentType}'. ` +
+        `Expected 'application/entity-statement+jwt'.`,
+    );
+  }
 }
