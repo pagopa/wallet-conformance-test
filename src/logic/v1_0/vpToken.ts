@@ -30,10 +30,13 @@ export async function prepareCredentials_V1_0(
         dpopJwk: credential.dpopJwk,
       }),
     };
-  else credential.typ === "mso_mdoc";
-  return await createVpTokenMdoc({
-    ...options,
-    credential: credential.credential,
-    dpopJwk: credential.dpopJwk,
-  });
+  else if (credential.typ === "mso_mdoc")
+    return {
+      [credentialQueryId]: await createVpTokenMdoc({
+        ...options,
+        credential: credential.credential,
+        dpopJwk: credential.dpopJwk,
+      }),
+    };
+  else throw new Error(`unsupported credential type ${credential.typ}`);
 }

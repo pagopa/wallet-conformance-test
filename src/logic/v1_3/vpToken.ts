@@ -33,13 +33,11 @@ export async function prepareCredentials_V1_3(
       );
 
     if (credential.typ === "mso_mdoc") {
-      const token = (
-        await createVpTokenMdoc({
-          ...options,
-          credential: credential.credential,
-          dpopJwk: credential.dpopJwk,
-        })
-      )[credentialQueryId];
+      const token = await createVpTokenMdoc({
+        ...options,
+        credential: credential.credential,
+        dpopJwk: credential.dpopJwk,
+      });
 
       if (token) accumulator.push(token);
     }
