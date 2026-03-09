@@ -42,7 +42,7 @@ const credentialsDir = "./tests/mocked-data/credentials";
 
 describe("Load Mocked Credentials", async () => {
   const config = loadConfig("./config.ini");
-  config.wallet.credentials_storage_path = backupDir
+  config.wallet.credentials_storage_path = backupDir;
 
   afterAll(async () =>
     rmSync(
@@ -400,42 +400,54 @@ describe("Load Mocked Credentials", async () => {
     }
   });
 
-  it.each(Object.values(ItWalletSpecsVersion))("should regenerate expired credentials", async (version) => {
+  it.each(Object.values(ItWalletSpecsVersion))(
+    "should regenerate expired credentials",
+    async (version) => {
+      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+        force: true,
+      });
+      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
+      config.wallet.wallet_version = version;
+      const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
+      const logger = createLogger();
 
-    rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
-      force: true,
-    });
-    rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
-    config.wallet.wallet_version = version
-    const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
-    const logger = createLogger()
+      const date = new Date(2000, 1, 1);
+      const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2);
 
-    const date = new Date(2000, 1, 1)
-    const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2)
+      try {
+        vi.useFakeTimers();
 
-    try {
-      vi.useFakeTimers()
+        vi.setSystemTime(date);
+        const credentials = await loadCredentialsForPresentation(
+          config,
+          trustAnchorBaseUrl,
+          logger,
+        );
 
-      vi.setSystemTime(date)
-      const credentials = await loadCredentialsForPresentation(config, trustAnchorBaseUrl, logger)
+        vi.setSystemTime(twoYearsLater);
+        const regenerated = await loadCredentialsForPresentation(
+          config,
+          trustAnchorBaseUrl,
+          logger,
+        );
 
-      vi.setSystemTime(twoYearsLater)
-      const regenerated = await loadCredentialsForPresentation(config,trustAnchorBaseUrl, logger)
+        const isSomeCredentialTheSame = credentials.some((curr) => {
+          const corresponding = regenerated.find((cred) => cred.id === curr.id);
+          if (!corresponding)
+            throw new Error(
+              `Expected to find a corresponding credential to ${curr.id} in the regenerated batch`,
+            );
 
-      const isSomeCredentialTheSame = credentials.some(curr => {
-        const corresponding = regenerated.find(cred => cred.id === curr.id)
-        if (!corresponding) throw new Error(`Expected to find a corresponding credential to ${curr.id} in the regenerated batch`);
+          return curr.credential === corresponding.credential;
+        });
 
-        return curr.credential === corresponding.credential
-      })
-
-      //We expect all the credentials to be different
-      expect(isSomeCredentialTheSame).toBe(false)
-
-    } finally {
-      vi.useRealTimers()
-    }
-  })
+        //We expect all the credentials to be different
+        expect(isSomeCredentialTheSame).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 });
 
 describe("Generate Mocked Credentials", () => {
