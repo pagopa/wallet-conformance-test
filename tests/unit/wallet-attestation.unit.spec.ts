@@ -7,6 +7,7 @@ import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
@@ -77,7 +78,7 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
-    expect(taDecoded.iss).toBe("https://127.0.0.1:3001"); // Trust Anchor
+    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config)); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
 
