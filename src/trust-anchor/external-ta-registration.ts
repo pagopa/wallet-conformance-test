@@ -134,6 +134,4 @@ export async function registerWithExternalTrustAnchor(
       );
     }
   }
-
-  }
 }
