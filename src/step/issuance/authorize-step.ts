@@ -84,7 +84,7 @@ export class AuthorizeDefaultStep extends StepFlow {
   async run(options: AuthorizeStepOptions): Promise<AuthorizeStepResponse> {
     const log = this.log.withTag(this.tag);
 
-    log.info(`Starting Authorize Step`);
+    log.debug(`Starting Authorize Step`);
 
     const authorizeUrl = `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`;
 

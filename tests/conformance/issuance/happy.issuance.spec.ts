@@ -1,6 +1,7 @@
 /* eslint-disable max-lines-per-function */
 
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import { SDJwt } from "@sd-jwt/core";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -61,6 +62,8 @@ testConfigs.forEach((testConfig) => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     // ============================================================================
     // FETCH METADATA TESTS
