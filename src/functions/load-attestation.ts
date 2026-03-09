@@ -5,9 +5,8 @@ import {
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import z from "zod";
 
-import type { AttestationResponse, Config } from "@/types";
+import { zTrustChain, type AttestationResponse, type Config } from "@/types";
 
 import {
   createFederationMetadata,
@@ -66,15 +65,14 @@ export const loadAttestation = async (options: {
   try {
     const attestation = readFileSync(attestationPath, "utf-8");
     const attestationJwt = await SDJwt.extractJwt(attestation);
-    // Check for WIA expiration
+    // Since, at version 0.17.0, the SDJwt.extractJwt method dosn't check for WIA expiration, 
+    // it must be done manually
     const exp = attestationJwt.payload?.exp;
     if (!exp || typeof exp !== "number" || exp * 1000 < Date.now())
-      throw new Error();
-    // Check for federation trust chain expiration
-    const trust_chain = z
-      .array(z.string())
-      .parse(attestationJwt.header?.trust_chain);
-    if (hasTrustChainExpired(trust_chain)) throw new Error();
+      throw new Error("attestation expired");
+    const trust_chain = zTrustChain.safeParse(attestationJwt.header?.trust_chain);
+    if (trust_chain.success && hasTrustChainExpired(trust_chain.data))
+      throw new Error("attestation trust_chain expired");
 
     return {
       attestation,
@@ -149,10 +147,4 @@ export const loadAttestation = async (options: {
       unitKey: unitKeyPair,
     };
   }
-};
-
-export const isAttestationExpired = async (attestation: string) => {
-  const attestationJwt = await SDJwt.extractJwt(attestation);
-  const exp = attestationJwt.payload?.exp;
-  if (!exp || typeof exp !== "number") throw new Error();
 };

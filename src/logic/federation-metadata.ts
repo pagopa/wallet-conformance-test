@@ -203,10 +203,10 @@ export const createSubordinateWalletUnitMetadata = async (
 };
 
 export const hasTrustChainExpired = (trust_chain: string[]) =>
-  trust_chain.reduce<boolean>((prev, statement) => {
+  trust_chain.some((statement) => {
     const decoded = decodeJwt(statement);
     const exp = decoded.payload.exp;
-    const hasExpired =
-      exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now();
-    return prev || hasExpired;
-  }, false);
+    return (
+      exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now()
+    );
+  });
