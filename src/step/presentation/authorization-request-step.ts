@@ -59,7 +59,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     options: AuthorizationRequestOptions,
   ): Promise<AuthorizationRequestStepResponse> {
     const log = this.log.withTag(this.tag);
-    log.info("Starting authorization request step...");
+    log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
       const authorizeRequestUrl =

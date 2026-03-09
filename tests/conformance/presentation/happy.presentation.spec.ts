@@ -1,5 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import { definePresentationTest } from "#/config/test-metadata";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
@@ -39,6 +40,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   });
+
+  useTestSummary(baseLog, testConfig.name);
 
   test("RPR003: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
     const log = baseLog.withTag("RPR003");

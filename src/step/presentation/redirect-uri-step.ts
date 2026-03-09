@@ -34,7 +34,7 @@ export class RedirectUriDefaultStep extends StepFlow {
 
   async run(options: RedirectUriOptions): Promise<RedirectUriStepResponse> {
     const log = this.log.withTag(this.tag);
-    log.info("Starting redirect uri step...");
+    log.debug("Starting redirect uri step...");
 
     return this.execute<RedirectUriExecuteStepResponse>(async () => {
       if (!options.authorizationResponse.jarm) {
