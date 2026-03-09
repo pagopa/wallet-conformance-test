@@ -113,6 +113,10 @@ function addCommonOptions(command: Command): Command {
       "Override directory for issuance test specs",
     )
     .option(
+      "--issuance-cerificate-subject <string>",
+      "Override mock issuer's certificate subject (e.g. 'CN=test-issuer.com,OU=issuance,S=IT')",
+    )
+    .option(
       "--presentation-tests-dir <path>",
       "Override directory for presentation test specs",
     )
