@@ -94,13 +94,12 @@ export class WalletPresentationOrchestratorFlow {
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
-      const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
-      const walletAttestation =
-        await this.loadWalletAttestation(trustAnchorBaseUrl);
+      const localTrustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
+      const walletAttestation = await this.loadWalletAttestation();
 
       const credentials = await loadCredentialsForPresentation(
         this.config,
-        trustAnchorBaseUrl,
+        localTrustAnchorBaseUrl,
         this.log,
       );
       this.log.info(`Presenting ${credentials.length} local credentials`);
@@ -197,11 +196,11 @@ export class WalletPresentationOrchestratorFlow {
     return rpMetadata;
   }
 
-  private async loadWalletAttestation(trustAnchorBaseUrl: string) {
+  private async loadWalletAttestation() {
     this.log.debug("Loading Wallet Attestation...");
 
     const walletAttestation = await loadAttestation({
-      trustAnchorBaseUrl,
+      config: this.config,
       trustAnchorJwksPath: this.config.trust.federation_trust_anchors_jwks_path,
       wallet: this.config.wallet,
     });

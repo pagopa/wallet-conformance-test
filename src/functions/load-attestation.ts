@@ -15,24 +15,40 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
+import {
+  isExternalTrustAnchor,
+  resolveTrustAnchorBaseUrl,
+} from "@/trust-anchor/trust-anchor-resolver";
 
 /**
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
  *
  * @param options - Configuration options
+ * @param options.config - The full application configuration
  * @param options.trustAnchorJwksPath - Path to the trust anchor JWKS
  * @param options.wallet - The wallet configuration
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
-  trustAnchorBaseUrl: string;
+  config: Config;
   trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
+  const { config, trustAnchorJwksPath, wallet } = options;
+
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(config);
+
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
-  const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
+
+  // Cache key includes a short hash of the external TA URL so that switching
+  // between local and external TA (or between different external TAs) does not
+  // reuse a stale cached attestation.
+  const taSuffix = config.trust_anchor.external_ta_url
+    ? `-${Buffer.from(config.trust_anchor.external_ta_url).toString("base64url").slice(0, 12)}`
+    : "";
+  const attestationPath = `${attestationBasePath}/${wallet.wallet_id}${taSuffix}`;
 
   try {
     if (!existsSync(attestationBasePath))
@@ -75,13 +91,20 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
-      entityPublicJwk: providerKeyPair.publicKey,
-      federationTrustAnchorsJwksPath: trustAnchorJwksPath,
-      sub: wallet.wallet_provider_base_url,
-      trustAnchorBaseUrl: trustAnchorBaseUrl,
-      walletVersion: wallet.wallet_version,
-    });
+    const taEntityConfiguration = isExternalTrustAnchor(config)
+      ? await fetchExternalSubordinateStatement(
+          config.trust_anchor.external_ta_url!,
+          wallet.wallet_provider_base_url,
+          config.network,
+        )
+      : await createSubordinateTrustAnchorMetadata({
+          entityPublicJwk: providerKeyPair.publicKey,
+          federationTrustAnchorsJwksPath: trustAnchorJwksPath,
+          sub: wallet.wallet_provider_base_url,
+          trustAnchorBaseUrl: trustAnchorBaseUrl,
+          walletVersion: wallet.wallet_version,
+        });
+
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,

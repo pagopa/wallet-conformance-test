@@ -10,7 +10,6 @@ import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
     const attestationPath = buildAttestationPath(config.wallet);
@@ -19,7 +18,7 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
+      config,
       trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
@@ -81,7 +80,7 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
+      config,
       trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
