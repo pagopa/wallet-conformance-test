@@ -1,8 +1,7 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
 import { SDJwt } from "@sd-jwt/core";
-import z from "zod";
-import { Jwt } from "@sd-jwt/core";
 import { DcqlQuery, DcqlQueryResult } from "dcql";
+import z from "zod";
 
 import { KeyPair, KeyPairJwk } from "./key-pair";
 

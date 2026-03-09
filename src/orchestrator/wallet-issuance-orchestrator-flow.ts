@@ -4,9 +4,7 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-} from "@pagopa/io-wallet-utils";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
