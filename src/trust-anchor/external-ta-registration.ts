@@ -44,6 +44,13 @@ export async function fetchExternalSubordinateStatement(
       `External TA /fetch returned HTTP ${response.status} for sub=${wpBaseUrl}`,
     );
   }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/entity-statement+jwt")) {
+    throw new Error(
+      `External TA /fetch returned unexpected content-type '${contentType}' for sub=${wpBaseUrl}. ` +
+        `Expected 'application/entity-statement+jwt'.`,
+    );
+  }
   return response.text();
 }
 
