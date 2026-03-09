@@ -20,8 +20,8 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -84,8 +84,8 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -135,8 +135,8 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: walletV1_3,
     });
 
@@ -188,8 +188,8 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: walletV1_3,
     });
 

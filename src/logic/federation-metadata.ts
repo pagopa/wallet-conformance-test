@@ -7,7 +7,12 @@ import {
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback, signJwtCallback } from "./jwt";
-import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
+import {
+  buildJwksPath,
+  loadJsonDumps,
+  loadJwks,
+  loadTAJwksWithSelfSignedX5c,
+} from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<
@@ -75,13 +80,14 @@ export const createTrustAnchorMetadata = async (options: {
   trustAnchorBaseUrl: string;
   walletVersion: Config["wallet"]["wallet_version"];
 }): Promise<string> => {
-  const signedJwks = await loadJwksWithSelfSignedX5c(
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
     options.trustAnchor,
     "trust_anchor",
   );
   const trust_marks = await getTrustMarks(
     options.trustAnchorBaseUrl,
-    signedJwks
+    options.trustAnchor.federation_trust_anchors_jwks_path,
+    options.trustAnchorBaseUrl,
   );
 
   const placeholders = {
@@ -116,7 +122,7 @@ export interface CreateSubordinateEntityStatementOptions {
    * Path to the folder containing the trust anchor JWKS files.
    * The trust anchor's private key will be used to sign the entity statement.
    */
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  federationTrustAnchor: Config["trust"];
 
   /**
    * Subject (sub) claim - the identifier of the subordinate entity.
@@ -148,13 +154,14 @@ export interface CreateSubordinateEntityStatementOptions {
 export const createSubordinateTrustAnchorMetadata = async (
   options: CreateSubordinateEntityStatementOptions,
 ): Promise<string> => {
-  const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
-    "trust_anchor_jwks",
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
+    options.federationTrustAnchor,
+    "trust_anchor",
   );
   const trust_marks = await getTrustMarks(
     options.trustAnchorBaseUrl,
-    signedJwks
+    options.federationTrustAnchor.federation_trust_anchors_jwks_path,
+    options.trustAnchorBaseUrl,
   );
 
   const placeholders = {
@@ -201,7 +208,7 @@ export const createSubordinateWalletUnitMetadata = async (
 
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
-    "wallet_unit_jwks",
+    buildJwksPath("wallet_unit"),
   );
   return await createFederationMetadata({
     claims: {
@@ -215,38 +222,45 @@ export const createSubordinateWalletUnitMetadata = async (
 
 export async function getTrustMarks(
   trust_anchor_base_url: string,
-  jwks: KeyPair,
-): Promise<{trust_mark: string, trust_mark_type: string}[]> {
+  jwksPath: string,
+  sub: string,
+): Promise<{ trust_mark: string; trust_mark_type: string }[]> {
   const trust_mark_type = `${trust_anchor_base_url}/trust_marks/authorization_policy/credential-issuer`;
+
+  const jwks = await loadJwks(jwksPath, buildJwksPath("trust_anchor"));
+
+  const iat = Math.floor(Date.now() / 1000);
   const trustMarkPayload = {
+    exp: iat + 24 * 60 * 60 * 365,
+    iat,
     iss: trust_anchor_base_url,
-    sub: "https://conformance-test.ci.example.com",
-    trust_mark_type,
-    iat: Date.now(),
-    exp: new Date(Date.now() + 24 * 60 * 60 * 1000 * 365).getTime(),
     logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",
     organization_type: "private",
+    sub,
+    trust_mark_type,
   };
   const trustMarkHeader = {
     alg: jwks.privateKey.alg ?? "ES256",
-    kid: jwks.privateKey.kid
+    kid: jwks.privateKey.kid,
   };
 
   const trust_mark = await signJwtCallback([jwks.privateKey])(
     {
-      method: "jwk",
-      publicJwk: jwks.publicKey,
       alg: jwks.publicKey.alg ?? "ES256",
       kid: jwks.publicKey.kid,
+      method: "jwk",
+      publicJwk: jwks.publicKey,
     },
     {
-      payload: trustMarkPayload,
       header: trustMarkHeader,
-    }
+      payload: trustMarkPayload,
+    },
   );
 
-  return [{
-    trust_mark: trust_mark.jwt,
-    trust_mark_type,
-  }];
+  return [
+    {
+      trust_mark: trust_mark.jwt,
+      trust_mark_type,
+    },
+  ];
 }

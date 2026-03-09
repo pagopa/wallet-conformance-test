@@ -33,11 +33,11 @@ import {
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
-  trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
+  const { trustAnchor, trustAnchorBaseUrl, wallet } = options;
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
   const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
 
@@ -84,22 +84,23 @@ export const loadAttestation = async (options: {
     //This might be moved to a step specific implementation
     const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
       entityPublicJwk: providerKeyPair.publicKey,
-      federationTrustAnchorsJwksPath: trustAnchorJwksPath,
+      federationTrustAnchor: trustAnchor,
       sub: wallet.wallet_provider_base_url,
-      walletVersion: wallet.wallet_version,
       trustAnchorBaseUrl,
+      walletVersion: wallet.wallet_version,
     });
     const trust_marks = await getTrustMarks(
       trustAnchorBaseUrl,
-      providerKeyPair
+      trustAnchor.federation_trust_anchors_jwks_path,
+      trustAnchorBaseUrl,
     );
 
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
+      trust_marks,
       wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
-      trust_marks,
     };
     const wpClaims = loadJsonDumps(
       "wallet_provider_metadata.json",
