@@ -46,10 +46,10 @@ export async function createMockMdlMdoc(
   );
 
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
-  let retVal: Credential;
+  let mockedMdoc: Credential;
   switch (version) {
     case ItWalletSpecsVersion.V1_0:
-      retVal = await buildMockMdlMdoc_V1_0(
+      mockedMdoc = await buildMockMdlMdoc_V1_0(
         expiration,
         deviceKey,
         issuerCertificate,
@@ -57,23 +57,25 @@ export async function createMockMdlMdoc(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      retVal = await buildMockMdlMdoc_V1_3(
+      mockedMdoc = await buildMockMdlMdoc_V1_3(
         expiration,
         deviceKey,
         issuerCertificate,
         issuerKeyPair,
       );
       break;
+    default:
+      throw new Error("unimplemented IT-Wallet Specifications Version");
   }
 
   const pathVersion = `${credentialsPath}/${version}`;
-  if (!existsSync(pathVersion)) {
+  if (!existsSync(pathVersion))
     mkdirSync(pathVersion, {
       recursive: true,
     });
-  }
-  writeFileSync(`${pathVersion}/${credentialIdentifier}`, retVal.compact);
-  return retVal;
+
+  writeFileSync(`${pathVersion}/${credentialIdentifier}`, mockedMdoc.compact);
+  return mockedMdoc;
 }
 
 export async function createMockSdJwt(
@@ -102,10 +104,10 @@ export async function createMockSdJwt(
   );
 
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
-  let retVal: Credential;
+  let mockedSdjwt: Credential;
   switch (version) {
     case ItWalletSpecsVersion.V1_0:
-      retVal = await buildMockSdJwt_V1_0(
+      mockedSdjwt = await buildMockSdJwt_V1_0(
         metadata,
         expiration,
         unitKey,
@@ -114,7 +116,7 @@ export async function createMockSdJwt(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      retVal = await buildMockSdJwt_V1_3(
+      mockedSdjwt = await buildMockSdJwt_V1_3(
         metadata,
         expiration,
         unitKey,
@@ -122,16 +124,18 @@ export async function createMockSdJwt(
         keyPair,
       );
       break;
+    default:
+      throw new Error("unimplemented IT-Wallet Specifications Version");
   }
 
   const pathVersion = `${credentialsPath}/${version}`;
-  if (!existsSync(pathVersion)) {
+  if (!existsSync(pathVersion))
     mkdirSync(pathVersion, {
       recursive: true,
     });
-  }
-  writeFileSync(`${pathVersion}/${credentialIdentifier}`, retVal.compact);
-  return retVal;
+
+  writeFileSync(`${pathVersion}/${credentialIdentifier}`, mockedSdjwt.compact);
+  return mockedSdjwt;
 }
 
 /**

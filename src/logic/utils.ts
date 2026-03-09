@@ -53,7 +53,7 @@ export async function fetchWithRetries(
         signal: AbortSignal.timeout(network.timeout * 1000),
         ...init,
         headers: {
-          "User-Agent": network.user_agent,
+          ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
           ...init?.headers,
         },
       });
