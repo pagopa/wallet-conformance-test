@@ -1,4 +1,9 @@
-import { createFederationMetadata, fetchWithRetries, loadJsonDumps, loadJwks } from "@/logic";
+import {
+  createFederationMetadata,
+  fetchWithRetries,
+  loadJsonDumps,
+  loadJwks,
+} from "@/logic";
 import { Config } from "@/types";
 
 /**
@@ -17,39 +22,29 @@ export async function fetchExternalSubordinateStatement(
   network: Config["network"],
 ): Promise<string> {
   const fetchUrl = `${externalTaUrl}/fetch?sub=${encodeURIComponent(wpBaseUrl)}`;
-
-  let lastError: Error | undefined;
-  for (let attempt = 0; attempt < network.max_retries; attempt++) {
-    try {
-      const { response } = await fetchWithRetries(fetchUrl, network,
-        {
-          headers: {
-            Accept: "application/entity-statement+jwt",
-          },
-          method: "GET"
-        }
+  let response: Response;
+  try {
+    ({ response } = await fetchWithRetries(fetchUrl, network, {
+      headers: { Accept: "application/entity-statement+jwt" },
+      method: "GET",
+    }));
+  } catch (e) {
+    const err = e as Error;
+    if (err.name === "TimeoutError") {
+      throw new Error(
+        `External TA /fetch timed out after ${network.timeout}s for sub=${wpBaseUrl}`,
       );
-
-      if (!response.ok) {
-        throw new Error(
-          `External TA /fetch returned HTTP ${response.status} for sub=${wpBaseUrl}`,
-        );
-      }
-
-      return await response.text();
-    } catch (e) {
-      lastError = e as Error;
-      if (lastError.name === "TimeoutError") {
-        throw new Error(
-          `External TA /fetch timed out after ${network.timeout}s`,
-        );
-      }
     }
+    throw new Error(
+      `External TA /fetch failed after ${network.max_retries} attempts for sub=${wpBaseUrl}: ${err.message}`,
+    );
   }
-
-  throw new Error(
-    `External TA /fetch failed after ${network.max_retries} attempts: ${lastError?.message}`,
-  );
+  if (!response.ok) {
+    throw new Error(
+      `External TA /fetch returned HTTP ${response.status} for sub=${wpBaseUrl}`,
+    );
+  }
+  return response.text();
 }
 
 /**
@@ -117,7 +112,7 @@ export async function registerWithExternalTrustAnchor(
         method: "POST",
       });
 
-       // HTTP 409 Conflict means the WP is already registered — treat as success
+      // HTTP 409 Conflict means the WP is already registered — treat as success
       if (!response.ok && response.status !== 409) {
         const body = await response.text().catch(() => "");
         throw new Error(
@@ -137,9 +132,9 @@ export async function registerWithExternalTrustAnchor(
   let smokeResponse: Response;
 
   try {
-    const {response } = await fetchWithRetries(smokeCheckUrl, network, {
+    const { response } = await fetchWithRetries(smokeCheckUrl, network, {
       headers: {
-        Accept: "application/entity-statement+jwt"
+        Accept: "application/entity-statement+jwt",
       },
       method: "GET",
     });
