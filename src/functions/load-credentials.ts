@@ -6,7 +6,12 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { buildJwksPath, loadJwks, parseMdoc } from "@/logic";
 import { Config, Credential, CredentialWithKey, Logger } from "@/types";
 
-import { createMockMdlMdoc, createMockSdJwt } from "./mock-credentials";
+import {
+  createMockMdlMdoc,
+  createMockSdJwt,
+  isCredentialMdocExpired,
+  isCredentialSdJwtExpired,
+} from "./mock-credentials";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -150,12 +155,44 @@ export async function loadCredentialsForPresentation(
       buildJwksPath(key),
     );
 
-    credentials.push({
-      credential: cred.compact,
-      dpopJwk: credentialKeyPair.privateKey,
-      id: key,
-      typ: cred.typ,
-    });
+    const isExpired =
+      cred.typ === "dc+sd-jwt"
+        ? isCredentialSdJwtExpired(cred.parsed)
+        : isCredentialMdocExpired(cred.parsed);
+    if (isExpired) {
+      const newCred = await (cred.typ === "dc+sd-jwt"
+        ? createMockSdJwt(
+            {
+              iss: "https://issuer.example.com",
+              trustAnchorBaseUrl,
+              trustAnchorJwksPath:
+                config.trust.federation_trust_anchors_jwks_path,
+            },
+            config.wallet.backup_storage_path,
+            config.wallet.credentials_storage_path,
+            config.wallet.wallet_version,
+          )
+        : createMockMdlMdoc(
+            config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+            config.wallet.backup_storage_path,
+            config.wallet.credentials_storage_path,
+            config.wallet.wallet_version,
+          ));
+
+      credentials.push({
+        credential: newCred.compact,
+        dpopJwk: credentialKeyPair.privateKey,
+        id: key,
+        typ: newCred.typ,
+      });
+    } else {
+      credentials.push({
+        credential: cred.compact,
+        dpopJwk: credentialKeyPair.privateKey,
+        id: key,
+        typ: cred.typ,
+      });
+    }
   }
 
   return credentials;
