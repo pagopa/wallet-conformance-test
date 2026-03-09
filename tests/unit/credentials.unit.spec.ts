@@ -131,273 +131,323 @@ describe("Load Mocked Credentials", async () => {
     expect(derAfter).not.toEqual(derBefore);
   });
 
-  it("should check the credentials are expired", async () => {
-    try {
-      const baseDate = new Date(2000, 1, 1);
-      vi.useFakeTimers();
-      vi.setSystemTime(baseDate);
-      const credentials = await loadCredentials(
-        credentialsDir,
-        ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
-        console.error,
-        ItWalletSpecsVersion.V1_0,
-      );
-      Object.values(credentials).forEach((credential) => {
-        vi.setSystemTime(baseDate);
-        if (credential.typ === "dc+sd-jwt") {
-          const expiration = getCredentialSdJwtExpiration(
-            credential.parsed,
-            "expiry_date",
-          );
-          const exp = credential.parsed.jwt.payload?.exp;
-          const jwtExpiration =
-            exp !== undefined && typeof exp === "number" ? exp : undefined;
-          if (!jwtExpiration)
-            throw new Error(
-              "Expected the jwt to have a well defined expiration",
-            );
-          const x5c = zX5c.safeParse(credential.parsed.jwt.header?.x5c);
-          const x5cMinExp = x5c.success
-            ? x5c.data
-                .map((cert) => new X509Certificate(cert))
-                .reduce<Date>((cumulated, curr, idx) => {
-                  if (idx === 0) return curr.notAfter;
-                  return cumulated < curr.notAfter ? cumulated : curr.notAfter;
-                }, new Date())
-            : undefined;
-          if (!x5cMinExp)
-            throw new Error(
-              "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
-            );
+  describe("credentials expiration tests", async () => {
+    const baseDate = new Date(2000, 1, 1);
 
-          const trust_chain = zTrustChain.safeParse(
-            credential.parsed.jwt.header?.trust_chain,
-          );
-          const trustChainMinExp = trust_chain.success
-            ? trust_chain.data.reduce<number>((prev, ec) => {
-                const decoded = decodeJwt(ec);
-                const exp = decoded.payload.exp;
-                if (exp === undefined || typeof exp !== "number")
-                  throw new Error(
-                    "Expected the Federation ES to contain an expiration",
-                  );
-                return Math.min(prev, exp);
-              }, Infinity)
-            : undefined;
-          if (!trustChainMinExp)
-            throw new Error(
-              "Expected the SdJwt to contain the trust_chain header field",
-            );
+    vi.useFakeTimers();
+    vi.setSystemTime(baseDate);
+    const credentials = await loadCredentials(
+      credentialsDir,
+      ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
+      console.error,
+      ItWalletSpecsVersion.V1_0,
+    );
+    describe("SdJwt expiration checks", () => {
+      const pid = credentials["dc_sd_jwt_PersonIdentificationData"];
 
-          /**
-           * Test all expiration checks
-           */
-          expect(
-            isCredentialSdJwtExpired(credential.parsed, "expiry_date"),
-          ).toBe(false);
+      if (!pid || pid.typ !== "dc+sd-jwt") {
+        throw new Error("Expected to find the PID in sd-jwt format");
+      }
 
-          /**
-           * Credential claim expiration tests
-           */
+      it("should pass all the expiration checks", () => {
+        expect(isCredentialSdJwtExpired(pid.parsed, "expiry_date")).toBe(false);
+      });
+
+      describe("expiration date claim checks", () => {
+        const expiration = getCredentialSdJwtExpiration(
+          pid.parsed,
+          "expiry_date",
+        );
+        it("should return false because it's past the expiration date claim", () => {
           // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(expiration) - 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, "expiry_date", {
-              /* An empty object means that none of the checks is performed */
+            isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
+              jwt: false,
+              trust_chain: false,
+              x5c: false,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, "expiry_date", {
-              /* An empty object means that none of the checks is performed */
+            isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
+              jwt: false,
+              trust_chain: false,
+              x5c: false,
             }),
           ).toBe(true);
+        });
+      });
 
-          /**
-           * Credential mdoc expiration checks
-           */
+      describe("jwt expiration checks", () => {
+        const exp = pid.parsed.jwt.payload?.exp;
+        const jwtExpiration =
+          exp !== undefined && typeof exp === "number" ? exp : undefined;
+        if (!jwtExpiration)
+          throw new Error("Expected the jwt to have a well defined expiration");
+        it("should return false because it's past the jwt expiration", async () => {
           // Set system time to a second before expiration
           vi.setSystemTime((jwtExpiration - 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: true,
+              trust_chain: false,
+              x5c: false,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the jwt expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((jwtExpiration + 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: true,
+              trust_chain: false,
+              x5c: false,
             }),
           ).toBe(true);
+        });
+      });
 
-          /**
-           * Credential certificate chain expiration checks
-           */
-          // Set system time to a second before expiration
-          vi.setSystemTime((dateToSeconds(x5cMinExp) - 1) * 1000);
-          expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
-              x5c: true,
-            }),
-          ).toBe(false);
-          // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(x5cMinExp) + 1) * 1000);
-          expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
-              x5c: true,
-            }),
-          ).toBe(true);
+      describe("trust_chain expiration checks", () => {
+        const trust_chain = zTrustChain.safeParse(
+          pid.parsed.jwt.header?.trust_chain,
+        );
+        const trustChainMinExp = trust_chain.success
+          ? trust_chain.data.reduce<number>((prev, ec) => {
+              const decoded = decodeJwt(ec);
+              const exp = decoded.payload.exp;
+              if (exp === undefined || typeof exp !== "number")
+                throw new Error(
+                  "Expected the Federation ES to contain an expiration",
+                );
+              return Math.min(prev, exp);
+            }, Infinity)
+          : undefined;
+        if (!trustChainMinExp)
+          throw new Error(
+            "Expected the SdJwt to contain the trust_chain header field",
+          );
 
-          /**
-           * Credential certificate chain expiration checks
-           */
+        it("should return false because it's past the trust_chain expiration", async () => {
           // Set system time to a second before expiration
           vi.setSystemTime((trustChainMinExp - 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
               trust_chain: true,
+              x5c: false,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the trust_chain expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((trustChainMinExp + 1) * 1000);
           expect(
-            isCredentialSdJwtExpired(credential.parsed, undefined, {
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
               trust_chain: true,
+              x5c: false,
             }),
           ).toBe(true);
-        } else {
-          const expiration = getCredentialMdocExpiration(credential.parsed, {
-            claimName: "expiry_date",
-            namespace: "eu.europa.it.badge.1",
-          });
-          const issuerAuth = credential.parsed.issuerSigned.issuerAuth;
-          const mDocExpiration =
-            issuerAuth.decodedPayload.validityInfo.validUntil;
-          const certExpiration = issuerAuth.certificate.notAfter;
-          const trustChain = issuerAuth.x5chain
-            ?.map((buffer) => Buffer.from(buffer).toString("base64"))
-            .map((cert) => new X509Certificate(cert));
-          const trustChainMinExp = trustChain?.reduce<Date>(
-            (cumulated, curr, idx) => {
-              if (idx === 0) return curr.notAfter;
-              return cumulated < curr.notAfter ? cumulated : curr.notAfter;
-            },
-            new Date(),
+        });
+      });
+
+      describe("x5c certificate chain expiration checks", () => {
+        const x5c = zX5c.safeParse(pid.parsed.jwt.header?.x5c);
+        const x5cMinExp = x5c.success
+          ? x5c.data
+              .map((cert) => new X509Certificate(cert))
+              .reduce<Date>((cumulated, curr, idx) => {
+                if (idx === 0) return curr.notAfter;
+                return cumulated < curr.notAfter ? cumulated : curr.notAfter;
+              }, new Date())
+          : undefined;
+        if (!x5cMinExp)
+          throw new Error(
+            "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
           );
-          if (!trustChainMinExp)
-            throw new Error(
-              "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
-            );
 
-          /**
-           * Test all expiration checks
-           */
-
+        it("should return false because it's past the x5c certificate chain expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(x5cMinExp) - 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, {
-              claimName: "expiry_date",
-              namespace: "eu.europa.it.badge.1",
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: false,
+              x5c: true,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the x5c certificate expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(x5cMinExp) + 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: false,
+              x5c: true,
+            }),
+          ).toBe(true);
+        });
+      });
+    });
 
-          /**
-           * Credential claim expiration tests
-           */
+    describe("Mdoc expiration checks", () => {
+      const mDL = credentials["mso_mdoc_mDL"];
+
+      if (!mDL || mDL.typ !== "mso_mdoc") {
+        throw new Error("Expected to find the PID in sd-jwt format");
+      }
+      const issuerAuth = mDL.parsed.issuerSigned.issuerAuth;
+
+      it("should pass all the expiration checks", () => {
+        expect(
+          isCredentialMdocExpired(mDL.parsed, {
+            claimName: "expiry_date",
+            namespace: "eu.europa.it.badge.1",
+          }),
+        ).toBe(false);
+      });
+
+      describe("expiration date claim checks", () => {
+        const expiration = getCredentialMdocExpiration(mDL.parsed, {
+          claimName: "expiry_date",
+          namespace: "eu.europa.it.badge.1",
+        });
+        it("should return false because it's past the expiration date claim", () => {
           // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(expiration) - 1) * 1000);
           expect(
             isCredentialMdocExpired(
-              credential.parsed,
+              mDL.parsed,
+              { claimName: "expiry_date", namespace: "eu.europa.it.badge.1" },
               {
-                claimName: "expiry_date",
-                namespace: "eu.europa.it.badge.1",
-              },
-              {
-                /* An empty object means that none of the checks is performed */
+                cert: false,
+                mdoc: false,
+                x5chain: false,
               },
             ),
           ).toBe(false);
+        });
+        it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
           expect(
             isCredentialMdocExpired(
-              credential.parsed,
+              mDL.parsed,
+              { claimName: "expiry_date", namespace: "eu.europa.it.badge.1" },
               {
-                claimName: "expiry_date",
-                namespace: "eu.europa.it.badge.1",
-              },
-              {
-                /* An empty object means that none of the checks is performed */
+                cert: false,
+                mdoc: false,
+                x5chain: false,
               },
             ),
           ).toBe(true);
+        });
+      });
 
-          /**
-           * Credential mdoc expiration checks
-           */
+      describe("mdoc expiration checks", () => {
+        const mDocExpiration =
+          issuerAuth.decodedPayload.validityInfo.validUntil;
+        it("should return false because it's past the mdoc expiration", async () => {
+          // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(mDocExpiration) - 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
               mdoc: true,
+              x5chain: false,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the mdoc expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((dateToSeconds(mDocExpiration) + 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
               mdoc: true,
+              x5chain: false,
             }),
           ).toBe(true);
+        });
+      });
 
-          /**
-           * Credential certificate expiration checks
-           */
+      describe("certificate expiration checks", () => {
+        const certExpiration = issuerAuth.certificate.notAfter;
+
+        it("should return false because it's past the certificate expiration", async () => {
+          // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(certExpiration) - 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: true,
+              mdoc: false,
+              x5chain: false,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the certificate expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((dateToSeconds(certExpiration) + 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: true,
+              mdoc: false,
+              x5chain: false,
             }),
           ).toBe(true);
+        });
+      });
 
-          /**
-           * Credential certificate chain expiration checks
-           */
+      describe("trust chain expiration checks", () => {
+        const trustChain = issuerAuth.x5chain
+          ?.map((buffer) => Buffer.from(buffer).toString("base64"))
+          .map((cert) => new X509Certificate(cert));
+        const trustChainMinExp = trustChain?.reduce<Date>(
+          (cumulated, curr, idx) => {
+            if (idx === 0) return curr.notAfter;
+            return cumulated < curr.notAfter ? cumulated : curr.notAfter;
+          },
+          new Date(),
+        );
+        if (!trustChainMinExp)
+          throw new Error(
+            "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
+          );
+
+        it("should return false because it's past the trust chain certificate chain expiration", async () => {
+          // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(trustChainMinExp) - 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: false,
               x5chain: true,
             }),
           ).toBe(false);
+        });
+        it("should return true because it's not past the trust chain certificate expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime((dateToSeconds(trustChainMinExp) + 1) * 1000);
           expect(
-            isCredentialMdocExpired(credential.parsed, undefined, {
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: false,
               x5chain: true,
             }),
           ).toBe(true);
-        }
+        });
       });
-    } catch (e) {
-      if (e instanceof ValidationError) {
-        console.error("Schema validation failed");
-        expect
-          .soft(
-            e.message.replace(": ", ":\n\t").replace(/,([A-Za-z])/g, "\n\t$1"),
-          )
-          .toBeNull();
-      } else throw e;
-    } finally {
+    });
+
+    afterAll(() => {
       vi.useRealTimers();
-    }
+    });
   });
 
   it.each(Object.values(ItWalletSpecsVersion))(

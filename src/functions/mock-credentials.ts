@@ -196,7 +196,7 @@ export function getCredentialSdJwtExpiration(
  * - If the credential is expired by checking an eventual expired field
  * @param document The mdoc document
  * @param path Path to the expiration date claim, if left undefined, the expiration claim check will be skipped
- * @param checks optional config to perform only a subset of the checks, by default all checks are performed, an empty object should skip performing of all the specified checks
+ * @param checks optional config to perform only a subset of the checks, by default all checks are performed
  * @returns A {@link boolean} indicating the expiration status in case the expiration date claim is found
  * @throws {Error} In case the claim is not found
  */
@@ -206,20 +206,16 @@ export function isCredentialMdocExpired(
     claimName: string;
     namespace: string;
   },
-  checks: Partial<{
+  checks: {
     cert: boolean;
     mdoc: boolean;
     x5chain: boolean;
-  }> = {
+  } = {
     cert: true,
     mdoc: true,
     x5chain: true,
   },
 ): boolean {
-  const actualChecks = deepMerge(
-    { cert: false, mdoc: false, x5chain: false },
-    checks,
-  );
   const now = Date.now();
   const isCredentialExpired =
     path !== undefined &&
@@ -227,17 +223,17 @@ export function isCredentialMdocExpired(
 
   const exp =
     document.issuerSigned.issuerAuth.decodedPayload.validityInfo.validUntil.getTime();
-  const isMDocExpired = actualChecks.mdoc && exp < now;
+  const isMDocExpired = checks.mdoc && exp < now;
 
   const isCertExpired =
-    actualChecks.cert &&
+    checks.cert &&
     hasX509CertificateExpired(document.issuerSigned.issuerAuth.certificate);
 
-  const x5chain = document.issuerSigned.issuerAuth.x5chain;
+  const mDocChain = document.issuerSigned.issuerAuth.x5chain;
   const isTrustChainExpired =
-    actualChecks.x5chain &&
-    x5chain !== undefined &&
-    x5chain
+    checks.x5chain &&
+    mDocChain !== undefined &&
+    mDocChain
       .map((buffer) => Buffer.from(buffer).toString("base64"))
       .reduce<boolean>(
         (prev, cert) => prev || hasX509CertificateExpired(cert),
@@ -257,28 +253,23 @@ export function isCredentialMdocExpired(
  * - If the credential is expired by checking an eventual expired field
  * @param parsed The decoded and parsed SDJwt
  * @param path Name of the expiration date claim, if left undefined, the expiration claim check will be skipped
- * @param checks optional config to perform only a subset of the checks, by default all checks are performed, an empty object should skip performing of all the specified checks
+ * @param checks optional config to perform only a subset of the checks, by default all checks are performed
  * @returns A {@link boolean} indicating the expiration status in case the expiration date claim is found
  * @throws {Error} In case the claim is not found
  */
 export function isCredentialSdJwtExpired(
   parsed: Awaited<ReturnType<typeof SDJwt.decodeSDJwt>>,
   claimName?: string,
-  checks: Partial<{
+  checks: {
     jwt: boolean;
     trust_chain: boolean;
     x5c: boolean;
-  }> = {
+  } = {
     jwt: true,
     trust_chain: true,
     x5c: true,
   },
 ): boolean {
-  const actualChecks = deepMerge(
-    { jwt: false, trust_chain: false, x5c: false },
-    checks,
-  );
-
   const now = Date.now();
   const isCredentialExpired =
     claimName !== undefined &&
@@ -286,22 +277,19 @@ export function isCredentialSdJwtExpired(
 
   const exp = parsed.jwt.payload?.exp;
   const isJwtExpired =
-    actualChecks.jwt &&
-    exp !== undefined &&
-    typeof exp === "number" &&
-    exp * 1000 < now;
+    checks.jwt && exp !== undefined && typeof exp === "number" && exp * 1000 < now;
 
-  const trust_chain = zTrustChain.safeParse(parsed.jwt.header?.trust_chain);
+  const jwt_trust_chain = zTrustChain.safeParse(parsed.jwt.header?.trust_chain);
   const isTrustChainExpired =
-    actualChecks.trust_chain &&
-    trust_chain.success &&
-    hasTrustChainExpired(trust_chain.data);
+    checks.trust_chain &&
+    jwt_trust_chain.success &&
+    hasTrustChainExpired(jwt_trust_chain.data);
 
-  const x5c = zX5c.safeParse(parsed.jwt.header?.x5c);
+  const jwt_x5c = zX5c.safeParse(parsed.jwt.header?.x5c);
   const isX5cExpired =
-    actualChecks.x5c &&
-    x5c.success &&
-    x5c.data.reduce<boolean>(
+    checks.x5c &&
+    jwt_x5c.success &&
+    jwt_x5c.data.reduce<boolean>(
       (prev, cert) => prev || hasX509CertificateExpired(cert),
       false,
     );
