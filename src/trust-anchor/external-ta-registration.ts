@@ -1,5 +1,3 @@
-import { readFileSync, writeFileSync } from "node:fs";
-
 import { createFederationMetadata, fetchWithRetries, loadJsonDumps, loadJwks } from "@/logic";
 import { Config } from "@/types";
 
@@ -61,10 +59,9 @@ export async function fetchExternalSubordinateStatement(
  *
  * When the external TA URL is configured, it:
  * 1. Loads the WP public key from the backup storage path.
- * 2. Optionally merges the WP public key into a JSON dump file (if `external_ta_dump_path` is set).
- * 3. Optionally POSTs the WP Entity Configuration JWT to the onboarding URL
+ * 2. Optionally POSTs the WP Entity Configuration JWT to the onboarding URL
  *    (if `external_ta_onboarding_url` is set). HTTP 409 is treated as idempotent success.
- * 4. Smoke-checks that `GET <external_ta_url>/fetch?sub=<wp_base_url>` returns
+ * 3. Smoke-checks that `GET <external_ta_url>/fetch?sub=<wp_base_url>` returns
  *    `application/entity-statement+jwt`. Throws a descriptive error on failure,
  *    which will abort all tests.
  *
