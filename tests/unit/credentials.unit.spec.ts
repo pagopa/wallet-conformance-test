@@ -710,11 +710,9 @@ describe("createVpTokenMdoc", () => {
     });
 
     expect(result).toHaveProperty("query_mdl");
-    expect(result["query_mdl"]).toBeDefined();
+    expect(result).toBeDefined();
 
-    const documents = decode(
-      Buffer.from(result["query_mdl"]!, "base64url"),
-    ).documents;
+    const documents = decode(Buffer.from(result, "base64url")).documents;
     expect(documents).toBeDefined();
 
     const document = documents[0]!;

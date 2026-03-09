@@ -8,7 +8,7 @@ import { decodeJwt } from "@sd-jwt/decode";
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback } from "./jwt";
-import { loadJsonDumps, loadJwks, loadJwksWithSelfSignedX5c } from "./utils";
+import { loadJsonDumps, loadJwks, loadTAJwksWithSelfSignedX5c } from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<
@@ -85,7 +85,7 @@ export const createTrustAnchorMetadata = async (options: {
     placeholders,
     options.walletVersion,
   );
-  const signedJwks = await loadJwksWithSelfSignedX5c(
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
     options.trustAnchor,
     "trust_anchor",
   );
@@ -182,7 +182,7 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 export const createSubordinateWalletUnitMetadata = async (
   options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
-  const signedJwks = await loadJwksWithSelfSignedX5c(
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
     options.trustAnchor,
     "trust_anchor",
   );

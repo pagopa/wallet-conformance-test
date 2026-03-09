@@ -50,7 +50,7 @@ export class TokenRequestDefaultStep extends StepFlow {
   async run(options: TokenRequestStepOptions): Promise<TokenRequestResponse> {
     const log = this.log.withTag(this.tag);
 
-    log.info(`Starting Token Request Step`);
+    log.debug(`Starting Token Request Step`);
 
     const { unitKey } = options.walletAttestation;
 

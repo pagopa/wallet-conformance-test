@@ -1,3 +1,4 @@
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
 import { DisclosureData } from "@sd-jwt/types";
@@ -8,8 +9,9 @@ import type { Logger } from "@/types/logger";
 import { CredentialWithKey, DcqlMatchSuccess, VpTokenOptions } from "@/types";
 
 import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
-import { createVpTokenMdoc, parseMdoc } from "./mdoc";
-import { createVpTokenSdJwt } from "./sd-jwt";
+import { parseMdoc } from "./mdoc";
+import { prepareCredentials_V1_0 } from "./v1_0/vpToken";
+import { prepareCredentials_V1_3 } from "./v1_3/vpToken";
 
 /**
  * Builds a Verifiable Presentation (VP) token by selecting credentials based on a DCQL query.
@@ -25,28 +27,14 @@ export async function buildVpToken(
   credentials: CredentialWithKey[],
   query: DcqlQuery.Input,
   options: Omit<VpTokenOptions, "credential" | "dcqlQuery" | "dpopJwk">,
+  version: ItWalletSpecsVersion,
   logger?: Logger,
-): Promise<Record<string, string>> {
+): Promise<Record<string, string | string[]>> {
   const queryResult = await validateDcqlQuery(credentials, query, logger);
   const matches: [string, DcqlMatchSuccess][] =
     getDcqlQueryMatches(queryResult);
 
   return matches.reduce(async (acc, [credentialQueryId, match]) => {
-    const validCredential = match.valid_credentials[0];
-    if (!validCredential) {
-      throw new Error(
-        `No valid credentials found for credential_query_id ${credentialQueryId}`,
-      );
-    }
-
-    const credentialIndex = validCredential.input_credential_index;
-    const credential = credentials[credentialIndex];
-    if (!credential) {
-      throw new Error(
-        `Credential index ${credentialIndex} not found for credential_query_id ${credentialQueryId}`,
-      );
-    }
-
     const queryCredential = query.credentials.find(
       (c) => c.id === credentialQueryId,
     );
@@ -55,32 +43,38 @@ export async function buildVpToken(
         `Credential ${credentialQueryId} requested but missing from query`,
       );
 
-    if (credential.typ === "dc+sd-jwt")
-      return {
-        ...acc,
-        [credentialQueryId]: await createVpTokenSdJwt({
-          ...options,
-          credential: credential.credential,
-          dpopJwk: credential.dpopJwk,
-        }),
-      };
-
-    if (credential.typ === "mso_mdoc") {
-      const mdocQuery = {
+    const prepareCredentialOptions = {
+      ...options,
+      dcqlQuery: {
         ...query,
         credentials: [queryCredential],
-      };
+      },
+    };
 
-      return {
-        ...acc,
-        ...(await createVpTokenMdoc({
-          ...options,
-          credential: credential.credential,
-          dcqlQuery: mdocQuery,
-          dpopJwk: credential.dpopJwk,
-        })),
-      };
+    let res: Record<string, string | string[]>;
+    switch (version) {
+      case ItWalletSpecsVersion.V1_0:
+        res = await prepareCredentials_V1_0(
+          match.valid_credentials,
+          credentialQueryId,
+          credentials,
+          prepareCredentialOptions,
+        );
+        break;
+      case ItWalletSpecsVersion.V1_3:
+        res = await prepareCredentials_V1_3(
+          match.valid_credentials,
+          credentialQueryId,
+          credentials,
+          prepareCredentialOptions,
+        );
+        break;
     }
+
+    return {
+      ...acc,
+      ...res,
+    };
   }, {});
 }
 
