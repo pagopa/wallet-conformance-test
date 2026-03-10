@@ -291,6 +291,16 @@ export class WalletIssuanceOrchestratorFlow {
       `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.response?.codeVerifier}'`,
     );
 
+    const authorizationEndpoint =
+      entityStatementClaims.metadata?.oauth_authorization_server
+        ?.authorization_endpoint;
+
+    if (!authorizationEndpoint)
+      throw new Error(
+        "Issuer metadata is missing 'authorization_endpoint' " +
+          "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
+      );
+
     const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
     this.log.info("Loading credentials...");
 
@@ -319,7 +329,7 @@ export class WalletIssuanceOrchestratorFlow {
       authorizeResponse.durationMs ?? 0,
     );
 
-    return { ...parCtx, authorizeResponse };
+    return { ...parCtx, authorizationEndpoint, authorizeResponse };
   }
 
   /**
