@@ -1,4 +1,5 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
@@ -30,10 +31,11 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-      baseLog.info("========================================");
-      baseLog.info("🚀 Starting Authorization Validation Tests");
-      baseLog.info("========================================");
-      baseLog.info("");
+      baseLog.testSuite({
+        profile: testConfig.credentialConfigurationId,
+        target: orchestrator.getConfig().issuance.url,
+        title: "Issuer Authorization Validation Tests",
+      });
 
       const ctx = await orchestrator.runThroughAuthorize();
 
@@ -44,6 +46,8 @@ testConfigs.forEach((testConfig) => {
       fetchMetadataResponse = ctx.fetchMetadataResponse;
       authorizationEndpoint = ctx.authorizationEndpoint;
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     async function runAuthStep(
       StepClass: typeof AuthorizeDefaultStep,
