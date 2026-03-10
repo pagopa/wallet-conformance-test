@@ -41,6 +41,18 @@ export async function prepareCredentials_V1_3(
 
       if (token) accumulator.push(token);
     }
+
+    if (credential.typ !== "dc+sd-jwt" && credential.typ !== "mso_mdoc") {
+      throw new Error(
+        `Unsupported credential type "${credential.typ}" for credential_query_id ${credentialQueryId}`,
+      );
+    }
+  }
+
+  if (accumulator.length === 0) {
+    throw new Error(
+      `No vp_token could be produced for credential_query_id ${credentialQueryId}: all credentials produced empty tokens`,
+    );
   }
 
   return {

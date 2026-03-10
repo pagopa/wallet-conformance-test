@@ -34,7 +34,9 @@ export async function buildVpToken(
   const matches: [string, DcqlMatchSuccess][] =
     getDcqlQueryMatches(queryResult);
 
-  return matches.reduce(async (acc, [credentialQueryId, match]) => {
+  const result: Record<string, [string, ...string[]] | string> = {};
+
+  for (const [credentialQueryId, match] of matches) {
     const queryCredential = query.credentials.find(
       (c) => c.id === credentialQueryId,
     );
@@ -71,11 +73,10 @@ export async function buildVpToken(
         break;
     }
 
-    return {
-      ...acc,
-      ...res,
-    };
-  }, {});
+    Object.assign(result, res);
+  }
+
+  return result;
 }
 
 export function parseCredentialFromMdoc(
