@@ -1,5 +1,3 @@
-/* eslint-disable max-lines-per-function */
-
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -22,7 +20,6 @@ testConfigs.forEach((testConfig) => {
       new WalletIssuanceOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
     let fetchMetadataResponse: FetchMetadataStepResponse;
-    let authorizeResponse: AuthorizeStepResponse;
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     let walletAttestationResponse: AttestationResponse;
     let authorizationEndpoint: string;
@@ -41,7 +38,6 @@ testConfigs.forEach((testConfig) => {
       const ctx = await orchestrator.runThroughAuthorize();
 
       credentialIssuer = ctx.credentialIssuer;
-      authorizeResponse = ctx.authorizeResponse;
       walletAttestationResponse = ctx.walletAttestationResponse;
       pushedAuthorizationRequestResponse =
         ctx.pushedAuthorizationRequestResponse;
@@ -135,80 +131,6 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
-
-    // -----------------------------------------------------------------------
-    // CI_051 — CieID High-Level Authentication
-    // -----------------------------------------------------------------------
-
-    test(
-      "CI_051: CieID High-Level Authentication | Verify authentication level (Validate acr claim)",
-      async () => {
-        const log = baseLog.withTag("CI_051");
-        const DESCRIPTION = "✅ acr claim found and validated";
-        log.start(
-          "Conformance test: Verifying CieID High-Level Authentication (acr/acr_values/LoA)",
-        );
-
-        let testSuccess = false;
-        try {
-          log.info("→ Inspecting metadata and requestObject...");
-
-          const entityClaims =
-            fetchMetadataResponse.response?.entityStatementClaims;
-          const oauthMetadata =
-            entityClaims?.metadata?.oauth_authorization_server;
-          const issuerMetadata =
-            entityClaims?.metadata?.openid_credential_issuer;
-          log.info(
-            `→ Supported ACR values: ${JSON.stringify(oauthMetadata?.acr_values_supported)}`,
-          );
-          log.info(
-            `→ Supported Credential Configurations: ${JSON.stringify(Object.keys(issuerMetadata?.credential_configurations_supported ?? {}))}`,
-          );
-
-          const requestObject = authorizeResponse.response?.requestObject;
-          expect(requestObject).toBeDefined();
-
-          log.info(
-            `→ Request Object Payload: ${JSON.stringify(requestObject, null, 2)}`,
-          );
-
-          // Look for acr in various standard locations
-          const acrTopLevel = (requestObject as any).acr;
-          const acrInClaims = (requestObject as any).claims?.acr;
-          const acrInVpToken = (requestObject as any).claims?.vp_token?.acr;
-          const acrValues = (requestObject as any).acr_values;
-          const presentationDefinitionAcr = (
-            requestObject as any
-          ).presentation_definition?.constraints?.fields?.find((f: any) =>
-            f.path?.some((p: string) => p.includes("acr")),
-          );
-
-          log.info(`  acr (top-level): ${acrTopLevel}`);
-          log.info(`  acr (claims.acr): ${JSON.stringify(acrInClaims)}`);
-          log.info(
-            `  acr (claims.vp_token.acr): ${JSON.stringify(acrInVpToken)}`,
-          );
-          log.info(`  acr_values: ${acrValues}`);
-          log.info(
-            `  acr (presentation_definition): ${!!presentationDefinitionAcr}`,
-          );
-
-          const foundAcr =
-            acrTopLevel ||
-            acrInClaims ||
-            acrInVpToken ||
-            acrValues ||
-            presentationDefinitionAcr;
-
-          expect(foundAcr).toBeDefined();
-          testSuccess = true;
-        } finally {
-          log.testCompleted(DESCRIPTION, testSuccess);
-        }
-      },
-      { skip: true },
-    );
 
     // -----------------------------------------------------------------------
     // CI_047 — Request URI One-Time Use
