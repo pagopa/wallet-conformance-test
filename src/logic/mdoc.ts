@@ -27,7 +27,7 @@ import { issuerSignedSchema, VpTokenOptions } from "@/types";
  */
 export async function createVpTokenMdoc(
   options: VpTokenOptions,
-): Promise<Record<string, string>> {
+): Promise<string> {
   const issuerSigned = parseMdoc(Buffer.from(options.credential, "base64url"));
 
   const issuerMDoc = new MDoc([issuerSigned]);
@@ -40,7 +40,7 @@ export async function createVpTokenMdoc(
     issuerSigned.docType,
   );
   if (!presentationDefinition) {
-    return {};
+    return "";
   }
 
   const deviceResponse = await DeviceResponse.from(issuerMDoc)
@@ -54,9 +54,7 @@ export async function createVpTokenMdoc(
     .authenticateWithSignature(options.dpopJwk, "ES256")
     .sign();
 
-  return {
-    [presentationDefinition.id]: deviceResponse.encode().toString("base64url"),
-  };
+  return deviceResponse.encode().toString("base64url");
 }
 
 /**
