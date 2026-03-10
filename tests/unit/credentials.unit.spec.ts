@@ -642,7 +642,9 @@ describe("Generate Mocked Credentials", () => {
 
 describe("createVpTokenMdoc", () => {
   afterAll(() => {
-    rmSync(`${backupDir}/${ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`, { force: true });
+    rmSync(`${backupDir}/${ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`, {
+      force: true,
+    });
   });
 
   it("should throw if no matching credential query found", async () => {
