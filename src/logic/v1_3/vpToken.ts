@@ -8,7 +8,7 @@ export async function prepareCredentials_V1_3(
   credentialQueryId: string,
   credentials: CredentialWithKey[],
   options: Omit<VpTokenOptions, "credential" | "dpopJwk">,
-): Promise<Record<string, string[]>> {
+): Promise<Record<string, [string, ...string[]]>> {
   if (validCredentials.length < 1)
     throw new Error(
       `No valid credentials found for credential_query_id ${credentialQueryId}`,
@@ -44,6 +44,6 @@ export async function prepareCredentials_V1_3(
   }
 
   return {
-    [credentialQueryId]: accumulator,
+    [credentialQueryId]: accumulator as [string, ...string[]],
   };
 }

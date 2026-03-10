@@ -29,7 +29,7 @@ export async function buildVpToken(
   options: Omit<VpTokenOptions, "credential" | "dcqlQuery" | "dpopJwk">,
   version: ItWalletSpecsVersion,
   logger?: Logger,
-): Promise<Record<string, string | string[]>> {
+): Promise<Record<string, [string, ...string[]] | string>> {
   const queryResult = await validateDcqlQuery(credentials, query, logger);
   const matches: [string, DcqlMatchSuccess][] =
     getDcqlQueryMatches(queryResult);
@@ -51,7 +51,7 @@ export async function buildVpToken(
       },
     };
 
-    let res: Record<string, string | string[]>;
+    let res: Record<string, [string, ...string[]] | string>;
     switch (version) {
       case ItWalletSpecsVersion.V1_0:
         res = await prepareCredentials_V1_0(
