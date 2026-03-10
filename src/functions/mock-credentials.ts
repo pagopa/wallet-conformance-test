@@ -7,7 +7,7 @@ import {
   loadCertificate,
   loadJwks,
 } from "@/logic";
-import { Credential } from "@/types";
+import { Config, Credential } from "@/types";
 
 import {
   buildMockMdlMdoc_V1_0,
@@ -74,8 +74,8 @@ export async function createMockMdlMdoc(
 export async function createMockSdJwt(
   metadata: {
     iss: string;
+    trustAnchor: Config["trust"];
     trustAnchorBaseUrl: string;
-    trustAnchorJwksPath: string;
   },
   backupPath: string,
   credentialsPath: string,

@@ -80,8 +80,8 @@ describe("Generate Mocked Credentials", () => {
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
+    trustAnchor: config.trust,
     trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
-    trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
   };
 
   afterAll(() => {
