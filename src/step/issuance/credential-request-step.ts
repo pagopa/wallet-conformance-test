@@ -157,7 +157,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
   ): Promise<CredentialRequestResponse> {
     const log = this.log.withTag(this.tag);
 
-    log.info("Starting Credential Request Step");
+    log.debug("Starting Credential Request Step");
 
     log.info("Generating new key pair for credential...");
     const credentialKeyPair = await this.generateCredentialKeyPair(

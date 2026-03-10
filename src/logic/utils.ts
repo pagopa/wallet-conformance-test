@@ -48,7 +48,7 @@ export async function fetchWithRetries(
         signal: AbortSignal.timeout(network.timeout * 1000),
         ...init,
         headers: {
-          "User-Agent": network.user_agent,
+          ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
           ...init?.headers,
         },
       });
@@ -193,7 +193,25 @@ export async function loadJwks(
   }
 }
 
-export async function loadJwksWithSelfSignedX5c(
+/**
+ * Loads a Trust Anchor (TA) JWKS with a self-signed X.509 certificate chain.
+ *
+ * If the JWKS public key does not contain an x5c (X.509 certificate chain),
+ * this function loads a certificate from the configured CA certificate path
+ * and populates it.
+ *
+ * @param trust - The trust configuration containing paths to federation trust anchors JWKS and CA certificates
+ * @param namePrefix - The prefix used to build the path for loading JWKS and certificate files
+ * @returns A promise that resolves to a KeyPair object containing the public key with an x5c certificate chain
+ *
+ * @throws Will throw an error if the JWKS or certificate file cannot be loaded
+ *
+ * @example
+ * ```typescript
+ * const keyPair = await loadTAJwksWithSelfSignedX5c(config.trust, 'ta-anchor');
+ * ```
+ */
+export async function loadTAJwksWithSelfSignedX5c(
   trust: Config["trust"],
   namePrefix: string,
 ): Promise<KeyPair> {
@@ -213,6 +231,32 @@ export async function loadJwksWithSelfSignedX5c(
     ];
 
   return signedJwks;
+}
+
+/**
+ * Loads (or lazily generates and caches on disk) an X.509 certificate for the
+ * wallet provider key pair, suitable for use in
+ * WalletAttestationOptionsV1_3.signer.x5c.
+ *
+ * Follows the same lazy-cache pattern as loadCertificate /
+ * loadTAJwksWithSelfSignedX5c.
+ *
+ * @param wallet - The wallet configuration section from Config
+ * @param providerKeyPair - The provider key pair loaded from backup_storage_path
+ * @returns A non-empty tuple of base64-DER certificate strings: [leaf, ...chain]
+ */
+export async function loadWalletProviderCertificate(
+  wallet: Config["wallet"],
+  providerKeyPair: KeyPair,
+): Promise<[string, ...string[]]> {
+  const providerDomain = new URL(wallet.wallet_provider_base_url).hostname;
+  const cert = await loadCertificate(
+    wallet.backup_storage_path,
+    "wallet_provider_cert",
+    providerKeyPair,
+    `CN=${providerDomain}`,
+  );
+  return [cert];
 }
 
 /**

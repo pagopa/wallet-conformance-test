@@ -13,6 +13,7 @@ import {
   withParOverrides,
   withSignJwtOverride,
 } from "#/helpers/par-validation-helpers";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import {
   createClientAttestationPopJwt,
   createPushedAuthorizationRequest,
@@ -22,7 +23,6 @@ import {
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
-  createLogger,
   createQuietLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
@@ -73,6 +73,8 @@ testConfigs.forEach((testConfig) => {
         ctx.pushedAuthorizationRequestEndpoint;
       credentialIssuer = ctx.credentialIssuer;
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     // Restore real timers after each test that might have used fake timers
     afterEach(() => {

@@ -8,6 +8,7 @@ import { parseItWalletSpecVersion } from "./version";
  */
 export const configSchema = z.object({
   issuance: z.object({
+    certificate_subject: z.string().optional(),
     credential_offer_uri: z
       .string()
       .url()
@@ -26,9 +27,9 @@ export const configSchema = z.object({
     log_level: z.string(),
   }),
   network: z.object({
-    max_retries: z.coerce.number(),
-    timeout: z.coerce.number(),
-    user_agent: z.string(),
+    max_retries: z.coerce.number().default(10),
+    timeout: z.coerce.number().default(10),
+    user_agent: z.string().optional(),
   }),
   presentation: z.object({
     authorize_request_url: z.string().url(),
@@ -67,7 +68,7 @@ export const configSchema = z.object({
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),
-    wallet_provider_base_url: z.string(),
+    wallet_provider_base_url: z.string().url(),
     wallet_version: z
       .string({
         required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,

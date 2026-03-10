@@ -5,7 +5,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import { createMockMdlMdoc, loadCredentials } from "@/functions";
 import { createMockSdJwt } from "@/functions";
@@ -113,9 +113,6 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe(
-      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
-    );
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
@@ -133,6 +130,9 @@ describe("Generate Mocked Credentials", () => {
       hasher: digest,
     }).decode(credential.compact);
 
+    expect(decoded.jwt?.payload?.vct).toBe(
+      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
+    );
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_assertion");
 
     const dump = loadJsonDumps(
@@ -237,10 +237,10 @@ describe("createVpTokenMdoc", () => {
 
     await expect(
       createVpTokenMdoc({
-        clientId: "client_id",
+        client_id: "client_id",
         credential: "invalid_credential",
         dcqlQuery,
-        devicePrivateKey: keyPair.privateKey,
+        dpopJwk: keyPair.privateKey,
         nonce: "nonce",
         responseUri: "https://example.com",
       }),
@@ -277,18 +277,18 @@ describe("createVpTokenMdoc", () => {
     };
 
     const result = await createVpTokenMdoc({
-      clientId: "client_id",
-      credential: credential.mso_mdoc_mDL!.compact,
+      client_id: "client_id",
+      credential: credential.mso_mdoc_mDL.compact,
       dcqlQuery,
-      devicePrivateKey: keyPair.privateKey,
+      dpopJwk: keyPair.privateKey,
       nonce: "nonce",
       responseUri: "https://example.com",
     });
 
     expect(result).toHaveProperty("query_mdl");
-    expect(result["query_mdl"]).toBeDefined();
+    expect(result).toBeDefined();
 
-    const documents = decode(result["query_mdl"]!).documents;
+    const documents = decode(Buffer.from(result, "base64url")).documents;
     expect(documents).toBeDefined();
 
     const document = documents[0]!;

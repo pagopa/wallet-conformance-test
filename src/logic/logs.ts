@@ -104,6 +104,7 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
     testCompleted,
     testFailed,
     testSuite,
+    testSummary,
     withTag,
   });
 }
@@ -236,6 +237,53 @@ function testSuite(
 }
 
 /**
+ * Prints an ASCII-box summary for a test suite (or a combined group of suites).
+ *
+ * Typically called once per `describe` block via {@link useTestSummary}.
+ * Pass multiple entries to render a combined multi-suite table.
+ *
+ *   ┌────────────────────────────────────────┐
+ *   │  Test Results                          │
+ *   ├────────────────────────────────────────┤
+ *   │  ❌  17 passed  1 failed  ⏱ 3945ms  … │
+ *   │  ✅   5 passed  0 failed  ⏱ 8200ms  … │
+ *   └────────────────────────────────────────┘
+ *
+ * @param suites  Array of suite result objects (usually one entry per call)
+ */
+function testSummary(
+  this: Logger,
+  suites: {
+    durationMs: number;
+    failed: number;
+    name: string;
+    passed: number;
+  }[],
+) {
+  const TITLE = "Test Results";
+  const lines = suites.map((s) => {
+    const status = s.failed === 0 ? "✅" : "❌";
+    return `${status}  ${String(s.passed).padStart(2)} passed  ${String(s.failed).padStart(2)} failed  ⏱ ${s.durationMs}ms  ${s.name}`;
+  });
+  const innerWidth = Math.max(TITLE.length, ...lines.map((l) => l.length));
+  const boxWidth = innerWidth + 4;
+  const top = `┌${"─".repeat(boxWidth)}┐`;
+  const divider = `├${"─".repeat(boxWidth)}┤`;
+  const bottom = `└${"─".repeat(boxWidth)}┘`;
+  const pad = (s: string) => `│  ${s.padEnd(innerWidth, " ")}  │`;
+
+  process.stdout.write("\n");
+  process.stdout.write(`${top}\n`);
+  process.stdout.write(`${pad(TITLE)}\n`);
+  process.stdout.write(`${divider}\n`);
+  for (const line of lines) {
+    process.stdout.write(`${pad(line)}\n`);
+  }
+  process.stdout.write(`${bottom}\n`);
+  process.stdout.write("\n");
+}
+
+/**
  * Creates a new logger instance with an additional tag.
  *
  * @param this The logger instance.
@@ -260,6 +308,7 @@ function withTag(this: Logger, tag: string): Logger {
     testCompleted,
     testFailed,
     testSuite,
+    testSummary,
     withTag,
   });
 }

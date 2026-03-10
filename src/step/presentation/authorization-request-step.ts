@@ -11,10 +11,9 @@ import {
 } from "@pagopa/io-wallet-oid4vp";
 import { DcqlQuery } from "dcql";
 
-import type { AttestationResponse, KeyPairJwk } from "@/types";
+import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { createVpTokenSdJwt } from "@/logic/sd-jwt";
 import { partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
@@ -48,11 +47,6 @@ export type AuthorizationRequestStepResponse = StepResponse & {
   response?: AuthorizationRequestExecuteStepResponse;
 };
 
-export interface CredentialWithKey {
-  credential: string;
-  dpopJwk: KeyPairJwk;
-}
-
 /**
  * Implementation of the Authorization Request Step for OpenID4VP flow.
  * This step handles fetching the authorization request, building the VP token,
@@ -65,7 +59,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     options: AuthorizationRequestOptions,
   ): Promise<AuthorizationRequestStepResponse> {
     const log = this.log.withTag(this.tag);
-    log.info("Starting authorization request step...");
+    log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
       const authorizeRequestUrl =
@@ -92,24 +86,21 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         throw new Error("response_uri is missing in the request object");
       }
 
-      const credentialsWithKb = await Promise.all(
-        options.credentials.map(({ credential, dpopJwk }) =>
-          createVpTokenSdJwt({
-            client_id: parsedQrCode.clientId,
-            dpopJwk,
-            nonce: requestObject.nonce,
-            sdJwt: credential,
-          }),
-        ),
-      );
-
       const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
-
-      log.info("Building VP Token from DCQL query...");
-      const vpToken = await buildVpToken(credentialsWithKb, dcqlQuery, log);
+      const vp_token = await buildVpToken(
+        options.credentials,
+        dcqlQuery,
+        {
+          client_id: parsedQrCode.clientId,
+          nonce: requestObject.nonce,
+          responseUri: responseUri,
+        },
+        this.config.wallet.wallet_version,
+        this.log,
+      );
       log.info("VP Token built successfully from DCQL query.");
 
       const metadata = {
@@ -149,7 +140,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         rpJwks: {
           jwks: metadata.jwks,
         },
-        vp_token: vpToken,
+        vp_token,
       });
 
       return {
