@@ -95,7 +95,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
         "malformed signer's JWK",
       );
     case "x5c":
-      return await jwkFromCertificateChain(signer.x5c, signer.alg);
+      return await jwkFromCertificateChain(signer.x5c, signer.alg, kid);
     default:
       throw new Error(`signer method "${signer.method}" not supported`);
   }
@@ -116,12 +116,14 @@ function convertBase64DerToPem(certificate: string): string {
  *
  * @param x5c An array of Base64 encoded DER certificates. The first certificate is used.
  * @param alg The algorithm used for the key.
+ * @param kid Optional key ID to inject into the extracted JWK.
  * @returns A promise that resolves to the extracted JWK.
  * @throws An error if the certificate chain is missing or empty.
  */
 async function jwkFromCertificateChain(
   x5c: string[] | undefined,
   alg: string,
+  kid?: string,
 ): Promise<Jwk> {
   if (!x5c || x5c.length === 0) {
     throw new Error("missing x5c certificate");
@@ -130,10 +132,12 @@ async function jwkFromCertificateChain(
   const pem = convertBase64DerToPem(x5c[0] as string);
   const key = await importX509(pem, alg, { extractable: true });
   const jwk = await exportJWK(key);
+  // exportJWK() from jose doesn't add a kid when exporting from an X.509 certificate
+  const jwkWithKid = kid ? { ...jwk, kid } : jwk;
 
   return parseWithErrorHandling(
     jsonWebKeySchema,
-    jwk,
+    jwkWithKid,
     "malformed signer's JWK from x5c",
   );
 }
