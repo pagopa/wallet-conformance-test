@@ -23,8 +23,8 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -73,8 +73,10 @@ describe("Wallet Attestation Unit Test", () => {
     expect(wpDecoded.iss).toBe(config.wallet.wallet_provider_base_url);
     expect(wpDecoded.sub).toBe(config.wallet.wallet_provider_base_url);
     expect(wpDecoded.metadata).toBeDefined();
+    // V1_3 uses wallet_solution; V1_0 uses wallet_provider
+    const metadata = wpDecoded.metadata as Record<string, unknown>;
     expect(
-      (wpDecoded.metadata as { wallet_provider: unknown }).wallet_provider,
+      metadata["wallet_provider"] ?? metadata["wallet_solution"],
     ).toBeDefined();
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
@@ -85,8 +87,8 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -134,8 +136,8 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Generate first attestation
     const firstAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -143,8 +145,8 @@ describe("Wallet Attestation Unit Test", () => {
 
     // In this case the attestation should not be generated
     const secondAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -152,8 +154,8 @@ describe("Wallet Attestation Unit Test", () => {
 
     // In this case the attestation should be generated
     const thirdAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
       wallet: config.wallet,
     });
 
@@ -162,5 +164,109 @@ describe("Wallet Attestation Unit Test", () => {
     expect(thirdAttestationResponse.created).toEqual(true);
 
     vi.useRealTimers();
+  });
+});
+
+describe("Wallet Attestation V1_3 Unit Test", () => {
+  const config = loadConfigWithHierarchy();
+  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
+  const walletV1_3 = {
+    ...config.wallet,
+    wallet_version: ItWalletSpecsVersion.V1_3,
+  };
+
+  test("Generate New Wallet Attestation V1_3 with x5c", async () => {
+    const attestationPath = buildAttestationPath(walletV1_3);
+
+    // Remove existing attestation to force new generation
+    rmSync(attestationPath, { force: true });
+
+    const response = await loadAttestation({
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl,
+      wallet: walletV1_3,
+    });
+
+    expect(response.attestation).toBeDefined();
+    expect(response.created).toBe(true);
+
+    const providerKeyPair = readFileSync(
+      `${walletV1_3.backup_storage_path}/wallet_provider_jwks`,
+      "utf-8",
+    );
+    const unitKeyPair = readFileSync(
+      `${walletV1_3.backup_storage_path}/wallet_unit_jwks`,
+      "utf-8",
+    );
+    const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const providerKey = await importJWK(providerJWK, "ES256");
+
+    const jwt = await jwtVerify(response.attestation, providerKey);
+
+    // Verify standard header fields
+    expect(jwt.protectedHeader.typ).toBe("oauth-client-attestation+jwt");
+    expect(jwt.protectedHeader.alg).toBe("ES256");
+    expect(jwt.protectedHeader.kid).toBe(providerJWK.kid);
+
+    // V1_3: x5c MUST be present as a non-empty array of base64-DER strings
+    const x5c = jwt.protectedHeader.x5c as string[] | undefined;
+    expect(x5c).toBeDefined();
+    expect(Array.isArray(x5c)).toBe(true);
+    expect((x5c ?? []).length).toBeGreaterThan(0);
+    // Each entry must be a base64 string (no PEM headers)
+    for (const entry of x5c ?? []) {
+      expect(typeof entry).toBe("string");
+      expect(entry).not.toContain("-----BEGIN");
+    }
+
+    // V1_3: aal / authenticatorAssuranceLevel MUST NOT be in payload
+    expect((jwt.payload as Record<string, unknown>).aal).toBeUndefined();
+
+    // Verify payload claims
+    expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
+    expect(jwt.payload.iss).toBe(walletV1_3.wallet_provider_base_url);
+    expect(jwt.payload.sub).toBe(unitJWK.kid);
+    expect(jwt.payload.wallet_link).toBe(
+      `${walletV1_3.wallet_provider_base_url}/wallet`,
+    );
+    expect(jwt.payload.wallet_name).toBe(walletV1_3.wallet_name);
+  });
+
+  test("Load Existing Wallet Attestation V1_3", async () => {
+    const response = await loadAttestation({
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl,
+      wallet: walletV1_3,
+    });
+
+    // Should load from disk (not create a new one)
+    expect(response.created).toBe(false);
+
+    const attestation = readFileSync(buildAttestationPath(walletV1_3), "utf-8");
+    expect(response.attestation).toBe(attestation);
+
+    const providerKeyPair = readFileSync(
+      `${walletV1_3.backup_storage_path}/wallet_provider_jwks`,
+      "utf-8",
+    );
+    const unitKeyPair = readFileSync(
+      `${walletV1_3.backup_storage_path}/wallet_unit_jwks`,
+      "utf-8",
+    );
+    const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const providerKey = await importJWK(providerJWK, "ES256");
+    const jwt = await jwtVerify(attestation, providerKey);
+
+    expect(providerJWK.kid).toBe(jwt.protectedHeader.kid);
+    expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: Jwk }).jwk);
+    expect(unitJWK.kid).toBe(jwt.payload.sub);
+
+    // Verify x5c still present and valid
+    const x5c = jwt.protectedHeader.x5c as string[] | undefined;
+    expect(x5c).toBeDefined();
+    expect(Array.isArray(x5c)).toBe(true);
+    expect((x5c ?? []).length).toBeGreaterThan(0);
   });
 });

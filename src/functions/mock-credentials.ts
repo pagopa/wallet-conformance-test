@@ -8,13 +8,18 @@ import z from "zod";
 import {
   buildCertPath,
   buildJwksPath,
-  deepMerge,
   hasTrustChainExpired,
   hasX509CertificateExpired,
   loadCertificate,
   loadJwks,
 } from "@/logic";
-import { Credential, zDateOrDateTime, zTrustChain, zX5c } from "@/types";
+import {
+  Config,
+  Credential,
+  zDateOrDateTime,
+  zTrustChain,
+  zX5c,
+} from "@/types";
 
 import {
   buildMockMdlMdoc_V1_0,
@@ -81,8 +86,8 @@ export async function createMockMdlMdoc(
 export async function createMockSdJwt(
   metadata: {
     iss: string;
+    trustAnchor: Config["trust"];
     trustAnchorBaseUrl: string;
-    trustAnchorJwksPath: string;
   },
   backupPath: string,
   credentialsPath: string,
@@ -277,7 +282,10 @@ export function isCredentialSdJwtExpired(
 
   const exp = parsed.jwt.payload?.exp;
   const isJwtExpired =
-    checks.jwt && exp !== undefined && typeof exp === "number" && exp * 1000 < now;
+    checks.jwt &&
+    exp !== undefined &&
+    typeof exp === "number" &&
+    exp * 1000 < now;
 
   const jwt_trust_chain = zTrustChain.safeParse(parsed.jwt.header?.trust_chain);
   const isTrustChainExpired =

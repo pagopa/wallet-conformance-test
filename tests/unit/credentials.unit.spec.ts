@@ -505,8 +505,8 @@ describe("Generate Mocked Credentials", () => {
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
+    trustAnchor: config.trust,
     trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
-    trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
   };
 
   afterAll(() => {
@@ -537,9 +537,6 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.header?.typ).toBe("dc+sd-jwt");
     expect(decoded.jwt?.payload?.iss).toBe(iss);
-    expect(decoded.jwt?.payload?.vct).toBe(
-      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
-    );
     expect(
       (decoded.jwt?.payload?.cnf as { jwk: { kid: string } })?.jwk.kid,
     ).toBe(unitKey.kid);
@@ -557,6 +554,9 @@ describe("Generate Mocked Credentials", () => {
       hasher: digest,
     }).decode(credential.compact);
 
+    expect(decoded.jwt?.payload?.vct).toBe(
+      "https://pre.ta.wallet.ipzs.it/vct/v1.0.0/personidentificationdata",
+    );
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_assertion");
 
     const dump = loadJsonDumps(

@@ -357,8 +357,8 @@ export class WalletIssuanceOrchestratorFlow {
     const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
 
     const walletAttestationResponse = await loadAttestation({
+      trustAnchor: this.config.trust,
       trustAnchorBaseUrl,
-      trustAnchorJwksPath: this.config.trust.federation_trust_anchors_jwks_path,
       wallet: this.config.wallet,
     });
 

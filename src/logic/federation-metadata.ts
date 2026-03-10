@@ -7,8 +7,13 @@ import { decodeJwt } from "@sd-jwt/decode";
 
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
-import { signCallback } from "./jwt";
-import { loadJsonDumps, loadJwks, loadTAJwksWithSelfSignedX5c } from "./utils";
+import { signCallback, signJwtCallback } from "./jwt";
+import {
+  buildJwksPath,
+  loadJsonDumps,
+  loadJwks,
+  loadTAJwksWithSelfSignedX5c,
+} from "./utils";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<
@@ -76,18 +81,25 @@ export const createTrustAnchorMetadata = async (options: {
   trustAnchorBaseUrl: string;
   walletVersion: Config["wallet"]["wallet_version"];
 }): Promise<string> => {
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
+    options.trustAnchor,
+    "trust_anchor",
+  );
+  const trust_marks = await getTrustMarks(
+    options.trustAnchorBaseUrl,
+    options.trustAnchor.federation_trust_anchors_jwks_path,
+    options.trustAnchorBaseUrl,
+  );
+
   const placeholders = {
     sub: options.trustAnchorBaseUrl,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
+    trust_marks,
   };
   const claims = loadJsonDumps(
     "trust_anchor_metadata.json",
     placeholders,
     options.walletVersion,
-  );
-  const signedJwks = await loadTAJwksWithSelfSignedX5c(
-    options.trustAnchor,
-    "trust_anchor",
   );
 
   return await createFederationMetadata({
@@ -111,7 +123,7 @@ export interface CreateSubordinateEntityStatementOptions {
    * Path to the folder containing the trust anchor JWKS files.
    * The trust anchor's private key will be used to sign the entity statement.
    */
-  federationTrustAnchorsJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  federationTrustAnchor: Config["trust"];
 
   /**
    * Subject (sub) claim - the identifier of the subordinate entity.
@@ -143,19 +155,27 @@ export interface CreateSubordinateEntityStatementOptions {
 export const createSubordinateTrustAnchorMetadata = async (
   options: CreateSubordinateEntityStatementOptions,
 ): Promise<string> => {
+  const signedJwks = await loadTAJwksWithSelfSignedX5c(
+    options.federationTrustAnchor,
+    "trust_anchor",
+  );
+  const trust_marks = await getTrustMarks(
+    options.trustAnchorBaseUrl,
+    options.federationTrustAnchor.federation_trust_anchors_jwks_path,
+    options.trustAnchorBaseUrl,
+  );
+
   const placeholders = {
     sub: options.sub,
     trust_anchor_base_url: options.trustAnchorBaseUrl,
+    trust_marks,
   };
   const claims = loadJsonDumps(
     "trust_anchor_metadata.json",
     placeholders,
     options.walletVersion,
   );
-  const signedJwks = await loadJwks(
-    options.federationTrustAnchorsJwksPath,
-    "trust_anchor_jwks",
-  );
+
   return await createFederationMetadata({
     claims,
     entityPublicJwk: options.entityPublicJwk,
@@ -189,7 +209,7 @@ export const createSubordinateWalletUnitMetadata = async (
 
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
-    "wallet_unit_jwks",
+    buildJwksPath("wallet_unit"),
   );
   return await createFederationMetadata({
     claims: {
@@ -209,3 +229,48 @@ export const hasTrustChainExpired = (trust_chain: string[]) =>
       exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now()
     );
   });
+
+export async function getTrustMarks(
+  trust_anchor_base_url: string,
+  jwksPath: string,
+  sub: string,
+): Promise<{ trust_mark: string; trust_mark_type: string }[]> {
+  const trust_mark_type = `${trust_anchor_base_url}/trust_marks/authorization_policy/credential-issuer`;
+
+  const jwks = await loadJwks(jwksPath, buildJwksPath("trust_anchor"));
+
+  const iat = Math.floor(Date.now() / 1000);
+  const trustMarkPayload = {
+    exp: iat + 24 * 60 * 60 * 365,
+    iat,
+    iss: trust_anchor_base_url,
+    logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+    organization_type: "private",
+    sub,
+    trust_mark_type,
+  };
+  const trustMarkHeader = {
+    alg: jwks.privateKey.alg ?? "ES256",
+    kid: jwks.privateKey.kid,
+  };
+
+  const trust_mark = await signJwtCallback([jwks.privateKey])(
+    {
+      alg: jwks.publicKey.alg ?? "ES256",
+      kid: jwks.publicKey.kid,
+      method: "jwk",
+      publicJwk: jwks.publicKey,
+    },
+    {
+      header: trustMarkHeader,
+      payload: trustMarkPayload,
+    },
+  );
+
+  return [
+    {
+      trust_mark: trust_mark.jwt,
+      trust_mark_type,
+    },
+  ];
+}

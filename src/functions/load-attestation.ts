@@ -1,17 +1,24 @@
 import {
+  WalletAttestationOptions,
   WalletAttestationOptionsV1_0,
+  WalletAttestationOptionsV1_3,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
   loadJwks,
+  loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -27,11 +34,11 @@ import { type AttestationResponse, type Config, zTrustChain } from "@/types";
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
+  trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
-  trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
   wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
+  const { trustAnchor, trustAnchorBaseUrl, wallet } = options;
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
   const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
 
@@ -91,14 +98,21 @@ export const loadAttestation = async (options: {
     //This might be moved to a step specific implementation
     const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
       entityPublicJwk: providerKeyPair.publicKey,
-      federationTrustAnchorsJwksPath: trustAnchorJwksPath,
+      federationTrustAnchor: trustAnchor,
       sub: wallet.wallet_provider_base_url,
-      trustAnchorBaseUrl: trustAnchorBaseUrl,
+      trustAnchorBaseUrl,
       walletVersion: wallet.wallet_version,
     });
+    const trust_marks = await getTrustMarks(
+      trustAnchorBaseUrl,
+      trustAnchor.federation_trust_anchors_jwks_path,
+      trustAnchorBaseUrl,
+    );
+
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
+      trust_marks,
       wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
@@ -118,20 +132,54 @@ export const loadAttestation = async (options: {
       signJwt: signJwtCallback([providerKeyPair.privateKey]),
     };
 
-    const attestationOptions: WalletAttestationOptionsV1_0 = {
-      authenticatorAssuranceLevel: "substantial",
-      callbacks,
-      dpopJwkPublic: unitKeyPair.publicKey,
-      issuer: wallet.wallet_provider_base_url,
-      signer: {
-        alg: providerKeyPair.privateKey.alg || "ES256",
-        kid: providerKeyPair.privateKey.kid,
-        method: "federation" as const,
-        trustChain: [wpEntityConfiguration, taEntityConfiguration],
-      },
-      walletLink: `${wallet.wallet_provider_base_url}/wallet`,
-      walletName: wallet.wallet_name,
-    };
+    let attestationOptions: WalletAttestationOptions;
+
+    switch (wallet.wallet_version) {
+      case ItWalletSpecsVersion.V1_0: {
+        const options: WalletAttestationOptionsV1_0 = {
+          authenticatorAssuranceLevel: "substantial",
+          callbacks,
+          dpopJwkPublic: unitKeyPair.publicKey,
+          issuer: wallet.wallet_provider_base_url,
+          signer: {
+            alg: providerKeyPair.privateKey.alg || "ES256",
+            kid: providerKeyPair.privateKey.kid,
+            method: "federation",
+            trustChain: [wpEntityConfiguration, taEntityConfiguration],
+          },
+          walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+          walletName: wallet.wallet_name,
+        };
+        attestationOptions = options;
+        break;
+      }
+      case ItWalletSpecsVersion.V1_3: {
+        const x5c = await loadWalletProviderCertificate(
+          wallet,
+          providerKeyPair,
+        );
+        const options: WalletAttestationOptionsV1_3 = {
+          callbacks,
+          dpopJwkPublic: unitKeyPair.publicKey,
+          issuer: wallet.wallet_provider_base_url,
+          signer: {
+            alg: providerKeyPair.privateKey.alg || "ES256",
+            kid: providerKeyPair.privateKey.kid,
+            method: "x5c",
+            trustChain: [wpEntityConfiguration, taEntityConfiguration],
+            x5c,
+          },
+          walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+          walletName: wallet.wallet_name,
+        };
+        attestationOptions = options;
+        break;
+      }
+      default:
+        throw new Error(
+          `unimplemented wallet_version for attestation: ${wallet.wallet_version}`,
+        );
+    }
     const provider = new WalletProvider(
       new IoWalletSdkConfig({
         itWalletSpecsVersion: wallet.wallet_version,
