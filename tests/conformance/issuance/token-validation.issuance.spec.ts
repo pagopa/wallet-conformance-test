@@ -2,6 +2,7 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { createFreshPop, runAndValidateAuthorize } from "#/helpers";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import {
   AccessTokenRequest,
   createTokenDPoP,
@@ -67,6 +68,8 @@ testConfigs.forEach((testConfig) => {
         walletAttestationResponse,
       } = await runAndValidateAuthorize(orchestrator));
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     /**
      * Helper to run token request step with overrides
