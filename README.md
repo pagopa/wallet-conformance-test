@@ -205,7 +205,8 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
 ##### Using Configuration File
 
 2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
-   ```bash
+
+   ```ini
    [presentation]
    authorize_request_url = ...
    ```
@@ -266,13 +267,28 @@ This ensures that your implementation correctly handles trust verification throu
 
 ### What is Generated
 
-When running tests, the tool creates a sample PID credential containing fictional Italian citizen data:
+When running tests, the tool creates a sample PID credential containing fictional Italian citizen data.
+
+**Selectively disclosable claims** (included in the SD-JWT disclosure frame):
 
 - **Personal Information**: Given name, family name, and birth date
 - **Place of Birth**: Italian location
 - **Nationality**: Italian (IT)
 - **Administrative Number**: A sample personal administrative number
 - **Validity**: The credential is set to expire one year from generation
+
+**Non-selectively disclosable claims** (present in the JWT payload, not in disclosure frame):
+
+- **`verification`**: An Italian domestic mandatory extension (per ARF HLR PID_06) asserting the identity verification method and assurance level:
+  ```json
+  {
+    "trust_framework": "it_cie",
+    "assurance_level": "high"
+  }
+  ```
+  `trust_framework: "it_cie"` reflects that PID issuance is gated on the CIE identity infrastructure. `assurance_level: "high"` corresponds to LoA High (eIDAS High), the level required for PID issuance. Look under /dumps folder for more detail.
+
+> **Note (V1_3 only)**: The `verification` claim is specific to the V1.3 data model. V1_0 uses a different PID data model and does not include this claim.
 
 ## 🔐 Trust Anchor Server
 
