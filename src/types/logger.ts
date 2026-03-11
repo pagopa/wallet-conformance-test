@@ -35,9 +35,11 @@ export type Logger = Omit<
   withTag: (tag: string) => Logger;
 };
 
-export type SetLogOptionsCallback = (options: {
+export type SetLogOptions = {
   fileFormat?: string;
   format?: string;
   level?: string;
   path?: string;
-}) => void;
+};
+
+export type SetLogOptionsCallback = (options: SetLogOptions) => void;

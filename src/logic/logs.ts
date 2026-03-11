@@ -7,7 +7,7 @@ import {
 import { mkdirSync, openSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { Logger } from "@/types";
+import { Logger, SetLogOptions } from "@/types";
 
 import { readPackageVersion } from "./config-loader";
 
@@ -122,10 +122,7 @@ function nl() {
  * @param this The logger instance.
  * @param options The options to set.
  */
-function setLogOptions(
-  this: Logger,
-  options: { fileFormat?: string; format?: string; level?: string; path?: string },
-) {
+function setLogOptions(this: Logger, options: SetLogOptions) {
   const reporters: ConsolaReporter[] = [];
   const buildFormatter =
     (fmt: string) =>
