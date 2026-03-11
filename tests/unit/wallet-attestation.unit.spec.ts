@@ -81,7 +81,7 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
-    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config)); // Trust Anchor
+    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
 

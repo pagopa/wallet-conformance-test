@@ -11,21 +11,21 @@ import { Config } from "@/types";
  * regardless of this setting — callers must pass `localTrustAnchorBaseUrl`
  * explicitly to `loadCredentialsForPresentation`.
  *
- * @param config - The full application configuration
+ * @param config - The Trust Anchor configuration
  * @returns The Trust Anchor base URL
  */
-export function resolveTrustAnchorBaseUrl(config: Config): string {
-  if (config.trust_anchor.external_ta_url) {
-    return config.trust_anchor.external_ta_url;
+export function resolveTrustAnchorBaseUrl(config: Config["trust_anchor"]): string {
+  if (config.external_ta_url) {
+    return config.external_ta_url;
   }
-  return `https://127.0.0.1:${config.trust_anchor.port}`;
+  return `https://127.0.0.1:${config.port}`;
 }
 
 /**
  * Returns `true` when an external Trust Anchor URL is configured.
  *
- * @param config - The full application configuration
+ * @param config - The Trust Anchor configuration
  */
-export function isExternalTrustAnchor(config: Config): boolean {
-  return !!config.trust_anchor.external_ta_url;
+export function isExternalTrustAnchor(config: Config["trust_anchor"]): boolean {
+  return !!config.external_ta_url;
 }

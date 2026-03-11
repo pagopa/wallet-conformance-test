@@ -46,7 +46,7 @@ export const loadAttestation = async (options: {
 }): Promise<AttestationResponse> => {
   const { config, trustAnchorJwksPath, wallet } = options;
 
-  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(config);
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(config.trust_anchor);
 
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
 
@@ -96,7 +96,7 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = isExternalTrustAnchor(config)
+    const taEntityConfiguration = isExternalTrustAnchor(config.trust_anchor)
       ? await fetchExternalSubordinateStatement(
           config.trust_anchor.external_ta_url!,
           wallet.wallet_provider_base_url,
