@@ -206,7 +206,7 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
 
 2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
 
-   ```bash
+   ```ini
    [presentation]
    authorize_request_url = ...
    ```
