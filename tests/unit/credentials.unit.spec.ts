@@ -290,7 +290,6 @@ describe("createVpTokenMdoc", () => {
       responseUri: "https://example.com",
     });
 
-    expect(result).toHaveProperty("query_mdl");
     expect(result).toBeDefined();
 
     const documents = decode(Buffer.from(result, "base64url")).documents;
