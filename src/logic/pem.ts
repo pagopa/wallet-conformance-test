@@ -34,6 +34,9 @@ export async function createCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<x509.X509Certificate> {
+  // Guard: @peculiar/x509 throws on empty name type
+  const safeSubject = subject?.trim() || "CN=localhost";
+
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -72,7 +75,7 @@ export async function createCertificate(
       await x509.SubjectKeyIdentifierExtension.create(publicKey),
     ],
     keys,
-    name: subject,
+    name: safeSubject,
     notBefore: now,
     signingAlgorithm,
   });
