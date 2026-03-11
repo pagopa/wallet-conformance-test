@@ -277,7 +277,7 @@ When running tests, the tool creates a sample PID credential containing fictiona
 - **Administrative Number**: A sample personal administrative number
 - **Validity**: The credential is set to expire one year from generation
 
-**No-Selectively-disclosable claims** (present in the JWT payload, not in disclosure frame):
+**Non-selectively disclosable claims** (present in the JWT payload, not in disclosure frame):
 
 - **`verification`**: An Italian domestic mandatory extension (per ARF HLR PID_06) asserting the identity verification method and assurance level:
   ```json
