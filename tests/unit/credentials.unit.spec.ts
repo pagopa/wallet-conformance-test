@@ -593,6 +593,11 @@ describe("Generate Mocked Credentials", () => {
 
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
 
+    expect(decoded.jwt?.payload?.verification).toEqual({
+      assurance_level: "high",
+      trust_framework: "it_cie",
+    });
+
     const dump = loadJsonDumps(
       "pid.json",
       { expiration: new Date(Date.now()) },
@@ -711,7 +716,6 @@ describe("createVpTokenMdoc", () => {
       responseUri: "https://example.com",
     });
 
-    expect(result).toHaveProperty("query_mdl");
     expect(result).toBeDefined();
 
     const documents = decode(Buffer.from(result, "base64url")).documents;

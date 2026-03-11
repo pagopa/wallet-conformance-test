@@ -160,6 +160,10 @@ export async function buildMockSdJwt_V1_3(
       sub: unitKey.kid,
       vct,
       "vct#integrity": vctIntegrity,
+      verification: {
+        assurance_level: "high",
+        trust_framework: "it_cie",
+      },
       ...claims,
     },
     disclosureFrame,
