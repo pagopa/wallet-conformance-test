@@ -34,7 +34,6 @@ export async function createCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<x509.X509Certificate> {
-
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
     hash: "SHA-256",
