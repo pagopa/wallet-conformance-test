@@ -461,7 +461,8 @@ describe("Load Mocked Credentials", async () => {
       const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
       const logger = createLogger();
 
-      const date = new Date(2000, 1, 1);
+      // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
+      const date = new Date(2015, 1, 1);
       const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2);
 
       try {
