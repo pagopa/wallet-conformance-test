@@ -36,6 +36,7 @@ export type Logger = Omit<
 };
 
 export type SetLogOptionsCallback = (options: {
+  fileFormat?: string;
   format?: string;
   level?: string;
   path?: string;
