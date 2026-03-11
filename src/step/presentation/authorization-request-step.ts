@@ -1,14 +1,18 @@
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
-  type AuthorizationRequestObject,
   createAuthorizationResponse,
   type CreateAuthorizationResponseResult,
   fetchAuthorizationRequest,
   type Openid4vpAuthorizationRequestHeader,
   parseAuthorizeRequest,
+  ParsedAuthorizeRequestResult,
   type ParsedQrCode,
 } from "@pagopa/io-wallet-oid4vp";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
@@ -22,7 +26,7 @@ export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
-  requestObject: AuthorizationRequestObject;
+  requestObject: ParsedAuthorizeRequestResult["payload"];
   responseUri: string;
 }
 
@@ -31,6 +35,11 @@ export interface AuthorizationRequestOptions {
    * Credentials along with their associated DPoP keys.
    */
   credentials: CredentialWithKey[];
+
+  /**
+   * Configuration for the io-wallet-sdk.
+   */
+  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
   /**
    * Metadata about the verifier from the wallet's perspective.
@@ -73,6 +82,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
 
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
+        config: options.ioWalletSdkConfig,
         requestObjectJwt,
       });
 
