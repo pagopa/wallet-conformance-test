@@ -29,7 +29,7 @@ import { AttestationResponse } from "@/types";
 // Module-level test registration
 // ---------------------------------------------------------------------------
 
-const testConfigs = await defineIssuanceTest("HappyFlowIssuance");
+const testConfigs = await defineIssuanceTest("TokenValidation");
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -159,7 +159,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_062: Redirect URI Matching | Issuer rejects mismatched redirect_uri (invalid_grant)", async () => {
       const log = baseLog.withTag("CI_062");
-      const DESCRIPTION = "✅ Issuer behavior documented";
+      const DESCRIPTION = "✅ Issuer correctly rejected mismatched redirect_uri";
       log.start(
         "Conformance test: Verifying redirect_uri byte-for-byte matching",
       );
@@ -240,7 +240,7 @@ testConfigs.forEach((testConfig) => {
       "CI_061: Authorization Code Validity | Issuer rejects reused and expired codes (invalid_grant)",
       async () => {
         const log = baseLog.withTag("CI_061");
-        const DESCRIPTION = "✅ Issuer behavior documented";
+        const DESCRIPTION = "✅ Issuer correctly rejectedd reused and expired codes";
         log.start(
           "Conformance test: Verifying authorization code one-time use and expiration",
         );
