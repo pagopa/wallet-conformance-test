@@ -364,9 +364,10 @@ export class WalletIssuanceOrchestratorFlow {
     );
 
     const walletAttestationResponse = await loadAttestation({
-      config: this.config,
-      trustAnchorJwksPath: this.config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: this.config.trust_anchor,
+      trust: this.config.trust,
       wallet: this.config.wallet,
+      network: this.config.network,
     });
 
     const callbacks = {

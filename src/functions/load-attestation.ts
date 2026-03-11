@@ -40,19 +40,20 @@ import {
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
-  config: Config;
-  trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchor: Config["trust_anchor"];
+  trust: Config["trust"];
   wallet: Config["wallet"];
+  network: Config["network"];
 }): Promise<AttestationResponse> => {
-  const { config, trustAnchorJwksPath, wallet } = options;
+  const { trustAnchor, trust, wallet, network } = options;
 
-  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(config.trust_anchor);
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
 
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
 
   const attestationPath = buildAttestationPath(
     wallet,
-    config.trust_anchor.external_ta_url,
+    trustAnchor.external_ta_url,
   );
 
   try {
@@ -96,15 +97,15 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = isExternalTrustAnchor(config.trust_anchor)
+    const taEntityConfiguration = isExternalTrustAnchor(trustAnchor)
       ? await fetchExternalSubordinateStatement(
-          config.trust_anchor.external_ta_url!,
+          trustAnchor.external_ta_url!,
           wallet.wallet_provider_base_url,
-          config.network,
+          network,
         )
       : await createSubordinateTrustAnchorMetadata({
           entityPublicJwk: providerKeyPair.publicKey,
-          federationTrustAnchor: config.trust,
+          federationTrustAnchor: trust,
           sub: wallet.wallet_provider_base_url,
           trustAnchorBaseUrl: trustAnchorBaseUrl,
           walletVersion: wallet.wallet_version,
@@ -112,7 +113,7 @@ export const loadAttestation = async (options: {
 
     const trust_marks = await getTrustMarks(
       trustAnchorBaseUrl,
-      trustAnchorJwksPath,
+      trust.federation_trust_anchors_jwks_path,
       trustAnchorBaseUrl,
     );
     const placeholders = {

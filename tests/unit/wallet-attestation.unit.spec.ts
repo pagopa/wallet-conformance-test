@@ -23,9 +23,10 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      config,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: config.wallet,
+      network: config.network,
     });
 
     // Verify attestation was created
@@ -87,9 +88,10 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      config,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: config.wallet,
+      network: config.network,
     });
 
     const attestation = readFileSync(
@@ -138,9 +140,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      config,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: walletV1_3,
+      network: config.network,
     });
 
     expect(response.attestation).toBeDefined();
@@ -191,9 +194,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
-      config,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: walletV1_3,
+      network: config.network,
     });
 
     // Should load from disk (not create a new one)
