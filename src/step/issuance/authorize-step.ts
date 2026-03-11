@@ -3,12 +3,16 @@ import {
   sendAuthorizationResponseAndExtractCode,
 } from "@pagopa/io-wallet-oid4vci";
 import {
-  AuthorizationRequestObject,
   createAuthorizationResponse,
   CreateAuthorizationResponseOptions,
   parseAuthorizeRequest,
+  ParsedAuthorizeRequestResult,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { DcqlQuery } from "dcql";
 
 import { buildVpToken } from "@/logic";
@@ -21,7 +25,7 @@ import { StepFlow, StepResponse } from "../step-flow";
 export interface AuthorizeExecuteResponse {
   authorizeResponse?: AuthorizationResponse;
   iss: string;
-  requestObject?: AuthorizationRequestObject;
+  requestObject?: ParsedAuthorizeRequestResult["payload"];
   requestObjectJwt: string;
 }
 
@@ -46,6 +50,11 @@ export interface AuthorizeStepOptions {
    * Credential tokens produced by the issuer
    */
   credentials: CredentialWithKey[];
+
+  /**
+   * Configuration for the io-wallet-sdk.
+   */
+  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -98,6 +107,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       const requestObjectJwt = await fetchAuthorize.response.text();
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
+        config: options.ioWalletSdkConfig,
         requestObjectJwt,
       });
 

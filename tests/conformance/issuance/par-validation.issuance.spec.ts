@@ -37,6 +37,7 @@ import { AttestationResponse } from "@/types";
 // Module-level test registration
 // ---------------------------------------------------------------------------
 
+// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfigs = await defineIssuanceTest("PARValidation");
 
 // ---------------------------------------------------------------------------

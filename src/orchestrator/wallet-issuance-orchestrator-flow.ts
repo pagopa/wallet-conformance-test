@@ -4,7 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
@@ -41,6 +44,7 @@ export class WalletIssuanceOrchestratorFlow {
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
+  private ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
 
@@ -76,6 +80,10 @@ export class WalletIssuanceOrchestratorFlow {
         userAgent: this.config.network.user_agent,
       }),
     );
+
+    this.ioWalletSdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
 
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
@@ -214,8 +222,6 @@ export class WalletIssuanceOrchestratorFlow {
             "Check the nonce step for errors.",
         );
 
-      const itWalletSpecsVersion = this.config.wallet.wallet_version;
-
       const credentialResponse = await this.credentialRequestStep.run({
         accessToken,
         baseUrl: credentialIssuer,
@@ -224,9 +230,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        ioWalletSdkConfig: new IoWalletSdkConfig({
-          itWalletSpecsVersion,
-        }),
+        ioWalletSdkConfig: this.ioWalletSdkConfig,
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -316,6 +320,7 @@ export class WalletIssuanceOrchestratorFlow {
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentials,
+      ioWalletSdkConfig: this.ioWalletSdkConfig,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,
@@ -347,13 +352,9 @@ export class WalletIssuanceOrchestratorFlow {
       `Requesting credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
     );
 
-    const itWalletSpecsVersion = this.config.wallet.wallet_version;
-
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: credentialIssuer,
-      ioWalletSdkConfig: new IoWalletSdkConfig({
-        itWalletSpecsVersion,
-      }),
+      ioWalletSdkConfig: this.ioWalletSdkConfig,
     });
     this.log.flowStep(
       1,

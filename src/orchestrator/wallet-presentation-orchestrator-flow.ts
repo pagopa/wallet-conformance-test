@@ -1,5 +1,9 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
@@ -21,6 +25,7 @@ export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataVpDefaultStep;
+  private ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
   private log = createLogger();
 
   private presentationConfig: PresentationTestConfiguration;
@@ -50,6 +55,10 @@ export class WalletPresentationOrchestratorFlow {
         userAgent: this.config.network.user_agent,
       }),
     );
+
+    this.ioWalletSdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
 
     this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
       this.config,
@@ -147,6 +156,7 @@ export class WalletPresentationOrchestratorFlow {
     const authorizationRequestResponse =
       await this.authorizationRequestStep.run({
         credentials,
+        ioWalletSdkConfig: this.ioWalletSdkConfig,
         verifierMetadata,
         walletAttestation,
       });
