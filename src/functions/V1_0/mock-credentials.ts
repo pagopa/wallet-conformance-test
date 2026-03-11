@@ -11,7 +11,7 @@ import {
   loadJsonDumps,
 } from "@/logic";
 import { generateSRIHash } from "@/logic/sd-jwt";
-import { Credential, KeyPair, KeyPairJwk } from "@/types";
+import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
 export async function buildMockMdlMdoc_V1_0(
   expiration: Date,
@@ -69,8 +69,8 @@ export async function buildMockMdlMdoc_V1_0(
 export async function buildMockSdJwt_V1_0(
   metadata: {
     iss: string;
+    trustAnchor: Config["trust"];
     trustAnchorBaseUrl: string;
-    trustAnchorJwksPath: string;
   },
   expiration: Date,
   unitKey: KeyPairJwk,
@@ -79,7 +79,7 @@ export async function buildMockSdJwt_V1_0(
 ): Promise<Credential> {
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
     entityPublicJwk: keyPair.publicKey,
-    federationTrustAnchorsJwksPath: metadata.trustAnchorJwksPath,
+    federationTrustAnchor: metadata.trustAnchor,
     sub: metadata.iss,
     trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
     walletVersion: ItWalletSpecsVersion.V1_0,

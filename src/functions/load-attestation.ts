@@ -16,6 +16,7 @@ import {
   buildAttestationPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  getTrustMarks,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificate,
@@ -103,15 +104,21 @@ export const loadAttestation = async (options: {
         )
       : await createSubordinateTrustAnchorMetadata({
           entityPublicJwk: providerKeyPair.publicKey,
-          federationTrustAnchorsJwksPath: trustAnchorJwksPath,
+          federationTrustAnchor: config.trust,
           sub: wallet.wallet_provider_base_url,
           trustAnchorBaseUrl: trustAnchorBaseUrl,
           walletVersion: wallet.wallet_version,
         });
 
+    const trust_marks = await getTrustMarks(
+      trustAnchorBaseUrl,
+      trustAnchorJwksPath,
+      trustAnchorBaseUrl,
+    );
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
+      trust_marks,
       wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };

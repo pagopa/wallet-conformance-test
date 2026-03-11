@@ -219,7 +219,10 @@ export async function loadJwks(
  * ```
  */
 export async function loadTAJwksWithSelfSignedX5c(
-  trust: Config["trust"],
+  trust: Omit<
+    Config["trust"],
+    "eidas_trusted_lists" | "federation_trust_anchors"
+  >,
   namePrefix: string,
 ): Promise<KeyPair> {
   const signedJwks = await loadJwks(
