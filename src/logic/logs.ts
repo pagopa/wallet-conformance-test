@@ -151,7 +151,7 @@ function setLogOptions(
   if (options.path)
     try {
       mkdirSync(dirname(options.path), { recursive: true });
-      const file = openSync(options.path, "w");
+      const file = openSync(options.path, "a");
       reporters.push({
         log: (logObj) => {
           writeFileSync(file, `${formatLog(logObj)}\n`);
