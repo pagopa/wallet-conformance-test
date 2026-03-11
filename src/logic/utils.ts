@@ -229,7 +229,7 @@ export async function loadTAJwksWithSelfSignedX5c(
         trust.ca_cert_path,
         buildCertPath(namePrefix),
         signedJwks,
-        trust.certificate_subject || "CN=localhost",
+        trust.certificate_subject,
       ),
     ];
 
