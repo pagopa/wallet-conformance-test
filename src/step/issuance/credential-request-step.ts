@@ -184,17 +184,13 @@ export class CredentialRequestDefaultStep extends StepFlow {
   ): Promise<CredentialRequest> {
     const commonOptions = {
       callbacks: {
+        hash: partialCallbacks.hash,
         signJwt: signJwtCallback([credentialKeyPair.privateKey]),
       },
       clientId: options.clientId,
       credential_identifier: options.credentialIdentifier,
       issuerIdentifier: options.baseUrl,
       nonce: options.nonce,
-      signer: {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: credentialKeyPair.publicKey,
-      },
     };
 
     if (options.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
@@ -207,6 +203,13 @@ export class CredentialRequestDefaultStep extends StepFlow {
         ...commonOptions,
         config: options.ioWalletSdkConfig,
         keyAttestation: keyAttestation.jwt,
+        signers: [
+          {
+            alg: "ES256",
+            method: "jwk" as const,
+            publicJwk: credentialKeyPair.publicKey,
+          },
+        ],
       } satisfies CredentialRequestOptions);
     }
 
@@ -214,6 +217,11 @@ export class CredentialRequestDefaultStep extends StepFlow {
       ...commonOptions,
       config:
         options.ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
+      signer: {
+        alg: "ES256",
+        method: "jwk" as const,
+        publicJwk: credentialKeyPair.publicKey,
+      },
     });
   }
 
