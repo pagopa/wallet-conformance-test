@@ -7,7 +7,7 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
+import { createAndSaveCertificate, createAndSaveKeys, createAndSaveKeysWithX5C, verifyJwt } from ".";
 
 // Re-export config loading functions
 export {
@@ -201,46 +201,39 @@ export async function loadJwks(
 }
 
 /**
- * Loads a Trust Anchor (TA) JWKS with a self-signed X.509 certificate chain.
- *
- * If the JWKS public key does not contain an x5c (X.509 certificate chain),
- * this function loads a certificate from the configured CA certificate path
- * and populates it.
- *
- * @param trust - The trust configuration containing paths to federation trust anchors JWKS and CA certificates
- * @param namePrefix - The prefix used to build the path for loading JWKS and certificate files
- * @returns A promise that resolves to a KeyPair object containing the public key with an x5c certificate chain
- *
- * @throws Will throw an error if the JWKS or certificate file cannot be loaded
- *
- * @example
- * ```typescript
- * const keyPair = await loadTAJwksWithSelfSignedX5c(config.trust, 'ta-anchor');
- * ```
+ * Loads or generates JWKS with a self-signed X.509 certificate, saving it to a file.
+ * @param jwksPath The directory path where JWKS files are stored.
+ * @param filename The name of the JWKS file to load or create.
+ * @returns A promise that resolves to the loaded or generated KeyPair.
  */
-export async function loadTAJwksWithSelfSignedX5c(
-  trust: Omit<
-    Config["trust"],
-    "eidas_trusted_lists" | "federation_trust_anchors"
-  >,
-  namePrefix: string,
+export async function loadJwksWithX5C(
+  jwksPath: string,
+  filename: string,
+  caCertPath: string,
+  caSubject: string,
 ): Promise<KeyPair> {
-  const signedJwks = await loadJwks(
-    trust.federation_trust_anchors_jwks_path,
-    buildJwksPath(namePrefix),
-  );
+  try {
+    if (!existsSync(jwksPath))
+      mkdirSync(jwksPath, {
+        recursive: true,
+      });
+    if (!existsSync(caCertPath))
+      mkdirSync(caCertPath, {
+        recursive: true,
+      });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      `unable to find or create necessary directories ${jwksPath} or ${caCertPath}: ${err.message}`,
+    );
+  }
 
-  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
-    signedJwks.publicKey.x5c = [
-      await loadCertificate(
-        trust.ca_cert_path,
-        buildCertPath(namePrefix),
-        signedJwks,
-        trust.certificate_subject,
-      ),
-    ];
-
-  return signedJwks;
+  try {
+    const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
+    return JSON.parse(jwksData) as KeyPair;
+  } catch {
+    return await createAndSaveKeysWithX5C(filename, jwksPath, caCertPath, caSubject);
+  }
 }
 
 /**
