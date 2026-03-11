@@ -224,7 +224,7 @@ export async function getTrustMarks(
   trust_anchor_base_url: string,
   jwksPath: string,
   sub: string,
-): Promise<{ id: string; trust_mark: string, trust_mark_type: string }[]> {
+): Promise<{ id: string; trust_mark: string; trust_mark_type: string }[]> {
   const id = `${trust_anchor_base_url}/trust_marks/authorization_policy/credential-issuer`;
 
   const jwks = await loadJwks(jwksPath, buildJwksPath("trust_anchor"));
