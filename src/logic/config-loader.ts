@@ -106,6 +106,12 @@ export function loadConfigWithHierarchy(
     user_agent: `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
   });
 
+  // Applies the TLS configuration from the network config to the current process.
+  // When tls_reject_unauthorized is false, sets NODE_TLS_REJECT_UNAUTHORIZED=0
+  if (mergedConfig.network?.tls_reject_unauthorized === false) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
+
   // Step 5: Validate the final configuration
   try {
     const validatedConfig = parseWithErrorHandling(configSchema, mergedConfig);
