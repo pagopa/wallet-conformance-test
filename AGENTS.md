@@ -181,6 +181,7 @@ credential_types[] = dc_sd_jwt_SomeCredential
 authorize_request_url = https://verifier.example.com/authorize
 
 [steps_mapping]
+; Example paths for custom steps — create these directories or adjust to your own layout
 HappyFlowIssuance     = ./tests/steps/version_1_0/issuance
 HappyFlowPresentation = ./tests/steps/version_1_0/presentation
 ```
