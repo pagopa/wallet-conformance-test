@@ -30,6 +30,7 @@ export const configSchema = z.object({
   network: z.object({
     max_retries: z.coerce.number().default(10),
     timeout: z.coerce.number().default(10),
+    tls_reject_unauthorized: z.coerce.boolean().optional().default(true),
     user_agent: z.string().optional(),
   }),
   presentation: z.object({

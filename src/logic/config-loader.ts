@@ -25,6 +25,7 @@ export interface CliOptions {
   saveCredential?: boolean;
   stepsMapping?: string;
   timeout?: number;
+  unsafeTls?: boolean;
 }
 
 /**
@@ -200,13 +201,20 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     partialConfig.presentation = presentation as Config["presentation"];
   }
 
-  if (options.timeout !== undefined || options.maxRetries !== undefined) {
+  if (
+    options.timeout !== undefined ||
+    options.maxRetries !== undefined ||
+    options.unsafeTls !== undefined
+  ) {
     const network: Partial<Config["network"]> = {};
     if (options.timeout !== undefined) {
       network.timeout = options.timeout;
     }
     if (options.maxRetries !== undefined) {
       network.max_retries = options.maxRetries;
+    }
+    if (options.unsafeTls !== undefined) {
+      network.tls_reject_unauthorized = !options.unsafeTls;
     }
     partialConfig.network = network as Config["network"];
   }
@@ -389,6 +397,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_STEPS_MAPPING) {
     options.stepsMapping = process.env.CONFIG_STEPS_MAPPING;
+  }
+  if (process.env.CONFIG_UNSAFE_TLS) {
+    options.unsafeTls = process.env.CONFIG_UNSAFE_TLS === "true";
   }
 
   return options;
