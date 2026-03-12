@@ -48,7 +48,7 @@ pnpm ta:server
 ### Three-layer flow pattern
 
 1. **Orchestrator** (`src/orchestrator/`): Coordinates a complete issuance or presentation flow by calling steps in sequence and threading state between them.
-2. **Step** (`src/step/`): Individual protocol steps, each extending `StepFlow`. Classes named `*DefaultStep` are stub base implementations; real behaviour lives in versioned overrides under `tests/steps/version_1_0/`.
+2. **Step** (`src/step/`): Individual protocol steps, each extending `StepFlow`. Classes named `*DefaultStep` implement the canonical flow used by tests; optional step overrides, when present, are discovered from a `steps_mapping` directory.
 3. **Test spec** (`tests/conformance/`): Calls `defineIssuanceTest()` / `definePresentationTest()`, receives configured `IssuerTestConfiguration[]`, then runs assertions against orchestrator results.
 
 ### Step result pattern
