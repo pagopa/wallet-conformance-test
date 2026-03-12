@@ -155,7 +155,7 @@ Use a custom configuration file:
 
 ### TLS Unsafe Mode
 
-When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and scoped only to the HTTP calls made by this tool — it does not affect the global Node.js process.
+When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and disables TLS certificate verification for the entire Node.js process running this tool.
 
 There are three equivalent ways to enable it, listed in priority order (highest first):
 
