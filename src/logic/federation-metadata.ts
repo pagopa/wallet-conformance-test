@@ -224,7 +224,7 @@ export async function getTrustMarks(
   trust_anchor_base_url: string,
   jwksPath: string,
   sub: string,
-): Promise<{ id: string; trust_mark: string; trust_mark_type: string }[]> {
+): Promise<{ trust_mark: string; trust_mark_type: string }[]> {
   const id = `${trust_anchor_base_url}/trust_marks/authorization_policy/credential-issuer`;
 
   const jwks = await loadJwks(jwksPath, buildJwksPath("trust_anchor"));
@@ -233,7 +233,6 @@ export async function getTrustMarks(
   const trustMarkPayload = {
     exp: iat + 24 * 60 * 60 * 365,
     iat,
-    id,
     iss: trust_anchor_base_url,
     logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",
     organization_type: "private",
@@ -260,7 +259,6 @@ export async function getTrustMarks(
 
   return [
     {
-      id,
       trust_mark: trust_mark.jwt,
       trust_mark_type: id,
     },
