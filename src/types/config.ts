@@ -4,6 +4,22 @@ import { z } from "zod";
 import { parseItWalletSpecVersion } from "./version";
 
 /**
+ * Preprocessor that safely coerces INI/env string values to booleans.
+ * `z.coerce.boolean()` is unsafe because JavaScript's `Boolean("false")` returns
+ * `true` (any non-empty string is truthy), so an INI entry like
+ * `tls_reject_unauthorized = false` would mistakenly be treated as `true`.
+ * This helper explicitly maps "true"/"1" → true and "false"/"0" → false;
+ * real boolean values pass through unchanged.
+ */
+const booleanFromString = (val: unknown): unknown => {
+  if (typeof val === "string") {
+    if (val === "true" || val === "1") return true;
+    if (val === "false" || val === "0") return false;
+  }
+  return val;
+};
+
+/**
  * Represents the configuration for the wallet conformance test.
  */
 export const configSchema = z.object({
@@ -17,7 +33,7 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    save_credential: z.coerce.boolean().optional().default(false),
+    save_credential: z.preprocess(booleanFromString, z.boolean()).optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
@@ -30,7 +46,7 @@ export const configSchema = z.object({
   network: z.object({
     max_retries: z.coerce.number().default(10),
     timeout: z.coerce.number().default(10),
-    tls_reject_unauthorized: z.coerce.boolean().optional().default(true),
+    tls_reject_unauthorized: z.preprocess(booleanFromString, z.boolean()).optional().default(true),
     user_agent: z.string().optional(),
   }),
   presentation: z.object({
