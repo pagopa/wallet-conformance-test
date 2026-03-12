@@ -8,20 +8,21 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-
-import type { AttestationResponse, Config } from "@/types";
 
 import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   getTrustMarks,
+  hasTrustChainExpired,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { type AttestationResponse, type Config, zTrustChain } from "@/types";
 
 /**
  * Loads a wallet attestation from the filesystem.
@@ -68,8 +69,21 @@ export const loadAttestation = async (options: {
   );
 
   try {
+    const attestation = readFileSync(attestationPath, "utf-8");
+    const attestationJwt = await SDJwt.extractJwt(attestation);
+    // Since, at version 0.17.0, the SDJwt.extractJwt method dosn't check for WIA expiration,
+    // it must be done manually
+    const exp = attestationJwt.payload?.exp;
+    if (!exp || typeof exp !== "number" || exp * 1000 < Date.now())
+      throw new Error("attestation expired");
+    const trust_chain = zTrustChain.safeParse(
+      attestationJwt.header?.trust_chain,
+    );
+    if (trust_chain.success && hasTrustChainExpired(trust_chain.data))
+      throw new Error("attestation trust_chain expired");
+
     return {
-      attestation: readFileSync(attestationPath, "utf-8"),
+      attestation,
       created: false,
       providerKey: providerKeyPair,
       unitKey: unitKeyPair,

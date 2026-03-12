@@ -1,8 +1,11 @@
 import { Jwk } from "@pagopa/io-wallet-oauth2";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  addSecondsToDate,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { KeyPair } from "@/types";
 
@@ -117,6 +120,50 @@ describe("Wallet Attestation Unit Test", () => {
     expect(trustChain).toBeDefined();
     expect(Array.isArray(trustChain)).toBe(true);
     expect(trustChain?.length).toBe(2);
+  });
+
+  test("Regenerate Wallet Attestation only when expired", async () => {
+    const date = new Date(2000, 1, 1);
+    const thirtyMinutesLater = addSecondsToDate(date, 60 * 30);
+    const oneYearLater = addSecondsToDate(date, 3600 * 24 * 365);
+    vi.useFakeTimers();
+    vi.setSystemTime(date);
+
+    const attestationPath = `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/${config.wallet.wallet_id}`;
+
+    // Remove existing attestation to force new generation
+    rmSync(attestationPath, { force: true });
+
+    // Generate first attestation
+    const firstAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl,
+      wallet: config.wallet,
+    });
+
+    vi.setSystemTime(thirtyMinutesLater);
+
+    // In this case the attestation should not be generated
+    const secondAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl,
+      wallet: config.wallet,
+    });
+
+    vi.setSystemTime(oneYearLater);
+
+    // In this case the attestation should be generated
+    const thirdAttestationResponse = await loadAttestation({
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl,
+      wallet: config.wallet,
+    });
+
+    expect(firstAttestationResponse.created).toEqual(true);
+    expect(secondAttestationResponse.created).toEqual(false);
+    expect(thirdAttestationResponse.created).toEqual(true);
+
+    vi.useRealTimers();
   });
 });
 

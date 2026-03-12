@@ -34,7 +34,6 @@ export async function createCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<x509.X509Certificate> {
-
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -79,4 +78,10 @@ export async function createCertificate(
   });
 
   return cert;
+}
+
+export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
+  const certificate =
+    typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
+  return certificate.notAfter.getTime() < Date.now();
 }
