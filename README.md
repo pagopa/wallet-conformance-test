@@ -1,4 +1,4 @@
-# wallet-conformance-test
+# IT-Wallet Conformance Tool
 
 Tool for the automated conformance testing of services integrating with the [Italian IT Wallet ecosystem](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en). It helps all actors within the ecosystem—including Relying Parties (RPs), Credential Issuers, Authentic Sources, and Certification Bodies—to develop and validate their implementations.
 
@@ -21,7 +21,7 @@ The primary challenge is ensuring that all solutions are correct, up-to-date, an
 
 ## 🚀 Getting Started
 
-Follow these steps to get the wallet-conformance-test tool running on your local machine.
+Follow these steps to get the **IT-Wallet Conformance Tool** running on your local machine.
 
 ### Prerequisites
 
