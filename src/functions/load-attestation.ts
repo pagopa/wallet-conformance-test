@@ -98,9 +98,9 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = isExternalTrustAnchor(trustAnchor)
+    const taEntityConfiguration = isExternalTrustAnchor(trustAnchor.external_ta_url)
       ? await fetchExternalSubordinateStatement(
-          trustAnchor.external_ta_url!,
+          trustAnchor.external_ta_url,
           wallet.wallet_provider_base_url,
           network,
         )
