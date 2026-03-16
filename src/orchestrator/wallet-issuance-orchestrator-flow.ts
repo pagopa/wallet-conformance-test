@@ -60,6 +60,7 @@ export class WalletIssuanceOrchestratorFlow {
     this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
+      fileFormat: this.config.logging.log_file_format,
       format: this.config.logging.log_format,
       level: this.config.logging.log_level,
       path: this.config.logging.log_file,

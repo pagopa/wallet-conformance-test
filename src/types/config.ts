@@ -23,6 +23,7 @@ export const configSchema = z.object({
   }),
   logging: z.object({
     log_file: z.string(),
+    log_file_format: z.string().optional(),
     log_format: z.string(),
     log_level: z.string(),
   }),
