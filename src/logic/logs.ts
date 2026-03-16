@@ -7,7 +7,7 @@ import {
 import { mkdirSync, openSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { Logger } from "@/types";
+import { Logger, SetLogOptions } from "@/types";
 
 import { readPackageVersion } from "./config-loader";
 
@@ -122,25 +122,25 @@ function nl() {
  * @param this The logger instance.
  * @param options The options to set.
  */
-function setLogOptions(
-  this: Logger,
-  options: { format?: string; level?: string; path?: string },
-) {
+function setLogOptions(this: Logger, options: SetLogOptions) {
   const reporters: ConsolaReporter[] = [];
-  let formatLog = (logObj: LogObject): string => logObj.message ?? "";
-
-  this.level = levelCode(options.level ?? "fatal");
-
-  if (options.format) {
-    const format = options.format;
-    formatLog = (logObj: LogObject): string =>
-      format
+  const buildFormatter =
+    (fmt: string) =>
+    (logObj: LogObject): string =>
+      fmt
         .replace(/%\(utc\)/, logObj.date.toUTCString())
         .replace(/%\(date\)/, logObj.date.toISOString())
         .replace(/%\(tag\)/, logObj.tag)
         .replace(/%\(levelname\)/, logObj.type.toUpperCase().padEnd(5, " "))
         .replace(/%\(message\)/, logObj.args.join(" ") ?? "");
 
+  let formatLog = (logObj: LogObject): string => logObj.message ?? "";
+  let formatLogFile = formatLog;
+
+  this.level = levelCode(options.level ?? "fatal");
+
+  if (options.format) {
+    formatLog = buildFormatter(options.format);
     reporters.push({
       log: (logObj) => {
         process.stdout.write(`${formatLog(logObj)}\n`);
@@ -148,13 +148,17 @@ function setLogOptions(
     });
   }
 
+  formatLogFile = options.fileFormat
+    ? buildFormatter(options.fileFormat)
+    : formatLog;
+
   if (options.path)
     try {
       mkdirSync(dirname(options.path), { recursive: true });
-      const file = openSync(options.path, "w");
+      const file = openSync(options.path, "a");
       reporters.push({
         log: (logObj) => {
-          writeFileSync(file, `${formatLog(logObj)}\n`);
+          writeFileSync(file, `${formatLogFile(logObj)}\n`);
         },
       });
     } catch (e) {
