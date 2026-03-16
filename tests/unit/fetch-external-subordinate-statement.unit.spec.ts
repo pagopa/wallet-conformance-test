@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as logic from "@/logic";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 import type { Config } from "@/types";
 
@@ -115,6 +116,38 @@ describe("fetchExternalSubordinateStatement – content-type validation", () => 
       fetchExternalSubordinateStatement(EXTERNAL_TA_URL, WP_BASE_URL, network),
     ).rejects.toThrow(
       `External TA /fetch returned HTTP 404 for sub=${WP_BASE_URL}`,
+    );
+  });
+});
+
+describe("fetchExternalSubordinateStatement – fetchWithRetries error propagation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("throws descriptive error on generic network failure", async () => {
+    vi.spyOn(logic, "fetchWithRetries").mockRejectedValue(
+      new Error("Request failed with no retries left: aborting"),
+    );
+
+    await expect(
+      fetchExternalSubordinateStatement(EXTERNAL_TA_URL, WP_BASE_URL, network),
+    ).rejects.toThrow(
+      `External TA /fetch failed after ${network.max_retries} attempts for sub=${WP_BASE_URL}`,
+    );
+  });
+
+  it("throws descriptive timeout error on TimeoutError", async () => {
+    const timeoutError = Object.assign(
+      new Error("Request timed out: aborting"),
+      { name: "TimeoutError" },
+    );
+    vi.spyOn(logic, "fetchWithRetries").mockRejectedValue(timeoutError);
+
+    await expect(
+      fetchExternalSubordinateStatement(EXTERNAL_TA_URL, WP_BASE_URL, network),
+    ).rejects.toThrow(
+      `External TA /fetch timed out after ${network.timeout}s for sub=${WP_BASE_URL}`,
     );
   });
 });
