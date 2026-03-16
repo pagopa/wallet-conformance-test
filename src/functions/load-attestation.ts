@@ -33,10 +33,11 @@ import {
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
  *
- * @param options - Configuration options
- * @param options.config - The full application configuration
- * @param options.trustAnchorJwksPath - Path to the trust anchor JWKS
- * @param options.wallet - The wallet configuration
+ * @param options - Configuration options for loading or generating the attestation
+ * @param options.trustAnchor - Trust anchor configuration (local or external TA URL, port, etc.)
+ * @param options.trust - Federation trust configuration, including trust anchor JWKS paths
+ * @param options.wallet - Wallet configuration (provider URL, version, storage paths, etc.)
+ * @param options.network - Network configuration used for external trust anchor requests
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
