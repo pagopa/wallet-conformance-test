@@ -67,6 +67,12 @@ export async function fetchExternalSubordinateStatement(
  *    `application/entity-statement+jwt`. Throws a descriptive error on failure,
  *    which will abort all tests.
  *
+ * @remarks
+ * **Provisional implementation.** The onboarding flow implemented here (POST of the
+ * WP Entity Configuration JWT to `external_ta_onboarding_url`) is a conceptual sketch
+ * of a possible OpenID Federation Onboarding mechanism. The protocol details are not yet
+ * finalised and this function is subject to breaking changes as the specification evolves.
+ *
  * @param config - The full application configuration
  */
 export async function registerWithExternalTrustAnchor(
