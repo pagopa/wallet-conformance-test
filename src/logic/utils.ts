@@ -7,7 +7,12 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveCertificate, createAndSaveKeys, createAndSaveKeysWithX5C, verifyJwt } from ".";
+import {
+  createAndSaveCertificate,
+  createAndSaveKeys,
+  createAndSaveKeysWithX5C,
+  verifyJwt,
+} from ".";
 
 // Re-export config loading functions
 export {
@@ -126,6 +131,25 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
+ * Ensures a directory exists, creating it if necessary.
+ *
+ * @param dirPath The directory path to ensure.
+ * @returns `true` if the directory was freshly created, `false` if it already existed.
+ * @throws An error if the directory could not be created.
+ */
+function ensureDir(dirPath: string): boolean {
+  if (existsSync(dirPath)) return false;
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
+  } catch (e) {
+    throw new Error(
+      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
+    );
+  }
+}
+
+/**
  * Loads a certificate from a file, or creates and saves it if it doesn't exist.
  *
  * @param certPath The directory path where the certificate is stored.
@@ -140,34 +164,28 @@ export async function loadCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<string> {
-  try {
-    if (!existsSync(certPath))
-      mkdirSync(certPath, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${certPath}: ${err.message}`,
-    );
+  const dirCreated = ensureDir(certPath);
+
+  if (!dirCreated) {
+    try {
+      const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
+      const certDerBase64 = certPem
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", "")
+        .replace(/\s+/g, "")
+        .trim();
+
+      return certDerBase64;
+    } catch {
+      /* fall through to generate */
+    }
   }
 
-  try {
-    const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
-    const certDerBase64 = certPem
-      .replace("-----BEGIN CERTIFICATE-----", "")
-      .replace("-----END CERTIFICATE-----", "")
-      .replace(/\s+/g, "")
-      .trim();
-
-    return certDerBase64;
-  } catch {
-    return await createAndSaveCertificate(
-      `${certPath}/${filename}`,
-      keyPair,
-      subject,
-    );
-  }
+  return await createAndSaveCertificate(
+    `${certPath}/${filename}`,
+    keyPair,
+    subject,
+  );
 }
 
 /**
@@ -180,24 +198,18 @@ export async function loadJwks(
   jwksPath: string,
   filename: string,
 ): Promise<KeyPair> {
-  try {
-    if (!existsSync(jwksPath))
-      mkdirSync(jwksPath, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${jwksPath}: ${err.message}`,
-    );
+  const dirCreated = ensureDir(jwksPath);
+
+  if (!dirCreated) {
+    try {
+      const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
+      return JSON.parse(jwksData) as KeyPair;
+    } catch {
+      /* fall through to generate */
+    }
   }
 
-  try {
-    const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
-    return JSON.parse(jwksData) as KeyPair;
-  } catch {
-    return await createAndSaveKeys(`${jwksPath}/${filename}`);
-  }
+  return await createAndSaveKeys(`${jwksPath}/${filename}`);
 }
 
 /**
@@ -212,28 +224,24 @@ export async function loadJwksWithX5C(
   caCertPath: string,
   caSubject: string,
 ): Promise<KeyPair> {
-  try {
-    if (!existsSync(jwksPath))
-      mkdirSync(jwksPath, {
-        recursive: true,
-      });
-    if (!existsSync(caCertPath))
-      mkdirSync(caCertPath, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${jwksPath} or ${caCertPath}: ${err.message}`,
-    );
+  const jwksDirCreated = ensureDir(jwksPath);
+  const caCertDirCreated = ensureDir(caCertPath);
+
+  if (!jwksDirCreated && !caCertDirCreated) {
+    try {
+      const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
+      return JSON.parse(jwksData) as KeyPair;
+    } catch {
+      /* fall through to generate */
+    }
   }
 
-  try {
-    const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
-    return JSON.parse(jwksData) as KeyPair;
-  } catch {
-    return await createAndSaveKeysWithX5C(filename, jwksPath, caCertPath, caSubject);
-  }
+  return await createAndSaveKeysWithX5C(
+    filename,
+    jwksPath,
+    caCertPath,
+    caSubject,
+  );
 }
 
 /**
