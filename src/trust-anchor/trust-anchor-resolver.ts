@@ -26,6 +26,6 @@ export function resolveTrustAnchorBaseUrl(config: Config["trust_anchor"]): strin
  *
  * @param config - The Trust Anchor configuration
  */
-export function isExternalTrustAnchor(config: Config["trust_anchor"]): boolean {
-  return !!config.external_ta_url;
+export function isExternalTrustAnchor(external_ta_url: string): external_ta_url is string {
+  return !!external_ta_url;
 }
