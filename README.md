@@ -153,6 +153,33 @@ Use a custom configuration file:
 
     wct test:issuance --file-ini /path/to/my-config.ini
 
+### TLS Unsafe Mode
+
+When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and disables TLS certificate verification for the entire Node.js process running this tool.
+
+There are three equivalent ways to enable it, listed in priority order (highest first):
+
+1. **CLI flag** (highest priority):
+
+   ```bash
+   wct test:issuance --unsafe-tls
+   wct test:presentation --unsafe-tls
+   ```
+
+2. **Environment variable**:
+
+   ```bash
+   CONFIG_UNSAFE_TLS=true pnpm test:issuance
+   ```
+
+3. **`config.ini`** (lowest priority):
+
+   ```ini
+   [network]
+   tls_reject_unauthorized = false
+   ```
+
+
 ### Running Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
