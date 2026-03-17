@@ -38,6 +38,7 @@ import {
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
@@ -306,7 +307,7 @@ export class WalletIssuanceOrchestratorFlow {
           "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
       );
 
-    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
+    const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(this.config.trust_anchor);
     this.log.info("Loading credentials...");
 
     const credentials = await loadCredentialsForPresentation(

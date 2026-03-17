@@ -12,6 +12,8 @@ import {
   loadJsonDumps,
 } from "@/logic";
 import { generateSRIHash } from "@/logic/sd-jwt";
+import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
+import { isExternalTrustAnchor } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
 export async function buildMockMdlMdoc_V1_3(
@@ -70,7 +72,9 @@ export async function buildMockMdlMdoc_V1_3(
 export async function buildMockSdJwt_V1_3(
   metadata: {
     iss: string;
-    trustAnchor: Config["trust"];
+    network: Config["network"];
+    trust: Config["trust"];
+    trustAnchor: Config["trust_anchor"];
     trustAnchorBaseUrl: string;
   },
   expiration: Date,
@@ -78,16 +82,25 @@ export async function buildMockSdJwt_V1_3(
   certificate: string,
   keyPair: KeyPair,
 ): Promise<Credential> {
-  const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
-    entityPublicJwk: keyPair.publicKey,
-    federationTrustAnchor: metadata.trustAnchor,
-    sub: metadata.iss,
-    trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
-    walletVersion: ItWalletSpecsVersion.V1_3,
-  });
+  const taEntityConfiguration = isExternalTrustAnchor(
+    metadata.trustAnchor.external_ta_url,
+  )
+    ? await fetchExternalSubordinateStatement(
+        metadata.trustAnchor.external_ta_url,
+        metadata.iss,
+        metadata.network,
+      )
+    : await createSubordinateTrustAnchorMetadata({
+        entityPublicJwk: keyPair.publicKey,
+        federationTrustAnchor: metadata.trust,
+        sub: metadata.iss,
+        trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
+        walletVersion: ItWalletSpecsVersion.V1_3,
+      });
+
   const trust_marks = await getTrustMarks(
     metadata.trustAnchorBaseUrl,
-    metadata.trustAnchor.federation_trust_anchors_jwks_path,
+    metadata.trust.federation_trust_anchors_jwks_path,
     metadata.iss,
   );
 

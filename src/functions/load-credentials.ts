@@ -103,8 +103,10 @@ export async function loadCredentialsForPresentation(
   if (storedCredentialsEntries.length === 0) {
     const personIdentificationData = await createMockSdJwt(
       {
-        iss: "https://issuer.example.com",
-        trustAnchor: config.trust,
+        iss: config.wallet.mock_issuer,
+        network: config.network,
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
         trustAnchorBaseUrl,
       },
       config.wallet.backup_storage_path,

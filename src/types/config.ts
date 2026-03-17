@@ -68,6 +68,7 @@ export const configSchema = z.object({
   wallet: z.object({
     backup_storage_path: z.string(),
     credentials_storage_path: z.string(),
+    mock_issuer: z.string().default("https://example.issuer.com"),
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),

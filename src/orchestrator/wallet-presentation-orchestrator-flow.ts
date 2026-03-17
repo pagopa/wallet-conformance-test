@@ -20,6 +20,7 @@ import {
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
 import { AttestationResponse, Config, CredentialWithKey } from "@/types";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
@@ -104,7 +105,7 @@ export class WalletPresentationOrchestratorFlow {
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
-      const localTrustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
+      const localTrustAnchorBaseUrl = resolveTrustAnchorBaseUrl(this.config.trust_anchor);
       const walletAttestation = await this.loadWalletAttestation();
 
       const credentials = await loadCredentialsForPresentation(
