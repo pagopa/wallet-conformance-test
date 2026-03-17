@@ -1,3 +1,8 @@
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
+
 import { createLogger } from "@/logic";
 import { Config } from "@/types";
 
@@ -10,12 +15,22 @@ export interface StepResponse {
 export abstract class StepFlow {
   abstract tag: string;
   protected config: Config;
+  protected ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
   protected log: ReturnType<typeof createLogger>;
 
-  constructor(config: Config, logger: ReturnType<typeof createLogger>) {
+  constructor(
+    config: Config,
+    logger: ReturnType<typeof createLogger>,
+    version?: IoWalletSdkConfig<ItWalletSpecsVersion>,
+  ) {
     this.config = config;
     this.log = logger;
+    this.ioWalletSdkConfig =
+      version ??
+      new IoWalletSdkConfig({
+        itWalletSpecsVersion: this.config.wallet.wallet_version,
+      });
   }
 
   abstract run(...args: unknown[]): Promise<StepResponse>;

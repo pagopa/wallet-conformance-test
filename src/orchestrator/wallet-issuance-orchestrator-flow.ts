@@ -31,6 +31,7 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,
@@ -38,7 +39,6 @@ import {
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
@@ -90,31 +90,37 @@ export class WalletIssuanceOrchestratorFlow {
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
 
     this.pushedAuthorizationRequestStep =
       new issuanceConfig.pushedAuthorizationRequestStepClass(
         this.config,
         this.log,
+        this.ioWalletSdkConfig,
       );
 
     this.authorizeStep = new issuanceConfig.authorizeStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
     this.tokenRequestStep = new issuanceConfig.tokenRequestStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
 
     this.nonceRequestStep = new issuanceConfig.nonceRequestStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
 
     this.credentialRequestStep = new issuanceConfig.credentialRequestStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
   }
 
@@ -232,7 +238,6 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        ioWalletSdkConfig: this.ioWalletSdkConfig,
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -307,7 +312,9 @@ export class WalletIssuanceOrchestratorFlow {
           "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
       );
 
-    const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(this.config.trust_anchor);
+    const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
+      this.config.trust_anchor,
+    );
     this.log.info("Loading credentials...");
 
     const credentials = await loadCredentialsForPresentation(
@@ -322,7 +329,6 @@ export class WalletIssuanceOrchestratorFlow {
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentials,
-      ioWalletSdkConfig: this.ioWalletSdkConfig,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,
@@ -356,7 +362,6 @@ export class WalletIssuanceOrchestratorFlow {
 
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: credentialIssuer,
-      ioWalletSdkConfig: this.ioWalletSdkConfig,
     });
     this.log.flowStep(
       1,
@@ -367,10 +372,10 @@ export class WalletIssuanceOrchestratorFlow {
     );
 
     const walletAttestationResponse = await loadAttestation({
-      trustAnchor: this.config.trust_anchor,
-      trust: this.config.trust,
-      wallet: this.config.wallet,
       network: this.config.network,
+      trust: this.config.trust,
+      trustAnchor: this.config.trust_anchor,
+      wallet: this.config.wallet,
     });
 
     const callbacks = {

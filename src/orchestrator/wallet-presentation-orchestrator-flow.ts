@@ -19,8 +19,8 @@ import {
   RedirectUriDefaultStep,
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
-import { AttestationResponse, Config, CredentialWithKey } from "@/types";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
+import { AttestationResponse, Config, CredentialWithKey } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
@@ -65,14 +65,17 @@ export class WalletPresentationOrchestratorFlow {
     this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
     this.authorizationRequestStep = new presentationConfig.authorizeStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
     this.redirectUriStep = new presentationConfig.redirectUriStepClass(
       this.config,
       this.log,
+      this.ioWalletSdkConfig,
     );
   }
 
@@ -105,7 +108,9 @@ export class WalletPresentationOrchestratorFlow {
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
-      const localTrustAnchorBaseUrl = resolveTrustAnchorBaseUrl(this.config.trust_anchor);
+      const localTrustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
+        this.config.trust_anchor,
+      );
       const walletAttestation = await this.loadWalletAttestation();
 
       const credentials = await loadCredentialsForPresentation(
@@ -158,7 +163,6 @@ export class WalletPresentationOrchestratorFlow {
     const authorizationRequestResponse =
       await this.authorizationRequestStep.run({
         credentials,
-        ioWalletSdkConfig: this.ioWalletSdkConfig,
         verifierMetadata,
         walletAttestation,
       });
@@ -212,10 +216,10 @@ export class WalletPresentationOrchestratorFlow {
     this.log.debug("Loading Wallet Attestation...");
 
     const walletAttestation = await loadAttestation({
-      trustAnchor: this.config.trust_anchor,
-      trust: this.config.trust,
-      wallet: this.config.wallet,
       network: this.config.network,
+      trust: this.config.trust,
+      trustAnchor: this.config.trust_anchor,
+      wallet: this.config.wallet,
     });
 
     this.log.debug("Wallet Attestation Loaded.");

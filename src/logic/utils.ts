@@ -123,30 +123,11 @@ export function buildAttestationPath(
 }
 
 export function buildCertPath(pathPrefix: string): string {
-  return `${pathPrefix}_cert`;
+  return `/${pathPrefix}_cert`;
 }
 
 export function buildJwksPath(pathPrefix: string): string {
-  return `${pathPrefix}_jwks`;
-}
-
-/**
- * Ensures a directory exists, creating it if necessary.
- *
- * @param dirPath The directory path to ensure.
- * @returns `true` if the directory was freshly created, `false` if it already existed.
- * @throws An error if the directory could not be created.
- */
-function ensureDir(dirPath: string): boolean {
-  if (existsSync(dirPath)) return false;
-  try {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  } catch (e) {
-    throw new Error(
-      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
-    );
-  }
+  return `/${pathPrefix}_jwks`;
 }
 
 /**
@@ -301,5 +282,24 @@ export function saveCredentialToDisk(
     return filePath;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Ensures a directory exists, creating it if necessary.
+ *
+ * @param dirPath The directory path to ensure.
+ * @returns `true` if the directory was freshly created, `false` if it already existed.
+ * @throws An error if the directory could not be created.
+ */
+function ensureDir(dirPath: string): boolean {
+  if (existsSync(dirPath)) return false;
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
+  } catch (e) {
+    throw new Error(
+      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
+    );
   }
 }
