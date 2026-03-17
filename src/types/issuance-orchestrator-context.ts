@@ -26,7 +26,7 @@ export interface RunThroughParContext {
 export type RunThroughTokenContext = RunThroughAuthorizeContext & {
   /**
    * Ephemeral DPoP key pair generated during the Token Request.
-   * this key MUST be reused for the DPoP proof in the Credential Request.
+   * This key is reused for the DPoP proof in the Credential Request.
    */
   dPoPKey: KeyPair;
   tokenResponse: TokenRequestResponse;
