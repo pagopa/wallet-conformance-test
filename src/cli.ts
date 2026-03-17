@@ -63,6 +63,9 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.stepsMapping) {
     env.CONFIG_STEPS_MAPPING = options.stepsMapping;
   }
+  if (options.unsafeTls) {
+    env.CONFIG_UNSAFE_TLS = "true";
+  }
   if (options.externalTaUrl) {
     env.CONFIG_EXTERNAL_TA_URL = options.externalTaUrl;
   }
@@ -129,6 +132,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--steps-mapping <mapping>",
       "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation)",
+    )
+    .option(
+      "--unsafe-tls",
+      "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false.",
     )
     .option(
       "--external-ta-url <url>",
