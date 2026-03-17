@@ -80,8 +80,8 @@ describe("Generate Mocked Credentials", () => {
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
+    trustAnchor: config.trust,
     trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
-    trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
   };
 
   afterAll(() => {
@@ -168,6 +168,11 @@ describe("Generate Mocked Credentials", () => {
     }).decode(credential.compact);
 
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
+
+    expect(decoded.jwt?.payload?.verification).toEqual({
+      assurance_level: "high",
+      trust_framework: "it_cie",
+    });
 
     const dump = loadJsonDumps(
       "pid.json",
@@ -285,7 +290,6 @@ describe("createVpTokenMdoc", () => {
       responseUri: "https://example.com",
     });
 
-    expect(result).toHaveProperty("query_mdl");
     expect(result).toBeDefined();
 
     const documents = decode(Buffer.from(result, "base64url")).documents;

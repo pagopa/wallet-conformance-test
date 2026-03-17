@@ -8,21 +8,25 @@ import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
-    const attestationPath = buildAttestationPath(config.wallet);
+    const attestationPath = buildAttestationPath(
+      config.wallet,
+      config.trust_anchor.external_ta_url,
+    );
 
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: config.wallet,
+      network: config.network,
     });
 
     // Verify attestation was created
@@ -78,19 +82,20 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
-    expect(taDecoded.iss).toBe("https://127.0.0.1:3001"); // Trust Anchor
+    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: config.wallet,
+      network: config.network,
     });
 
     const attestation = readFileSync(
-      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version}/${config.wallet.wallet_id}`,
+      buildAttestationPath(config.wallet, config.trust_anchor.external_ta_url),
       "utf-8",
     );
     expect(response.attestation).toBe(attestation);
@@ -135,9 +140,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: walletV1_3,
+      network: config.network,
     });
 
     expect(response.attestation).toBeDefined();
@@ -188,9 +194,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
-      trustAnchorBaseUrl,
-      trustAnchorJwksPath: config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: config.trust_anchor,
+      trust: config.trust,
       wallet: walletV1_3,
+      network: config.network,
     });
 
     // Should load from disk (not create a new one)

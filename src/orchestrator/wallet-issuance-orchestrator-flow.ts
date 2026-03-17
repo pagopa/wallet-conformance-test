@@ -4,7 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
@@ -41,6 +44,7 @@ export class WalletIssuanceOrchestratorFlow {
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
+  private ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
 
@@ -56,6 +60,7 @@ export class WalletIssuanceOrchestratorFlow {
     this.config = loadConfigWithHierarchy();
 
     this.log.setLogOptions({
+      fileFormat: this.config.logging.log_file_format,
       format: this.config.logging.log_format,
       level: this.config.logging.log_level,
       path: this.config.logging.log_file,
@@ -76,6 +81,10 @@ export class WalletIssuanceOrchestratorFlow {
         userAgent: this.config.network.user_agent,
       }),
     );
+
+    this.ioWalletSdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
 
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
@@ -214,8 +223,6 @@ export class WalletIssuanceOrchestratorFlow {
             "Check the nonce step for errors.",
         );
 
-      const itWalletSpecsVersion = this.config.wallet.wallet_version;
-
       const credentialResponse = await this.credentialRequestStep.run({
         accessToken,
         baseUrl: credentialIssuer,
@@ -224,9 +231,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        ioWalletSdkConfig: new IoWalletSdkConfig({
-          itWalletSpecsVersion,
-        }),
+        ioWalletSdkConfig: this.ioWalletSdkConfig,
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -291,6 +296,16 @@ export class WalletIssuanceOrchestratorFlow {
       `Code Verifier generated for Pushed Authorization '${pushedAuthorizationRequestResponse.response?.codeVerifier}'`,
     );
 
+    const authorizationEndpoint =
+      entityStatementClaims.metadata?.oauth_authorization_server
+        ?.authorization_endpoint;
+
+    if (!authorizationEndpoint)
+      throw new Error(
+        "Issuer metadata is missing 'authorization_endpoint' " +
+          "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
+      );
+
     const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
     this.log.info("Loading credentials...");
 
@@ -299,7 +314,6 @@ export class WalletIssuanceOrchestratorFlow {
       trustAnchorBaseUrl,
       this.log,
     );
-
     const authorizeResponse = await this.authorizeStep.run({
       authorizationEndpoint:
         entityStatementClaims.metadata?.oauth_authorization_server
@@ -307,6 +321,7 @@ export class WalletIssuanceOrchestratorFlow {
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentials,
+      ioWalletSdkConfig: this.ioWalletSdkConfig,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,
@@ -319,7 +334,7 @@ export class WalletIssuanceOrchestratorFlow {
       authorizeResponse.durationMs ?? 0,
     );
 
-    return { ...parCtx, authorizeResponse };
+    return { ...parCtx, authorizationEndpoint, authorizeResponse };
   }
 
   /**
@@ -338,13 +353,9 @@ export class WalletIssuanceOrchestratorFlow {
       `Requesting credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
     );
 
-    const itWalletSpecsVersion = this.config.wallet.wallet_version;
-
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: credentialIssuer,
-      ioWalletSdkConfig: new IoWalletSdkConfig({
-        itWalletSpecsVersion,
-      }),
+      ioWalletSdkConfig: this.ioWalletSdkConfig,
     });
     this.log.flowStep(
       1,
@@ -354,12 +365,11 @@ export class WalletIssuanceOrchestratorFlow {
       fetchMetadataResponse.durationMs ?? 0,
     );
 
-    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
-
     const walletAttestationResponse = await loadAttestation({
-      trustAnchorBaseUrl,
-      trustAnchorJwksPath: this.config.trust.federation_trust_anchors_jwks_path,
+      trustAnchor: this.config.trust_anchor,
+      trust: this.config.trust,
       wallet: this.config.wallet,
+      network: this.config.network,
     });
 
     const callbacks = {

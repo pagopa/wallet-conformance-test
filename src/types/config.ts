@@ -23,6 +23,7 @@ export const configSchema = z.object({
   }),
   logging: z.object({
     log_file: z.string(),
+    log_file_format: z.string().optional(),
     log_format: z.string(),
     log_level: z.string(),
   }),
@@ -54,12 +55,14 @@ export const configSchema = z.object({
     }),
   trust: z.object({
     ca_cert_path: z.string(),
-    certificate_subject: z.string(),
+    certificate_subject: z.string().min(5),
     eidas_trusted_lists: z.array(z.string()).optional(),
     federation_trust_anchors: z.array(z.string()),
     federation_trust_anchors_jwks_path: z.string(),
   }),
   trust_anchor: z.object({
+    external_ta_onboarding_url: z.string().url().optional(),
+    external_ta_url: z.string().url().optional(),
     port: z.coerce.number(),
   }),
   wallet: z.object({

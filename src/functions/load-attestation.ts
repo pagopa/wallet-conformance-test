@@ -13,32 +13,49 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { AttestationResponse, Config } from "@/types";
 
 import {
+  buildAttestationPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
+  getTrustMarks,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
+import {
+  isExternalTrustAnchor,
+  resolveTrustAnchorBaseUrl,
+} from "@/trust-anchor/trust-anchor-resolver";
 
 /**
  * Loads a wallet attestation from the filesystem.
  * If the attestation is not found, a new one is generated and saved.
  *
- * @param options - Configuration options
- * @param options.trustAnchorJwksPath - Path to the trust anchor JWKS
- * @param options.wallet - The wallet configuration
+ * @param options - Configuration options for loading or generating the attestation
+ * @param options.trustAnchor - Trust anchor configuration (local or external TA URL, port, etc.)
+ * @param options.trust - Federation trust configuration, including trust anchor JWKS paths
+ * @param options.wallet - Wallet configuration (provider URL, version, storage paths, etc.)
+ * @param options.network - Network configuration used for external trust anchor requests
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
-  trustAnchorBaseUrl: string;
-  trustAnchorJwksPath: Config["trust"]["federation_trust_anchors_jwks_path"];
+  trustAnchor: Config["trust_anchor"];
+  trust: Config["trust"];
   wallet: Config["wallet"];
+  network: Config["network"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchorBaseUrl, trustAnchorJwksPath, wallet } = options;
+  const { trustAnchor, trust, wallet, network } = options;
+
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
+
   const attestationBasePath = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`;
-  const attestationPath = `${attestationBasePath}/${wallet.wallet_id}`;
+
+  const attestationPath = buildAttestationPath(
+    wallet,
+    trustAnchor.external_ta_url,
+  );
 
   try {
     if (!existsSync(attestationBasePath))
@@ -81,16 +98,29 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
-      entityPublicJwk: providerKeyPair.publicKey,
-      federationTrustAnchorsJwksPath: trustAnchorJwksPath,
-      sub: wallet.wallet_provider_base_url,
-      trustAnchorBaseUrl: trustAnchorBaseUrl,
-      walletVersion: wallet.wallet_version,
-    });
+    const taEntityConfiguration = isExternalTrustAnchor(trustAnchor.external_ta_url)
+      ? await fetchExternalSubordinateStatement(
+          trustAnchor.external_ta_url,
+          wallet.wallet_provider_base_url,
+          network,
+        )
+      : await createSubordinateTrustAnchorMetadata({
+          entityPublicJwk: providerKeyPair.publicKey,
+          federationTrustAnchor: trust,
+          sub: wallet.wallet_provider_base_url,
+          trustAnchorBaseUrl: trustAnchorBaseUrl,
+          walletVersion: wallet.wallet_version,
+        });
+
+    const trust_marks = await getTrustMarks(
+      trustAnchorBaseUrl,
+      trust.federation_trust_anchors_jwks_path,
+      trustAnchorBaseUrl,
+    );
     const placeholders = {
       public_key: providerKeyPair.publicKey,
       trust_anchor_base_url: trustAnchorBaseUrl,
+      trust_marks,
       wallet_name: wallet.wallet_name,
       wallet_provider_base_url: wallet.wallet_provider_base_url,
     };
