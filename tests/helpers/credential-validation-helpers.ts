@@ -5,6 +5,7 @@ import {
   SignJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
+import KSUID from "ksuid";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import {
@@ -210,11 +211,12 @@ export function withDPoPSignedByWrongKey(
         await generateKeyPair("ES256", { extractable: true });
       const wrongPrivateJwk = await exportJWK(wrongPrivate);
       const wrongPublicJwk = await exportJWK(wrongPublic);
+      const wrongKid = KSUID.randomSync().string;
 
       const wrongSigner: JwtSignerJwk = {
         alg: "ES256",
         method: "jwk",
-        publicJwk: { ...wrongPublicJwk, kty: "EC" } as Jwk,
+        publicJwk: { ...wrongPublicJwk, kty: "EC", kid: wrongKid } as Jwk,
       };
 
       const dpopOptions = {
@@ -222,7 +224,7 @@ export function withDPoPSignedByWrongKey(
         callbacks: {
           ...partialCallbacks,
           signJwt: signJwtCallback([
-            { ...wrongPrivateJwk, kty: "EC" } as KeyPairJwk,
+            { ...wrongPrivateJwk, kty: "EC", kid: wrongKid } as KeyPairJwk,
           ]),
         },
         signer: wrongSigner,
