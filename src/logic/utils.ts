@@ -7,7 +7,12 @@ import path from "path";
 
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import { createAndSaveCertificate, createAndSaveKeys, verifyJwt } from ".";
+import {
+  createAndSaveCertificate,
+  createAndSaveKeys,
+  createAndSaveKeysWithX5C,
+  verifyJwt,
+} from ".";
 
 // Re-export config loading functions
 export {
@@ -106,8 +111,15 @@ export const loadJsonDumps = (
   }
 };
 
-export function buildAttestationPath(wallet: Config["wallet"]): string {
-  return `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+export function buildAttestationPath(
+  wallet: Config["wallet"],
+  externalTaUrl?: string,
+): string {
+  const base = `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}/${wallet.wallet_id}`;
+  const suffix = externalTaUrl
+    ? `-${Buffer.from(externalTaUrl).toString("base64url").slice(0, 12)}`
+    : "";
+  return `${base}${suffix}`;
 }
 
 export function buildCertPath(pathPrefix: string): string {
@@ -116,6 +128,25 @@ export function buildCertPath(pathPrefix: string): string {
 
 export function buildJwksPath(pathPrefix: string): string {
   return `${pathPrefix}_jwks`;
+}
+
+/**
+ * Ensures a directory exists, creating it if necessary.
+ *
+ * @param dirPath The directory path to ensure.
+ * @returns `true` if the directory was freshly created, `false` if it already existed.
+ * @throws An error if the directory could not be created.
+ */
+function ensureDir(dirPath: string): boolean {
+  if (existsSync(dirPath)) return false;
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
+  } catch (e) {
+    throw new Error(
+      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
+    );
+  }
 }
 
 /**
@@ -133,34 +164,28 @@ export async function loadCertificate(
   keyPair: KeyPair,
   subject: string,
 ): Promise<string> {
-  try {
-    if (!existsSync(certPath))
-      mkdirSync(certPath, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${certPath}: ${err.message}`,
-    );
+  const dirCreated = ensureDir(certPath);
+
+  if (!dirCreated) {
+    try {
+      const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
+      const certDerBase64 = certPem
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", "")
+        .replace(/\s+/g, "")
+        .trim();
+
+      return certDerBase64;
+    } catch {
+      /* fall through to generate */
+    }
   }
 
-  try {
-    const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
-    const certDerBase64 = certPem
-      .replace("-----BEGIN CERTIFICATE-----", "")
-      .replace("-----END CERTIFICATE-----", "")
-      .replace(/\s+/g, "")
-      .trim();
-
-    return certDerBase64;
-  } catch {
-    return await createAndSaveCertificate(
-      `${certPath}/${filename}`,
-      keyPair,
-      subject,
-    );
-  }
+  return await createAndSaveCertificate(
+    `${certPath}/${filename}`,
+    keyPair,
+    subject,
+  );
 }
 
 /**
@@ -173,67 +198,50 @@ export async function loadJwks(
   jwksPath: string,
   filename: string,
 ): Promise<KeyPair> {
-  try {
-    if (!existsSync(jwksPath))
-      mkdirSync(jwksPath, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${jwksPath}: ${err.message}`,
-    );
+  const dirCreated = ensureDir(jwksPath);
+
+  if (!dirCreated) {
+    try {
+      const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
+      return JSON.parse(jwksData) as KeyPair;
+    } catch {
+      /* fall through to generate */
+    }
   }
 
-  try {
-    const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
-    return JSON.parse(jwksData) as KeyPair;
-  } catch {
-    return await createAndSaveKeys(`${jwksPath}/${filename}`);
-  }
+  return await createAndSaveKeys(`${jwksPath}/${filename}`);
 }
 
 /**
- * Loads a Trust Anchor (TA) JWKS with a self-signed X.509 certificate chain.
- *
- * If the JWKS public key does not contain an x5c (X.509 certificate chain),
- * this function loads a certificate from the configured CA certificate path
- * and populates it.
- *
- * @param trust - The trust configuration containing paths to federation trust anchors JWKS and CA certificates
- * @param namePrefix - The prefix used to build the path for loading JWKS and certificate files
- * @returns A promise that resolves to a KeyPair object containing the public key with an x5c certificate chain
- *
- * @throws Will throw an error if the JWKS or certificate file cannot be loaded
- *
- * @example
- * ```typescript
- * const keyPair = await loadTAJwksWithSelfSignedX5c(config.trust, 'ta-anchor');
- * ```
+ * Loads or generates JWKS with a self-signed X.509 certificate, saving it to a file.
+ * @param jwksPath The directory path where JWKS files are stored.
+ * @param filename The name of the JWKS file to load or create.
+ * @returns A promise that resolves to the loaded or generated KeyPair.
  */
-export async function loadTAJwksWithSelfSignedX5c(
-  trust: Omit<
-    Config["trust"],
-    "eidas_trusted_lists" | "federation_trust_anchors"
-  >,
-  namePrefix: string,
+export async function loadJwksWithX5C(
+  jwksPath: string,
+  filename: string,
+  caCertPath: string,
+  caSubject: string,
 ): Promise<KeyPair> {
-  const signedJwks = await loadJwks(
-    trust.federation_trust_anchors_jwks_path,
-    buildJwksPath(namePrefix),
+  const jwksDirCreated = ensureDir(jwksPath);
+  const caCertDirCreated = ensureDir(caCertPath);
+
+  if (!jwksDirCreated && !caCertDirCreated) {
+    try {
+      const jwksData = readFileSync(`${jwksPath}/${filename}`, "utf-8");
+      return JSON.parse(jwksData) as KeyPair;
+    } catch {
+      /* fall through to generate */
+    }
+  }
+
+  return await createAndSaveKeysWithX5C(
+    filename,
+    jwksPath,
+    caCertPath,
+    caSubject,
   );
-
-  if (!signedJwks.publicKey.x5c || signedJwks.publicKey.x5c.length === 0)
-    signedJwks.publicKey.x5c = [
-      await loadCertificate(
-        trust.ca_cert_path,
-        buildCertPath(namePrefix),
-        signedJwks,
-        trust.certificate_subject,
-      ),
-    ];
-
-  return signedJwks;
 }
 
 /**

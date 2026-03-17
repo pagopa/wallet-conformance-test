@@ -63,6 +63,12 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.stepsMapping) {
     env.CONFIG_STEPS_MAPPING = options.stepsMapping;
   }
+  if (options.externalTaUrl) {
+    env.CONFIG_EXTERNAL_TA_URL = options.externalTaUrl;
+  }
+  if (options.externalTaOnboardingUrl) {
+    env.CONFIG_EXTERNAL_TA_ONBOARDING_URL = options.externalTaOnboardingUrl;
+  }
 
   return env;
 }
@@ -123,6 +129,14 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--steps-mapping <mapping>",
       "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation)",
+    )
+    .option(
+      "--external-ta-url <url>",
+      "URL of an external Trust Anchor to register with",
+    )
+    .option(
+      "--external-ta-onboarding-url <url>",
+      "Onboarding URL of an external Trust Anchor",
     );
 }
 

@@ -13,6 +13,8 @@ export interface CliOptions {
   credentialIssuerUri?: string;
   credentialOfferUri?: string;
   credentialTypes?: string;
+  externalTaOnboardingUrl?: string;
+  externalTaUrl?: string;
   fileIni?: string;
   issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
@@ -222,8 +224,22 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     partialConfig.logging = logging as Config["logging"];
   }
 
-  if (options.port !== undefined) {
-    partialConfig.trust_anchor = { port: options.port };
+  if (
+    options.port !== undefined ||
+    options.externalTaUrl !== undefined ||
+    options.externalTaOnboardingUrl !== undefined
+  ) {
+    const trustAnchor: Partial<Config["trust_anchor"]> = {};
+    if (options.port !== undefined) {
+      trustAnchor.port = options.port;
+    }
+    if (options.externalTaUrl !== undefined) {
+      trustAnchor.external_ta_url = options.externalTaUrl;
+    }
+    if (options.externalTaOnboardingUrl !== undefined) {
+      trustAnchor.external_ta_onboarding_url = options.externalTaOnboardingUrl;
+    }
+    partialConfig.trust_anchor = trustAnchor as Config["trust_anchor"];
   }
 
   if (options.stepsMapping) {
@@ -389,6 +405,13 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_STEPS_MAPPING) {
     options.stepsMapping = process.env.CONFIG_STEPS_MAPPING;
+  }
+  if (process.env.CONFIG_EXTERNAL_TA_URL) {
+    options.externalTaUrl = process.env.CONFIG_EXTERNAL_TA_URL;
+  }
+  if (process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL) {
+    options.externalTaOnboardingUrl =
+      process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL;
   }
 
   return options;
