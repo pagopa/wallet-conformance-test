@@ -11,6 +11,7 @@ import {
   PushedAuthorizationRequestResponse,
 } from "@/step/issuance";
 import { AttestationResponse } from "@/types";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
 // Define and auto-register test configuration
 const testConfigs = await defineIssuanceTest("AuthorizationRequestValidation");
@@ -66,6 +67,9 @@ testConfigs.forEach((testConfig) => {
         baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [],
+        ioWalletSdkConfig: new IoWalletSdkConfig({
+          itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
+        }),
         requestUri: requestUri ?? "",
         rpMetadata: entityClaims?.metadata?.openid_credential_verifier,
         walletAttestation: attestationOverride ?? walletAttestationResponse,

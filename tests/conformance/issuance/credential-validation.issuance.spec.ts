@@ -113,9 +113,8 @@ testConfigs.forEach((testConfig) => {
       }
       nonceEndpoint = rawNonceEndpoint;
 
-      const config = loadConfigWithHierarchy();
       ioWalletSdkConfig = new IoWalletSdkConfig({
-        itWalletSpecsVersion: config.wallet.wallet_version,
+        itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
       });
     });
 
@@ -258,11 +257,11 @@ testConfigs.forEach((testConfig) => {
             issuerIdentifier: credentialIssuer,
             keyAttestation: "placeholder-key-attestation",
             nonce,
-            signer: {
+            signers: [{
               alg: "ES256",
               method: "jwk" as const,
               publicJwk: duplicateKeyPair.publicKey,
-            },
+            }],
           } as Parameters<typeof createCredentialRequest>[0]);
         } catch (err) {
           log.debug(
