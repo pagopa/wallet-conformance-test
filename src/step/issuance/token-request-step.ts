@@ -35,8 +35,12 @@ export interface TokenRequestStepOptions {
   accessTokenRequest: AccessTokenRequest;
 
   /**
-   * DPoP JWT used to authenticate the client,
-   * if not provided, the DPoP will be created using the wallet attestation
+   * Client attestation DPoP JWT used to authenticate the client at the
+   * Access Token Endpoint (derived from the wallet attestation flow).
+   *
+   * Note: this is NOT the DPoP key used for token binding. The token-binding
+   * DPoP is always created in this step using a fresh ephemeral key pair and
+   * returned as `dPoPKey` so it can be reused later in the flow.
    */
   popAttestation: string;
 
