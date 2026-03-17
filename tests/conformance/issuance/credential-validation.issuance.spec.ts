@@ -39,6 +39,7 @@ import {
   CredentialRequestResponse,
 } from "@/step/issuance/credential-request-step";
 import { AttestationResponse, RunThroughTokenContext } from "@/types";
+import { useTestSummary } from "#/helpers/use-test-summary";
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
@@ -52,7 +53,8 @@ const testConfigs = await defineIssuanceTest("CredentialValidation");
 
 testConfigs.forEach((testConfig) => {
   describe(`[${testConfig.name}] Credential Request Validation`, () => {
-    const baseLog = createLogger().withTag("Credential-Validation");
+    const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
+    const baseLog = orchestrator.getLog();
 
     let tokenCtx: RunThroughTokenContext;
     let accessToken: string;
@@ -70,8 +72,6 @@ testConfigs.forEach((testConfig) => {
 
     beforeAll(async () => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
-
-      const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
 
       baseLog.testSuite({
         profile: testConfig.credentialConfigurationId,
@@ -118,6 +118,8 @@ testConfigs.forEach((testConfig) => {
         itWalletSpecsVersion: config.wallet.wallet_version,
       });
     });
+
+    useTestSummary(baseLog, testConfig.name);
 
     // Restore real timers after each test that might have used fake timers
     afterEach(() => {
