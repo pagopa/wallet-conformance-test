@@ -68,6 +68,12 @@ export interface CredentialRequestStepOptions {
   credentialRequestEndpoint: string;
 
   /**
+   * Ephemeral DPoP key pair generated during the Token Request Step.
+   * MUST be the same key used to create the DPoP proof at the Token Endpoint.
+   */
+  dPoPKey: KeyPair;
+
+  /**
    * Configuration for the io-wallet-sdk.
    */
   ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
@@ -228,18 +234,18 @@ export class CredentialRequestDefaultStep extends StepFlow {
   private async buildDPoP(
     options: CredentialRequestStepOptions,
   ): Promise<string> {
-    const { unitKey } = options.walletAttestation;
+    const { dPoPKey } = options;
 
     const dpopOptions: CreateTokenDPoPOptions = {
       accessToken: options.accessToken,
       callbacks: {
         ...partialCallbacks,
-        signJwt: signJwtCallback([unitKey.privateKey]),
+        signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
       signer: {
         alg: "ES256",
         method: "jwk",
-        publicJwk: unitKey.publicKey,
+        publicJwk: dPoPKey.publicKey,
       },
       tokenRequest: {
         method: "POST",

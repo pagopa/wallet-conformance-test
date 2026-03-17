@@ -7,11 +7,17 @@ import {
   FetchTokenResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 
-import { partialCallbacks, signJwtCallback } from "@/logic";
+import { createKeys, partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResponse } from "@/step";
-import { AttestationResponse } from "@/types";
+import { AttestationResponse, KeyPair } from "@/types";
 
-export type TokenRequestExecuteResponse = AccessTokenResponse;
+export type TokenRequestExecuteResponse = AccessTokenResponse & {
+  /**
+   * Ephemeral DPoP key pair generated for this issuance session.
+   * This key MUST be reused in Credential Request for the DPoP proof there.
+   */
+  dPoPKey: KeyPair;
+};
 
 export type TokenRequestResponse = StepResponse & {
   response?: TokenRequestExecuteResponse;
@@ -52,19 +58,20 @@ export class TokenRequestDefaultStep extends StepFlow {
 
     log.debug(`Starting Token Request Step`);
 
-    const { unitKey } = options.walletAttestation;
-
     return this.execute<TokenRequestExecuteResponse>(async () => {
+      log.info("Generating ephemeral DPoP key pair...");
+      const dPoPKey = await createKeys();
+
       log.info(`Fetching access token from: ${options.accessTokenEndpoint}`);
       const createTokenDPoPOptions: CreateTokenDPoPOptions = {
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         signer: {
           alg: "ES256",
           method: "jwk",
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "POST",
@@ -83,7 +90,12 @@ export class TokenRequestDefaultStep extends StepFlow {
         dPoP: tokenDPoP.jwt,
         walletAttestation: options.walletAttestation.attestation,
       };
-      return await fetchTokenResponse(fetchTokenResponseOptions);
+      const tokenResponse = await fetchTokenResponse(fetchTokenResponseOptions);
+
+      return {
+        ...tokenResponse,
+        dPoPKey,
+      };
     });
   }
 }
