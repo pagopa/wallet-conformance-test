@@ -314,7 +314,6 @@ export class WalletIssuanceOrchestratorFlow {
       trustAnchorBaseUrl,
       this.log,
     );
-
     const authorizeResponse = await this.authorizeStep.run({
       authorizationEndpoint:
         entityStatementClaims.metadata?.oauth_authorization_server
@@ -366,11 +365,10 @@ export class WalletIssuanceOrchestratorFlow {
       fetchMetadataResponse.durationMs ?? 0,
     );
 
-    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
-
     const walletAttestationResponse = await loadAttestation({
-      trustAnchor: this.config.trust,
-      trustAnchorBaseUrl,
+      network: this.config.network,
+      trust: this.config.trust,
+      trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,
     });
 

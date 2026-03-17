@@ -2,6 +2,7 @@ import type { Server } from "http";
 
 import { createLogger } from "@/logic/logs";
 import { loadConfigWithHierarchy } from "@/logic/utils";
+import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
 
 import { createServer } from "../src/trust-anchor/server";
 
@@ -16,6 +17,8 @@ export default async function setup() {
   server = app.listen(port, () => {
     baseLog.info(`Trust anchor server running at http://localhost:${port}`);
   });
+
+  await registerWithExternalTrustAnchor(config);
 
   // teardown
   return async () => {

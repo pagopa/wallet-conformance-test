@@ -10,6 +10,8 @@ import { writeFileSync } from "node:fs";
 
 import { KeyPair, KeyPairJwk } from "@/types";
 
+import { buildCertPath, loadCertificate } from "./utils";
+
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
  *
@@ -19,6 +21,31 @@ import { KeyPair, KeyPairJwk } from "@/types";
 export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
   const exportedPair = await createKeys();
   writeFileSync(fileName, JSON.stringify(exportedPair));
+
+  return exportedPair;
+}
+
+/**
+ * Generates a new cryptographic key pair (ECDSA with P-256 curve) with a self-signed X.509 certificate and saves it to a file.
+ *
+ * @param fileName The name of the file to save the key pair to.
+ * @returns A promise that resolves to the generated key pair.
+ */
+export async function createAndSaveKeysWithX5C(
+  fileName: string,
+  jwksPath: string,
+  caCertPath: string,
+  caSubject: string,
+): Promise<KeyPair> {
+  const exportedPair = await createKeys();
+  const x5c = await loadCertificate(
+    caCertPath,
+    buildCertPath(fileName),
+    exportedPair,
+    caSubject,
+  );
+  exportedPair.publicKey.x5c = [x5c];
+  writeFileSync(`${jwksPath}/${fileName}`, JSON.stringify(exportedPair));
 
   return exportedPair;
 }

@@ -11,20 +11,24 @@ import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
-    const attestationPath = buildAttestationPath(config.wallet);
+    const attestationPath = buildAttestationPath(
+      config.wallet,
+      config.trust_anchor.external_ta_url,
+    );
 
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: config.wallet,
     });
 
@@ -81,19 +85,20 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
-    expect(taDecoded.iss).toBe("https://127.0.0.1:3001"); // Trust Anchor
+    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: config.wallet,
     });
 
     const attestation = readFileSync(
-      `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version}/${config.wallet.wallet_id}`,
+      buildAttestationPath(config.wallet, config.trust_anchor.external_ta_url),
       "utf-8",
     );
     expect(response.attestation).toBe(attestation);
@@ -136,8 +141,9 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Generate first attestation
     const firstAttestationResponse = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: config.wallet,
     });
 
@@ -145,8 +151,9 @@ describe("Wallet Attestation Unit Test", () => {
 
     // In this case the attestation should not be generated
     const secondAttestationResponse = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: config.wallet,
     });
 
@@ -154,8 +161,9 @@ describe("Wallet Attestation Unit Test", () => {
 
     // In this case the attestation should be generated
     const thirdAttestationResponse = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: config.wallet,
     });
 
@@ -182,8 +190,9 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: walletV1_3,
     });
 
@@ -235,8 +244,9 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust,
-      trustAnchorBaseUrl,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
       wallet: walletV1_3,
     });
 

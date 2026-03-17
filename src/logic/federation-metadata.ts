@@ -12,7 +12,7 @@ import {
   buildJwksPath,
   loadJsonDumps,
   loadJwks,
-  loadTAJwksWithSelfSignedX5c,
+  loadJwksWithX5C,
 } from "./utils";
 
 export interface CreateFederationMetadataOptions {
@@ -81,9 +81,11 @@ export const createTrustAnchorMetadata = async (options: {
   trustAnchorBaseUrl: string;
   walletVersion: Config["wallet"]["wallet_version"];
 }): Promise<string> => {
-  const signedJwks = await loadTAJwksWithSelfSignedX5c(
-    options.trustAnchor,
+  const signedJwks = await loadJwksWithX5C(
+    options.trustAnchor.federation_trust_anchors_jwks_path,
     "trust_anchor",
+    options.trustAnchor.ca_cert_path,
+    options.trustAnchor.certificate_subject,
   );
   const trust_marks = await getTrustMarks(
     options.trustAnchorBaseUrl,
@@ -155,9 +157,11 @@ export interface CreateSubordinateEntityStatementOptions {
 export const createSubordinateTrustAnchorMetadata = async (
   options: CreateSubordinateEntityStatementOptions,
 ): Promise<string> => {
-  const signedJwks = await loadTAJwksWithSelfSignedX5c(
-    options.federationTrustAnchor,
+  const signedJwks = await loadJwksWithX5C(
+    options.federationTrustAnchor.federation_trust_anchors_jwks_path,
     "trust_anchor",
+    options.federationTrustAnchor.ca_cert_path,
+    options.federationTrustAnchor.certificate_subject,
   );
   const trust_marks = await getTrustMarks(
     options.trustAnchorBaseUrl,
@@ -202,9 +206,11 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 export const createSubordinateWalletUnitMetadata = async (
   options: CreateSubordinateWalletUnitMetadataOptions,
 ): Promise<string> => {
-  const signedJwks = await loadTAJwksWithSelfSignedX5c(
-    options.trustAnchor,
+  const signedJwks = await loadJwksWithX5C(
+    options.trustAnchor.federation_trust_anchors_jwks_path,
     "trust_anchor",
+    options.trustAnchor.ca_cert_path,
+    options.trustAnchor.certificate_subject,
   );
 
   const walletJwks = await loadJwks(
