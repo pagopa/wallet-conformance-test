@@ -16,7 +16,7 @@ import {
   withWrongHtmDPoP,
 } from "#/helpers/credential-validation-helpers";
 import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
-import { createCredentialRequest } from "@pagopa/io-wallet-oid4vci";
+import { createCredentialRequest, CredentialRequestV1_3, fetchCredentialResponse } from "@pagopa/io-wallet-oid4vci";
 import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
@@ -244,32 +244,7 @@ testConfigs.forEach((testConfig) => {
         );
         const duplicateKeyPair = await createKeys();
 
-        // Build a v1.3 credential request if possible (batch requires v1.3)
-        let batchRequest: Awaited<ReturnType<typeof createCredentialRequest>>;
-        try {
-          batchRequest = await createCredentialRequest({
-            callbacks: {
-              signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
-            },
-            clientId: walletAttestationResponse.unitKey.publicKey.kid,
-            config: ioWalletSdkConfig,
-            credential_identifier: credentialConfigurationId,
-            issuerIdentifier: credentialIssuer,
-            keyAttestation: "placeholder-key-attestation",
-            nonce,
-            signers: [{
-              alg: "ES256",
-              method: "jwk" as const,
-              publicJwk: duplicateKeyPair.publicKey,
-            }],
-          } as Parameters<typeof createCredentialRequest>[0]);
-        } catch (err) {
-          log.debug(
-            `→ CI_072 skipped: failed to build v1.3 batch request (${String(err)})`,
-          );
-          testSuccess = true;
-          return;
-        }
+
 
         // Build a DPoP for the credential endpoint
         const { unitKey } = walletAttestationResponse;
@@ -290,43 +265,59 @@ testConfigs.forEach((testConfig) => {
           },
         });
 
-        // Duplicate the proof to create a batch request with same JWK in both proofs
-        const batchRequestRecord = batchRequest as Record<string, unknown>;
-        const proofsJwt = (
-          batchRequestRecord["proofs"] as Record<string, unknown>
-        )?.["jwt"];
-        if (!proofsJwt || !Array.isArray(proofsJwt) || proofsJwt.length === 0) {
-          log.debug("→ CI_072 skipped: issuer did not return a proof JWT");
-          testSuccess = true;
-          return;
-        }
-        const batchRequestWithDuplicates = {
-          ...batchRequestRecord,
-          proof: undefined,
-          proofs: {
-            jwt: [proofsJwt[0], proofsJwt[0]],
+        // Build a v1.3 credential request if possible (batch requires v1.3)
+        const batchRequest = await createCredentialRequest({
+          callbacks: {
+            signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
+            hash: partialCallbacks.hash,
           },
-        };
+          clientId: walletAttestationResponse.unitKey.publicKey.kid,
+          config: ioWalletSdkConfig,
+          credential_identifier: credentialConfigurationId,
+          issuerIdentifier: credentialIssuer,
+          keyAttestation: "placeholder-key-attestation",
+          nonce,
+          signers: [{
+            alg: "ES256",
+            method: "jwk" as const,
+            publicJwk: duplicateKeyPair.publicKey,
+          }],
+        } as Parameters<typeof createCredentialRequest>[0]);
+
+        // Duplicate the proof to create a batch request with same JWK in both proofs
+        const { proofs } = batchRequest;
+        const batchRequestWithDuplicates = {
+          ...batchRequest,
+          proofs: { jwt: [proofs.jwt[0], proofs.jwt[0]] },
+        } as CredentialRequestV1_3;
 
         log.debug("→ Sending raw batch request with duplicate proofs...");
-        const response = await fetch(credentialEndpoint, {
-          body: JSON.stringify(batchRequestWithDuplicates),
-          headers: {
-            Authorization: `DPoP ${accessToken}`,
-            "Content-Type": "application/json",
-            DPoP: dpop,
-          },
-          method: "POST",
-        });
-
-        log.debug(`  Response status: ${response.status}`);
 
         log.debug(
           "→ Validating issuer rejected the duplicate-key batch request...",
         );
-        expect(response.ok).toBe(false);
 
-        testSuccess = true;
+        try {
+          const response = await fetchCredentialResponse({
+            accessToken: accessToken,
+            callbacks: { fetch: partialCallbacks.fetch },
+            credentialEndpoint,
+            credentialRequest: batchRequestWithDuplicates,
+            dPoP: dpop,
+          })
+          expect(response).toBeUndefined();
+
+          testSuccess = false;
+        } catch (error) {
+          log.debug(
+            "  Request failed as expected with error: " +
+              (error instanceof Error ? error.message : String(error)),
+          );
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toMatch(/invalid_proof/i);
+          
+          testSuccess = true;
+        }
       } finally {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
