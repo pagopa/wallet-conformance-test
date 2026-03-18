@@ -16,7 +16,7 @@ import {
 import { KeyPairJwk } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Step class factory helpers
+// SignJwtCallback factories (credential proof manipulation)
 // ---------------------------------------------------------------------------
 
 /**
@@ -151,7 +151,7 @@ export function signWithWrongTyp(
 }
 
 // ---------------------------------------------------------------------------
-// SignJwtCallback factories (credential proof manipulation)
+// Step class factory helpers
 // ---------------------------------------------------------------------------
 
 /**
