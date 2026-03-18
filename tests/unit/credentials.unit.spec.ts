@@ -1,17 +1,33 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
-import { ItWalletSpecsVersion, ValidationError } from "@pagopa/io-wallet-utils";
+import {
+  addSecondsToDate,
+  dateToSeconds,
+  ItWalletSpecsVersion,
+  ValidationError,
+} from "@pagopa/io-wallet-utils";
+import { X509Certificate } from "@peculiar/x509";
 import { digest } from "@sd-jwt/crypto-nodejs";
+import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { decode } from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
-import { createMockMdlMdoc, loadCredentials } from "@/functions";
+import {
+  createMockMdlMdoc,
+  getCredentialMdocExpiration,
+  getCredentialSdJwtExpiration,
+  isCredentialMdocExpired,
+  isCredentialSdJwtExpired,
+  loadCredentials,
+  loadCredentialsForPresentation,
+} from "@/functions";
 import { createMockSdJwt } from "@/functions";
 import {
   buildJwksPath,
   createKeys,
+  createLogger,
   createVpTokenMdoc,
   loadCertificate,
   loadConfig,
@@ -19,12 +35,15 @@ import {
   loadJwks,
   parseMdoc,
 } from "@/logic";
-import { KeyPairJwk } from "@/types";
+import { KeyPairJwk, zTrustChain, zX5c } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
 
 describe("Load Mocked Credentials", async () => {
+  const config = loadConfig("./config.ini");
+  config.wallet.credentials_storage_path = backupDir;
+
   afterAll(async () =>
     rmSync(
       "tests/mocked-data/federation_trust_anchors/localhost/trust_anchor_cert",
@@ -73,6 +92,413 @@ describe("Load Mocked Credentials", async () => {
 
     expect(der).toBeDefined();
   });
+
+  it("should create a new certificate in case the current one is actually expired", async () => {
+    (rmSync(
+      "tests/mocked-data/federation_trust_anchors/localhost/trust_anchor_cert",
+      { force: true },
+    ),
+      vi.useFakeTimers());
+    const baseDate = new Date(2000, 1, 1);
+    //Default expiration for the certificates is an year, so in two years it will be surely expired
+    const twoYearsLater = new Date(2002, 1, 1);
+
+    const signedJwks = await loadJwks(
+      "tests/mocked-data/federation_trust_anchors/localhost",
+      "trust_anchor_jwks",
+    );
+
+    vi.setSystemTime(baseDate);
+
+    const derBefore = await loadCertificate(
+      "tests/mocked-data/federation_trust_anchors/localhost",
+      "trust_anchor_cert",
+      signedJwks,
+      "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab",
+    );
+
+    vi.setSystemTime(twoYearsLater);
+
+    const derAfter = await loadCertificate(
+      "tests/mocked-data/federation_trust_anchors/localhost",
+      "trust_anchor_cert",
+      signedJwks,
+      "CN=test_trust_anchor, O=it_wallet, OU=wallet_lab",
+    );
+
+    //If the certificate has been regenerated, it should be different from the previous one
+
+    expect(derAfter).not.toEqual(derBefore);
+  });
+
+  describe("credentials expiration tests", async () => {
+    const baseDate = new Date(2000, 1, 1);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(baseDate);
+    const credentials = await loadCredentials(
+      credentialsDir,
+      ["dc_sd_jwt_PersonIdentificationData", "mso_mdoc_mDL"],
+      console.error,
+      ItWalletSpecsVersion.V1_0,
+    );
+    describe("SdJwt expiration checks", () => {
+      const pid = credentials["dc_sd_jwt_PersonIdentificationData"];
+
+      if (!pid || pid.typ !== "dc+sd-jwt") {
+        throw new Error("Expected to find the PID in sd-jwt format");
+      }
+
+      it("should pass all the expiration checks", () => {
+        expect(isCredentialSdJwtExpired(pid.parsed, "expiry_date")).toBe(false);
+      });
+
+      describe("expiration date claim checks", () => {
+        const expiration = getCredentialSdJwtExpiration(
+          pid.parsed,
+          "expiry_date",
+        );
+        it("should return false because it's past the expiration date claim", () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(expiration) - 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
+              jwt: false,
+              trust_chain: false,
+              x5c: false,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the expiration date claim", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
+              jwt: false,
+              trust_chain: false,
+              x5c: false,
+            }),
+          ).toBe(true);
+        });
+      });
+
+      describe("jwt expiration checks", () => {
+        const exp = pid.parsed.jwt.payload?.exp;
+        const jwtExpiration =
+          exp !== undefined && typeof exp === "number" ? exp : undefined;
+        if (!jwtExpiration)
+          throw new Error("Expected the jwt to have a well defined expiration");
+        it("should return false because it's past the jwt expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((jwtExpiration - 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: true,
+              trust_chain: false,
+              x5c: false,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the jwt expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((jwtExpiration + 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: true,
+              trust_chain: false,
+              x5c: false,
+            }),
+          ).toBe(true);
+        });
+      });
+
+      describe("trust_chain expiration checks", () => {
+        const trust_chain = zTrustChain.safeParse(
+          pid.parsed.jwt.header?.trust_chain,
+        );
+        const trustChainMinExp = trust_chain.success
+          ? trust_chain.data.reduce<number>((prev, ec) => {
+              const decoded = decodeJwt(ec);
+              const exp = decoded.payload.exp;
+              if (exp === undefined || typeof exp !== "number")
+                throw new Error(
+                  "Expected the Federation ES to contain an expiration",
+                );
+              return Math.min(prev, exp);
+            }, Infinity)
+          : undefined;
+        if (!trustChainMinExp)
+          throw new Error(
+            "Expected the SdJwt to contain the trust_chain header field",
+          );
+
+        it("should return false because it's past the trust_chain expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((trustChainMinExp - 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: true,
+              x5c: false,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the trust_chain expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((trustChainMinExp + 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: true,
+              x5c: false,
+            }),
+          ).toBe(true);
+        });
+      });
+
+      describe("x5c certificate chain expiration checks", () => {
+        const x5c = zX5c.safeParse(pid.parsed.jwt.header?.x5c);
+        const x5cMinExp = x5c.success
+          ? x5c.data
+              .map((cert) => new X509Certificate(cert))
+              .reduce<Date>((cumulated, curr, idx) => {
+                if (idx === 0) return curr.notAfter;
+                return cumulated < curr.notAfter ? cumulated : curr.notAfter;
+              }, new Date())
+          : undefined;
+        if (!x5cMinExp)
+          throw new Error(
+            "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
+          );
+
+        it("should return false because it's past the x5c certificate chain expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(x5cMinExp) - 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: false,
+              x5c: true,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the x5c certificate expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(x5cMinExp) + 1) * 1000);
+          expect(
+            isCredentialSdJwtExpired(pid.parsed, undefined, {
+              jwt: false,
+              trust_chain: false,
+              x5c: true,
+            }),
+          ).toBe(true);
+        });
+      });
+    });
+
+    describe("Mdoc expiration checks", () => {
+      const mDL = credentials["mso_mdoc_mDL"];
+
+      if (!mDL || mDL.typ !== "mso_mdoc") {
+        throw new Error("Expected to find the PID in sd-jwt format");
+      }
+      const issuerAuth = mDL.parsed.issuerSigned.issuerAuth;
+
+      it("should pass all the expiration checks", () => {
+        expect(
+          isCredentialMdocExpired(mDL.parsed, {
+            claimName: "expiry_date",
+            namespace: "eu.europa.it.badge.1",
+          }),
+        ).toBe(false);
+      });
+
+      describe("expiration date claim checks", () => {
+        const expiration = getCredentialMdocExpiration(mDL.parsed, {
+          claimName: "expiry_date",
+          namespace: "eu.europa.it.badge.1",
+        });
+        it("should return false because it's past the expiration date claim", () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(expiration) - 1) * 1000);
+          expect(
+            isCredentialMdocExpired(
+              mDL.parsed,
+              { claimName: "expiry_date", namespace: "eu.europa.it.badge.1" },
+              {
+                cert: false,
+                mdoc: false,
+                x5chain: false,
+              },
+            ),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the expiration date claim", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          expect(
+            isCredentialMdocExpired(
+              mDL.parsed,
+              { claimName: "expiry_date", namespace: "eu.europa.it.badge.1" },
+              {
+                cert: false,
+                mdoc: false,
+                x5chain: false,
+              },
+            ),
+          ).toBe(true);
+        });
+      });
+
+      describe("mdoc expiration checks", () => {
+        const mDocExpiration =
+          issuerAuth.decodedPayload.validityInfo.validUntil;
+        it("should return false because it's past the mdoc expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(mDocExpiration) - 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: true,
+              x5chain: false,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the mdoc expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(mDocExpiration) + 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: true,
+              x5chain: false,
+            }),
+          ).toBe(true);
+        });
+      });
+
+      describe("certificate expiration checks", () => {
+        const certExpiration = issuerAuth.certificate.notAfter;
+
+        it("should return false because it's past the certificate expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(certExpiration) - 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: true,
+              mdoc: false,
+              x5chain: false,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the certificate expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(certExpiration) + 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: true,
+              mdoc: false,
+              x5chain: false,
+            }),
+          ).toBe(true);
+        });
+      });
+
+      describe("trust chain expiration checks", () => {
+        const trustChain = issuerAuth.x5chain
+          ?.map((buffer) => Buffer.from(buffer).toString("base64"))
+          .map((cert) => new X509Certificate(cert));
+        const trustChainMinExp = trustChain?.reduce<Date>(
+          (cumulated, curr, idx) => {
+            if (idx === 0) return curr.notAfter;
+            return cumulated < curr.notAfter ? cumulated : curr.notAfter;
+          },
+          new Date(),
+        );
+        if (!trustChainMinExp)
+          throw new Error(
+            "Expected MDoc credential to contain the trust_chain field in the issuerAuth",
+          );
+
+        it("should return false because it's past the trust chain certificate chain expiration", async () => {
+          // Set system time to a second before expiration
+          vi.setSystemTime((dateToSeconds(trustChainMinExp) - 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: false,
+              x5chain: true,
+            }),
+          ).toBe(false);
+        });
+        it("should return true because it's not past the trust chain certificate expiration", async () => {
+          // Set system time to a second after expiration
+          vi.setSystemTime((dateToSeconds(trustChainMinExp) + 1) * 1000);
+          expect(
+            isCredentialMdocExpired(mDL.parsed, undefined, {
+              cert: false,
+              mdoc: false,
+              x5chain: true,
+            }),
+          ).toBe(true);
+        });
+      });
+    });
+
+    afterAll(() => {
+      vi.useRealTimers();
+    });
+  });
+
+  it.each(Object.values(ItWalletSpecsVersion))(
+    "should regenerate expired credentials",
+    async (version) => {
+      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+        force: true,
+      });
+      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
+      config.wallet.wallet_version = version;
+      const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
+      const logger = createLogger();
+
+      // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
+      const date = new Date(2015, 1, 1);
+      const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2);
+
+      try {
+        vi.useFakeTimers();
+
+        vi.setSystemTime(date);
+        const credentials = await loadCredentialsForPresentation(
+          config,
+          trustAnchorBaseUrl,
+          logger,
+        );
+
+        vi.setSystemTime(twoYearsLater);
+        const regenerated = await loadCredentialsForPresentation(
+          config,
+          trustAnchorBaseUrl,
+          logger,
+        );
+
+        const isSomeCredentialTheSame = credentials.some((curr) => {
+          const corresponding = regenerated.find((cred) => cred.id === curr.id);
+          if (!corresponding)
+            throw new Error(
+              `Expected to find a corresponding credential to ${curr.id} in the regenerated batch`,
+            );
+
+          return curr.credential === corresponding.credential;
+        });
+
+        //We expect all the credentials to be different
+        expect(isSomeCredentialTheSame).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 });
 
 describe("Generate Mocked Credentials", () => {
@@ -85,12 +511,11 @@ describe("Generate Mocked Credentials", () => {
   };
 
   afterAll(() => {
-    rmSync(
-      `${backupDir}/${config.wallet.wallet_version}/dc_sd_jwt_PersonIdentificationData`,
-      { force: true },
-    );
-    rmSync(`${backupDir}/${config.wallet.wallet_version}/mso_mdoc_mDL`, {
-      force: true,
+    Object.values(ItWalletSpecsVersion).forEach((version) => {
+      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+        force: true,
+      });
+      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
     });
   });
 
@@ -223,7 +648,9 @@ describe("Generate Mocked Credentials", () => {
 
 describe("createVpTokenMdoc", () => {
   afterAll(() => {
-    rmSync(`${backupDir}/mso_mdoc_mDL`, { force: true });
+    rmSync(`${backupDir}/${ItWalletSpecsVersion.V1_0}/mso_mdoc_mDL`, {
+      force: true,
+    });
   });
 
   it("should throw if no matching credential query found", async () => {

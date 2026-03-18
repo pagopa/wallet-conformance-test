@@ -1,8 +1,11 @@
 import { Jwk } from "@pagopa/io-wallet-oauth2";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  addSecondsToDate,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
 import { readFileSync, rmSync } from "node:fs";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { KeyPair } from "@/types";
 
@@ -23,10 +26,10 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: config.wallet,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
     });
 
     // Verify attestation was created
@@ -88,10 +91,10 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: config.wallet,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
     });
 
     const attestation = readFileSync(
@@ -123,6 +126,53 @@ describe("Wallet Attestation Unit Test", () => {
     expect(Array.isArray(trustChain)).toBe(true);
     expect(trustChain?.length).toBe(2);
   });
+
+  test("Regenerate Wallet Attestation only when expired", async () => {
+    const date = new Date(2000, 1, 1);
+    const thirtyMinutesLater = addSecondsToDate(date, 60 * 30);
+    const oneYearLater = addSecondsToDate(date, 3600 * 24 * 365);
+    vi.useFakeTimers();
+    vi.setSystemTime(date);
+
+    const attestationPath = `${config.wallet.wallet_attestations_storage_path}/${config.wallet.wallet_version ?? ItWalletSpecsVersion.V1_0}/${config.wallet.wallet_id}`;
+
+    // Remove existing attestation to force new generation
+    rmSync(attestationPath, { force: true });
+
+    // Generate first attestation
+    const firstAttestationResponse = await loadAttestation({
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
+    });
+
+    vi.setSystemTime(thirtyMinutesLater);
+
+    // In this case the attestation should not be generated
+    const secondAttestationResponse = await loadAttestation({
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
+    });
+
+    vi.setSystemTime(oneYearLater);
+
+    // In this case the attestation should be generated
+    const thirdAttestationResponse = await loadAttestation({
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
+    });
+
+    expect(firstAttestationResponse.created).toEqual(true);
+    expect(secondAttestationResponse.created).toEqual(false);
+    expect(thirdAttestationResponse.created).toEqual(true);
+
+    vi.useRealTimers();
+  });
 });
 
 describe("Wallet Attestation V1_3 Unit Test", () => {
@@ -140,10 +190,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: walletV1_3,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_3,
     });
 
     expect(response.attestation).toBeDefined();
@@ -194,10 +244,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: walletV1_3,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_3,
     });
 
     // Should load from disk (not create a new one)

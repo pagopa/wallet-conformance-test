@@ -85,7 +85,7 @@ export async function registerWithExternalTrustAnchor(
     return;
   }
 
-  const { wallet, network } = config;
+  const { network, wallet } = config;
 
   // Load WP public key pair
   const providerKeyPair = await loadJwks(

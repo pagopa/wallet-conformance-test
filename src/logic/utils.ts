@@ -11,6 +11,7 @@ import {
   createAndSaveCertificate,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
+  hasX509CertificateExpired,
   verifyJwt,
 } from ".";
 
@@ -131,22 +132,47 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
- * Ensures a directory exists, creating it if necessary.
+ * Deep merges two objects, with the second object's values taking precedence.
  *
- * @param dirPath The directory path to ensure.
- * @returns `true` if the directory was freshly created, `false` if it already existed.
- * @throws An error if the directory could not be created.
+ * @param target The target object (lower priority).
+ * @param source The source object (higher priority).
+ * @returns The merged object.
  */
-function ensureDir(dirPath: string): boolean {
-  if (existsSync(dirPath)) return false;
-  try {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  } catch (e) {
-    throw new Error(
-      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
-    );
+export function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (sourceValue === undefined) {
+      continue;
+    }
+
+    if (
+      typeof sourceValue === "object" &&
+      sourceValue !== null &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === "object" &&
+      targetValue !== null &&
+      !Array.isArray(targetValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<
+        keyof T,
+        string
+      >];
+    } else {
+      // Override with source value
+      result[key] = sourceValue as T[Extract<keyof T, string>];
+    }
   }
+
+  return result;
 }
 
 /**
@@ -174,6 +200,9 @@ export async function loadCertificate(
         .replace("-----END CERTIFICATE-----", "")
         .replace(/\s+/g, "")
         .trim();
+
+      if (hasX509CertificateExpired(certDerBase64))
+        throw new Error("Certificate has expired and has to be regenerated");
 
       return certDerBase64;
     } catch {
@@ -301,5 +330,24 @@ export function saveCredentialToDisk(
     return filePath;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Ensures a directory exists, creating it if necessary.
+ *
+ * @param dirPath The directory path to ensure.
+ * @returns `true` if the directory was freshly created, `false` if it already existed.
+ * @throws An error if the directory could not be created.
+ */
+function ensureDir(dirPath: string): boolean {
+  if (existsSync(dirPath)) return false;
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
+  } catch (e) {
+    throw new Error(
+      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
+    );
   }
 }
