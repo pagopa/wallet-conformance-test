@@ -77,7 +77,6 @@ export async function createMockSdJwt(
     network: Config["network"];
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
-    trustAnchorBaseUrl: string;
   },
   backupPath: string,
   credentialsPath: string,

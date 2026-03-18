@@ -12,7 +12,7 @@ import {
 } from "@/logic";
 import { generateSRIHash } from "@/logic/sd-jwt";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
-import { isExternalTrustAnchor } from "@/trust-anchor/trust-anchor-resolver";
+import { isExternalTrustAnchor, resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
 export async function buildMockMdlMdoc_V1_0(
@@ -74,18 +74,18 @@ export async function buildMockSdJwt_V1_0(
     network: Config["network"];
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
-    trustAnchorBaseUrl: string;
   },
   expiration: Date,
   unitKey: KeyPairJwk,
   certificate: string,
   keyPair: KeyPair,
 ): Promise<Credential> {
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const taEntityConfiguration = isExternalTrustAnchor(
     metadata.trustAnchor.external_ta_url,
   )
     ? await fetchExternalSubordinateStatement(
-        metadata.trustAnchor.external_ta_url,
+        trustAnchorBaseUrl,
         metadata.iss,
         metadata.network,
       )
@@ -93,7 +93,7 @@ export async function buildMockSdJwt_V1_0(
         entityPublicJwk: keyPair.publicKey,
         federationTrustAnchor: metadata.trust,
         sub: metadata.iss,
-        trustAnchorBaseUrl: metadata.trustAnchorBaseUrl,
+        trustAnchorBaseUrl: trustAnchorBaseUrl,
         walletVersion: ItWalletSpecsVersion.V1_0,
       });
 
@@ -102,7 +102,7 @@ export async function buildMockSdJwt_V1_0(
     {
       issuer_base_url: metadata.iss,
       public_key: keyPair.publicKey,
-      trust_anchor_base_url: metadata.trustAnchorBaseUrl,
+      trust_anchor_base_url: trustAnchorBaseUrl,
     },
     ItWalletSpecsVersion.V1_0,
   );

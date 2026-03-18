@@ -107,7 +107,6 @@ export async function loadCredentialsForPresentation(
         network: config.network,
         trust: config.trust,
         trustAnchor: config.trust_anchor,
-        trustAnchorBaseUrl,
       },
       config.wallet.backup_storage_path,
       config.wallet.credentials_storage_path,
