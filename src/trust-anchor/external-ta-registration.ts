@@ -61,17 +61,17 @@ export async function fetchExternalSubordinateStatement(
  * This function is a no-op when `config.trust_anchor.external_ta_url` is not set.
  *
  * When the external TA URL is configured, it:
- * 1. Loads the WP and MI public keys from the backup storage path.
- * 2. Optionally POSTs the WP Entity Configuration JWT and MI Entity Configuration
+ * 1. Loads the WP and CI public keys from the backup storage path.
+ * 2. Optionally POSTs the WP Entity Configuration JWT and CI Entity Configuration
  *    JWT to the onboarding URL (if `external_ta_onboarding_url` is set). HTTP 409 is
  *    treated as idempotent success.
  * 3. Smoke-checks that the external TA can serve a Subordinate Statement for this WP
- *    and MI by delegating to {@link fetchExternalSubordinateStatement}. Throws a
+ *    and CI by delegating to {@link fetchExternalSubordinateStatement}. Throws a
  *    descriptive error on failure, which will abort all tests.
  *
  * @remarks
  * **Provisional implementation.** The onboarding flow implemented here (POST of the
- * WP/MI Entity Configuration JWT to `external_ta_onboarding_url`) is a conceptual sketch
+ * WP/CI Entity Configuration JWT to `external_ta_onboarding_url`) is a conceptual sketch
  * of a possible OpenID Federation Onboarding mechanism. The protocol details are not yet
  * finalised and this function is subject to breaking changes as the specification evolves.
  *
@@ -108,21 +108,21 @@ export async function registerWithExternalTrustAnchor(
     wallet.wallet_version,
   );
 
-  // Load MI (issuer) public key pair
+  // Load CI (issuer) public key pair
   const issuerKeyPair = await loadJwks(
     wallet.backup_storage_path,
     buildJwksPath("issuer"),
   );
 
-  // Build MI Entity Configuration JWT
-  const miPlaceholders = {
+  // Build CI Entity Configuration JWT
+  const ciPlaceholders = {
     issuer_base_url: wallet.mock_issuer,
     public_key: issuerKeyPair.publicKey,
     trust_anchor_base_url: externalTaUrl,
   };
-  const miClaims = loadJsonDumps(
+  const ciClaims = loadJsonDumps(
     "issuer_metadata.json",
-    miPlaceholders,
+    ciPlaceholders,
     wallet.wallet_version,
   );
 
@@ -136,9 +136,9 @@ export async function registerWithExternalTrustAnchor(
       }),
     ],
     [
-      "MI",
+      "CI",
       await createFederationMetadata({
-        claims: miClaims,
+        claims: ciClaims,
         entityPublicJwk: issuerKeyPair.publicKey,
         signedJwks: issuerKeyPair,
       }),
@@ -146,14 +146,14 @@ export async function registerWithExternalTrustAnchor(
   ];
   const entityBaseUrls: [string, string][] = [
     ["WP", wallet.wallet_provider_base_url],
-    ["MI", wallet.mock_issuer],
+    ["CI", wallet.mock_issuer],
   ];
 
-  // Optional: POST WP and MI Entity Configuration to onboarding URL
+  // Optional: POST WP and CI Entity Configuration to onboarding URL
   if (config.trust_anchor.external_ta_onboarding_url) {
     const onboardingUrl = config.trust_anchor.external_ta_onboarding_url;
 
-    for (const [entity, jwt] of entityConfigurationJwts)
+    for (const [entity, jwt] of entityConfigurationJwts) {
       try {
         const { response } = await fetchWithRetries(onboardingUrl, network, {
           body: jwt,
@@ -176,10 +176,11 @@ export async function registerWithExternalTrustAnchor(
           `Failed to POST ${entity} Entity Configuration to external TA onboarding endpoint ${onboardingUrl}: ${err.message}`,
         );
       }
+    }
   }
 
-  // Smoke-check: verify the external TA can serve a Subordinate Statement for both WP and MI
-  for (const [entity, baseUrl] of entityBaseUrls)
+  // Smoke-check: verify the external TA can serve a Subordinate Statement for both WP and CI
+  for (const [entity, baseUrl] of entityBaseUrls) {
     try {
       await fetchExternalSubordinateStatement(externalTaUrl, baseUrl, network);
     } catch (e) {
@@ -190,4 +191,5 @@ export async function registerWithExternalTrustAnchor(
           `as a subordinate under the external Trust Anchor at ${externalTaUrl}.`,
       );
     }
+  }
 }
