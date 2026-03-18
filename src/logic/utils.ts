@@ -123,11 +123,11 @@ export function buildAttestationPath(
 }
 
 export function buildCertPath(pathPrefix: string): string {
-  return `/${pathPrefix}_cert`;
+  return `${pathPrefix}_cert`;
 }
 
 export function buildJwksPath(pathPrefix: string): string {
-  return `/${pathPrefix}_jwks`;
+  return `${pathPrefix}_jwks`;
 }
 
 /**

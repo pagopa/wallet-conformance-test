@@ -108,7 +108,7 @@ export async function registerWithExternalTrustAnchor(
     wallet.wallet_version,
   );
 
-  // Load WP public key pair
+  // Load MI (issuer) public key pair
   const issuerKeyPair = await loadJwks(
     wallet.backup_storage_path,
     buildJwksPath("issuer"),
@@ -178,7 +178,7 @@ export async function registerWithExternalTrustAnchor(
       }
   }
 
-  // Smoke-check: verify the external TA can serve a Subordinate Statement for this WP
+  // Smoke-check: verify the external TA can serve a Subordinate Statement for both WP and MI
   for (const [entity, baseUrl] of entityBaseUrls)
     try {
       await fetchExternalSubordinateStatement(externalTaUrl, baseUrl, network);
