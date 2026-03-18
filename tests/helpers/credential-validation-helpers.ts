@@ -216,7 +216,7 @@ export function withDPoPSignedByWrongKey(
       const wrongSigner: JwtSignerJwk = {
         alg: "ES256",
         method: "jwk",
-        publicJwk: { ...wrongPublicJwk, kty: "EC", kid: wrongKid } as Jwk,
+        publicJwk: { ...wrongPublicJwk, kid: wrongKid, kty: "EC" } as Jwk,
       };
 
       const dpopOptions = {
@@ -224,7 +224,7 @@ export function withDPoPSignedByWrongKey(
         callbacks: {
           ...partialCallbacks,
           signJwt: signJwtCallback([
-            { ...wrongPrivateJwk, kty: "EC", kid: wrongKid } as KeyPairJwk,
+            { ...wrongPrivateJwk, kid: wrongKid, kty: "EC" } as KeyPairJwk,
           ]),
         },
         signer: wrongSigner,

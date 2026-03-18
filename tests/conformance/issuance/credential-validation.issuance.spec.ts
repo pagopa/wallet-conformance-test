@@ -15,8 +15,13 @@ import {
   withWrongAthDPoP,
   withWrongHtmDPoP,
 } from "#/helpers/credential-validation-helpers";
+import { useTestSummary } from "#/helpers/use-test-summary";
 import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
-import { createCredentialRequest, CredentialRequestV1_3, fetchCredentialResponse } from "@pagopa/io-wallet-oid4vci";
+import {
+  createCredentialRequest,
+  CredentialRequestV1_3,
+  fetchCredentialResponse,
+} from "@pagopa/io-wallet-oid4vci";
 import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
@@ -39,7 +44,6 @@ import {
   CredentialRequestResponse,
 } from "@/step/issuance/credential-request-step";
 import { AttestationResponse, RunThroughTokenContext } from "@/types";
-import { useTestSummary } from "#/helpers/use-test-summary";
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
@@ -244,8 +248,6 @@ testConfigs.forEach((testConfig) => {
         );
         const duplicateKeyPair = await createKeys();
 
-
-
         // Build a DPoP for the credential endpoint
         const { unitKey } = walletAttestationResponse;
         const { jwt: dpop } = await createTokenDPoP({
@@ -268,8 +270,8 @@ testConfigs.forEach((testConfig) => {
         // Build a v1.3 credential request if possible (batch requires v1.3)
         const batchRequest = await createCredentialRequest({
           callbacks: {
-            signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
             hash: partialCallbacks.hash,
+            signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
           },
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
           config: ioWalletSdkConfig,
@@ -277,11 +279,13 @@ testConfigs.forEach((testConfig) => {
           issuerIdentifier: credentialIssuer,
           keyAttestation: "placeholder-key-attestation",
           nonce,
-          signers: [{
-            alg: "ES256",
-            method: "jwk" as const,
-            publicJwk: duplicateKeyPair.publicKey,
-          }],
+          signers: [
+            {
+              alg: "ES256",
+              method: "jwk" as const,
+              publicJwk: duplicateKeyPair.publicKey,
+            },
+          ],
         } as Parameters<typeof createCredentialRequest>[0]);
 
         // Duplicate the proof to create a batch request with same JWK in both proofs
@@ -304,7 +308,7 @@ testConfigs.forEach((testConfig) => {
             credentialEndpoint,
             credentialRequest: batchRequestWithDuplicates,
             dPoP: dpop,
-          })
+          });
           expect(response).toBeUndefined();
 
           testSuccess = false;
@@ -315,7 +319,7 @@ testConfigs.forEach((testConfig) => {
           );
           expect(error).toBeInstanceOf(Error);
           expect((error as Error).message).toMatch(/invalid_proof/i);
-          
+
           testSuccess = true;
         }
       } finally {
