@@ -56,7 +56,7 @@ export async function fetchExternalSubordinateStatement(
 }
 
 /**
- * Registers the Wallet Provider and Mock Issuer with an external Trust Anchor before tests start.
+ * Registers the Wallet Provider and Credential Issuer mocked with an external Trust Anchor before tests start.
  *
  * This function is a no-op when `config.trust_anchor.external_ta_url` is not set.
  *
