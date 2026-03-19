@@ -33,12 +33,6 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Issuer Authorization Validation Tests",
-      });
-
       const ctx = await orchestrator.runThroughAuthorize();
 
       credentialIssuer = ctx.credentialIssuer;

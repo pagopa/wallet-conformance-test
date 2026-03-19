@@ -37,12 +37,6 @@ testConfigs.forEach((testConfig) => {
     let credentialResponse: CredentialRequestResponse;
 
     beforeAll(async () => {
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Issuance Conformance Tests",
-      });
-
       try {
         ({
           authorizeResponse,

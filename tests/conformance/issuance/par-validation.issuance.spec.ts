@@ -59,12 +59,6 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "PAR Request Object Validation Tests",
-      });
-
       // Run through the flow up to the PAR step to extract necessary context for the tests
       const ctx = await orchestrator.runThroughPar();
 

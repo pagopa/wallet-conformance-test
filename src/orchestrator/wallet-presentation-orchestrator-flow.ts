@@ -45,6 +45,12 @@ export class WalletPresentationOrchestratorFlow {
       path: this.config.logging.log_file,
     });
 
+    this.log.testSuite({
+      profile: this.presentationConfig.name,
+      target: this.config.presentation.authorize_request_url,
+      title: this.presentationConfig.name,
+    });
+
     this.log.debug("Setting Up Wallet conformance Tests - Presentation Flow");
     this.log.debug("Configuration Loaded from config.ini");
 

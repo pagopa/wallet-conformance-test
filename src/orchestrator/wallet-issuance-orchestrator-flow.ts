@@ -67,6 +67,12 @@ export class WalletIssuanceOrchestratorFlow {
       path: this.config.logging.log_file,
     });
 
+    this.log.testSuite({
+      profile: this.issuanceConfig.credentialConfigurationId,
+      target: this.config.issuance.url,
+      title: this.issuanceConfig.name,
+    });
+
     this.log.debug("Setting Up Wallet conformance Tests - Issuance Flow");
     this.log.debug(
       "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",

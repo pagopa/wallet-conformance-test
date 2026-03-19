@@ -81,12 +81,6 @@ testConfigs.forEach((testConfig) => {
     beforeAll(async () => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
 
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Credential Request Validation Tests",
-      });
-
       tokenCtx = await orchestrator.runThroughToken();
 
       ({ credentialIssuer, fetchMetadataResponse, walletAttestationResponse } =
@@ -277,7 +271,8 @@ testConfigs.forEach((testConfig) => {
             signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
           },
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
-          config: ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_3>,
+          config:
+            ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_3>,
           credential_identifier: credentialConfigurationId,
           issuerIdentifier: credentialIssuer,
           keyAttestation: "placeholder-key-attestation",
