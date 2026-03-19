@@ -74,6 +74,7 @@ export async function createMockMdlMdoc(
 export async function createMockSdJwt(
   metadata: {
     iss: string;
+    statusListServerPort: number;
     trustAnchor: Config["trust"];
     trustAnchorBaseUrl: string;
   },

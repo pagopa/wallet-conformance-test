@@ -104,6 +104,7 @@ export async function loadCredentialsForPresentation(
     const personIdentificationData = await createMockSdJwt(
       {
         iss: "https://issuer.example.com",
+        statusListServerPort: config.trust_anchor.port,
         trustAnchor: config.trust,
         trustAnchorBaseUrl,
       },

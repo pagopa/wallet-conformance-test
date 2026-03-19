@@ -70,6 +70,7 @@ export async function buildMockMdlMdoc_V1_3(
 export async function buildMockSdJwt_V1_3(
   metadata: {
     iss: string;
+    statusListServerPort: number;
     trustAnchor: Config["trust"];
     trustAnchorBaseUrl: string;
   },
@@ -154,7 +155,7 @@ export async function buildMockSdJwt_V1_3(
       status: {
         status_list: {
           idx: 0,
-          uri: "https://example.com",
+          uri: `https://127.0.0.1:${metadata.statusListServerPort}/status-list`,
         },
       },
       sub: unitKey.kid,

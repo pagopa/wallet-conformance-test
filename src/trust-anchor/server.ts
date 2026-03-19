@@ -4,6 +4,7 @@ import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
+import { createStatusListToken } from "@/logic/status-list";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
 
@@ -54,6 +55,19 @@ export const createServer = () => {
       res.type("application/entity-statement+jwt").send(subordinateStatement);
     } catch (err) {
       console.error("Failed to create subordinate statement", err);
+      res.status(500).json({ error: "internal_server_error" });
+    }
+  });
+
+  app.get("/status-list", async (_req, res) => {
+    try {
+      const jwt = await createStatusListToken({
+        trustAnchor: config.trust,
+        statusListEndpointBaseUrl: trustAnchorBaseUrl,
+      });
+      res.type("application/statuslist+jwt").send(jwt);
+    } catch (err) {
+      console.error("Failed to create status list token", err);
       res.status(500).json({ error: "internal_server_error" });
     }
   });
