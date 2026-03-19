@@ -4,10 +4,6 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
@@ -31,7 +27,6 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,
@@ -45,7 +40,6 @@ export class WalletIssuanceOrchestratorFlow {
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
-  private ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
 
@@ -82,10 +76,6 @@ export class WalletIssuanceOrchestratorFlow {
         userAgent: this.config.network.user_agent,
       }),
     );
-
-    this.ioWalletSdkConfig = new IoWalletSdkConfig({
-      itWalletSpecsVersion: this.config.wallet.wallet_version,
-    });
 
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
@@ -306,14 +296,10 @@ export class WalletIssuanceOrchestratorFlow {
           "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
       );
 
-    const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
-      this.config.trust_anchor,
-    );
     this.log.info("Loading credentials...");
 
     const credentials = await loadCredentialsForPresentation(
       this.config,
-      trustAnchorBaseUrl,
       this.log,
     );
     const authorizeResponse = await this.authorizeStep.run({
