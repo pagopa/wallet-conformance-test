@@ -54,7 +54,6 @@ export async function loadCredentials(
  * otherwise mock credentials (PID + mDL) are generated and returned.
  *
  * @param config - The application configuration.
- * @param trustAnchorBaseUrl - Base URL of the Trust Anchor (reserved for future use).
  * @param log - Logger instance used to surface ignored-credential warnings.
  * @returns An array of `CredentialWithKey` ready for the presentation orchestrator.
  */
