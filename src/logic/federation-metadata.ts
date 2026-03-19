@@ -4,6 +4,8 @@ import {
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
 
+import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
+import { isExternalTrustAnchor } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
 import { signCallback, signJwtCallback } from "./jwt";
@@ -270,3 +272,28 @@ export async function getTrustMarks(
     },
   ];
 }
+
+export const resolveTaEntityConfiguration = (
+  trustAnchor: Config["trust_anchor"],
+  trust: Config["trust"],
+  providerPublicKey: KeyPair["publicKey"],
+  walletProviderBaseUrl: string,
+  trustAnchorBaseUrl: string,
+  walletVersion: Config["wallet"]["wallet_version"],
+  network: Config["network"],
+): Promise<string> => {
+  if (isExternalTrustAnchor(trustAnchor.external_ta_url)) {
+    return fetchExternalSubordinateStatement(
+      trustAnchor.external_ta_url,
+      walletProviderBaseUrl,
+      network,
+    );
+  }
+  return createSubordinateTrustAnchorMetadata({
+    entityPublicJwk: providerPublicKey,
+    federationTrustAnchor: trust,
+    sub: walletProviderBaseUrl,
+    trustAnchorBaseUrl,
+    walletVersion,
+  });
+};
