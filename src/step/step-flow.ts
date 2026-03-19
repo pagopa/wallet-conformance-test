@@ -19,15 +19,12 @@ export abstract class StepFlow {
 
   protected log: ReturnType<typeof createLogger>;
 
-  constructor(
-    config: Config,
-    logger: ReturnType<typeof createLogger>,
-  ) {
+  constructor(config: Config, logger: ReturnType<typeof createLogger>) {
     this.config = config;
     this.log = logger;
     this.ioWalletSdkConfig = new IoWalletSdkConfig({
-        itWalletSpecsVersion: this.config.wallet.wallet_version,
-      });
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
   }
 
   abstract run(...args: unknown[]): Promise<StepResponse>;

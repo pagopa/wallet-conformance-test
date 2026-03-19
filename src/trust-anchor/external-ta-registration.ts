@@ -128,22 +128,22 @@ export async function registerWithExternalTrustAnchor(
 
   const entityConfigurationJwts = [
     {
+      baseUrl: wallet.wallet_provider_base_url,
       entity: "WP",
       jwt: await createFederationMetadata({
         claims: wpClaims,
         entityPublicJwk: providerKeyPair.publicKey,
         signedJwks: providerKeyPair,
       }),
-      baseUrl: wallet.wallet_provider_base_url
     },
     {
+      baseUrl: wallet.mock_issuer,
       entity: "CI",
       jwt: await createFederationMetadata({
         claims: ciClaims,
         entityPublicJwk: issuerKeyPair.publicKey,
         signedJwks: issuerKeyPair,
       }),
-      baseUrl: wallet.mock_issuer
     },
   ];
 
@@ -151,7 +151,7 @@ export async function registerWithExternalTrustAnchor(
   if (config.trust_anchor.external_ta_onboarding_url) {
     const onboardingUrl = config.trust_anchor.external_ta_onboarding_url;
 
-    for (const {entity, jwt} of entityConfigurationJwts) {
+    for (const { entity, jwt } of entityConfigurationJwts) {
       try {
         const { response } = await fetchWithRetries(onboardingUrl, network, {
           body: jwt,
@@ -178,7 +178,7 @@ export async function registerWithExternalTrustAnchor(
   }
 
   // Smoke-check: verify the external TA can serve a Subordinate Statement for both WP and CI
-  for (const {entity, baseUrl} of entityConfigurationJwts) {
+  for (const { baseUrl, entity } of entityConfigurationJwts) {
     try {
       await fetchExternalSubordinateStatement(externalTaUrl, baseUrl, network);
     } catch (e) {

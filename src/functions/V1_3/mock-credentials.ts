@@ -13,7 +13,10 @@ import {
 } from "@/logic";
 import { generateSRIHash } from "@/logic/sd-jwt";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
-import { isExternalTrustAnchor, resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
+import {
+  isExternalTrustAnchor,
+  resolveTrustAnchorBaseUrl,
+} from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
 export async function buildMockMdlMdoc_V1_3(
