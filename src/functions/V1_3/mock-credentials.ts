@@ -76,9 +76,9 @@ export async function buildMockSdJwt_V1_3(
   metadata: {
     iss: string;
     network: Config["network"];
+    statusListServerPort: number;
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
-    statusListServerPort: number;
   },
   expiration: Date,
   unitKey: KeyPairJwk,

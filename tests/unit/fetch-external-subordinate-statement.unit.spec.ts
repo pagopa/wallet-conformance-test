@@ -10,7 +10,6 @@ const network: Config["network"] = {
   timeout: 5,
   tls_reject_unauthorized: true,
   user_agent: "test-agent/1.0",
-  tls_reject_unauthorized: true,
 };
 
 const EXTERNAL_TA_URL = "https://ta.example.com";

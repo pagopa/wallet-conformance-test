@@ -10,8 +10,8 @@ import { signJwtCallback } from "./jwt";
 import { loadJwksWithX5C } from "./utils";
 
 export interface CreateStatusListTokenOptions {
-  trustAnchor: Config["trust"];
   statusListEndpointBaseUrl: string;
+  trustAnchor: Config["trust"];
 }
 
 /**

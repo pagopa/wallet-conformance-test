@@ -62,8 +62,8 @@ export const createServer = () => {
   app.get("/status-list", async (_req, res) => {
     try {
       const jwt = await createStatusListToken({
-        trustAnchor: config.trust,
         statusListEndpointBaseUrl: trustAnchorBaseUrl,
+        trustAnchor: config.trust,
       });
       res.type("application/statuslist+jwt").send(jwt);
     } catch (err) {
