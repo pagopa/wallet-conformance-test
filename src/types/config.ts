@@ -33,7 +33,10 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    save_credential: z.preprocess(booleanFromString, z.boolean()).optional().default(false),
+    save_credential: z
+      .preprocess(booleanFromString, z.boolean())
+      .optional()
+      .default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
