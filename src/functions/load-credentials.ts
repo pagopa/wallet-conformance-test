@@ -142,7 +142,15 @@ async function parseCredentialFile(
   fileName: string,
   onIgnoreError: (msg: string) => void,
 ): Promise<Credential | null> {
-  const compact = readFileSync(filePath, "utf-8");
+  let compact: string;
+  try {
+    compact = readFileSync(filePath, "utf-8");
+  } catch (e) {
+    onIgnoreError(
+      `Local credential '${fileName}' could not be read: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return null;
+  }
 
   try {
     const parsed = await SDJwt.extractJwt(compact);
