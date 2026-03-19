@@ -72,6 +72,8 @@ export interface CredentialRequestStepOptions {
    * MUST be the same key used to create the DPoP proof at the Token Endpoint.
    */
   dPoPKey: KeyPair;
+
+  /**
    * Nonce fetched during the NonceRequestStep
    */
   nonce: string;
