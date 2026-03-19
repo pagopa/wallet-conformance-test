@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { Config } from "@/types";
+
 import * as logic from "@/logic";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
-import type { Config } from "@/types";
 
 const network: Config["network"] = {
   max_retries: 1,
   timeout: 5,
+  tls_reject_unauthorized: true,
   user_agent: "test-agent/1.0",
 };
 
@@ -19,12 +21,12 @@ function makeFetchMock(
   body: string,
 ): typeof fetch {
   return vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
-    status,
     headers: {
       get: (name: string) =>
         name.toLowerCase() === "content-type" ? contentType : null,
     },
+    ok: status >= 200 && status < 300,
+    status,
     text: () => Promise.resolve(body),
   });
 }

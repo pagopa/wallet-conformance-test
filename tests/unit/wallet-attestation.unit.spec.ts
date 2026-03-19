@@ -23,10 +23,10 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: config.wallet,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
     });
 
     // Verify attestation was created
@@ -88,10 +88,10 @@ describe("Wallet Attestation Unit Test", () => {
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: config.wallet,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: config.wallet,
     });
 
     const attestation = readFileSync(
@@ -140,10 +140,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: walletV1_3,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_3,
     });
 
     expect(response.attestation).toBeDefined();
@@ -194,10 +194,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
-      trustAnchor: config.trust_anchor,
-      trust: config.trust,
-      wallet: walletV1_3,
       network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_3,
     });
 
     // Should load from disk (not create a new one)
