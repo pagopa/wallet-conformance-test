@@ -74,9 +74,10 @@ export async function createMockMdlMdoc(
 export async function createMockSdJwt(
   metadata: {
     iss: string;
+    network: Config["network"];
+    trust: Config["trust"];
+    trustAnchor: Config["trust_anchor"];
     statusListServerPort: number;
-    trustAnchor: Config["trust"];
-    trustAnchorBaseUrl: string;
   },
   backupPath: string,
   credentialsPath: string,

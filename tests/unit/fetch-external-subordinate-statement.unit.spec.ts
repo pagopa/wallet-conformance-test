@@ -8,6 +8,7 @@ import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-re
 const network: Config["network"] = {
   max_retries: 1,
   timeout: 5,
+  tls_reject_unauthorized: true,
   user_agent: "test-agent/1.0",
   tls_reject_unauthorized: true,
 };
