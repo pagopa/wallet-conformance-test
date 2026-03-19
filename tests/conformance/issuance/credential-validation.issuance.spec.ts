@@ -549,6 +549,7 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    /** iat tolerance window is not specified in IT Wallet specs, we set around 5 minutes how defined in PAR specification */
     test("CI_078b: JWT Temporal Validity (Stale iat) | Issuer rejects a credential proof whose iat is more than 5 minutes in the past", async () => {
       const log = baseLog.withTag("CI_078b");
       const DESCRIPTION =
