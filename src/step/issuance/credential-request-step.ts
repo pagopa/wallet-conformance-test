@@ -83,11 +83,6 @@ export interface CredentialRequestStepOptions {
   dPoPOverride?: string;
 
   /**
-   * Configuration for the io-wallet-sdk.
-   */
-  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
-
-  /**
    * Nonce fetched during the NonceRequestStep
    */
   nonce: string;
@@ -216,7 +211,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       ...options.createCredentialRequestOverrides,
     };
 
-    if (options.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
       const keyAttestation = await this.createKeyAttestation(
         options.walletAttestation,
         credentialKeyPair,
@@ -224,7 +219,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
       return createCredentialRequest({
         ...commonOptions,
-        config: options.ioWalletSdkConfig,
+        config: this.ioWalletSdkConfig,
         keyAttestation: keyAttestation.jwt,
         signers: [
           {
@@ -238,8 +233,8 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     return createCredentialRequest({
       ...commonOptions,
-      config:
-        options.ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
+      config: this
+        .ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
       signer: {
         alg: "ES256",
         method: "jwk" as const,

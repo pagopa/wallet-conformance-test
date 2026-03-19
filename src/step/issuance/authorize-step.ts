@@ -9,10 +9,6 @@ import {
   ParsedAuthorizeRequestResult,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
 import { DcqlQuery } from "dcql";
 
 import { buildVpToken } from "@/logic";
@@ -50,11 +46,6 @@ export interface AuthorizeStepOptions {
    * Credential tokens produced by the issuer
    */
   credentials: CredentialWithKey[];
-
-  /**
-   * Configuration for the io-wallet-sdk.
-   */
-  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
   /**
    * Request URI obtained from the Pushed Authorization Request step
@@ -107,7 +98,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       const requestObjectJwt = await fetchAuthorize.response.text();
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
-        config: options.ioWalletSdkConfig,
+        config: this.ioWalletSdkConfig,
         requestObjectJwt,
       });
 

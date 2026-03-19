@@ -33,12 +33,10 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "@sd-jwt/decode";
-import { exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   createKeys,
-  createLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
   signJwtCallback,
@@ -169,7 +167,6 @@ testConfigs.forEach((testConfig) => {
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationId,
         credentialRequestEndpoint: credentialEndpoint,
-        ioWalletSdkConfig,
         nonce,
         walletAttestation: walletAttestationResponse,
       });

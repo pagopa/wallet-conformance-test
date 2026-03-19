@@ -9,6 +9,7 @@ import KSUID from "ksuid";
 import { writeFileSync } from "node:fs";
 
 import { KeyPair, KeyPairJwk } from "@/types";
+
 import { buildCertPath, loadCertificate } from "./utils";
 
 /**
@@ -31,7 +32,7 @@ export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
  * @returns A promise that resolves to the generated key pair.
  */
 export async function createAndSaveKeysWithX5C(
-  fileName: string, 
+  fileName: string,
   jwksPath: string,
   caCertPath: string,
   caSubject: string,
@@ -42,7 +43,7 @@ export async function createAndSaveKeysWithX5C(
     buildCertPath(fileName),
     exportedPair,
     caSubject,
-  )
+  );
   exportedPair.publicKey.x5c = [x5c];
   writeFileSync(`${jwksPath}/${fileName}`, JSON.stringify(exportedPair));
 
