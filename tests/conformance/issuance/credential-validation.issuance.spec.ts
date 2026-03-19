@@ -167,6 +167,7 @@ testConfigs.forEach((testConfig) => {
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationId,
         credentialRequestEndpoint: credentialEndpoint,
+        dPoPKey: tokenCtx.dPoPKey,
         nonce,
         walletAttestation: walletAttestationResponse,
       });
