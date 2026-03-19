@@ -195,12 +195,18 @@ export const loadAttestation = async (
   );
 
   if (existsSync(attestationPath)) {
-    return {
-      attestation: readFileSync(attestationPath, "utf-8"),
-      created: false,
-      providerKey: providerKeyPair,
-      unitKey: unitKeyPair,
-    };
+    try {
+      const attestation = readFileSync(attestationPath, "utf-8");
+      return {
+        attestation,
+        created: false,
+        providerKey: providerKeyPair,
+        unitKey: unitKeyPair,
+      };
+    } catch {
+      // If the existing attestation cannot be read (missing/unreadable/corrupt),
+      // fall back to generating a new one.
+    }
   }
 
   const attestation = await createAttestation(
