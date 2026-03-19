@@ -22,13 +22,10 @@ export abstract class StepFlow {
   constructor(
     config: Config,
     logger: ReturnType<typeof createLogger>,
-    ioWalletSdkConfig?: IoWalletSdkConfig<ItWalletSpecsVersion>,
   ) {
     this.config = config;
     this.log = logger;
-    this.ioWalletSdkConfig =
-      ioWalletSdkConfig ??
-      new IoWalletSdkConfig({
+    this.ioWalletSdkConfig = new IoWalletSdkConfig({
         itWalletSpecsVersion: this.config.wallet.wallet_version,
       });
   }

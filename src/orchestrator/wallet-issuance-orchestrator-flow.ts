@@ -90,37 +90,31 @@ export class WalletIssuanceOrchestratorFlow {
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
 
     this.pushedAuthorizationRequestStep =
       new issuanceConfig.pushedAuthorizationRequestStepClass(
         this.config,
         this.log,
-        this.ioWalletSdkConfig,
       );
 
     this.authorizeStep = new issuanceConfig.authorizeStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
     this.tokenRequestStep = new issuanceConfig.tokenRequestStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
 
     this.nonceRequestStep = new issuanceConfig.nonceRequestStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
 
     this.credentialRequestStep = new issuanceConfig.credentialRequestStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
   }
 

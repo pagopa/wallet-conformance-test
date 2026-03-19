@@ -65,17 +65,14 @@ export class WalletPresentationOrchestratorFlow {
     this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
     this.authorizationRequestStep = new presentationConfig.authorizeStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
     this.redirectUriStep = new presentationConfig.redirectUriStepClass(
       this.config,
       this.log,
-      this.ioWalletSdkConfig,
     );
   }
 
