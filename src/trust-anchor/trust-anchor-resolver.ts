@@ -1,6 +1,17 @@
 import { Config } from "@/types";
 
 /**
+ * Returns `true` when an external Trust Anchor URL is configured.
+ *
+ * @param external_ta_url - The external Trust Anchor URL, if configured
+ */
+export function isExternalTrustAnchor(
+  external_ta_url?: string,
+): external_ta_url is string {
+  return !!external_ta_url;
+}
+
+/**
  * Returns the Trust Anchor base URL to use for wallet attestation.
  *
  * When `external_ta_url` is configured, the external TA is used for the
@@ -14,18 +25,11 @@ import { Config } from "@/types";
  * @param config - The Trust Anchor configuration
  * @returns The Trust Anchor base URL
  */
-export function resolveTrustAnchorBaseUrl(config: Config["trust_anchor"]): string {
+export function resolveTrustAnchorBaseUrl(
+  config: Config["trust_anchor"],
+): string {
   if (config.external_ta_url) {
     return config.external_ta_url;
   }
   return `https://127.0.0.1:${config.port}`;
-}
-
-/**
- * Returns `true` when an external Trust Anchor URL is configured.
- *
- * @param config - The Trust Anchor configuration
- */
-export function isExternalTrustAnchor(external_ta_url: string): external_ta_url is string {
-  return !!external_ta_url;
 }

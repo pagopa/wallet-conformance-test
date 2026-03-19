@@ -33,7 +33,10 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    save_credential: z.preprocess(booleanFromString, z.boolean()).optional().default(false),
+    save_credential: z
+      .preprocess(booleanFromString, z.boolean())
+      .optional()
+      .default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
@@ -88,6 +91,7 @@ export const configSchema = z.object({
   wallet: z.object({
     backup_storage_path: z.string(),
     credentials_storage_path: z.string(),
+    mock_issuer: z.string().default("https://example.issuer.com"),
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),

@@ -41,12 +41,12 @@ import {
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (options: {
-  trustAnchor: Config["trust_anchor"];
-  trust: Config["trust"];
-  wallet: Config["wallet"];
   network: Config["network"];
+  trust: Config["trust"];
+  trustAnchor: Config["trust_anchor"];
+  wallet: Config["wallet"];
 }): Promise<AttestationResponse> => {
-  const { trustAnchor, trust, wallet, network } = options;
+  const { network, trust, trustAnchor, wallet } = options;
 
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
 
@@ -98,7 +98,9 @@ export const loadAttestation = async (options: {
       throw new Error("invalid key pair: kid does not match");
 
     //This might be moved to a step specific implementation
-    const taEntityConfiguration = isExternalTrustAnchor(trustAnchor.external_ta_url)
+    const taEntityConfiguration = isExternalTrustAnchor(
+      trustAnchor.external_ta_url,
+    )
       ? await fetchExternalSubordinateStatement(
           trustAnchor.external_ta_url,
           wallet.wallet_provider_base_url,

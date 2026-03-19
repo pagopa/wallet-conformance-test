@@ -1,8 +1,4 @@
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
 
 import { partialCallbacks } from "@/logic/utils";
 
@@ -16,11 +12,6 @@ export interface FetchMetadataExecuteResponse {
 
 export interface FetchMetadataOptions {
   baseUrl: string;
-
-  /**
-   * Configuration for the io-wallet-sdk to be used for metadata discovery.
-   */
-  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 }
 
 export type FetchMetadataStepResponse = StepResponse & {
@@ -51,7 +42,7 @@ export class FetchMetadataDefaultStep extends StepFlow {
         callbacks: {
           fetch: partialCallbacks.fetch,
         },
-        config: options.ioWalletSdkConfig,
+        config: this.ioWalletSdkConfig,
         credentialIssuerUrl: options.baseUrl,
       });
 
