@@ -7,13 +7,19 @@ import {
   signWithPrivateKeyInHeader,
   signWithWrongKey,
   signWithWrongTyp,
+  withAlgNoneDPoP,
+  withBadSignatureDPoP,
   withCredentialRequestOverrides,
   withCredentialSignJwtOverride,
   withDPoPSignedByWrongKey,
   withNoAthDPoP,
   withNoDPoP,
+  withPrivateKeyInDPoPHeader,
+  withStaleIatDPoP,
   withWrongAthDPoP,
   withWrongHtmDPoP,
+  withWrongHtuDPoP,
+  withWrongTypDPoP,
 } from "#/helpers/credential-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
@@ -765,6 +771,198 @@ testConfigs.forEach((testConfig) => {
         );
         const result = await runCredentialStep(
           withNoAthDPoP(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082e — DPoP Wrong typ header (RFC 9449 §4.3 check 4)
+    // -----------------------------------------------------------------------
+
+    test("CI_082e: DPoP Wrong typ header | Issuer rejects a credential request whose DPoP typ header is not dpop+jwt", async () => {
+      const log = baseLog.withTag("CI_082e");
+      const DESCRIPTION =
+        'Issuer correctly rejected DPoP with typ="JWT" (expected "dpop+jwt")';
+
+      log.start(
+        "Conformance test: Verifying DPoP typ header must be dpop+jwt (RFC 9449 §4.3 check 4)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          '→ Sending credential request with DPoP typ: "JWT" (wrong, must be "dpop+jwt")...',
+        );
+        const result = await runCredentialStep(
+          withWrongTypDPoP(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082f — DPoP alg=none (RFC 9449 §4.3 check 5)
+    // -----------------------------------------------------------------------
+
+    test("CI_082f: DPoP alg=none | Issuer rejects a credential request whose DPoP uses a none algorithm", async () => {
+      const log = baseLog.withTag("CI_082f");
+      const DESCRIPTION =
+        "Issuer correctly rejected DPoP with alg=none (symmetric/none algorithms not allowed)";
+
+      log.start(
+        "Conformance test: Verifying DPoP algorithm must be asymmetric and not none (RFC 9449 §4.3 check 5)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending credential request with DPoP alg: none (wrong, must be asymmetric)...",
+        );
+        const result = await runCredentialStep(
+          withAlgNoneDPoP(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082g — DPoP bad signature (RFC 9449 §4.3 check 6)
+    // -----------------------------------------------------------------------
+
+    test("CI_082g: DPoP Bad Signature | Issuer rejects a credential request whose DPoP signature does not verify against the declared jwk header key", async () => {
+      const log = baseLog.withTag("CI_082g");
+      const DESCRIPTION =
+        "Issuer correctly rejected DPoP with a signature that does not verify against the declared jwk";
+
+      log.start(
+        "Conformance test: Verifying DPoP signature must verify against the jwk header key (RFC 9449 §4.3 check 6)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending credential request with DPoP signed by key A but declaring key B in jwk header...",
+        );
+        const result = await runCredentialStep(
+          withBadSignatureDPoP(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082h — DPoP private key in jwk header (RFC 9449 §4.3 check 7)
+    // -----------------------------------------------------------------------
+
+    test("CI_082h: DPoP Private Key in Header | Issuer rejects a credential request whose DPoP jwk header contains private key material", async () => {
+      const log = baseLog.withTag("CI_082h");
+      const DESCRIPTION =
+        "Issuer correctly rejected DPoP with private key material (d parameter) in jwk header";
+
+      log.start(
+        "Conformance test: Verifying DPoP jwk header must not contain private key material (RFC 9449 §4.3 check 7)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending credential request with DPoP jwk header containing the private d parameter...",
+        );
+        const result = await runCredentialStep(
+          withPrivateKeyInDPoPHeader(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082i — DPoP wrong htu (RFC 9449 §4.3 check 9)
+    // -----------------------------------------------------------------------
+
+    test("CI_082i: DPoP Wrong htu | Issuer rejects a credential request whose DPoP htu does not match the credential endpoint URI", async () => {
+      const log = baseLog.withTag("CI_082i");
+      const DESCRIPTION =
+        "Issuer correctly rejected DPoP with htu pointing to a different URI than the credential endpoint";
+
+      log.start(
+        "Conformance test: Verifying DPoP htu must match the HTTP URI of the current request (RFC 9449 §4.3 check 9)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending credential request with DPoP htu set to wrong URI...",
+        );
+        const result = await runCredentialStep(
+          withWrongHtuDPoP(testConfig.credentialRequestStepClass),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_082j — DPoP stale iat (RFC 9449 §4.3 check 11)
+    // -----------------------------------------------------------------------
+
+    test("CI_082j: DPoP Stale iat | Issuer rejects a credential request whose DPoP iat is outside the acceptable freshness window", async () => {
+      const log = baseLog.withTag("CI_082j");
+      const DESCRIPTION =
+        "Issuer correctly rejected DPoP with a stale iat (5 minutes in the past)";
+
+      log.start(
+        "Conformance test: Verifying DPoP iat must be within the server freshness window (RFC 9449 §4.3 check 11)",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending credential request with DPoP iat 5 minutes in the past...",
+        );
+        const result = await runCredentialStep(
+          withStaleIatDPoP(testConfig.credentialRequestStepClass),
         );
         log.debug("  Request completed");
 

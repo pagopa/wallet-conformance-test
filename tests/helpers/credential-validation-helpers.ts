@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   createTokenDPoP,
   Jwk,
@@ -14,6 +16,7 @@ import {
   CredentialRequestStepOptions,
 } from "@/step/issuance/credential-request-step";
 import { KeyPairJwk } from "@/types";
+import { encodeToBase64Url } from "@pagopa/io-wallet-utils";
 
 // ---------------------------------------------------------------------------
 // SignJwtCallback factories (credential proof manipulation)
@@ -334,6 +337,247 @@ export function withWrongAthDPoP(
 }
 
 /**
+ * Wraps a credential request step to send a DPoP proof with `typ: "JWT"`
+ * instead of the required `typ: "dpop+jwt"`.
+ *
+ * RFC 9449 §4.3 check 4: the `typ` JOSE header MUST be `dpop+jwt`.
+ * Used for CI_082e.
+ */
+export function withWrongTypDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const privateKey = await importJWK(
+        unitKey.privateKey as Parameters<typeof importJWK>[0],
+        unitKey.privateKey.alg ?? "ES256",
+      );
+      const dpop = await new SignJWT({
+        htm: "POST",
+        htu: options.credentialRequestEndpoint,
+        ath: computeAth(options.accessToken),
+      })
+        .setProtectedHeader({
+          alg: "ES256",
+          typ: "JWT", // wrong: MUST be "dpop+jwt"
+          jwk: unitKey.publicKey,
+        })
+        .setIssuedAt()
+        .setJti(crypto.randomUUID())
+        .sign(privateKey);
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step to send a DPoP proof whose `alg` header
+ * is set to `"none"` (no algorithm / unsigned).
+ *
+ * RFC 9449 §4.3 check 5: the algorithm MUST be an asymmetric, non-`none`
+ * algorithm listed in the server's `dpop_signing_alg_values_supported`.
+ * Used for CI_082f.
+ *
+ * The JWT is crafted manually so that the `alg` header is literally `"none"`.
+ * Most JOSE libraries refuse to sign with `none`; we build the token by hand.
+ */
+export function withAlgNoneDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const header = { alg: "none", typ: "dpop+jwt", jwk: unitKey.publicKey };
+      const payload = {
+        htm: "POST",
+        htu: options.credentialRequestEndpoint,
+        ath: computeAth(options.accessToken),
+        iat: Math.floor(Date.now() / 1000),
+        jti: crypto.randomUUID(),
+      };
+      const encodedHeader = encodeToBase64Url(JSON.stringify(header));
+      const encodedPayload = encodeToBase64Url(JSON.stringify(payload));
+      // `alg=none` means empty signature per RFC 7519 §6
+      const dpop = `${encodedHeader}.${encodedPayload}.`;
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step to send a DPoP whose cryptographic
+ * signature does not verify against the public key declared in the `jwk`
+ * header: the token is signed with key A but claims key B in the header.
+ *
+ * RFC 9449 §4.3 check 6: the JWT MUST verify against the JWK in the header.
+ * Used for CI_082g.
+ *
+ * Note: this is distinct from CI_083 (`withDPoPSignedByWrongKey`), which tests
+ * that the DPoP key does not match the access-token binding (§4.3 check 12b).
+ */
+export function withBadSignatureDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { privateKey: signingPrivate } = await generateKeyPair("ES256", {
+        extractable: true,
+      });
+      const { publicKey: declaredPublic } = await generateKeyPair("ES256", {
+        extractable: true,
+      });
+
+      const signingPrivateJwk = await exportJWK(signingPrivate);
+      const declaredPublicJwk = await exportJWK(declaredPublic);
+
+      // Sign with signingPrivate but declare declaredPublic in the header
+      const key = await importJWK(signingPrivateJwk, "ES256");
+      const dpop = await new SignJWT({
+        htm: "POST",
+        htu: options.credentialRequestEndpoint,
+        ath: computeAth(options.accessToken),
+      })
+        .setProtectedHeader({
+          alg: "ES256",
+          typ: "dpop+jwt",
+          jwk: { ...declaredPublicJwk, kty: "EC" },
+        })
+        .setIssuedAt()
+        .setJti(crypto.randomUUID())
+        .sign(key);
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step to send a DPoP proof whose `jwk` header
+ * contains the private `d` parameter of the EC key.
+ *
+ * RFC 9449 §4.3 check 7: the `jwk` header MUST NOT contain private key
+ * material. Used for CI_082h.
+ */
+export function withPrivateKeyInDPoPHeader(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const privateKey = await importJWK(
+        unitKey.privateKey as Parameters<typeof importJWK>[0],
+        unitKey.privateKey.alg ?? "ES256",
+      );
+      // Embed the full key pair (including `d`) in the jwk header
+      const jwkWithPrivate = { ...unitKey.privateKey } as Record<
+        string,
+        unknown
+      >;
+      const dpop = await new SignJWT({
+        htm: "POST",
+        htu: options.credentialRequestEndpoint,
+        ath: computeAth(options.accessToken),
+      })
+        .setProtectedHeader({
+          alg: "ES256",
+          typ: "dpop+jwt",
+          jwk: jwkWithPrivate,
+        })
+        .setIssuedAt()
+        .setJti(crypto.randomUUID())
+        .sign(privateKey);
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step to send a DPoP proof whose `htu` claim
+ * does not match the credential endpoint URL.
+ *
+ * RFC 9449 §4.3 check 9: `htu` MUST equal the HTTP URI of the current request
+ * (scheme + host + path, no query/fragment). Used for CI_082i.
+ *
+ * Note: CI_082b tests the wrong `htm` (HTTP method); this test covers the
+ * wrong `htu` (HTTP URI target), which is a separate §4.3 check.
+ */
+export function withWrongHtuDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const WRONG_HTU = "https://wrong.example.com/credential";
+      const { jwt: dpop } = await createTokenDPoP({
+        accessToken: options.accessToken,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST" as const,
+          url: WRONG_HTU, // htu ≠ credential endpoint
+        },
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step to send a DPoP proof whose `iat` claim
+ * is 5 minutes in the past, outside the typical server-side freshness window.
+ *
+ * RFC 9449 §4.3 check 11: servers MUST check that the DPoP proof was recently
+ * created; a stale `iat` MUST be rejected. Used for CI_082j.
+ */
+export function withStaleIatDPoP(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      const { unitKey } = options.walletAttestation;
+      const STALE_IAT = new Date(Date.now() - 6 * 60 * 1000); // 6 minutes ago
+      const { jwt: dpop } = await createTokenDPoP({
+        accessToken: options.accessToken,
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([unitKey.privateKey]),
+        },
+        issuedAt: STALE_IAT,
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: unitKey.publicKey,
+        },
+        tokenRequest: {
+          method: "POST" as const,
+          url: options.credentialRequestEndpoint,
+        },
+      });
+      return super.run({ ...options, dPoPOverride: dpop });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
  * Wraps a credential request step class to send a DPoP with `htm = "GET"`
  * (wrong HTTP method) while keeping a valid cryptographic signature.
  *
@@ -379,4 +623,12 @@ async function importKeyPairJwk(
   key: KeyPairJwk,
 ): Promise<Awaited<ReturnType<typeof importJWK>>> {
   return importJWK(key as Parameters<typeof importJWK>[0], key.alg ?? "ES256");
+}
+
+/**
+ * Computes the `ath` claim value: base64url(SHA-256(accessToken)).
+ * Used when constructing raw DPoP JWTs for negative tests.
+ */
+function computeAth(accessToken: string): string {
+  return createHash("sha256").update(accessToken).digest("base64url");
 }
