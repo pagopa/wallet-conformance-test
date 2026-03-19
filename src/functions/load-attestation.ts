@@ -15,16 +15,45 @@ import type { AttestationResponse, Config, KeyPair } from "@/types";
 import {
   buildAttestationPath,
   createFederationMetadata,
+  createSubordinateTrustAnchorMetadata,
   ensureDir,
   getTrustMarks,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificate,
   partialCallbacks,
-  resolveTaEntityConfiguration,
   signJwtCallback,
 } from "@/logic";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
+import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
+import {
+  isExternalTrustAnchor,
+  resolveTrustAnchorBaseUrl,
+} from "@/trust-anchor/trust-anchor-resolver";
+
+const resolveTaEntityConfiguration = (
+  trustAnchor: Config["trust_anchor"],
+  trust: Config["trust"],
+  providerPublicKey: KeyPair["publicKey"],
+  walletProviderBaseUrl: string,
+  trustAnchorBaseUrl: string,
+  walletVersion: Config["wallet"]["wallet_version"],
+  network: Config["network"],
+): Promise<string> => {
+  if (isExternalTrustAnchor(trustAnchor.external_ta_url)) {
+    return fetchExternalSubordinateStatement(
+      trustAnchor.external_ta_url,
+      walletProviderBaseUrl,
+      network,
+    );
+  }
+  return createSubordinateTrustAnchorMetadata({
+    entityPublicJwk: providerPublicKey,
+    federationTrustAnchor: trust,
+    sub: walletProviderBaseUrl,
+    trustAnchorBaseUrl,
+    walletVersion,
+  });
+};
 
 interface LoadAttestationOptions {
   network: Config["network"];
