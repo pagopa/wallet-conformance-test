@@ -276,7 +276,7 @@ export function withCredentialSignJwtOverride(
   signJwt: SignJwtCallback,
 ): typeof CredentialRequestDefaultStep {
   return withCredentialRequestOverrides(StepClass, {
-    callbacks: { signJwt },
+    callbacks: { ...partialCallbacks, signJwt },
   });
 }
 
