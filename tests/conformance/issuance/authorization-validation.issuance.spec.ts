@@ -1,5 +1,6 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
@@ -11,7 +12,6 @@ import {
   PushedAuthorizationRequestResponse,
 } from "@/step/issuance";
 import { AttestationResponse } from "@/types";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
 // Define and auto-register test configuration
 // @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
