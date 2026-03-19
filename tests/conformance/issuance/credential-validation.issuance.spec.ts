@@ -277,7 +277,7 @@ testConfigs.forEach((testConfig) => {
             signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
           },
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
-          config: ioWalletSdkConfig,
+          config: ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_3>,
           credential_identifier: credentialConfigurationId,
           issuerIdentifier: credentialIssuer,
           keyAttestation: "placeholder-key-attestation",
@@ -289,7 +289,7 @@ testConfigs.forEach((testConfig) => {
               publicJwk: duplicateKeyPair.publicKey,
             },
           ],
-        } as Parameters<typeof createCredentialRequest>[0]);
+        } satisfies Parameters<typeof createCredentialRequest>[0]);
 
         // Duplicate the proof to create a batch request with same JWK in both proofs
         const { proofs } = batchRequest;
