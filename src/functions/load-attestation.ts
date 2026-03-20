@@ -14,6 +14,7 @@ import type { AttestationResponse, Config, KeyPair } from "@/types";
 
 import {
   buildAttestationPath,
+  buildJwksPath,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
@@ -206,8 +207,8 @@ export const loadAttestation = async (
   ensureDir(wallet.backup_storage_path);
 
   const [providerKeyPair, unitKeyPair] = await Promise.all([
-    loadJwks(wallet.backup_storage_path, "/wallet_provider_jwks"),
-    loadJwks(wallet.backup_storage_path, "/wallet_unit_jwks"),
+    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider")),
+    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_unit")),
   ]);
 
   const attestationPath = buildAttestationPath(
