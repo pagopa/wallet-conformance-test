@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 /**
  * Unit tests for partial-response behaviour in orchestrators.
  *
@@ -74,6 +75,7 @@ vi.mock("@/functions", async (importOriginal) => {
         },
       },
     }),
+    loadCredentialsForPresentation: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -131,8 +133,8 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     const result = await orchestrator.issuance();
 
     expect(result.success).toBe(false);
-    // The orchestrator throws because entityStatementClaims is absent on the failed response
-    expect(result.error?.message).toContain("Entity Statement Claims");
+    // assertStepSuccess now throws the step's own error immediately
+    expect(result.error?.message).toContain("metadata fetch failed");
     expect(result.fetchMetadataResponse).toEqual(fetchMetadataFailure);
     expect(result.pushedAuthorizationRequestResponse).toBeUndefined();
     expect(result.authorizeResponse).toBeUndefined();
@@ -189,6 +191,165 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     expect(result.tokenResponse).toBeUndefined();
   });
 
+  test("step 6 (credential) failure — returns partial response with success: false and credentialResponse populated", async () => {
+    const metadataPayload = {
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://issuer.example.com",
+        metadata: {
+          oauth_authorization_server: {
+            authorization_endpoint: "https://issuer.example.com/authorize",
+            pushed_authorization_request_endpoint:
+              "https://issuer.example.com/par",
+            token_endpoint: "https://issuer.example.com/token",
+          },
+          openid_credential_issuer: {
+            credential_configurations_supported: {
+              dc_sd_jwt_PersonIdentificationData: {},
+            },
+            credential_endpoint: "https://issuer.example.com/credential",
+            nonce_endpoint: "https://issuer.example.com/nonce",
+          },
+        },
+        sub: "https://issuer.example.com",
+      },
+      status: 200,
+    };
+    const fetchMetadataSuccess = makeStepSuccess(metadataPayload);
+    const parSuccess = makeStepSuccess({
+      codeVerifier: "mock-code-verifier",
+      request_uri: "urn:ietf:params:oauth:request_uri:mock",
+    });
+    const authorizeSuccess = makeStepSuccess({
+      authorizeResponse: { code: "mock-auth-code" },
+      requestObject: { response_uri: "https://issuer.example.com/redirect" },
+    });
+    const tokenSuccess = makeStepSuccess({
+      access_token: "mock-access-token",
+    });
+    const nonceSuccess = makeStepSuccess({
+      nonce: { c_nonce: "mock-c-nonce" },
+    });
+    const credentialFailure = makeStepFailure(
+      "credential endpoint returned 400",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.nonceRequestStep,
+      "run",
+    ).mockResolvedValue(nonceSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.credentialRequestStep,
+      "run",
+    ).mockResolvedValue(credentialFailure);
+
+    const result = await orchestrator.issuance();
+
+    expect(
+      result.success,
+      "issuance() must return success: false on credential step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe("credential endpoint returned 400");
+    expect(
+      result.credentialResponse,
+      "credentialResponse must be populated even on failure",
+    ).toEqual(credentialFailure);
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.tokenResponse).toBeDefined();
+    expect(result.nonceResponse).toEqual(nonceSuccess);
+  });
+
+  test("step 3 (authorize) failure — returns partial response with success: false", async () => {
+    const metadataPayload = {
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://issuer.example.com",
+        metadata: {
+          oauth_authorization_server: {
+            authorization_endpoint: "https://issuer.example.com/authorize",
+            pushed_authorization_request_endpoint:
+              "https://issuer.example.com/par",
+            token_endpoint: "https://issuer.example.com/token",
+          },
+          openid_credential_issuer: {
+            credential_configurations_supported: {
+              dc_sd_jwt_PersonIdentificationData: {},
+            },
+            credential_endpoint: "https://issuer.example.com/credential",
+            nonce_endpoint: "https://issuer.example.com/nonce",
+          },
+        },
+        sub: "https://issuer.example.com",
+      },
+      status: 200,
+    };
+    const fetchMetadataSuccess = makeStepSuccess(metadataPayload);
+    const parSuccess = makeStepSuccess({
+      codeVerifier: "mock-code-verifier",
+      request_uri: "urn:ietf:params:oauth:request_uri:mock",
+    });
+    const authorizeFailure = makeStepFailure(
+      "authorization server rejected the request",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeFailure);
+
+    const result = await orchestrator.issuance();
+
+    expect(
+      result.success,
+      "issuance() must return success: false on authorize step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe(
+      "authorization server rejected the request",
+    );
+    expect(result.authorizeResponse).toEqual(authorizeFailure);
+    expect(result.credentialResponse).toBeUndefined();
+  });
+
   test("never throws — error is captured in result.error", async () => {
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -231,8 +392,8 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     const result = await orchestrator.presentation();
 
     expect(result.success).toBe(false);
-    // The orchestrator throws because entityStatementClaims is absent on the failed response
-    expect(result.error?.message).toContain("Entity Statement Claims");
+    // assertStepSuccess now throws the step's own error immediately
+    expect(result.error?.message).toContain("verifier metadata unreachable");
     expect(result.fetchMetadataResult).toEqual(fetchMetadataFailure);
     expect(result.authorizationRequestResult).toBeUndefined();
     expect(result.redirectUriResult).toBeUndefined();

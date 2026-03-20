@@ -277,7 +277,8 @@ testConfigs.forEach((testConfig) => {
             signJwt: signJwtCallback([duplicateKeyPair.privateKey]),
           },
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
-          config: ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_3>,
+          config:
+            ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_3>,
           credential_identifier: credentialConfigurationId,
           issuerIdentifier: credentialIssuer,
           keyAttestation: "placeholder-key-attestation",
