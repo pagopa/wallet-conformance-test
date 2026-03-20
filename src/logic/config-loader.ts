@@ -15,6 +15,7 @@ export interface CliOptions {
   credentialTypes?: string;
   externalTaOnboardingUrl?: string;
   externalTaUrl?: string;
+  trustAnchorCertDir?: string;
   fileIni?: string;
   issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
@@ -241,7 +242,8 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   if (
     options.port !== undefined ||
     options.externalTaUrl !== undefined ||
-    options.externalTaOnboardingUrl !== undefined
+    options.externalTaOnboardingUrl !== undefined ||
+    options.trustAnchorCertDir !== undefined
   ) {
     const trustAnchor: Partial<Config["trust_anchor"]> = {};
     if (options.port !== undefined) {
@@ -252,6 +254,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     }
     if (options.externalTaOnboardingUrl !== undefined) {
       trustAnchor.external_ta_onboarding_url = options.externalTaOnboardingUrl;
+    }
+    if (options.trustAnchorCertDir !== undefined) {
+      trustAnchor.tls_cert_dir = options.trustAnchorCertDir;
     }
     partialConfig.trust_anchor = trustAnchor as Config["trust_anchor"];
   }
@@ -429,6 +434,9 @@ function readCliOptionsFromEnv(): CliOptions {
   if (process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL) {
     options.externalTaOnboardingUrl =
       process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL;
+  }
+  if (process.env.CONFIG_TRUST_ANCHOR_CERT_DIR) {
+    options.trustAnchorCertDir = process.env.CONFIG_TRUST_ANCHOR_CERT_DIR;
   }
 
   return options;
