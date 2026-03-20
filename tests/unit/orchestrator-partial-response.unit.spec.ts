@@ -226,6 +226,16 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     });
     const tokenSuccess = makeStepSuccess({
       access_token: "mock-access-token",
+      dPoPKey: {
+        privateKey: { crv: "P-256", d: "mock-d", kty: "EC" },
+        publicKey: {
+          crv: "P-256",
+          kid: "mock-kid",
+          kty: "EC",
+          x: "mock-x",
+          y: "mock-y",
+        },
+      },
     });
     const nonceSuccess = makeStepSuccess({
       nonce: { c_nonce: "mock-c-nonce" },
