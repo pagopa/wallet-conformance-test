@@ -1,7 +1,23 @@
 import * as x509 from "@peculiar/x509";
-import { writeFileSync } from "node:fs";
+import KSUID from "ksuid";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 import { KeyPair } from "@/types";
+import { createKeys } from "./jwk";
+
+/**
+ * Exports a private CryptoKey to PKCS#8 PEM format.
+ *
+ * @param key The private CryptoKey to export.
+ * @returns The key in PKCS#8 PEM format.
+ */
+async function privateKeyToPem(key: CryptoKey): Promise<string> {
+  const exported = await crypto.subtle.exportKey("pkcs8", key);
+  const b64 = Buffer.from(exported).toString("base64");
+  const lines = b64.match(/.{1,64}/g)!.join("\n");
+  return `-----BEGIN PRIVATE KEY-----\n${lines}\n-----END PRIVATE KEY-----\n`;
+}
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -24,15 +40,59 @@ export async function createAndSaveCertificate(
 }
 
 /**
+ * Generates a key pair, creates a self-signed X.509 certificate, and writes both
+ * the cert and private key to collision-resistant PEM files inside `dir`.
+ *
+ * The key file is written with mode 0o600 (owner read/write only) to prevent
+ * accidental exposure of private key material.
+ *
+ * @param dir Directory to write the files into (created if absent).
+ * @param subject The subject / CN for the certificate.
+ * @param extraExtensions Additional X.509 extensions appended to the default set.
+ * @returns The cert PEM, key PEM, and absolute paths of the written cert and key files.
+ */
+export async function createAndSaveCertificateWithKey(
+  dir: string,
+  subject: string,
+  extraExtensions: x509.Extension[] = [],
+): Promise<{ certPath: string; certPem: string; keyPath: string; keyPem: string }> {
+  mkdirSync(dir, { recursive: true });
+
+  const id = KSUID.randomSync().string;
+  const certPath = path.resolve(path.join(dir, `${id}.cert.pem`));
+  const keyPath = path.resolve(path.join(dir, `${id}.key.pem`));
+
+  const keyPair = await createKeys();
+  const cert = await createCertificate(keyPair, subject, extraExtensions);
+  const certPem = cert.toString("pem");
+
+  const privateKey = await crypto.subtle.importKey(
+    "jwk",
+    keyPair.privateKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign"],
+  );
+  const keyPem = await privateKeyToPem(privateKey);
+
+  writeFileSync(certPath, certPem);
+  writeFileSync(keyPath, keyPem, { mode: 0o600 });
+
+  return { certPath, certPem, keyPath, keyPem };
+}
+
+/**
  * Creates a self-signed X.509 certificate.
  *
  * @param keyPair The key pair to use for signing the certificate.
  * @param subject The subject name for the certificate.
+ * @param extraExtensions Additional X.509 extensions appended to the default set.
  * @returns A promise that resolves to the certificate object.
  */
 export async function createCertificate(
   keyPair: KeyPair,
   subject: string,
+  extraExtensions: x509.Extension[] = [],
 ): Promise<x509.X509Certificate> {
   // Import JWK -> CryptoKey
   const signingAlgorithm = {
@@ -70,6 +130,7 @@ export async function createCertificate(
         false,
       ),
       await x509.SubjectKeyIdentifierExtension.create(publicKey),
+      ...extraExtensions,
     ],
     keys,
     name: subject,
