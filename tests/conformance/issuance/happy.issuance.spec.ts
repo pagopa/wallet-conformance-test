@@ -53,7 +53,6 @@ testConfigs.forEach((testConfig) => {
         pushedAuthorizationRequestResponse =
           result.pushedAuthorizationRequestResponse;
         tokenResponse = result.tokenResponse;
-        walletAttestationResponse = result.walletAttestationResponse;
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
