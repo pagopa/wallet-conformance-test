@@ -118,28 +118,33 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     );
   });
 
-  test("step 1 failure — returns partial response with only fetchMetadataResponse", async () => {
-    const fetchMetadataFailure = makeStepFailure("metadata fetch failed");
+  test(
+    "step 1 failure — returns partial response with fetchMetadataResponse and walletAttestationResponse",
+    async () => {
+      const fetchMetadataFailure = makeStepFailure("metadata fetch failed");
 
-    // Stub fetchMetadataStep.run to fail
-    vi.spyOn(
-      // @ts-expect-error accessing private field for testing
-      orchestrator.fetchMetadataStep,
-      "run",
-    ).mockResolvedValue(fetchMetadataFailure);
+      // Stub fetchMetadataStep.run to fail
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.fetchMetadataStep,
+        "run",
+      ).mockResolvedValue(fetchMetadataFailure);
 
-    const result = await orchestrator.issuance();
+      const result = await orchestrator.issuance();
 
-    expect(result.success).toBe(false);
-    // The orchestrator throws because entityStatementClaims is absent on the failed response
-    expect(result.error?.message).toContain("Entity Statement Claims");
-    expect(result.fetchMetadataResponse).toEqual(fetchMetadataFailure);
-    expect(result.pushedAuthorizationRequestResponse).toBeUndefined();
-    expect(result.authorizeResponse).toBeUndefined();
-    expect(result.tokenResponse).toBeUndefined();
-    expect(result.nonceResponse).toBeUndefined();
-    expect(result.credentialResponse).toBeUndefined();
-  });
+      expect(result.success).toBe(false);
+      // The orchestrator throws because entityStatementClaims is absent on the failed response
+      expect(result.error?.message).toContain("Entity Statement Claims");
+      expect(result.fetchMetadataResponse).toEqual(fetchMetadataFailure);
+      // walletAttestationResponse is loaded and stored before the failure
+      expect(result.walletAttestationResponse).toBeDefined();
+      expect(result.pushedAuthorizationRequestResponse).toBeUndefined();
+      expect(result.authorizeResponse).toBeUndefined();
+      expect(result.tokenResponse).toBeUndefined();
+      expect(result.nonceResponse).toBeUndefined();
+      expect(result.credentialResponse).toBeUndefined();
+    },
+  );
 
   test("step 2 failure — fetchMetadataResponse is populated, PAR response carries the error", async () => {
     // fetchMetadata succeeds with minimal entity statement so the flow can proceed
