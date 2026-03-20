@@ -63,6 +63,7 @@ export const createStatusListToken = async (
   const signResult = await signJwtCallback([privateKey])(
     {
       alg: publicKey.alg,
+      kid: publicKey.kid,
       method: "x5c",
       x5c: publicKey.x5c,
     },
