@@ -59,7 +59,7 @@ testConfigs.forEach((testConfig) => {
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
-        baseLog.error("Issuance flow failed:", e);
+        baseLog.error(e);
         throw e;
       } finally {
         // Give time for all logs to be flushed before starting tests

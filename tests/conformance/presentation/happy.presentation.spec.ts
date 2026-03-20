@@ -39,7 +39,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       baseLog.info("Presentation flow completed successfully");
     } catch (e) {
-      baseLog.error("Presentation flow failed:", e);
+      baseLog.error(e);
       throw e;
     } finally {
       // Give time for all logs to be flushed before starting tests
