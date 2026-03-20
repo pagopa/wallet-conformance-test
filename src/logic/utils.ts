@@ -303,3 +303,18 @@ export function saveCredentialToDisk(
     return null;
   }
 }
+
+
+/**
+ * Validates that a given key pair has a `kid` and that the `kid` matches between the private and public keys.
+ * @param keyPair The key pair to validate.
+ * @throws An error if the key pair is invalid.
+ */
+export const validateProviderKeyPair = (keyPair: KeyPair): void => {
+  if (!keyPair.privateKey.kid) {
+    throw new Error("invalid key pair: kid missing");
+  }
+  if (keyPair.privateKey.kid !== keyPair.publicKey.kid) {
+    throw new Error("invalid key pair: kid does not match");
+  }
+};

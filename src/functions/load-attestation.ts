@@ -23,6 +23,7 @@ import {
   loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
+  validateProviderKeyPair,
 } from "@/logic";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 import {
@@ -61,15 +62,6 @@ interface LoadAttestationOptions {
   trustAnchor: Config["trust_anchor"];
   wallet: Config["wallet"];
 }
-
-const validateProviderKeyPair = (keyPair: KeyPair): void => {
-  if (!keyPair.privateKey.kid) {
-    throw new Error("invalid key pair: kid missing");
-  }
-  if (keyPair.privateKey.kid !== keyPair.publicKey.kid) {
-    throw new Error("invalid key pair: kid does not match");
-  }
-};
 
 const buildWpEntityConfiguration = async (
   trust: Config["trust"],
