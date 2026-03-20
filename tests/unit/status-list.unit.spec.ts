@@ -2,9 +2,9 @@ import { StatusList } from "@sd-jwt/jwt-status-list";
 import { decodeJwt, decodeProtectedHeader, importX509, jwtVerify } from "jose";
 import { describe, expect, it, vi } from "vitest";
 
-import * as utils from "@/logic/utils";
-import { createStatusListToken } from "@/logic/status-list";
 import { loadConfigWithHierarchy } from "@/logic";
+import { createStatusListToken } from "@/logic/status-list";
+import * as utils from "@/logic/utils";
 
 describe("GET /status-list endpoint", () => {
   const config = loadConfigWithHierarchy();
@@ -69,8 +69,8 @@ describe("createStatusListToken", () => {
 
     const payload = decodeJwt(jwt);
     const statusListClaim = payload.status_list as
-      | { bits: number; lst: string }
-      | undefined;
+      | undefined
+      | { bits: number; lst: string };
 
     expect(statusListClaim).toBeDefined();
     // IT Wallet mandates ≥5 states → 4 bits per entry
@@ -101,7 +101,10 @@ describe("createStatusListToken", () => {
     });
 
     const payload = decodeJwt(jwt);
-    const { bits, lst } = payload.status_list as { bits: 1 | 2 | 4 | 8; lst: string };
+    const { bits, lst } = payload.status_list as {
+      bits: 1 | 2 | 4 | 8;
+      lst: string;
+    };
 
     const list = StatusList.decompressStatusList(lst, bits);
     // Index 0 is always VALID (0x00) for mocked credentials
