@@ -226,7 +226,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       callbacks: {
         ...baseOptions.callbacks,
         ...callbacksOverride,
-      } as typeof baseOptions.callbacks,
+      } satisfies typeof baseOptions.callbacks,
     };
 
     if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
