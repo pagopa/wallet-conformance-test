@@ -174,8 +174,8 @@ export function withAlgNoneDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
-      const header = { alg: "none", jwk: unitKey.publicKey, typ: "dpop+jwt" };
+      const { dPoPKey } = options;
+      const header = { alg: "none", jwk: dPoPKey.publicKey, typ: "dpop+jwt" };
       const payload = {
         ath: computeAth(options.accessToken),
         htm: "POST",
@@ -276,13 +276,13 @@ export function withCredentialSignJwtOverride(
   signJwt: SignJwtCallback,
 ): typeof CredentialRequestDefaultStep {
   return withCredentialRequestOverrides(StepClass, {
-    callbacks: { signJwt },
+    callbacks: { ...partialCallbacks, signJwt },
   });
 }
 
 /**
  * Wraps a credential request step to send a DPoP proof signed by a completely
- * different key — not the unit key from the wallet attestation.
+ * different key — not the ephemeral DPoP key bound to the access token.
  *
  * Used for CI_083: proof key MUST equal DPoP key.
  */
@@ -342,17 +342,17 @@ export function withNoAthDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const { jwt: dpop } = await createTokenDPoP({
         // accessToken intentionally omitted → no ath claim in DPoP
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "POST" as const,
@@ -396,13 +396,13 @@ export function withPrivateKeyInDPoPHeader(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const privateKey = await importJWK(
-        unitKey.privateKey as Parameters<typeof importJWK>[0],
-        unitKey.privateKey.alg ?? "ES256",
+        dPoPKey.privateKey as Parameters<typeof importJWK>[0],
+        dPoPKey.privateKey.alg ?? "ES256",
       );
       // Embed the full key pair (including `d`) in the jwk header
-      const jwkWithPrivate = { ...unitKey.privateKey } as Record<
+      const jwkWithPrivate = { ...dPoPKey.privateKey } as Record<
         string,
         unknown
       >;
@@ -438,19 +438,19 @@ export function withStaleIatDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const STALE_IAT = new Date(Date.now() - 6 * 60 * 1000); // 6 minutes ago
       const { jwt: dpop } = await createTokenDPoP({
         accessToken: options.accessToken,
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         issuedAt: STALE_IAT,
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "POST" as const,
@@ -476,18 +476,18 @@ export function withWrongAthDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const WRONG_TOKEN = "fake-access-token-for-wrong-ath-aabbccddeeff";
       const { jwt: dpop } = await createTokenDPoP({
         accessToken: WRONG_TOKEN, // ath = SHA-256(WRONG_TOKEN), not the real token hash
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "POST" as const,
@@ -512,17 +512,17 @@ export function withWrongHtmDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const { jwt: dpop } = await createTokenDPoP({
         accessToken: options.accessToken,
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "GET" as const, // wrong method → htm = "GET"
@@ -551,18 +551,18 @@ export function withWrongHtuDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const WRONG_HTU = "https://wrong.example.com/credential";
       const { jwt: dpop } = await createTokenDPoP({
         accessToken: options.accessToken,
         callbacks: {
           ...partialCallbacks,
-          signJwt: signJwtCallback([unitKey.privateKey]),
+          signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
         signer: {
           alg: "ES256",
           method: "jwk" as const,
-          publicJwk: unitKey.publicKey,
+          publicJwk: dPoPKey.publicKey,
         },
         tokenRequest: {
           method: "POST" as const,
@@ -588,10 +588,10 @@ export function withWrongTypDPoP(
     async run(
       options: CredentialRequestStepOptions,
     ): Promise<CredentialRequestResponse> {
-      const { unitKey } = options.walletAttestation;
+      const { dPoPKey } = options;
       const privateKey = await importJWK(
-        unitKey.privateKey as Parameters<typeof importJWK>[0],
-        unitKey.privateKey.alg ?? "ES256",
+        dPoPKey.privateKey as Parameters<typeof importJWK>[0],
+        dPoPKey.privateKey.alg ?? "ES256",
       );
       const dpop = await new SignJWT({
         ath: computeAth(options.accessToken),
@@ -600,7 +600,7 @@ export function withWrongTypDPoP(
       })
         .setProtectedHeader({
           alg: "ES256",
-          jwk: unitKey.publicKey,
+          jwk: dPoPKey.publicKey,
           typ: "JWT", // wrong: MUST be "dpop+jwt"
         })
         .setIssuedAt()

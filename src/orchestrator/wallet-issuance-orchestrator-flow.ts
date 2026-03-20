@@ -176,6 +176,7 @@ export class WalletIssuanceOrchestratorFlow {
       const {
         authorizeResponse,
         credentialIssuer,
+        dPoPKey,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
@@ -222,6 +223,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
+        dPoPKey,
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -531,6 +533,13 @@ export class WalletIssuanceOrchestratorFlow {
       tokenResponse.durationMs ?? 0,
     );
 
-    return { ...authorizeCtx, tokenResponse };
+    const dPoPKey = tokenResponse.response?.dPoPKey;
+    if (!dPoPKey)
+      throw new Error(
+        "Token step did not return the ephemeral DPoP key. " +
+          "Check the token step for errors.",
+      );
+
+    return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
 }
