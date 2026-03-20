@@ -31,16 +31,26 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
+import { assertStepSuccess } from "@/step/step-flow";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,
+  IssuanceFlowResponse,
   RunThroughAuthorizeContext,
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
 
 export class WalletIssuanceOrchestratorFlow {
+  private _authorizeResponse?: AuthorizeStepResponse;
+  private _credentialResponse?: CredentialRequestResponse;
+  private _fetchMetadataResponse?: FetchMetadataStepResponse;
+  private _nonceResponse?: NonceRequestResponse;
+  private _pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
+  private _tokenResponse?: TokenRequestResponse;
+  private _walletAttestationResponse?: AttestationResponse;
+
   private authorizeStep: AuthorizeDefaultStep;
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
@@ -173,15 +183,9 @@ export class WalletIssuanceOrchestratorFlow {
     return this.log;
   }
 
-  async issuance(): Promise<{
-    authorizeResponse: AuthorizeStepResponse;
-    credentialResponse: CredentialRequestResponse;
-    fetchMetadataResponse: FetchMetadataStepResponse;
-    nonceResponse: NonceRequestResponse;
-    pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
-    tokenResponse: TokenRequestResponse;
-    walletAttestationResponse: AttestationResponse;
-  }> {
+  async issuance(): Promise<IssuanceFlowResponse> {
+    this.resetResponses();
+
     try {
       const {
         authorizeResponse,
@@ -208,6 +212,7 @@ export class WalletIssuanceOrchestratorFlow {
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.nonce_endpoint,
       });
+      this._nonceResponse = nonceResponse;
       this.log.flowStep(
         5,
         this.TOTAL_STEPS,
@@ -215,6 +220,7 @@ export class WalletIssuanceOrchestratorFlow {
         nonceResponse.success,
         nonceResponse.durationMs ?? 0,
       );
+      assertStepSuccess(nonceResponse, "Nonce Request");
 
       const nonce = nonceResponse.response?.nonce as
         | undefined
@@ -237,6 +243,7 @@ export class WalletIssuanceOrchestratorFlow {
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
+      this._credentialResponse = credentialResponse;
       this.log.flowStep(
         6,
         this.TOTAL_STEPS,
@@ -244,6 +251,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialResponse.success,
         credentialResponse.durationMs ?? 0,
       );
+      assertStepSuccess(credentialResponse, "Credential Request");
 
       // Save credential to disk if configured
       // Currently, only the first credential is saved because we support requesting one at a time
@@ -268,12 +276,24 @@ export class WalletIssuanceOrchestratorFlow {
         fetchMetadataResponse,
         nonceResponse,
         pushedAuthorizationRequestResponse,
+        success: true,
         tokenResponse,
         walletAttestationResponse,
       };
     } catch (e) {
       this.log.error("Error in Issuer Flow Tests!", e);
-      throw e;
+      return {
+        authorizeResponse: this._authorizeResponse,
+        credentialResponse: this._credentialResponse,
+        error: e instanceof Error ? e : new Error(String(e)),
+        fetchMetadataResponse: this._fetchMetadataResponse,
+        nonceResponse: this._nonceResponse,
+        pushedAuthorizationRequestResponse:
+          this._pushedAuthorizationRequestResponse,
+        success: false,
+        tokenResponse: this._tokenResponse,
+        walletAttestationResponse: this._walletAttestationResponse,
+      };
     }
   }
 
@@ -329,6 +349,7 @@ export class WalletIssuanceOrchestratorFlow {
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,
     });
+    this._authorizeResponse = authorizeResponse;
     this.log.flowStep(
       3,
       this.TOTAL_STEPS,
@@ -336,6 +357,7 @@ export class WalletIssuanceOrchestratorFlow {
       authorizeResponse.success,
       authorizeResponse.durationMs ?? 0,
     );
+    assertStepSuccess(authorizeResponse, "Authorization");
 
     return { ...parCtx, authorizationEndpoint, authorizeResponse };
   }
@@ -359,6 +381,7 @@ export class WalletIssuanceOrchestratorFlow {
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: credentialIssuer,
     });
+    this._fetchMetadataResponse = fetchMetadataResponse;
     this.log.flowStep(
       1,
       this.TOTAL_STEPS,
@@ -366,6 +389,7 @@ export class WalletIssuanceOrchestratorFlow {
       fetchMetadataResponse.success,
       fetchMetadataResponse.durationMs ?? 0,
     );
+    assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
 
     const walletAttestationResponse = await loadAttestation({
       network: this.config.network,
@@ -373,6 +397,7 @@ export class WalletIssuanceOrchestratorFlow {
       trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,
     });
+    this._walletAttestationResponse = walletAttestationResponse;
 
     const callbacks = {
       ...partialCallbacks,
@@ -445,6 +470,8 @@ export class WalletIssuanceOrchestratorFlow {
         pushedAuthorizationRequestEndpoint,
         walletAttestation: walletAttestationResponse,
       });
+    this._pushedAuthorizationRequestResponse =
+      pushedAuthorizationRequestResponse;
 
     this.log.flowStep(
       2,
@@ -453,9 +480,10 @@ export class WalletIssuanceOrchestratorFlow {
       pushedAuthorizationRequestResponse.success,
       pushedAuthorizationRequestResponse.durationMs ?? 0,
     );
-
-    if (!pushedAuthorizationRequestResponse.response)
-      throw new Error("Pushed Authorization Request failed");
+    assertStepSuccess(
+      pushedAuthorizationRequestResponse,
+      "Pushed Authorization Request",
+    );
 
     return {
       authorizationServer: entityStatementClaims.iss,
@@ -539,6 +567,7 @@ export class WalletIssuanceOrchestratorFlow {
       popAttestation,
       walletAttestation: walletAttestationResponse,
     });
+    this._tokenResponse = tokenResponse;
     this.log.flowStep(
       4,
       this.TOTAL_STEPS,
@@ -546,6 +575,7 @@ export class WalletIssuanceOrchestratorFlow {
       tokenResponse.success,
       tokenResponse.durationMs ?? 0,
     );
+    assertStepSuccess(tokenResponse, "Token Request");
 
     const dPoPKey = tokenResponse.response?.dPoPKey;
     if (!dPoPKey)
@@ -555,5 +585,15 @@ export class WalletIssuanceOrchestratorFlow {
       );
 
     return { ...authorizeCtx, dPoPKey, tokenResponse };
+  }
+
+  private resetResponses(): void {
+    this._authorizeResponse = undefined;
+    this._credentialResponse = undefined;
+    this._fetchMetadataResponse = undefined;
+    this._nonceResponse = undefined;
+    this._pushedAuthorizationRequestResponse = undefined;
+    this._tokenResponse = undefined;
+    this._walletAttestationResponse = undefined;
   }
 }
