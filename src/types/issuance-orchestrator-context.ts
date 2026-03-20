@@ -8,6 +8,7 @@ import {
 } from "@/step/issuance";
 
 import { AttestationResponse } from "./attestation-response";
+import { KeyPair } from "./key-pair";
 
 export interface IssuanceFlowResponse {
   authorizeResponse?: AuthorizeStepResponse;
@@ -37,5 +38,10 @@ export interface RunThroughParContext {
 }
 
 export type RunThroughTokenContext = RunThroughAuthorizeContext & {
+  /**
+   * Ephemeral DPoP key pair generated during the Token Request.
+   * This key is reused for the DPoP proof in the Credential Request.
+   */
+  dPoPKey: KeyPair;
   tokenResponse: TokenRequestResponse;
 };
