@@ -14,7 +14,7 @@ import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-o
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 
 // ---------------------------------------------------------------------------
-// Module-level mocks — must be hoisted before any imports that use them
+// Module-level mocks used by orchestrators (Vitest hoists vi.mock calls)
 // ---------------------------------------------------------------------------
 
 vi.mock("@/logic", async (importOriginal) => {
