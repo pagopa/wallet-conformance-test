@@ -220,7 +220,7 @@ The pre-configured happy flow test validates the issuance of the `--credential-t
 
 > **Note**: By default, credentials generated during testing are not saved to disk. However, you can configure the tool to save them locally for presentation phase. You can configure that using `config.ini` with `save_credential = true` or using cli option `--save-credential`
 
-**📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
+**📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/docs/TEST-CONFIGURATION-GUIDE.md). This guide covers:
 
 - Quick start with default configurations
 - Custom credential types and multiple configurations
