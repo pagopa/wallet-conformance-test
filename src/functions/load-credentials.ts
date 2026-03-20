@@ -105,6 +105,7 @@ export async function loadCredentialsForPresentation(
       {
         iss: config.wallet.mock_issuer,
         network: config.network,
+        statusListServerPort: config.trust_anchor.port,
         trust: config.trust,
         trustAnchor: config.trust_anchor,
       },

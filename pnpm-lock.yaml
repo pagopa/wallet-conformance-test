@@ -38,6 +38,9 @@ importers:
       '@sd-jwt/decode':
         specifier: ^0.17.0
         version: 0.17.0
+      '@sd-jwt/jwt-status-list':
+        specifier: ^0.19.0
+        version: 0.19.0
       '@sd-jwt/sd-jwt-vc':
         specifier: ^0.17.1
         version: 0.17.1
@@ -609,6 +612,10 @@ packages:
     resolution: {integrity: sha512-5vcOQsEmWwCkh7uEU7iwSaZ9aDH7nSNLnt48dTc6X5UrF9qWNFkVf8r/juBfuzSy2JlxRZQitVYGhyactiXxHA==}
     engines: {node: '>=20'}
 
+  '@sd-jwt/jwt-status-list@0.19.0':
+    resolution: {integrity: sha512-Xhh0n0DKe3paEtNNQSScy4dtA0ZVKF2OrmDcIB2jm77Doh4xsSs1pOseGEWBs9fmAe5Y0m082wgkmQnWEV53IQ==}
+    engines: {node: '>=20'}
+
   '@sd-jwt/present@0.17.0':
     resolution: {integrity: sha512-qh226z4H76uMVfFfqvltV9d0oz2N9S2REURy2HcVFKhsa1fSYZXdKkhg4S102iwp9fEELEPyCnLkW26+qwWLcg==}
     engines: {node: '>=20'}
@@ -621,8 +628,16 @@ packages:
     resolution: {integrity: sha512-XMZprAzSst+ze6JXoMttV3zrUNTL9VFAzHWChENTlFuh9tM6gy+/hJjFyTO0RVO0SRRNl2c7eMeYu7byLMj6Jg==}
     engines: {node: '>=20'}
 
+  '@sd-jwt/types@0.19.0':
+    resolution: {integrity: sha512-nfuC9zRLKe7o4HSvc+N4ojWRAxo4JGfgcNWpR7bJloLUlnE9eQuu9h9pEaJZht7KRwMpGorNTIdYpoi1btuiew==}
+    engines: {node: '>=20'}
+
   '@sd-jwt/utils@0.17.0':
     resolution: {integrity: sha512-Xe6GgO3tzjQrKbwVgtrE4LkB8Prcl0zCX+LDFC0QCzsvrks1jEFSPpcpP5Ge/ESBK6LrNG/srBKOQlFM/RuGsg==}
+    engines: {node: '>=20'}
+
+  '@sd-jwt/utils@0.19.0':
+    resolution: {integrity: sha512-bDwDRjfxMBNOsAXY8q8hnxQq7jdOWxrdqTK926Mxt8DN+ttXbXbZIPLwSh84M90WP0V7+WdkXlZD31iISzUR3w==}
     engines: {node: '>=20'}
 
   '@tsconfig/node10@1.0.12':
@@ -2287,6 +2302,12 @@ snapshots:
       '@sd-jwt/utils': 0.17.0
       pako: 2.1.0
 
+  '@sd-jwt/jwt-status-list@0.19.0':
+    dependencies:
+      '@sd-jwt/types': 0.19.0
+      '@sd-jwt/utils': 0.19.0
+      pako: 2.1.0
+
   '@sd-jwt/present@0.17.0':
     dependencies:
       '@sd-jwt/decode': 0.17.0
@@ -2301,9 +2322,16 @@ snapshots:
 
   '@sd-jwt/types@0.17.0': {}
 
+  '@sd-jwt/types@0.19.0': {}
+
   '@sd-jwt/utils@0.17.0':
     dependencies:
       '@sd-jwt/types': 0.17.0
+      js-base64: 3.7.8
+
+  '@sd-jwt/utils@0.19.0':
+    dependencies:
+      '@sd-jwt/types': 0.19.0
       js-base64: 3.7.8
 
   '@tsconfig/node10@1.0.12': {}

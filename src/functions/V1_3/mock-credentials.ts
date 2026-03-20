@@ -76,6 +76,7 @@ export async function buildMockSdJwt_V1_3(
   metadata: {
     iss: string;
     network: Config["network"];
+    statusListServerPort: number;
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
   },
@@ -170,7 +171,7 @@ export async function buildMockSdJwt_V1_3(
       status: {
         status_list: {
           idx: 0,
-          uri: "https://example.com",
+          uri: `https://127.0.0.1:${metadata.statusListServerPort}/status-list`,
         },
       },
       sub: unitKey.kid,

@@ -66,7 +66,7 @@ export interface CredentialRequestStepOptions {
    * `callbacks` is deep-merged so that omitted callbacks (e.g. `hash`) are always preserved.
    */
   createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions> & {
-    callbacks?: Partial<Pick<CallbackContext, "signJwt" | "hash">>;
+    callbacks?: Partial<Pick<CallbackContext, "hash" | "signJwt">>;
   };
 
   /**
@@ -145,7 +145,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       status: {
         status_list: {
           idx: 0,
-          uri: "http://example.com",
+          uri: `https://127.0.0.1:${this.config.trust_anchor.port}/status-list`,
         },
       },
       user_authentication: ["iso_18045_basic"],
