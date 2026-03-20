@@ -1,4 +1,5 @@
 import {
+  CallbackContext,
   createTokenDPoP,
   CreateTokenDPoPOptions,
 } from "@pagopa/io-wallet-oauth2";
@@ -62,8 +63,11 @@ export interface CredentialRequestStepOptions {
    * Optional overrides for the credential request options passed to createCredentialRequest.
    * When provided, these values are spread over the computed defaults, allowing tests to
    * manipulate the credential proof (e.g. swap the signJwt callback, change nonce, override signer).
+   * `callbacks` is deep-merged so that omitted callbacks (e.g. `hash`) are always preserved.
    */
-  createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions>;
+  createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions> & {
+    callbacks?: Partial<Pick<CallbackContext, "signJwt" | "hash">>;
+  };
 
   /**
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
@@ -74,6 +78,12 @@ export interface CredentialRequestStepOptions {
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
    */
   credentialRequestEndpoint: string;
+
+  /**
+   * Ephemeral DPoP key pair generated during the Token Request Step.
+   * MUST be the same key used to create the DPoP proof at the Token Endpoint.
+   */
+  dPoPKey: KeyPair;
 
   /**
    * Optional pre-built DPoP JWT string.
@@ -206,9 +216,17 @@ export class CredentialRequestDefaultStep extends StepFlow {
       nonce: options.nonce,
     };
 
+    const { callbacks: callbacksOverride, ...restOverrides } =
+      options.createCredentialRequestOverrides ?? {};
     const commonOptions = {
       ...baseOptions,
-      ...options.createCredentialRequestOverrides,
+      ...restOverrides,
+      // Deep-merge callbacks so that partial overrides (e.g. only signJwt) never
+      // lose required callbacks like `hash` that V1.3 mandates.
+      callbacks: {
+        ...baseOptions.callbacks,
+        ...callbacksOverride,
+      } satisfies typeof baseOptions.callbacks,
     };
 
     if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
@@ -246,18 +264,18 @@ export class CredentialRequestDefaultStep extends StepFlow {
   private async buildDPoP(
     options: CredentialRequestStepOptions,
   ): Promise<string> {
-    const { unitKey } = options.walletAttestation;
+    const { dPoPKey } = options;
 
     const dpopOptions: CreateTokenDPoPOptions = {
       accessToken: options.accessToken,
       callbacks: {
         ...partialCallbacks,
-        signJwt: signJwtCallback([unitKey.privateKey]),
+        signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
       signer: {
         alg: "ES256",
         method: "jwk",
-        publicJwk: unitKey.publicKey,
+        publicJwk: dPoPKey.publicKey,
       },
       tokenRequest: {
         method: "POST",
