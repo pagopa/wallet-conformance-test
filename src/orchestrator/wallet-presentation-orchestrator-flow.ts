@@ -19,6 +19,7 @@ import {
   RedirectUriDefaultStep,
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
+import { assertStepSuccess } from "@/step/step-flow";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
@@ -109,6 +110,7 @@ export class WalletPresentationOrchestratorFlow {
         fetchMetadataResult.success,
         fetchMetadataResult.durationMs ?? 0,
       );
+      assertStepSuccess(fetchMetadataResult, "Fetch Metadata");
 
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
@@ -181,11 +183,7 @@ export class WalletPresentationOrchestratorFlow {
         walletAttestation,
       });
 
-    if (!authorizationRequestResponse.response) {
-      throw new Error(
-        "Authorization Request response is missing or contains an error",
-      );
-    }
+    assertStepSuccess(authorizationRequestResponse, "Authorization Request");
 
     return authorizationRequestResponse;
   }
@@ -197,11 +195,13 @@ export class WalletPresentationOrchestratorFlow {
       throw new Error("Authorization Request response is missing");
     }
 
-    return await this.redirectUriStep.run({
+    const redirectUriResult = await this.redirectUriStep.run({
       authorizationResponse:
         authorizationRequestResult.response.authorizationResponse,
       responseUri: authorizationRequestResult.response.responseUri,
     });
+    assertStepSuccess(redirectUriResult, "Redirect URI");
+    return redirectUriResult;
   }
 
   private extractVerifierMetadata(

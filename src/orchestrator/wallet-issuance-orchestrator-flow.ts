@@ -31,6 +31,7 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
+import { assertStepSuccess } from "@/step/step-flow";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
@@ -218,6 +219,7 @@ export class WalletIssuanceOrchestratorFlow {
         nonceResponse.success,
         nonceResponse.durationMs ?? 0,
       );
+      assertStepSuccess(nonceResponse, "Nonce Request");
 
       const nonce = nonceResponse.response?.nonce as
         | undefined
@@ -247,6 +249,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialResponse.success,
         credentialResponse.durationMs ?? 0,
       );
+      assertStepSuccess(credentialResponse, "Credential Request");
 
       // Save credential to disk if configured
       // Currently, only the first credential is saved because we support requesting one at a time
@@ -352,6 +355,7 @@ export class WalletIssuanceOrchestratorFlow {
       authorizeResponse.success,
       authorizeResponse.durationMs ?? 0,
     );
+    assertStepSuccess(authorizeResponse, "Authorization");
 
     return { ...parCtx, authorizationEndpoint, authorizeResponse };
   }
@@ -383,6 +387,7 @@ export class WalletIssuanceOrchestratorFlow {
       fetchMetadataResponse.success,
       fetchMetadataResponse.durationMs ?? 0,
     );
+    assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
 
     const walletAttestationResponse = await loadAttestation({
       network: this.config.network,
@@ -473,9 +478,10 @@ export class WalletIssuanceOrchestratorFlow {
       pushedAuthorizationRequestResponse.success,
       pushedAuthorizationRequestResponse.durationMs ?? 0,
     );
-
-    if (!pushedAuthorizationRequestResponse.response)
-      throw new Error("Pushed Authorization Request failed");
+    assertStepSuccess(
+      pushedAuthorizationRequestResponse,
+      "Pushed Authorization Request",
+    );
 
     return {
       authorizationServer: entityStatementClaims.iss,
@@ -567,6 +573,7 @@ export class WalletIssuanceOrchestratorFlow {
       tokenResponse.success,
       tokenResponse.durationMs ?? 0,
     );
+    assertStepSuccess(tokenResponse, "Token Request");
 
     return { ...authorizeCtx, tokenResponse };
   }
