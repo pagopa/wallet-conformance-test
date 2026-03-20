@@ -13,5 +13,6 @@ export default defineConfig({
   test: {
     exclude: configDefaults.exclude,
     include: ["**/*.unit.spec.ts"],
+    globalSetup: "./tests/global-setup.ts",
   },
 });
