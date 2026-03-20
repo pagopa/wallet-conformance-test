@@ -1,11 +1,25 @@
-import { FetchMetadataStepResponse } from "@/step/issuance";
 import {
   AuthorizeStepResponse,
+  CredentialRequestResponse,
+  FetchMetadataStepResponse,
+  NonceRequestResponse,
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
 
 import { AttestationResponse } from "./attestation-response";
+
+export interface IssuanceFlowResponse {
+  authorizeResponse?: AuthorizeStepResponse;
+  credentialResponse?: CredentialRequestResponse;
+  error?: Error;
+  fetchMetadataResponse?: FetchMetadataStepResponse;
+  nonceResponse?: NonceRequestResponse;
+  pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
+  success: boolean;
+  tokenResponse?: TokenRequestResponse;
+  walletAttestationResponse?: AttestationResponse;
+}
 
 export type RunThroughAuthorizeContext = RunThroughParContext & {
   authorizationEndpoint: string;
