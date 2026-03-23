@@ -165,8 +165,9 @@ export async function loadCredentialsForPresentation(
         ? createMockSdJwt(
             {
               iss: "https://issuer.example.com",
-              trustAnchor: config.trust,
-              trustAnchorBaseUrl,
+              network: config.network,
+              trust: config.trust,
+              trustAnchor: config.trust_anchor,
             },
             config.wallet.backup_storage_path,
             config.wallet.credentials_storage_path,
