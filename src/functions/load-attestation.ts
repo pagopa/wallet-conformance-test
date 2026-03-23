@@ -11,6 +11,7 @@ import {
 import { SDJwt } from "@sd-jwt/core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
+import { AttestationExpiredError, TrustChainExpiredError } from "@/errors";
 import {
   buildAttestationPath,
   createFederationMetadata,
@@ -91,12 +92,12 @@ export const loadAttestation = async (options: {
     // it must be done manually
     const exp = attestationJwt.payload?.exp;
     if (!exp || typeof exp !== "number" || exp * 1000 < Date.now())
-      throw new Error("attestation expired");
+      throw new AttestationExpiredError("attestation expired");
     const trust_chain = zTrustChain.safeParse(
       attestationJwt.header?.trust_chain,
     );
     if (trust_chain.success && hasTrustChainExpired(trust_chain.data))
-      throw new Error("attestation trust_chain expired");
+      throw new TrustChainExpiredError("attestation trust_chain expired");
 
     return {
       attestation,

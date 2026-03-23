@@ -5,6 +5,7 @@ import { Tagged } from "cbor";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import z from "zod";
 
+import { CredentialNamespaceNotFoundError } from "@/errors";
 import {
   buildCertPath,
   buildJwksPath,
@@ -159,7 +160,10 @@ export function getCredentialMdocExpiration(
   },
 ): Date {
   const claims = document.issuerSigned.nameSpaces[path.namespace];
-  if (!claims) throw new Error("Specified namespace not found in credential");
+  if (!claims)
+    throw new CredentialNamespaceNotFoundError(
+      "Specified namespace not found in credential",
+    );
 
   const claimValue = claims.find(
     (claim) => claim.elementIdentifier === path.claimName,

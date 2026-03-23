@@ -5,6 +5,7 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
+import { CertificateExpiredError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
@@ -202,7 +203,9 @@ export async function loadCertificate(
         .trim();
 
       if (hasX509CertificateExpired(certDerBase64))
-        throw new Error("Certificate has expired and has to be regenerated");
+        throw new CertificateExpiredError(
+          "Certificate has expired and has to be regenerated",
+        );
 
       return certDerBase64;
     } catch {
