@@ -506,7 +506,9 @@ describe("Generate Mocked Credentials", () => {
   const iss = "https://issuer.example.com";
   const metadata = {
     iss,
-    trustAnchor: config.trust,
+    network: config.network,
+    trust: config.trust,
+    trustAnchor: config.trust_anchor,
     trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
   };
 

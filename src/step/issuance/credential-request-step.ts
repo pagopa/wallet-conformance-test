@@ -1,8 +1,10 @@
 import {
+  CallbackContext,
   createTokenDPoP,
   CreateTokenDPoPOptions,
 } from "@pagopa/io-wallet-oauth2";
 import {
+  BaseCredentialRequestOptions,
   createCredentialRequest,
   CredentialRequest,
   CredentialRequestOptions,
@@ -58,6 +60,16 @@ export interface CredentialRequestStepOptions {
   clientId: string;
 
   /**
+   * Optional overrides for the credential request options passed to createCredentialRequest.
+   * When provided, these values are spread over the computed defaults, allowing tests to
+   * manipulate the credential proof (e.g. swap the signJwt callback, change nonce, override signer).
+   * `callbacks` is deep-merged so that omitted callbacks (e.g. `hash`) are always preserved.
+   */
+  createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions> & {
+    callbacks?: Partial<Pick<CallbackContext, "hash" | "signJwt">>;
+  };
+
+  /**
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
    */
   credentialIdentifier: string;
@@ -68,9 +80,17 @@ export interface CredentialRequestStepOptions {
   credentialRequestEndpoint: string;
 
   /**
-   * Configuration for the io-wallet-sdk.
+   * Ephemeral DPoP key pair generated during the Token Request Step.
+   * MUST be the same key used to create the DPoP proof at the Token Endpoint.
    */
-  ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
+  dPoPKey: KeyPair;
+
+  /**
+   * Optional pre-built DPoP JWT string.
+   * When provided, this value is used as the DPoP proof instead of building one from the unit key.
+   * Pass an invalid or empty string to simulate DPoP attack scenarios.
+   */
+  dPoPOverride?: string;
 
   /**
    * Nonce fetched during the NonceRequestStep
@@ -157,7 +177,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
       );
 
       log.info("Generating DPoP...");
-      const dpop = await this.buildDPoP(options);
+      const dpop =
+        options.dPoPOverride !== undefined
+          ? options.dPoPOverride
+          : await this.buildDPoP(options);
 
       log.info(
         `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
@@ -182,7 +205,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
     options: CredentialRequestStepOptions,
     credentialKeyPair: KeyPair,
   ): Promise<CredentialRequest> {
-    const commonOptions = {
+    const baseOptions = {
       callbacks: {
         hash: partialCallbacks.hash,
         signJwt: signJwtCallback([credentialKeyPair.privateKey]),
@@ -193,7 +216,20 @@ export class CredentialRequestDefaultStep extends StepFlow {
       nonce: options.nonce,
     };
 
-    if (options.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+    const { callbacks: callbacksOverride, ...restOverrides } =
+      options.createCredentialRequestOverrides ?? {};
+    const commonOptions = {
+      ...baseOptions,
+      ...restOverrides,
+      // Deep-merge callbacks so that partial overrides (e.g. only signJwt) never
+      // lose required callbacks like `hash` that V1.3 mandates.
+      callbacks: {
+        ...baseOptions.callbacks,
+        ...callbacksOverride,
+      } satisfies typeof baseOptions.callbacks,
+    };
+
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
       const keyAttestation = await this.createKeyAttestation(
         options.walletAttestation,
         credentialKeyPair,
@@ -201,7 +237,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
       return createCredentialRequest({
         ...commonOptions,
-        config: options.ioWalletSdkConfig,
+        config: this.ioWalletSdkConfig,
         keyAttestation: keyAttestation.jwt,
         signers: [
           {
@@ -215,8 +251,8 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     return createCredentialRequest({
       ...commonOptions,
-      config:
-        options.ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
+      config: this
+        .ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
       signer: {
         alg: "ES256",
         method: "jwk" as const,
@@ -228,18 +264,18 @@ export class CredentialRequestDefaultStep extends StepFlow {
   private async buildDPoP(
     options: CredentialRequestStepOptions,
   ): Promise<string> {
-    const { unitKey } = options.walletAttestation;
+    const { dPoPKey } = options;
 
     const dpopOptions: CreateTokenDPoPOptions = {
       accessToken: options.accessToken,
       callbacks: {
         ...partialCallbacks,
-        signJwt: signJwtCallback([unitKey.privateKey]),
+        signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
       signer: {
         alg: "ES256",
         method: "jwk",
-        publicJwk: unitKey.publicKey,
+        publicJwk: dPoPKey.publicKey,
       },
       tokenRequest: {
         method: "POST",

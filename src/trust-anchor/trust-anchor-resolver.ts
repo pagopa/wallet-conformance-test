@@ -3,10 +3,10 @@ import { Config } from "@/types";
 /**
  * Returns `true` when an external Trust Anchor URL is configured.
  *
- * @param config - The Trust Anchor configuration
+ * @param external_ta_url - The external Trust Anchor URL, if configured
  */
 export function isExternalTrustAnchor(
-  external_ta_url: string,
+  external_ta_url?: string,
 ): external_ta_url is string {
   return !!external_ta_url;
 }

@@ -31,6 +31,7 @@ import {
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,
@@ -185,6 +186,7 @@ export class WalletIssuanceOrchestratorFlow {
       const {
         authorizeResponse,
         credentialIssuer,
+        dPoPKey,
         fetchMetadataResponse,
         pushedAuthorizationRequestResponse,
         tokenResponse,
@@ -231,7 +233,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,
-        ioWalletSdkConfig: this.ioWalletSdkConfig,
+        dPoPKey,
         nonce: nonce.c_nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -306,7 +308,9 @@ export class WalletIssuanceOrchestratorFlow {
           "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
       );
 
-    const trustAnchorBaseUrl = `https://127.0.0.1:${this.config.trust_anchor.port}`;
+    const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
+      this.config.trust_anchor,
+    );
     this.log.info("Loading credentials...");
 
     const credentials = await loadCredentialsForPresentation(
@@ -321,7 +325,6 @@ export class WalletIssuanceOrchestratorFlow {
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentials,
-      ioWalletSdkConfig: this.ioWalletSdkConfig,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
       walletAttestation: walletAttestationResponse,
@@ -355,7 +358,6 @@ export class WalletIssuanceOrchestratorFlow {
 
     const fetchMetadataResponse = await this.fetchMetadataStep.run({
       baseUrl: credentialIssuer,
-      ioWalletSdkConfig: this.ioWalletSdkConfig,
     });
     this.log.flowStep(
       1,
@@ -545,6 +547,13 @@ export class WalletIssuanceOrchestratorFlow {
       tokenResponse.durationMs ?? 0,
     );
 
-    return { ...authorizeCtx, tokenResponse };
+    const dPoPKey = tokenResponse.response?.dPoPKey;
+    if (!dPoPKey)
+      throw new Error(
+        "Token step did not return the ephemeral DPoP key. " +
+          "Check the token step for errors.",
+      );
+
+    return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
 }
