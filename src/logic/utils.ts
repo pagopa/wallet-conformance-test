@@ -304,7 +304,6 @@ export function saveCredentialToDisk(
   }
 }
 
-
 /**
  * Validates that a given key pair has a `kid` and that the `kid` matches between the private and public keys.
  * @param keyPair The key pair to validate.

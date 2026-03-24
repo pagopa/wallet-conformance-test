@@ -16,7 +16,6 @@ import {
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
 import { assertStepSuccess } from "@/step/step-flow";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,

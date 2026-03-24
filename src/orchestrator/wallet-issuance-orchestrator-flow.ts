@@ -28,7 +28,6 @@ import {
   TokenRequestResponse,
 } from "@/step/issuance";
 import { assertStepSuccess } from "@/step/step-flow";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   AttestationResponse,
   Config,
