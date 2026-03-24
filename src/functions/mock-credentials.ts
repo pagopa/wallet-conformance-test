@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import {
   buildCertPath,
   buildJwksPath,
+  ensureDir,
   loadCertificate,
   loadJwks,
 } from "@/logic";
@@ -123,10 +124,7 @@ export async function createMockSdJwt(
   }
 
   const pathVersion = `${credentialsPath}/${version}`;
-  if (!existsSync(pathVersion))
-    mkdirSync(pathVersion, {
-      recursive: true,
-    });
+  ensureDir(pathVersion);
 
   writeFileSync(`${pathVersion}/${credentialIdentifier}`, mockedSdjwt.compact);
   return mockedSdjwt;
