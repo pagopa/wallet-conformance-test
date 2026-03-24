@@ -131,6 +131,25 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
+ * Ensures a directory exists, creating it if necessary.
+ *
+ * @param dirPath The directory path to ensure.
+ * @returns `true` if the directory was freshly created, `false` if it already existed.
+ * @throws An error if the directory could not be created.
+ */
+export function ensureDir(dirPath: string): boolean {
+  if (existsSync(dirPath)) return false;
+  try {
+    mkdirSync(dirPath, { recursive: true });
+    return true;
+  } catch (e) {
+    throw new Error(
+      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
+    );
+  }
+}
+
+/**
  * Loads a certificate from a file, or creates and saves it if it doesn't exist.
  *
  * @param certPath The directory path where the certificate is stored.
@@ -285,21 +304,17 @@ export function saveCredentialToDisk(
   }
 }
 
+
 /**
- * Ensures a directory exists, creating it if necessary.
- *
- * @param dirPath The directory path to ensure.
- * @returns `true` if the directory was freshly created, `false` if it already existed.
- * @throws An error if the directory could not be created.
+ * Validates that a given key pair has a `kid` and that the `kid` matches between the private and public keys.
+ * @param keyPair The key pair to validate.
+ * @throws An error if the key pair is invalid.
  */
-function ensureDir(dirPath: string): boolean {
-  if (existsSync(dirPath)) return false;
-  try {
-    mkdirSync(dirPath, { recursive: true });
-    return true;
-  } catch (e) {
-    throw new Error(
-      `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
-    );
+export const validateProviderKeyPair = (keyPair: KeyPair): void => {
+  if (!keyPair.privateKey.kid) {
+    throw new Error("invalid key pair: kid missing");
   }
-}
+  if (keyPair.privateKey.kid !== keyPair.publicKey.kid) {
+    throw new Error("invalid key pair: kid does not match");
+  }
+};
