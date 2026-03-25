@@ -1,17 +1,16 @@
-import * as https from "node:https";
-
 import * as x509 from "@peculiar/x509";
 import express from "express";
+import * as https from "node:https";
 
+import { loadOrCreateCertificateWithKey } from "@/logic";
 import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
-import { loadOrCreateCertificateWithKey } from "@/logic";
+import { Config } from "@/types";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
 import { LOCAL_TA_BASE_URL } from "./trust-anchor-resolver";
-import { Config } from "@/types";
 
 export const createServer = (config: Config) => {
   const app = express();
@@ -68,7 +67,12 @@ export const createServer = (config: Config) => {
 
 export const startServer = async (
   config: Config,
-): Promise<{ server: https.Server; certPem: string; certPath: string; port: number }> => {
+): Promise<{
+  certPath: string;
+  certPem: string;
+  port: number;
+  server: https.Server;
+}> => {
   const app = createServer(config);
   const port = config.server.port;
   const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
@@ -90,12 +94,12 @@ export const startServer = async (
   );
 
   const server = https.createServer({ cert: certPem, key: keyPem }, app);
-  return { server, certPem, certPath, port };
+  return { certPath, certPem, port, server };
 };
 
 if (require.main === module) {
   const config = loadConfigWithHierarchy();
-  startServer(config).then(({ server, certPath, port }) => {
+  startServer(config).then(({ certPath, port, server }) => {
     server.listen(port, () => {
       console.log(
         `Local Server started

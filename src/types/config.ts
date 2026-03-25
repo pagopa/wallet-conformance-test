@@ -60,6 +60,16 @@ export const configSchema = z.object({
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),
+  server: z.object({
+    port: z.coerce.number({
+      invalid_type_error:
+        "server.port must be a valid port number. Please check your config.ini: set 'port = <number>' under [server]. " +
+        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
+      required_error:
+        "server.port is required. Please add a [server] section to your config.ini with 'port = <number>'. " +
+        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
+    }),
+  }),
   steps_mapping: z
     .object({
       mapping: z.record(z.string(), z.string()).optional().default({}),
@@ -76,16 +86,6 @@ export const configSchema = z.object({
       custom_step_pattern: "**/*.ts",
       spec_pattern: "**/*.spec.ts",
     }),
-  server: z.object({
-    port: z.coerce.number({
-      required_error:
-        "server.port is required. Please add a [server] section to your config.ini with 'port = <number>'. " +
-        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
-      invalid_type_error:
-        "server.port must be a valid port number. Please check your config.ini: set 'port = <number>' under [server]. " +
-        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
-    }),
-  }),
   trust: z.object({
     ca_cert_path: z.string(),
     certificate_subject: z.string().min(5),

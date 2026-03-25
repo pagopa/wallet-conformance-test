@@ -12,7 +12,12 @@ export default async function setup() {
   const config = loadConfigWithHierarchy();
   const baseLog = createLogger().withTag("globalSetup");
 
-  const { server: httpsServer, certPem, certPath, port } = await startServer(config);
+  const {
+    certPath,
+    certPem,
+    port,
+    server: httpsServer,
+  } = await startServer(config);
 
   // Store cert for worker threads — setup-tls.ts reads this in each worker
   process.env["TRUST_ANCHOR_CERT_PEM"] = certPem;
