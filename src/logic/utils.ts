@@ -22,6 +22,7 @@ import {
   createAndSaveKeysWithX5C,
   verifyJwt,
 } from ".";
+import { CertificateExpiredError } from "@/errors";
 
 // Re-export config loading functions
 export {
@@ -293,7 +294,9 @@ export async function loadOrCreateCertificateWithKey(
         if (cert.notAfter < new Date()) {
           rmSync(certPath);
           rmSync(keyPath);
-          /* fall through to regenerate expired cert */
+          //We throw an error to explicitly mark the fact that the flow is stopped,
+          //falling through here makes the code far less understandable.
+          throw new CertificateExpiredError("Stored certificate has expired")
         } else {
           return { certPath, certPem, keyPath, keyPem };
         }
