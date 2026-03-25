@@ -4,10 +4,11 @@ import {
   StatusListJWTHeaderParameters,
 } from "@sd-jwt/jwt-status-list";
 
+import { StatusListTokenCreationError } from "@/errors";
 import { Config } from "@/types";
 
 import { signJwtCallback } from "./jwt";
-import { loadJwksWithX5C } from "./utils";
+import { hasObjectProperties, loadJwksWithX5C } from "./utils";
 
 export interface CreateStatusListTokenOptions {
   statusListEndpointBaseUrl: string;
@@ -39,9 +40,16 @@ export const createStatusListToken = async (
     options.trustAnchor.certificate_subject,
   );
 
-  if (!publicKey.alg || !publicKey.x5c) {
-    throw new Error(
-      "Unable to create status list token, public key is missing alg and x5c",
+  try {
+    hasObjectProperties(publicKey, ["alg", "x5c"]);
+  } catch (e) {
+    if (e instanceof Error) {
+      throw new StatusListTokenCreationError(
+        `Error creating status list token, details: ${e.message}`,
+      );
+    }
+    throw new StatusListTokenCreationError(
+      `Error creating status list token, details: ${JSON.stringify(e)}`,
     );
   }
 

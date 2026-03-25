@@ -8,7 +8,7 @@ import * as utils from "@/logic/utils";
 
 describe("GET /status-list endpoint", () => {
   const config = loadConfigWithHierarchy();
-  const endpointUrl = `http://127.0.0.1:${config.trust_anchor.port}/status-list`;
+  const endpointUrl = `https://127.0.0.1:${config.trust_anchor.port}/status-list`;
 
   it("should respond with Content-Type application/statuslist+jwt", async () => {
     const response = await fetch(endpointUrl);
@@ -123,7 +123,7 @@ describe("createStatusListToken", () => {
         trustAnchor: config.trust,
       }),
     ).rejects.toThrow(
-      "Unable to create status list token, public key is missing alg and x5c",
+      /Error, the following keys are missing from object: alg, x5c/,
     );
   });
 });
