@@ -17,7 +17,7 @@ export default async function setup() {
   const app = createServer();
   const baseLog = createLogger().withTag("globalSetup");
 
-  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/tls";
+  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
   const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
     certDir,
     "server",
