@@ -10,7 +10,7 @@ import {
 import { Config } from "@/types";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
-import { LOCAL_TA_BASE_URL } from "./trust-anchor-resolver";
+import { LOCAL_TA_BASE_URL, LOCAL_TA_HOST } from "./trust-anchor-resolver";
 
 export const createServer = (config: Config) => {
   const app = express();
@@ -80,12 +80,12 @@ export const startServer = async (
   const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
     certDir,
     "server",
-    `CN=${LOCAL_TA_BASE_URL}`,
+    `CN=${LOCAL_TA_HOST}`,
     [
       new x509.SubjectAlternativeNameExtension(
         [
           { type: "dns", value: "localhost" },
-          { type: "dns", value: LOCAL_TA_BASE_URL },
+          { type: "dns", value: LOCAL_TA_HOST },
           { type: "ip", value: "127.0.0.1" },
         ],
         false,

@@ -1,6 +1,7 @@
 import { Config } from "@/types";
 
-export const LOCAL_TA_BASE_URL = "https://trust-anchor.wct.it";
+export const LOCAL_TA_HOST = "trust-anchor.wct.it";
+export const LOCAL_TA_BASE_URL = `https://${LOCAL_TA_HOST}`;
 
 /**
  * Returns `true` when an external Trust Anchor URL is configured.
@@ -18,7 +19,7 @@ export function isExternalTrustAnchor(
  *
  * When `external_ta_url` is configured, the external TA is used for the
  * wallet provider trust chain. Otherwise, the local TA server running on
- * localhost is used.
+ * `LOCAL_TA_HOST` is used.
  *
  * Note: the local TA is always used for the mock PID issuer trust chain
  * regardless of this setting — callers must pass `localTrustAnchorBaseUrl`
