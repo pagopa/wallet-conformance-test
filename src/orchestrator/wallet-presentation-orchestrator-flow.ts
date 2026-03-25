@@ -1,9 +1,5 @@
 import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
@@ -19,14 +15,12 @@ import {
   RedirectUriDefaultStep,
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { AttestationResponse, Config, CredentialWithKey } from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataVpDefaultStep;
-  private ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
   private log = createLogger();
 
   private presentationConfig: PresentationTestConfiguration;
@@ -63,10 +57,6 @@ export class WalletPresentationOrchestratorFlow {
         userAgent: this.config.network.user_agent,
       }),
     );
-
-    this.ioWalletSdkConfig = new IoWalletSdkConfig({
-      itWalletSpecsVersion: this.config.wallet.wallet_version,
-    });
 
     this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
       this.config,
@@ -111,14 +101,10 @@ export class WalletPresentationOrchestratorFlow {
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
 
-      const localTrustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
-        this.config.trust_anchor,
-      );
       const walletAttestation = await this.loadWalletAttestation();
 
       const credentials = await loadCredentialsForPresentation(
         this.config,
-        localTrustAnchorBaseUrl,
         this.log,
       );
       this.log.info(`Presenting ${credentials.length} local credentials`);

@@ -161,6 +161,7 @@ testConfigs.forEach((testConfig) => {
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationId,
         credentialRequestEndpoint: credentialEndpoint,
+        dPoPKey: tokenCtx.dPoPKey,
         nonce,
         walletAttestation: walletAttestationResponse,
       });
@@ -246,17 +247,17 @@ testConfigs.forEach((testConfig) => {
         const duplicateKeyPair = await createKeys();
 
         // Build a DPoP for the credential endpoint
-        const { unitKey } = walletAttestationResponse;
+        const dPoPKey = await createKeys();
         const { jwt: dpop } = await createTokenDPoP({
           accessToken,
           callbacks: {
             ...partialCallbacks,
-            signJwt: signJwtCallback([unitKey.privateKey]),
+            signJwt: signJwtCallback([dPoPKey.privateKey]),
           },
           signer: {
             alg: "ES256",
             method: "jwk" as const,
-            publicJwk: unitKey.publicKey,
+            publicJwk: dPoPKey.publicKey,
           },
           tokenRequest: {
             method: "POST" as const,

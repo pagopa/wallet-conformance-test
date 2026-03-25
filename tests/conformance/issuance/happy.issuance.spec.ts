@@ -17,7 +17,6 @@ import {
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
-import { AttestationResponse } from "@/types";
 
 // Define and auto-register test configuration
 // @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
@@ -32,7 +31,6 @@ testConfigs.forEach((testConfig) => {
     let fetchMetadataResponse: FetchMetadataStepResponse;
     let pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
     let authorizeResponse: AuthorizeStepResponse;
-    let walletAttestationResponse: AttestationResponse;
     let nonceResponse: NonceRequestResponse;
     let credentialResponse: CredentialRequestResponse;
 
@@ -45,7 +43,6 @@ testConfigs.forEach((testConfig) => {
           nonceResponse,
           pushedAuthorizationRequestResponse,
           tokenResponse,
-          walletAttestationResponse,
         } = await orchestrator.issuance());
 
         baseLog.info("Issuance flow completed successfully");
@@ -593,10 +590,9 @@ testConfigs.forEach((testConfig) => {
       try {
         expect(tokenResponse.response?.token_type).toBe("DPoP");
 
-        expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(
-          walletAttestationResponse.unitKey.publicKey,
-        );
+        const dPoPKey = tokenResponse.response?.dPoPKey;
+        if (!dPoPKey) throw new Error("dPoPKey is undefined");
+        const jkt = await calculateJwkThumbprint(dPoPKey.publicKey);
         log.debug(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
@@ -631,10 +627,9 @@ testConfigs.forEach((testConfig) => {
       try {
         expect(tokenResponse.response?.token_type).toBe("DPoP");
 
-        expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(
-          walletAttestationResponse.unitKey.publicKey,
-        );
+        const dPoPKey = tokenResponse.response?.dPoPKey;
+        if (!dPoPKey) throw new Error("dPoPKey is undefined");
+        const jkt = await calculateJwkThumbprint(dPoPKey.publicKey);
         log.debug(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
@@ -682,10 +677,9 @@ testConfigs.forEach((testConfig) => {
       try {
         expect(tokenResponse.response?.token_type).toBe("DPoP");
 
-        expect(walletAttestationResponse.unitKey.publicKey).toBeDefined();
-        const jkt = await calculateJwkThumbprint(
-          walletAttestationResponse.unitKey.publicKey,
-        );
+        const dPoPKey = tokenResponse.response?.dPoPKey;
+        if (!dPoPKey) throw new Error("dPoPKey is undefined");
+        const jkt = await calculateJwkThumbprint(dPoPKey.publicKey);
         log.debug(`  JWK Thumbprint: ${jkt}`);
 
         const tokens = [tokenResponse.response?.access_token];
