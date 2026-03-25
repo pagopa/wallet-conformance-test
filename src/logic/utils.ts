@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import path from "path";
 
+import { CertificateExpiredError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
@@ -22,7 +23,6 @@ import {
   createAndSaveKeysWithX5C,
   verifyJwt,
 } from ".";
-import { CertificateExpiredError } from "@/errors";
 
 // Re-export config loading functions
 export {
@@ -296,7 +296,7 @@ export async function loadOrCreateCertificateWithKey(
           rmSync(keyPath);
           //We throw an error to explicitly mark the fact that the flow is stopped,
           //falling through here makes the code far less understandable.
-          throw new CertificateExpiredError("Stored certificate has expired")
+          throw new CertificateExpiredError("Stored certificate has expired");
         } else {
           return { certPath, certPem, keyPath, keyPem };
         }
