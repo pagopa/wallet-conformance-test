@@ -1,5 +1,3 @@
-import type { Server } from "http";
-
 import * as x509 from "@peculiar/x509";
 import * as https from "node:https";
 import * as tls from "node:tls";
@@ -8,9 +6,10 @@ import { loadOrCreateCertificateWithKey } from "@/logic";
 import { createLogger } from "@/logic/logs";
 import { loadConfigWithHierarchy } from "@/logic/utils";
 import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
+
 import { createServer } from "../src/trust-anchor/server";
 
-let server: Server;
+let server: https.Server;
 
 export default async function setup() {
   const config = loadConfigWithHierarchy();
@@ -19,12 +18,15 @@ export default async function setup() {
   const baseLog = createLogger().withTag("globalSetup");
 
   const certDir = config.trust_anchor.tls_cert_dir ?? "./data/tls";
-  const { certPem, certPath, keyPem } = await loadOrCreateCertificateWithKey(
+  const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
     certDir,
     `localhost`,
     [
       new x509.SubjectAlternativeNameExtension(
-        [{ type: "dns", value: "localhost" }, { type: "ip", value: "127.0.0.1" }],
+        [
+          { type: "dns", value: "localhost" },
+          { type: "ip", value: "127.0.0.1" },
+        ],
         false,
       ),
     ],

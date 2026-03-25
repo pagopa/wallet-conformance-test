@@ -15,7 +15,6 @@ export interface CliOptions {
   credentialTypes?: string;
   externalTaOnboardingUrl?: string;
   externalTaUrl?: string;
-  trustAnchorCertDir?: string;
   fileIni?: string;
   issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
@@ -28,6 +27,7 @@ export interface CliOptions {
   saveCredential?: boolean;
   stepsMapping?: string;
   timeout?: number;
+  trustAnchorCertDir?: string;
   unsafeTls?: boolean;
 }
 

@@ -4,20 +4,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { KeyPair } from "@/types";
-import { createKeys } from "./jwk";
 
-/**
- * Exports a private CryptoKey to PKCS#8 PEM format.
- *
- * @param key The private CryptoKey to export.
- * @returns The key in PKCS#8 PEM format.
- */
-async function privateKeyToPem(key: CryptoKey): Promise<string> {
-  const exported = await crypto.subtle.exportKey("pkcs8", key);
-  const b64 = Buffer.from(exported).toString("base64");
-  const lines = b64.match(/.{1,64}/g)!.join("\n");
-  return `-----BEGIN PRIVATE KEY-----\n${lines}\n-----END PRIVATE KEY-----\n`;
-}
+import { createKeys } from "./jwk";
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -55,7 +43,12 @@ export async function createAndSaveCertificateWithKey(
   dir: string,
   subject: string,
   extraExtensions: x509.Extension[] = [],
-): Promise<{ certPath: string; certPem: string; keyPath: string; keyPem: string }> {
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> {
   mkdirSync(dir, { recursive: true });
 
   const id = KSUID.randomSync().string;
@@ -139,4 +132,17 @@ export async function createCertificate(
   });
 
   return cert;
+}
+
+/**
+ * Exports a private CryptoKey to PKCS#8 PEM format.
+ *
+ * @param key The private CryptoKey to export.
+ * @returns The key in PKCS#8 PEM format.
+ */
+async function privateKeyToPem(key: CryptoKey): Promise<string> {
+  const exported = await crypto.subtle.exportKey("pkcs8", key);
+  const b64 = Buffer.from(exported).toString("base64");
+  const lines = b64.match(/.{1,64}/g)!.join("\n");
+  return `-----BEGIN PRIVATE KEY-----\n${lines}\n-----END PRIVATE KEY-----\n`;
 }
