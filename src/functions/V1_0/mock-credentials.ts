@@ -75,7 +75,6 @@ export async function buildMockSdJwt_V1_0(
   metadata: {
     iss: string;
     network: Config["network"];
-    server: Config["server"];
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
   },
@@ -84,10 +83,7 @@ export async function buildMockSdJwt_V1_0(
   certificate: string,
   keyPair: KeyPair,
 ): Promise<Credential> {
-  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
-    metadata.trustAnchor,
-    metadata.server.port,
-  );
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const taEntityConfiguration = isExternalTrustAnchor(
     metadata.trustAnchor.external_ta_url,
   )

@@ -59,7 +59,6 @@ const resolveTaEntityConfiguration = (
 
 interface LoadAttestationOptions {
   network: Config["network"];
-  server: Config["server"];
   trust: Config["trust"];
   trustAnchor: Config["trust_anchor"];
   wallet: Config["wallet"];
@@ -142,17 +141,14 @@ const buildAttestationOptions = async (
 };
 
 const createAttestation = async (
-  { network, server, trust, trustAnchor, wallet }: LoadAttestationOptions,
+  { network, trust, trustAnchor, wallet }: LoadAttestationOptions,
   providerKeyPair: KeyPair,
   unitKeyPair: KeyPair,
   attestationPath: string,
 ): Promise<string> => {
   validateProviderKeyPair(providerKeyPair);
 
-  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
-    trustAnchor,
-    server.port,
-  );
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
 
   const [taEntityConfiguration, wpEntityConfiguration] = await Promise.all([
     resolveTaEntityConfiguration(

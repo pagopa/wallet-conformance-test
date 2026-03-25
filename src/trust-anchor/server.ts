@@ -16,7 +16,7 @@ export const createServer = (config: Config) => {
   const app = express();
   app.use(express.json());
 
-  const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.server.port}`;
+  const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.trust_anchor.port}`;
 
   // federation metadata
   app.get("/.well-known/openid-federation", async (_req, res) => {
@@ -66,6 +66,7 @@ export const createServer = (config: Config) => {
 };
 
 export const startServer = async (
+  app: express.Express,
   config: Config,
 ): Promise<{
   certPath: string;
@@ -73,8 +74,7 @@ export const startServer = async (
   port: number;
   server: https.Server;
 }> => {
-  const app = createServer(config);
-  const port = config.server.port;
+  const port = config.trust_anchor.port;
   const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
 
   const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
@@ -99,7 +99,8 @@ export const startServer = async (
 
 if (require.main === module) {
   const config = loadConfigWithHierarchy();
-  startServer(config).then(({ certPath, port, server }) => {
+  const app = createServer(config);
+  startServer(app, config).then(({ certPath, port, server }) => {
     server.listen(port, () => {
       console.log(
         `Local Server started

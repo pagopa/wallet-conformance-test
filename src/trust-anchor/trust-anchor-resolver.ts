@@ -30,10 +30,9 @@ export function isExternalTrustAnchor(
  */
 export function resolveTrustAnchorBaseUrl(
   config: Config["trust_anchor"],
-  serverPort: number,
 ): string {
   if (config.external_ta_url) {
     return config.external_ta_url;
   }
-  return `${LOCAL_TA_BASE_URL}:${serverPort}`;
+  return `${LOCAL_TA_BASE_URL}:${config.port}`;
 }
