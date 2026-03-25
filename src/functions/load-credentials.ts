@@ -1,8 +1,8 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
-import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
-import { buildJwksPath, loadJwks, parseMdoc } from "@/logic";
+import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
 import { Config, Credential, CredentialWithKey, Logger } from "@/types";
 
 import { createMockMdlMdoc, createMockSdJwt } from "./mock-credentials";
@@ -23,75 +23,44 @@ export async function loadCredentials(
   version: ItWalletSpecsVersion,
 ): Promise<Record<string, Credential>> {
   const pathVersion = `${path}/${version}`;
-  try {
-    if (!existsSync(pathVersion))
-      mkdirSync(pathVersion, {
-        recursive: true,
-      });
-  } catch (e) {
-    const err = e as Error;
-    throw new Error(
-      `unable to find or create necessary directories ${pathVersion}: ${err.message}`,
-    );
-  }
+  ensureDir(pathVersion);
 
-  const files = readdirSync(pathVersion);
   const credentials: Record<string, Credential> = {};
 
-  for (const file of files) {
-    // Skip if the file is not a recognized credential type
-    if (!file || (types.length !== 0 && !types.find((name) => name === file))) {
+  for (const file of readdirSync(pathVersion)) {
+    if (types.length > 0 && !types.includes(file)) {
       onIgnoreError(
         `Local credential '${file}' is not included in credential types, it will be ignored.`,
       );
       continue;
     }
 
-    // First, attempt to parse the credential as a SD-JWT
-    try {
-      const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
-      const parsed = await SDJwt.extractJwt(credential);
-
-      credentials[file] = {
-        compact: credential,
-        parsed,
-        typ: "dc+sd-jwt",
-      };
-      continue; // Move to the next file
-    } catch (e) {
-      const err = e as Error;
-      onIgnoreError(
-        `Local credential '${file}' was not a valid sd-jwt credential: ${err.message}`,
-      );
-    }
-
-    // If SD-JWT verification fails, attempt to parse it as an MDOC
-    try {
-      const credential = readFileSync(`${pathVersion}/${file}`, "utf-8");
-      const parsed = parseMdoc(Buffer.from(credential, "base64url"));
-
-      // If validation is successful, add it to the credentials record
-      credentials[file] = {
-        compact: credential,
-        parsed,
-        typ: "mso_mdoc",
-      };
-    } catch (e) {
-      const err = e as Error;
-      onIgnoreError(`${file} was not a valid mdoc credential: ${err.message}`);
+    const credential = await parseCredentialFile(
+      `${pathVersion}/${file}`,
+      file,
+      onIgnoreError,
+    );
+    if (credential) {
+      credentials[file] = credential;
     }
   }
 
   return credentials;
 }
 
+/**
+ * Loads credentials for use in a presentation flow.
+ * If credentials are found in the configured storage path they are returned with their key pairs;
+ * otherwise mock credentials (PID + mDL) are generated and returned.
+ *
+ * @param config - The application configuration.
+ * @param log - Logger instance used to surface ignored-credential warnings.
+ * @returns An array of `CredentialWithKey` ready for the presentation orchestrator.
+ */
 export async function loadCredentialsForPresentation(
   config: Config,
-  trustAnchorBaseUrl: string,
   log: Logger,
 ): Promise<CredentialWithKey[]> {
-  const credentials: CredentialWithKey[] = [];
-
   const storedCredentials = await loadCredentials(
     config.wallet.credentials_storage_path,
     [],
@@ -99,65 +68,126 @@ export async function loadCredentialsForPresentation(
     config.wallet.wallet_version,
   );
 
-  const storedCredentialsEntries = Object.entries(storedCredentials);
-  if (storedCredentialsEntries.length === 0) {
-    const personIdentificationData = await createMockSdJwt(
-      {
-        iss: config.wallet.mock_issuer,
-        network: config.network,
-        statusListServerPort: config.trust_anchor.port,
-        trust: config.trust,
-        trustAnchor: config.trust_anchor,
-      },
-      config.wallet.backup_storage_path,
-      config.wallet.credentials_storage_path,
-      config.wallet.wallet_version,
-    );
-    const mobileDriverLicence = await createMockMdlMdoc(
-      config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
-      config.wallet.backup_storage_path,
-      config.wallet.credentials_storage_path,
-      config.wallet.wallet_version,
-    );
-
-    const pidKeyPair = await loadJwks(
-      config.wallet.backup_storage_path,
-      buildJwksPath("dc_sd_jwt_PersonIdentificationData"),
-    );
-    const mdlKeyPair = await loadJwks(
-      config.wallet.backup_storage_path,
-      buildJwksPath("mso_mdoc_mDL"),
-    );
-
-    return [
-      {
-        credential: personIdentificationData.compact,
-        dpopJwk: pidKeyPair.privateKey,
-        id: "dc_sd_jwt_PersonIdentificationData",
-        typ: personIdentificationData.typ,
-      },
-      {
-        credential: mobileDriverLicence.compact,
-        dpopJwk: mdlKeyPair.privateKey,
-        id: "mso_mdoc_mDL",
-        typ: mobileDriverLicence.typ,
-      },
-    ];
+  if (Object.keys(storedCredentials).length === 0) {
+    return createMockCredentialsWithKeys(config);
   }
 
-  for (const [key, cred] of storedCredentialsEntries) {
-    const credentialKeyPair = await loadJwks(
-      config.wallet.backup_storage_path,
-      buildJwksPath(key),
-    );
+  return Promise.all(
+    Object.entries(storedCredentials).map(([key, credential]) =>
+      toCredentialWithKey(
+        key,
+        credential.compact,
+        credential.typ,
+        config.wallet.backup_storage_path,
+      ),
+    ),
+  );
+}
 
-    credentials.push({
-      credential: cred.compact,
-      dpopJwk: credentialKeyPair.privateKey,
-      id: key,
-      typ: cred.typ,
-    });
+/**
+ * Creates mock SD-JWT and MDOC credentials when no stored credentials are available.
+ * Persists the generated credentials and their key pairs to the configured storage paths.
+ *
+ * @param config - The application configuration.
+ * @returns A pair of mock `CredentialWithKey` entries: a PID (SD-JWT) and a mDL (MDOC).
+ */
+async function createMockCredentialsWithKeys(
+  config: Config,
+): Promise<CredentialWithKey[]> {
+  const personIdentificationData = await createMockSdJwt(
+    {
+      iss: config.wallet.mock_issuer,
+      network: config.network,
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+    },
+    config.wallet.backup_storage_path,
+    config.wallet.credentials_storage_path,
+    config.wallet.wallet_version,
+  );
+  const mobileDriverLicence = await createMockMdlMdoc(
+    config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+    config.wallet.backup_storage_path,
+    config.wallet.credentials_storage_path,
+    config.wallet.wallet_version,
+  );
+
+  return Promise.all([
+    toCredentialWithKey(
+      "dc_sd_jwt_PersonIdentificationData",
+      personIdentificationData.compact,
+      personIdentificationData.typ,
+      config.wallet.backup_storage_path,
+    ),
+    toCredentialWithKey(
+      "mso_mdoc_mDL",
+      mobileDriverLicence.compact,
+      mobileDriverLicence.typ,
+      config.wallet.backup_storage_path,
+    ),
+  ]);
+}
+
+/**
+ * Attempts to parse a credential file as SD-JWT first, then as MDOC.
+ * Calls `onIgnoreError` for each failed attempt and returns `null` if both formats fail.
+ *
+ * @param filePath - Absolute path to the credential file.
+ * @param fileName - File name used in error messages.
+ * @param onIgnoreError - Callback invoked with a warning message when a parse attempt fails.
+ * @returns The parsed `Credential`, or `null` if the file cannot be parsed in any supported format.
+ */
+async function parseCredentialFile(
+  filePath: string,
+  fileName: string,
+  onIgnoreError: (msg: string) => void,
+): Promise<Credential | null> {
+  let compact: string;
+  try {
+    compact = readFileSync(filePath, "utf-8");
+  } catch (e) {
+    onIgnoreError(
+      `Local credential '${fileName}' could not be read: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return null;
   }
 
-  return credentials;
+  try {
+    const parsed = await SDJwt.extractJwt(compact);
+    return { compact, parsed, typ: "dc+sd-jwt" };
+  } catch (e) {
+    onIgnoreError(
+      `Local credential '${fileName}' was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  try {
+    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
+    return { compact, parsed, typ: "mso_mdoc" };
+  } catch (e) {
+    onIgnoreError(
+      `Local credential '${fileName}' was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Loads the key pair for the given credential ID and assembles a `CredentialWithKey`.
+ *
+ * @param id - The credential identifier, used to locate the corresponding JWKS file.
+ * @param compact - The compact-serialized credential string.
+ * @param typ - The credential format type (`dc+sd-jwt` or `mso_mdoc`).
+ * @param backupStoragePath - Directory where key pair files are stored.
+ * @returns A `CredentialWithKey` combining the credential data with its private key.
+ */
+async function toCredentialWithKey(
+  id: string,
+  compact: string,
+  typ: CredentialWithKey["typ"],
+  backupStoragePath: string,
+): Promise<CredentialWithKey> {
+  const { privateKey } = await loadJwks(backupStoragePath, buildJwksPath(id));
+  return { credential: compact, dpopJwk: privateKey, id, typ };
 }
