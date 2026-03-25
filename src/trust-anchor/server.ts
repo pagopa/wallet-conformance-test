@@ -80,12 +80,18 @@ if (require.main === module) {
   const app = createServer();
   app.listen(port, () => {
     console.log(
-      `[Trust Anchor] Server started
+      `Local Server started
       PID: ${process.pid}
-      URL: http://localhost:${port}
+      URL: https://localhost:${port}
+
       Endpoints:
+      [Trust Anchor]
       GET  /.well-known/openid-federation
       GET  /fetch?sub=<subordinate-url>
+
+      [Status List]
+      GET /status-list
+
       Started: ${new Date().toISOString()}`,
     );
   });
