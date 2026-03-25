@@ -238,15 +238,15 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     partialConfig.logging = logging as Config["logging"];
   }
 
+  if (options.port !== undefined) {
+    partialConfig.server = { port: options.port };
+  }
+
   if (
-    options.port !== undefined ||
     options.externalTaUrl !== undefined ||
     options.externalTaOnboardingUrl !== undefined
   ) {
     const trustAnchor: Partial<Config["trust_anchor"]> = {};
-    if (options.port !== undefined) {
-      trustAnchor.port = options.port;
-    }
     if (options.externalTaUrl !== undefined) {
       trustAnchor.external_ta_url = options.externalTaUrl;
     }

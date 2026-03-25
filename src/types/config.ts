@@ -76,6 +76,16 @@ export const configSchema = z.object({
       custom_step_pattern: "**/*.ts",
       spec_pattern: "**/*.spec.ts",
     }),
+  server: z.object({
+    port: z.coerce.number({
+      required_error:
+        "server.port is required. Please add a [server] section to your config.ini with 'port = <number>'. " +
+        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
+      invalid_type_error:
+        "server.port must be a valid port number. Please check your config.ini: set 'port = <number>' under [server]. " +
+        "If you previously set 'port' under [trust_anchor], move it to the new [server] section.",
+    }),
+  }),
   trust: z.object({
     ca_cert_path: z.string(),
     certificate_subject: z.string().min(5),
@@ -86,7 +96,6 @@ export const configSchema = z.object({
   trust_anchor: z.object({
     external_ta_onboarding_url: z.string().url().optional(),
     external_ta_url: z.string().url().optional(),
-    port: z.coerce.number(),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),
