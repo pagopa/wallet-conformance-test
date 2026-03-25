@@ -1,5 +1,7 @@
 import { Config } from "@/types";
 
+export const LOCAL_TA_BASE_URL = "https://trust-anchor.wct.it";
+
 /**
  * Returns `true` when an external Trust Anchor URL is configured.
  *
@@ -32,5 +34,5 @@ export function resolveTrustAnchorBaseUrl(
   if (config.external_ta_url) {
     return config.external_ta_url;
   }
-  return `https://127.0.0.1:${serverPort}`;
+  return `${LOCAL_TA_BASE_URL}:${serverPort}`;
 }

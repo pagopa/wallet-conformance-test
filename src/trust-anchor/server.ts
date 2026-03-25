@@ -6,13 +6,14 @@ import {
 } from "@/logic/federation-metadata";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
+import { LOCAL_TA_BASE_URL } from "./trust-anchor-resolver";
 
 export const createServer = () => {
   const app = express();
   app.use(express.json());
 
   const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.server.port}`;
+  const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.server.port}`;
 
   // federation metadata
   app.get("/.well-known/openid-federation", async (_req, res) => {
