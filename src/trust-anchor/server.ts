@@ -7,12 +7,12 @@ import {
 
 import { loadConfigWithHierarchy } from "../logic/utils";
 import { LOCAL_TA_BASE_URL } from "./trust-anchor-resolver";
+import { Config } from "@/types";
 
-export const createServer = () => {
+export const createServer = (config: Config) => {
   const app = express();
   app.use(express.json());
 
-  const config = loadConfigWithHierarchy();
   const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.server.port}`;
 
   // federation metadata
@@ -63,17 +63,20 @@ export const createServer = () => {
 };
 
 if (require.main === module) {
-  const app = createServer();
   const config = loadConfigWithHierarchy();
+  const app = createServer(config);
   const port = config.server.port;
   app.listen(port, () => {
     console.log(
-      `[Trust Anchor] Server started
+      `Local Server started
       PID: ${process.pid}
       URL: http://localhost:${port}
+      
       Endpoints:
+      [Trust Anchor] 
       GET  /.well-known/openid-federation
       GET  /fetch?sub=<subordinate-url>
+
       Started: ${new Date().toISOString()}`,
     );
   });

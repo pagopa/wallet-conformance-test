@@ -11,7 +11,7 @@ let server: Server;
 export default async function setup() {
   const config = loadConfigWithHierarchy();
   const port = config.server.port;
-  const app = createServer();
+  const app = createServer(config);
   const baseLog = createLogger().withTag("globalSetup");
 
   server = app.listen(port, () => {
