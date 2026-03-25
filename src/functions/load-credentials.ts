@@ -98,6 +98,7 @@ async function createMockCredentialsWithKeys(
     {
       iss: config.wallet.mock_issuer,
       network: config.network,
+      server: config.server,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
     },

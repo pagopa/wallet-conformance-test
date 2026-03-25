@@ -24,6 +24,7 @@ describe("Wallet Attestation Unit Test", () => {
 
     const response = await loadAttestation({
       network: config.network,
+      server: config.server,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
@@ -82,13 +83,16 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
-    expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
+    expect(taDecoded.iss).toBe(
+      resolveTrustAnchorBaseUrl(config.trust_anchor, config.server.port),
+    ); // Trust Anchor
     expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
   });
 
   test("Load Existing Wallet Attestation", async () => {
     const response = await loadAttestation({
       network: config.network,
+      server: config.server,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
@@ -141,6 +145,7 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
     const response = await loadAttestation({
       network: config.network,
+      server: config.server,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: walletV1_3,
@@ -195,6 +200,7 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
   test("Load Existing Wallet Attestation V1_3", async () => {
     const response = await loadAttestation({
       network: config.network,
+      server: config.server,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: walletV1_3,

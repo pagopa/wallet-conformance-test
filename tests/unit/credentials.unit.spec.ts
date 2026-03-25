@@ -81,6 +81,7 @@ describe("Generate Mocked Credentials", () => {
   const metadata = {
     iss,
     network: config.network,
+    server: config.server,
     trust: config.trust,
     trustAnchor: config.trust_anchor,
     trustAnchorBaseUrl: `https://127.0.0.1:${config.server.port}`,

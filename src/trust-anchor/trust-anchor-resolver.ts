@@ -27,9 +27,10 @@ export function isExternalTrustAnchor(
  */
 export function resolveTrustAnchorBaseUrl(
   config: Config["trust_anchor"],
+  serverPort: number,
 ): string {
   if (config.external_ta_url) {
     return config.external_ta_url;
   }
-  return `https://127.0.0.1:${config.port}`;
+  return `https://127.0.0.1:${serverPort}`;
 }

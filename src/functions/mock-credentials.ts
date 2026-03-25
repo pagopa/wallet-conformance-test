@@ -76,6 +76,7 @@ export async function createMockSdJwt(
   metadata: {
     iss: string;
     network: Config["network"];
+    server: Config["server"];
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
   },

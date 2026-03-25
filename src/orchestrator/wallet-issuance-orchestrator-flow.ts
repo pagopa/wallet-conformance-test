@@ -355,6 +355,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     const walletAttestationResponse = await loadAttestation({
       network: this.config.network,
+      server: this.config.server,
       trust: this.config.trust,
       trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,
