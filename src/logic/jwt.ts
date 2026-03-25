@@ -114,17 +114,16 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
  * @returns An `EncryptJweCallback` function.
  */
 export function getEncryptJweCallback(
-  publicKey: Jwk,
-  header: JWEHeaderParameters & { alg: string; enc: string },
+  publicKey: Jwk
 ): EncryptJweCallback {
-  return async (_: JweEncryptor, data: string) => {
-    const key = await importJWK(publicKey, header.alg);
+  return async (jweEncryptor: JweEncryptor, data: string) => {
+    const key = await importJWK(publicKey, jweEncryptor.alg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
       .setProtectedHeader({
-        alg: header.alg,
-        enc: header.enc,
+        alg: jweEncryptor.alg,
+        enc: jweEncryptor.enc,
         kid: publicKey.kid,
       })
       .encrypt(key);
