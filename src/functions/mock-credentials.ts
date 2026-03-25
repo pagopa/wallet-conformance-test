@@ -9,6 +9,7 @@ import { CredentialNamespaceNotFoundError } from "@/errors";
 import {
   buildCertPath,
   buildJwksPath,
+  ensureDir,
   hasTrustChainExpired,
   hasX509CertificateExpired,
   loadCertificate,
@@ -136,10 +137,7 @@ export async function createMockSdJwt(
   }
 
   const pathVersion = `${credentialsPath}/${version}`;
-  if (!existsSync(pathVersion))
-    mkdirSync(pathVersion, {
-      recursive: true,
-    });
+  ensureDir(pathVersion);
 
   writeFileSync(`${pathVersion}/${credentialIdentifier}`, mockedSdjwt.compact);
   return mockedSdjwt;

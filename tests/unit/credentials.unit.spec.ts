@@ -471,14 +471,12 @@ describe("Load Mocked Credentials", async () => {
         vi.setSystemTime(date);
         const credentials = await loadCredentialsForPresentation(
           config,
-          trustAnchorBaseUrl,
           logger,
         );
 
         vi.setSystemTime(twoYearsLater);
         const regenerated = await loadCredentialsForPresentation(
           config,
-          trustAnchorBaseUrl,
           logger,
         );
 
