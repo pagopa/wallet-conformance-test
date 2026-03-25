@@ -33,6 +33,21 @@ export type DcqlMatchSuccess = Extract<
   { success: true }
 >;
 
+export interface StatusClaimV1_0 {
+  status_assertion: {
+    credential_hash_alg: string,
+  },
+}
+
+export interface StatusClaimV1_3 {
+  status_list: {
+    idx: number,
+    uri: string,
+  },
+}
+
+export type StatusClaim = StatusClaimV1_0 | StatusClaimV1_3;
+
 export interface VpTokenOptions {
   client_id: string;
   credential: string;

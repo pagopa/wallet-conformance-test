@@ -16,14 +16,15 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 import {
   createMockMdlMdoc,
+  createMockSdJwt,
   getCredentialMdocExpiration,
   getCredentialSdJwtExpiration,
   isCredentialMdocExpired,
   isCredentialSdJwtExpired,
   loadCredentials,
   loadCredentialsForPresentation,
+  parseCredentialStatus,
 } from "@/functions";
-import { createMockSdJwt } from "@/functions";
 import {
   buildJwksPath,
   createKeys,
@@ -642,6 +643,96 @@ describe("Generate Mocked Credentials", () => {
       );
     },
   );
+});
+
+describe("Parse Credential's Status", () => {
+  afterAll(() => {
+    for (const version of ["V1_0", "V1_3"]) {
+      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+        force: true,
+      });
+      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, {
+        force: true,
+      });
+    }
+  });
+
+  const config = loadConfig("./config.ini");
+  const metadata = {
+    iss: "https://issuer.example.com",
+    network: config.network,
+    trust: config.trust,
+    trustAnchor: config.trust_anchor,
+    trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
+  };
+
+  it("should retrieve status from SD-JWT (V1_0)", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_0,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_assertion: {
+        credential_hash_alg: "sha-256",
+      },
+    });
+  });
+
+  it("should retrieve status from SD-JWT (V1_3)", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_3,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: "https://example.com",
+      },
+    });
+  });
+
+  it("should retrieve status from MDOC (V1_0)", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_0,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_assertion: {
+        credential_hash_alg: "sha-256",
+      },
+    });
+  });
+
+  it("should retrieve status from MDOC (V1_3)", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_3,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: "https://example.com",
+      },
+    });
+  });
+
+  it("should throw error for invalid credential format", async () => {
+    await expect(parseCredentialStatus("invalid_data")).rejects.toThrow(
+      "unable to unmarshal string into sd-jwt or mdoc credential",
+    );
+  });
 });
 
 describe("createVpTokenMdoc", () => {

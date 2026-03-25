@@ -1,11 +1,18 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
+import { decode } from "cbor";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
-import { Config, Credential, CredentialWithKey, Logger } from "@/types";
+import {
+  Config,
+  Credential,
+  CredentialWithKey,
+  Logger,
+  StatusClaim,
+} from "@/types";
 
 import {
   createMockMdlMdoc,
@@ -124,6 +131,35 @@ export async function loadCredentialsForPresentation(
   );
 }
 
+export async function parseCredentialStatus(
+  compact: string,
+): Promise<null | StatusClaim> {
+  const parsed = await parseCredential(compact);
+
+  const { credential } = parsed;
+  if (!credential)
+    throw new Error(
+      "unable to unmarshal string into sd-jwt or mdoc credential",
+    );
+
+  switch (credential.typ) {
+    case "dc+sd-jwt":
+      const sdJwtPayload = credential.parsed.payload;
+      if (!sdJwtPayload) throw new Error("parsed sd-jwt has empty payload");
+
+      return sdJwtPayload.status as StatusClaim;
+    case "mso_mdoc":
+      const mdocPayloadTag = decode(
+        credential.parsed.issuerSigned.issuerAuth.payload,
+      );
+      const mdocPayload = decode(mdocPayloadTag.value);
+
+      return mdocPayload.status as StatusClaim;
+    default:
+      return null;
+  }
+}
+
 /**
  * Creates mock SD-JWT and MDOC credentials when no stored credentials are available.
  * Persists the generated credentials and their key pairs to the configured storage paths.
@@ -167,6 +203,27 @@ async function createMockCredentialsWithKeys(
     ),
   ]);
 }
+async function parseCredential(
+  compact: string,
+): Promise<{ credential?: Credential; error?: string }> {
+  let error: null | string = null;
+
+  try {
+    const parsed = await SDJwt.decodeSDJwt(compact, digest);
+    return { credential: { compact, parsed, typ: "dc+sd-jwt" } };
+  } catch (e) {
+    error = `Local credential was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`;
+  }
+
+  try {
+    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
+    return { credential: { compact, parsed, typ: "mso_mdoc" }, error };
+  } catch (e) {
+    return {
+      error: `Local credential was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
 
 /**
  * Attempts to parse a credential file as SD-JWT first, then as MDOC.
@@ -192,23 +249,10 @@ async function parseCredentialFile(
     return null;
   }
 
-  try {
-    const parsed = await SDJwt.decodeSDJwt(compact, digest);
-    return { compact, parsed, typ: "dc+sd-jwt" };
-  } catch (e) {
-    onIgnoreError(
-      `Local credential '${fileName}' was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
+  const parsed = await parseCredential(compact);
+  if (parsed.error) onIgnoreError(`${fileName}: ${parsed.error}`);
 
-  try {
-    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
-    return { compact, parsed, typ: "mso_mdoc" };
-  } catch (e) {
-    onIgnoreError(
-      `Local credential '${fileName}' was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
+  if (parsed.credential) return parsed.credential;
 
   return null;
 }
