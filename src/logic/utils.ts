@@ -6,7 +6,6 @@ import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -258,17 +257,19 @@ export async function loadJwksWithX5C(
  * Loads an existing cert/key pair from `dir` if one is present, otherwise
  * creates a new one via {@link createAndSaveCertificateWithKey}.
  *
- * File discovery: looks for the first `*.cert.pem` file in `dir` and expects a
- * matching `*.key.pem` alongside it (same KSUID stem). Falls through to
- * creation if the directory is absent, empty, or either file cannot be read.
+ * File discovery: looks for `${baseName}.cert.pem` and `${baseName}.key.pem` in `dir`.
+ * Falls through to creation if the directory is absent, those files are missing,
+ * or either file cannot be read.
  *
  * @param dir Directory to search or write files into.
+ * @param baseName Base filename (without extension) for the cert and key files.
  * @param subject The subject / CN — used only when creation is needed.
  * @param extraExtensions Additional X.509 extensions — used only when creation is needed.
  * @returns The cert PEM, key PEM, and absolute paths of the cert and key files.
  */
 export async function loadOrCreateCertificateWithKey(
   dir: string,
+  baseName: string,
   subject: string,
   extraExtensions: x509.Extension[] = [],
 ): Promise<{
@@ -280,12 +281,9 @@ export async function loadOrCreateCertificateWithKey(
   const dirCreated = ensureDir(dir);
 
   if (!dirCreated) {
-    const certFile = readdirSync(dir).find((f) => f.endsWith(".cert.pem"));
-    if (certFile) {
-      const certPath = path.resolve(path.join(dir, certFile));
-      const keyPath = path.resolve(
-        path.join(dir, certFile.replace(".cert.pem", ".key.pem")),
-      );
+    const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
+    const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
+    if (existsSync(certPath) && existsSync(keyPath)) {
       try {
         const certPem = readFileSync(certPath, "utf-8");
         const keyPem = readFileSync(keyPath, "utf-8");
@@ -306,7 +304,12 @@ export async function loadOrCreateCertificateWithKey(
     }
   }
 
-  return createAndSaveCertificateWithKey(dir, subject, extraExtensions);
+  return createAndSaveCertificateWithKey(
+    dir,
+    baseName,
+    subject,
+    extraExtensions,
+  );
 }
 
 /**

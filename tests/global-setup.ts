@@ -20,6 +20,7 @@ export default async function setup() {
   const certDir = config.trust_anchor.tls_cert_dir ?? "./data/tls";
   const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
     certDir,
+    "server",
     `CN=localhost`,
     [
       new x509.SubjectAlternativeNameExtension(

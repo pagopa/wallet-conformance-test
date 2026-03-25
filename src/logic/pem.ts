@@ -1,5 +1,4 @@
 import * as x509 from "@peculiar/x509";
-import KSUID from "ksuid";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -35,12 +34,14 @@ export async function createAndSaveCertificate(
  * accidental exposure of private key material.
  *
  * @param dir Directory to write the files into (created if absent).
+ * @param baseName Base filename (without extension) for the cert and key files.
  * @param subject The subject / CN for the certificate.
  * @param extraExtensions Additional X.509 extensions appended to the default set.
  * @returns The cert PEM, key PEM, and absolute paths of the written cert and key files.
  */
 export async function createAndSaveCertificateWithKey(
   dir: string,
+  baseName: string,
   subject: string,
   extraExtensions: x509.Extension[] = [],
 ): Promise<{
@@ -51,9 +52,8 @@ export async function createAndSaveCertificateWithKey(
 }> {
   mkdirSync(dir, { recursive: true });
 
-  const id = KSUID.randomSync().string;
-  const certPath = path.resolve(path.join(dir, `${id}.cert.pem`));
-  const keyPath = path.resolve(path.join(dir, `${id}.key.pem`));
+  const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
+  const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
 
   const keyPair = await createKeys();
   const cert = await createCertificate(keyPair, subject, extraExtensions);
