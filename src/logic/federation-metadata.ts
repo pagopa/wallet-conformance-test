@@ -270,5 +270,3 @@ export async function getTrustMarks(
     },
   ];
 }
-
-

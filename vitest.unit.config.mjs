@@ -14,5 +14,6 @@ export default defineConfig({
     exclude: configDefaults.exclude,
     include: ["**/*.unit.spec.ts"],
     globalSetup: "./tests/global-setup.ts",
+    setupFiles: ["./tests/setup-tls.ts"],
   },
 });
