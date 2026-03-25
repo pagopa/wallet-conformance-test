@@ -3,7 +3,7 @@ import {
   fetchAuthorizationResponse,
 } from "@pagopa/io-wallet-oid4vp";
 
-import { partialCallbacks } from "@/logic";
+import { fetchWithConfig, partialCallbacks } from "@/logic";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export type RedirectUriExecuteStepResponse =
@@ -48,7 +48,7 @@ export class RedirectUriDefaultStep extends StepFlow {
         authorizationResponseJarm:
           options.authorizationResponse.jarm.responseJwe,
         callbacks: {
-          fetch: partialCallbacks.fetch,
+          fetch: fetchWithConfig(this.config.network),
         },
         presentationResponseUri: options.responseUri,
       });

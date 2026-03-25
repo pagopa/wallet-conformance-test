@@ -1,6 +1,6 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { createFetcher, Fetch, ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
@@ -23,14 +23,26 @@ export {
 
 export const partialCallbacks: Pick<
   CallbackContext,
-  "fetch" | "generateRandom" | "hash" | "verifyJwt"
+  "generateRandom" | "hash" | "verifyJwt"
 > = {
-  fetch,
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };
+
+export function fetchWithConfig(network: Config["network"]): Fetch {
+  return (input, init) =>
+    fetch(input, {
+      signal: AbortSignal.timeout(network.timeout * 1000),
+      ...init,
+      headers: {
+        "X-Spec-Version": "1.3",
+        ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
+        ...init?.headers,
+      },
+    });
+}
 
 /**
  * Fetches a resource with a specified number of retries on failure.
@@ -48,12 +60,10 @@ export async function fetchWithRetries(
 ): Promise<FetchWithRetriesResponse> {
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
-      const response = await fetch(url, {
+      const response = await createFetcher(fetchWithConfig(network))(url, {
         method: "GET",
-        signal: AbortSignal.timeout(network.timeout * 1000),
         ...init,
         headers: {
-          ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
           ...init?.headers,
         },
       });
