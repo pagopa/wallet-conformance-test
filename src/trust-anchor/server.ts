@@ -1,9 +1,13 @@
+import * as https from "node:https";
+
+import * as x509 from "@peculiar/x509";
 import express from "express";
 
 import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
+import { loadOrCreateCertificateWithKey } from "@/logic";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
 import { LOCAL_TA_BASE_URL } from "./trust-anchor-resolver";
@@ -62,22 +66,50 @@ export const createServer = (config: Config) => {
   return app;
 };
 
-if (require.main === module) {
-  const config = loadConfigWithHierarchy();
+export const startServer = async (
+  config: Config,
+): Promise<{ server: https.Server; certPem: string; certPath: string; port: number }> => {
   const app = createServer(config);
   const port = config.server.port;
-  app.listen(port, () => {
-    console.log(
-      `Local Server started
+  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
+
+  const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
+    certDir,
+    "server",
+    `CN=${LOCAL_TA_BASE_URL}`,
+    [
+      new x509.SubjectAlternativeNameExtension(
+        [
+          { type: "dns", value: "localhost" },
+          { type: "dns", value: LOCAL_TA_BASE_URL },
+          { type: "ip", value: "127.0.0.1" },
+        ],
+        false,
+      ),
+    ],
+  );
+
+  const server = https.createServer({ cert: certPem, key: keyPem }, app);
+  return { server, certPem, certPath, port };
+};
+
+if (require.main === module) {
+  const config = loadConfigWithHierarchy();
+  startServer(config).then(({ server, certPath, port }) => {
+    server.listen(port, () => {
+      console.log(
+        `Local Server started
       PID: ${process.pid}
-      URL: http://localhost:${port}
-      
+      URL: https://localhost:${port}
+      Cert: ${certPath}
+
       Endpoints:
-      [Trust Anchor] 
+      [Trust Anchor]
       GET  /.well-known/openid-federation
       GET  /fetch?sub=<subordinate-url>
 
       Started: ${new Date().toISOString()}`,
-    );
+      );
+    });
   });
 }
