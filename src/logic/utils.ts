@@ -8,6 +8,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import path from "path";
@@ -287,7 +288,15 @@ export async function loadOrCreateCertificateWithKey(
       try {
         const certPem = readFileSync(certPath, "utf-8");
         const keyPem = readFileSync(keyPath, "utf-8");
-        return { certPath, certPem, keyPath, keyPem };
+        //TODO: Await WLEO-885 to replace with proper expiration check method
+        const cert = new x509.X509Certificate(certPem);
+        if (cert.notAfter < new Date()) {
+          rmSync(certPath);
+          rmSync(keyPath);
+          /* fall through to regenerate expired cert */
+        } else {
+          return { certPath, certPem, keyPath, keyPem };
+        }
       } catch {
         /* fall through to generate */
       }
