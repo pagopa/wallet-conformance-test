@@ -10,6 +10,7 @@ import {
   buildCertPath,
   buildJwksPath,
   ensureDir,
+  EXPIRY_LEEWAY_MS,
   hasTrustChainExpired,
   hasX509CertificateExpired,
   loadCertificate,
@@ -281,14 +282,15 @@ export function isCredentialSdJwtExpired(
   const now = Date.now();
   const isCredentialExpired =
     claimName !== undefined &&
-    getCredentialSdJwtExpiration(parsed, claimName).getTime() < now;
+    getCredentialSdJwtExpiration(parsed, claimName).getTime() <
+      now - EXPIRY_LEEWAY_MS;
 
   const exp = parsed.jwt.payload?.exp;
   const isJwtExpired =
     checks.jwt &&
     exp !== undefined &&
     typeof exp === "number" &&
-    exp * 1000 < now;
+    exp * 1000 < now - EXPIRY_LEEWAY_MS;
 
   const jwt_trust_chain = zTrustChain.safeParse(parsed.jwt.header?.trust_chain);
   const isTrustChainExpired =

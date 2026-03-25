@@ -29,6 +29,7 @@ import {
   createKeys,
   createLogger,
   createVpTokenMdoc,
+  EXPIRY_LEEWAY_MS,
   loadCertificate,
   loadConfig,
   loadJsonDumps,
@@ -171,7 +172,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(expiration) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
               jwt: false,
@@ -201,7 +204,7 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the jwt expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((jwtExpiration + 1) * 1000);
+          vi.setSystemTime((jwtExpiration + EXPIRY_LEEWAY_MS + 1) * 1000);
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: true,
@@ -245,7 +248,7 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the trust_chain expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((trustChainMinExp + 1) * 1000);
+          vi.setSystemTime((trustChainMinExp + EXPIRY_LEEWAY_MS + 1) * 1000);
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: false,
@@ -284,7 +287,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the x5c certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(x5cMinExp) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(x5cMinExp) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: false,
@@ -335,7 +340,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(expiration) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialMdocExpired(
               mDL.parsed,
@@ -366,7 +373,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the mdoc expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(mDocExpiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(mDocExpiration) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: false,
@@ -393,7 +402,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(certExpiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(certExpiration) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: true,
@@ -433,7 +444,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the trust chain certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(trustChainMinExp) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(trustChainMinExp) + EXPIRY_LEEWAY_MS + 1) * 1000,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: false,

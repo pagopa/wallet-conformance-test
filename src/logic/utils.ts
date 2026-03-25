@@ -31,6 +31,8 @@ import {
   verifyJwt,
 } from ".";
 
+export const EXPIRY_LEEWAY_MS = 3e4;
+
 // Re-export config loading functions
 export {
   type CliOptions,

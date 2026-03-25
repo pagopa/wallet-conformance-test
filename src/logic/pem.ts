@@ -5,6 +5,7 @@ import path from "node:path";
 import { KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
+import { EXPIRY_LEEWAY_MS } from "./utils";
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -113,7 +114,8 @@ export async function createCertificate(
   const keys = { privateKey, publicKey };
 
   // Create self-signed cert (X.509)
-  const now = new Date();
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore.getTime() + 1000 * 60 * 60 * 24 * 365);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
       new x509.BasicConstraintsExtension(false, undefined, true),
@@ -127,7 +129,8 @@ export async function createCertificate(
     ],
     keys,
     name: subject,
-    notBefore: now,
+    notAfter,
+    notBefore,
     signingAlgorithm,
   });
 
@@ -137,7 +140,7 @@ export async function createCertificate(
 export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
   const certificate =
     typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
-  return certificate.notAfter.getTime() < Date.now();
+  return certificate.notAfter.getTime() < Date.now() - EXPIRY_LEEWAY_MS;
 }
 
 /**

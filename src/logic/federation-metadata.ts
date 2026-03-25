@@ -10,6 +10,7 @@ import { Config, KeyPair, KeyPairJwk } from "@/types";
 import { signCallback, signJwtCallback } from "./jwt";
 import {
   buildJwksPath,
+  EXPIRY_LEEWAY_MS,
   loadJsonDumps,
   loadJwks,
   loadJwksWithX5C,
@@ -272,7 +273,9 @@ export const hasTrustChainExpired = (trust_chain: string[]) =>
     const decoded = decodeJwt(statement);
     const exp = decoded.payload.exp;
     return (
-      exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now()
+      exp === undefined ||
+      typeof exp !== "number" ||
+      exp * 1000 < Date.now() - EXPIRY_LEEWAY_MS
     );
   });
 
