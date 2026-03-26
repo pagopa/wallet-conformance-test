@@ -72,6 +72,9 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.externalTaOnboardingUrl) {
     env.CONFIG_EXTERNAL_TA_ONBOARDING_URL = options.externalTaOnboardingUrl;
   }
+  if (options.tests) {
+    env.TESTS = options.tests;
+  }
 
   return env;
 }
@@ -144,6 +147,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--external-ta-onboarding-url <url>",
       "Onboarding URL of an external Trust Anchor",
+    )
+    .option(
+      "--tests <names>",
+      "Comma separated list of test names, only the specified tests will be run",
     );
 }
 
@@ -156,9 +163,10 @@ addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
   const env = setEnvFromOptions(options);
+  const tests = env.TESTS?.replaceAll(/\s*,\s*/g, " ") ?? "";
 
   try {
-    execSync("pnpm test:issuance", {
+    execSync(`pnpm test:issuance ${tests}`, {
       env,
       stdio: "inherit",
     });
@@ -176,9 +184,10 @@ addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
   const env = setEnvFromOptions(options);
+  const tests = env.TESTS?.replaceAll(/\s*,\s/g, " ") ?? "";
 
   try {
-    execSync("pnpm test:presentation", {
+    execSync(`pnpm test:presentation ${tests}`, {
       env,
       stdio: "inherit",
     });
