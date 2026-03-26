@@ -458,7 +458,6 @@ describe("Load Mocked Credentials", async () => {
       });
       rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
       config.wallet.wallet_version = version;
-      const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
       const logger = createLogger();
 
       // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014

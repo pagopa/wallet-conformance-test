@@ -357,7 +357,7 @@ export async function loadOrCreateCertificateWithKey(
         const keyPem = readFileSync(keyPath, "utf-8");
         //TODO: Await WLEO-885 to replace with proper expiration check method
         const cert = new x509.X509Certificate(certPem);
-        if (cert.notAfter < new Date()) {
+        if (hasX509CertificateExpired(cert)) {
           rmSync(certPath);
           rmSync(keyPath);
           //We throw an error to explicitly mark the fact that the flow is stopped,
