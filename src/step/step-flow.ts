@@ -70,10 +70,9 @@ export abstract class StepFlow {
 export function assertStepSuccess<T extends StepResponse>(
   result: T,
   stepName: string,
-): T & { success: true } {
+): asserts result is T & { success: true } { 
   if (!result.success) {
     const cause = result.error?.message ?? "unknown error";
     throw result.error ?? new Error(`${stepName} step failed: ${cause}`);
   }
-  return result as T & { success: true };
 }
