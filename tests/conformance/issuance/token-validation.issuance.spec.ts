@@ -105,7 +105,7 @@ testConfigs.forEach((testConfig) => {
     test("CI_060: Authorization Code Issuance | Issuer rejects unknown codes (invalid_grant)", async () => {
       const log = baseLog.withTag("CI_060");
       const DESCRIPTION =
-        "✅ Issuer correctly rejected unknown authorization code";
+        "Issuer correctly rejected unknown authorization code";
       log.start(
         "Conformance test: Verifying unknown authorization codes are rejected",
       );
@@ -133,7 +133,7 @@ testConfigs.forEach((testConfig) => {
     test("CI_061a: PKCE code_verifier | Issuer rejects mismatched code_verifier (invalid_grant)", async () => {
       const log = baseLog.withTag("CI_061a");
       const DESCRIPTION =
-        "✅ Issuer correctly rejected mismatched code_verifier";
+        "Issuer correctly rejected mismatched code_verifier";
       log.start("Conformance test: Verifying PKCE code_verifier validation");
 
       let testSuccess = false;
@@ -159,7 +159,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_062: Redirect URI Matching | Issuer rejects mismatched redirect_uri (invalid_grant)", async () => {
       const log = baseLog.withTag("CI_062");
-      const DESCRIPTION = "✅ Issuer correctly rejected mismatched redirect_uri";
+      const DESCRIPTION = "Issuer correctly rejected mismatched redirect_uri";
       log.start(
         "Conformance test: Verifying redirect_uri byte-for-byte matching",
       );
@@ -187,7 +187,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_063: DPoP Proof JWT | Issuer rejects invalid DPoP proof (invalid_dpop_proof)", async () => {
       const log = baseLog.withTag("CI_063");
-      const DESCRIPTION = "✅ Issuer correctly rejected invalid DPoP proof";
+      const DESCRIPTION = "Issuer correctly rejected invalid DPoP proof";
       log.start("Conformance test: Verifying DPoP proof validation");
 
       let testSuccess = false;
@@ -240,7 +240,7 @@ testConfigs.forEach((testConfig) => {
       "CI_061: Authorization Code Validity | Issuer rejects reused and expired codes (invalid_grant)",
       async () => {
         const log = baseLog.withTag("CI_061");
-        const DESCRIPTION = "✅ Issuer correctly rejectedd reused and expired codes";
+        const DESCRIPTION = "Issuer correctly rejectedd reused and expired codes";
         log.start(
           "Conformance test: Verifying authorization code one-time use and expiration",
         );
