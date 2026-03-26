@@ -96,6 +96,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       );
 
       const requestObjectJwt = await fetchAuthorize.response.text();
+      log.debug("Request Object JWT fetched successfully", requestObjectJwt);
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
         config: this.ioWalletSdkConfig,
@@ -156,12 +157,7 @@ export class AuthorizeDefaultStep extends StepFlow {
             options.rpMetadata.authorization_encrypted_response_enc,
           callbacks: {
             ...partialCallbacks,
-            encryptJwe: getEncryptJweCallback(rpEncKey, {
-              alg: options.rpMetadata.authorization_encrypted_response_alg,
-              enc: options.rpMetadata.authorization_encrypted_response_enc,
-              kid: rpEncKey.kid,
-              typ: "oauth-authz-req+jwt",
-            }),
+            encryptJwe: getEncryptJweCallback(rpEncKey),
           },
           requestObject,
           rpJwks: {

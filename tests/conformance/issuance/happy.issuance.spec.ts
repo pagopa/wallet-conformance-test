@@ -1,6 +1,7 @@
 /* eslint-disable max-lines-per-function */
 
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { SDJwt } from "@sd-jwt/core";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
@@ -42,18 +43,20 @@ testConfigs.forEach((testConfig) => {
       });
 
       try {
-        ({
-          authorizeResponse,
-          credentialResponse,
-          fetchMetadataResponse,
-          nonceResponse,
-          pushedAuthorizationRequestResponse,
-          tokenResponse,
-        } = await orchestrator.issuance());
+        const result = await orchestrator.issuance();
+        assertIssuanceFlowSuccess(result);
+
+        authorizeResponse = result.authorizeResponse;
+        credentialResponse = result.credentialResponse;
+        fetchMetadataResponse = result.fetchMetadataResponse;
+        nonceResponse = result.nonceResponse;
+        pushedAuthorizationRequestResponse =
+          result.pushedAuthorizationRequestResponse;
+        tokenResponse = result.tokenResponse;
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
-        baseLog.error("Issuance flow failed:", e);
+        baseLog.error(e);
         throw e;
       } finally {
         // Give time for all logs to be flushed before starting tests
