@@ -220,6 +220,160 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     expect(result.tokenResponse).toBeUndefined();
   });
 
+  test("step 3 (authorize) failure — returns partial response with success: false", async () => {
+    const authorizeFailure = makeStepFailure(
+      "authorization server rejected the request",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeFailure);
+
+    const result = await orchestrator.issuance();
+
+    expect(
+      result.success,
+      "issuance() must return success: false on authorize step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe(
+      "authorization server rejected the request",
+    );
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.pushedAuthorizationRequestResponse).toEqual(parSuccess);
+    expect(result.authorizeResponse).toEqual(authorizeFailure);
+    expect(result.tokenResponse).toBeUndefined();
+    expect(result.credentialResponse).toBeUndefined();
+  });
+
+  test("step 4 (token) failure — returns partial response through authorizeResponse", async () => {
+    const authorizeSuccess = makeStepSuccess({
+      authorizeResponse: { code: "mock-auth-code" },
+      requestObject: { response_uri: "https://issuer.example.com/redirect" },
+    });
+    const tokenFailure = makeStepFailure("token endpoint returned 401");
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenFailure);
+
+    const result = await orchestrator.issuance();
+
+    expect(
+      result.success,
+      "issuance() must return success: false on token step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe("token endpoint returned 401");
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.pushedAuthorizationRequestResponse).toEqual(parSuccess);
+    expect(result.authorizeResponse).toEqual(authorizeSuccess);
+    expect(
+      result.tokenResponse,
+      "tokenResponse must be populated even on failure",
+    ).toEqual(tokenFailure);
+    expect(result.nonceResponse).toBeUndefined();
+    expect(result.credentialResponse).toBeUndefined();
+  });
+
+  test("step 5 (nonce) failure — returns partial response through tokenResponse", async () => {
+    const authorizeSuccess = makeStepSuccess({
+      authorizeResponse: { code: "mock-auth-code" },
+      requestObject: { response_uri: "https://issuer.example.com/redirect" },
+    });
+    const tokenSuccess = makeStepSuccess({
+      access_token: "mock-access-token",
+      dPoPKey: {
+        privateKey: { crv: "P-256", d: "mock-d", kty: "EC" },
+        publicKey: {
+          crv: "P-256",
+          kid: "mock-kid",
+          kty: "EC",
+          x: "mock-x",
+          y: "mock-y",
+        },
+      },
+    });
+    const nonceFailure = makeStepFailure("nonce endpoint returned 500");
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.nonceRequestStep,
+      "run",
+    ).mockResolvedValue(nonceFailure);
+
+    const result = await orchestrator.issuance();
+
+    expect(
+      result.success,
+      "issuance() must return success: false on nonce step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe("nonce endpoint returned 500");
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.tokenResponse).toEqual(tokenSuccess);
+    expect(
+      result.nonceResponse,
+      "nonceResponse must be populated even on failure",
+    ).toEqual(nonceFailure);
+    expect(result.credentialResponse).toBeUndefined();
+  });
+
   test("step 6 (credential) failure — returns partial response with success: false and credentialResponse populated", async () => {
     const authorizeSuccess = makeStepSuccess({
       authorizeResponse: { code: "mock-auth-code" },
@@ -297,42 +451,6 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     expect(result.nonceResponse).toEqual(nonceSuccess);
   });
 
-  test("step 3 (authorize) failure — returns partial response with success: false", async () => {
-    const authorizeFailure = makeStepFailure(
-      "authorization server rejected the request",
-    );
-
-    vi.spyOn(
-      // @ts-expect-error accessing private field for testing
-      orchestrator.fetchMetadataStep,
-      "run",
-    ).mockResolvedValue(fetchMetadataSuccess);
-
-    vi.spyOn(
-      // @ts-expect-error accessing private field for testing
-      orchestrator.pushedAuthorizationRequestStep,
-      "run",
-    ).mockResolvedValue(parSuccess as never);
-
-    vi.spyOn(
-      // @ts-expect-error accessing private field for testing
-      orchestrator.authorizeStep,
-      "run",
-    ).mockResolvedValue(authorizeFailure);
-
-    const result = await orchestrator.issuance();
-
-    expect(
-      result.success,
-      "issuance() must return success: false on authorize step failure",
-    ).toBe(false);
-    expect(result.error?.message).toBe(
-      "authorization server rejected the request",
-    );
-    expect(result.authorizeResponse).toEqual(authorizeFailure);
-    expect(result.credentialResponse).toBeUndefined();
-  });
-
   test("never throws — error is captured in result.error", async () => {
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -380,6 +498,112 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.fetchMetadataResult).toEqual(fetchMetadataFailure);
     expect(result.authorizationRequestResult).toBeUndefined();
     expect(result.redirectUriResult).toBeUndefined();
+  });
+
+  test("step 2 (authorizationRequest) failure — fetchMetadataResult populated, authorizationRequestResult carries error", async () => {
+    const fetchMetadataSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://verifier.example.com",
+        metadata: {
+          openid_credential_verifier: {
+            authorization_endpoint:
+              "https://verifier.example.com/authorize",
+          },
+        },
+        sub: "https://verifier.example.com",
+      },
+      status: 200,
+    });
+    const authorizationRequestFailure = makeStepFailure(
+      "verifier rejected the authorization request",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizationRequestStep,
+      "run",
+    ).mockResolvedValue(authorizationRequestFailure);
+
+    const result = await orchestrator.presentation();
+
+    expect(
+      result.success,
+      "presentation() must return success: false on authorizationRequest step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe(
+      "verifier rejected the authorization request",
+    );
+    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
+    expect(
+      result.authorizationRequestResult,
+      "authorizationRequestResult must be populated even on failure",
+    ).toEqual(authorizationRequestFailure);
+    expect(result.redirectUriResult).toBeUndefined();
+  });
+
+  test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResult carries error", async () => {
+    const fetchMetadataSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://verifier.example.com",
+        metadata: {
+          openid_credential_verifier: {
+            authorization_endpoint:
+              "https://verifier.example.com/authorize",
+          },
+        },
+        sub: "https://verifier.example.com",
+      },
+      status: 200,
+    });
+    const authorizationRequestSuccess = makeStepSuccess({
+      authorizationResponse: { state: "mock-state", vp_token: "mock-vp" },
+      responseUri: "https://verifier.example.com/response",
+    });
+    const redirectUriFailure = makeStepFailure(
+      "redirect URI endpoint returned 400",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizationRequestStep,
+      "run",
+    ).mockResolvedValue(authorizationRequestSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.redirectUriStep,
+      "run",
+    ).mockResolvedValue(redirectUriFailure);
+
+    const result = await orchestrator.presentation();
+
+    expect(
+      result.success,
+      "presentation() must return success: false on redirectUri step failure",
+    ).toBe(false);
+    expect(result.error?.message).toBe("redirect URI endpoint returned 400");
+    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResult).toEqual(
+      authorizationRequestSuccess,
+    );
+    expect(
+      result.redirectUriResult,
+      "redirectUriResult must be populated even on failure",
+    ).toEqual(redirectUriFailure);
   });
 
   test("never throws — error is captured in result.error", async () => {

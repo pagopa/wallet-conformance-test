@@ -118,7 +118,6 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       );
-      this._authorizationRequestResult = authorizationRequestResult;
       this.log.flowStep(
         2,
         TOTAL_STEPS,
@@ -130,7 +129,6 @@ export class WalletPresentationOrchestratorFlow {
       const redirectUriResult = await this.executeRedirectUri(
         authorizationRequestResult,
       );
-      this._redirectUriResult = redirectUriResult;
       this.log.flowStep(
         3,
         TOTAL_STEPS,
@@ -168,6 +166,7 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       });
+    this._authorizationRequestResult = authorizationRequestResponse;
 
     assertStepSuccess(authorizationRequestResponse, "Authorization Request");
 
@@ -186,6 +185,7 @@ export class WalletPresentationOrchestratorFlow {
         authorizationRequestResult.response.authorizationResponse,
       responseUri: authorizationRequestResult.response.responseUri,
     });
+    this._redirectUriResult = redirectUriResult;
     assertStepSuccess(redirectUriResult, "Redirect URI");
     return redirectUriResult;
   }
