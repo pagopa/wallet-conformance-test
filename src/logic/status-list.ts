@@ -5,18 +5,21 @@ import {
 } from "@sd-jwt/jwt-status-list";
 
 import { StatusListTokenCreationError } from "@/errors";
-import { Config } from "@/types";
 
 import { signJwtCallback } from "./jwt";
-import { hasObjectProperties, loadJwksWithX5C } from "./utils";
+import { hasObjectProperties, loadCertificate, loadJwks } from "./utils";
 
 export interface CreateStatusListTokenOptions {
-  statusListEndpointBaseUrl: string;
-  trustAnchor: Config["trust"];
+  certFilename: string;
+  certSubject: string;
+  iss: string;
+  jwksFilename: string;
+  jwksPath: string;
+  statusListEndpointUrl: string;
 }
 
 /**
- * Creates a signed Status List JWT for the Trust Anchor.
+ * Creates a signed Status List JWT.
  *
  * Every mocked credential refers to index 0 of the status list, which is
  * always VALID (0x00). Four bits per status entry are used because the IT
@@ -26,19 +29,22 @@ export interface CreateStatusListTokenOptions {
  *
  * @param options Options for creating the status list token.
  * @returns The signed status list JWT as a string.
- * @throws An error if the trust anchor key pair is missing the required `alg` or `x5c` fields.
+ * @throws An error if the key pair is missing the required `alg` or `x5c` fields.
  */
 export const createStatusListToken = async (
   options: CreateStatusListTokenOptions,
 ): Promise<string> => {
   //Set the status as VALID (0x00)
   const list = new StatusList([0], 4);
-  const { privateKey, publicKey } = await loadJwksWithX5C(
-    options.trustAnchor.federation_trust_anchors_jwks_path,
-    "trust_anchor",
-    options.trustAnchor.ca_cert_path,
-    options.trustAnchor.certificate_subject,
+  const keyPair = await loadJwks(options.jwksPath, options.jwksFilename);
+  const certificate = await loadCertificate(
+    options.jwksPath,
+    options.certFilename,
+    keyPair,
+    options.certSubject,
   );
+  keyPair.publicKey.x5c = [certificate];
+  const { privateKey, publicKey } = keyPair;
 
   try {
     hasObjectProperties(publicKey, ["alg", "x5c"]);
@@ -64,11 +70,12 @@ export const createStatusListToken = async (
   const payload: JwtPayload = {
     exp: iat + 86400, // 24h —  spec recommendation
     iat,
+    iss: options.iss,
     status_list: {
       bits: list.getBitsPerStatus(),
       lst: list.compressStatusList(),
     },
-    sub: `${options.statusListEndpointBaseUrl}/status-list`,
+    sub: options.statusListEndpointUrl,
     ttl: 43200, // 12h cache TTL (≤ exp - iat)
   };
 

@@ -6,40 +6,78 @@ import { loadConfigWithHierarchy } from "@/logic";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
 
-describe("GET /status-list endpoint", () => {
+describe("status-list endpoint tests", () => {
   const config = loadConfigWithHierarchy();
-  const endpointUrl = `https://127.0.0.1:${config.trust_anchor.port}/status-list`;
+  const baseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
-  it("should respond with Content-Type application/statuslist+jwt", async () => {
-    const response = await fetch(endpointUrl);
+  describe.each([
+    {
+      expectedIss: config.wallet.wallet_provider_base_url,
+      path: "/wallet/status-list",
+    },
+    {
+      expectedIss: config.wallet.mock_issuer,
+      path: "/credentials/status-list",
+    },
+  ])("GET $path", ({ expectedIss, path }) => {
+    const endpointUrl = `${baseUrl}${path}`;
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain(
-      "application/statuslist+jwt",
-    );
+    it("should respond with Content-Type application/statuslist+jwt", async () => {
+      const response = await fetch(endpointUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain(
+        "application/statuslist+jwt",
+      );
+    });
+
+    it("should set the correct iss and sub to the endpoint URI", async () => {
+      const response = await fetch(endpointUrl);
+      const jwt = await response.text();
+      const payload = decodeJwt(jwt);
+
+      expect(payload.iss).toBe(expectedIss);
+      expect(payload.sub).toBe(endpointUrl);
+    });
+
+    it("should include x5c in the header and produce a valid signature", async () => {
+      const response = await fetch(endpointUrl);
+      const jwt = await response.text();
+      const header = decodeProtectedHeader(jwt);
+
+      expect(Array.isArray(header.x5c)).toBe(true);
+      const pem = `-----BEGIN CERTIFICATE-----\n${(header.x5c as string[])[0]}\n-----END CERTIFICATE-----`;
+      const publicKey = await importX509(pem, "ES256");
+
+      await expect(
+        jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
+      ).resolves.toBeDefined();
+    });
   });
 });
 
 describe("createStatusListToken", () => {
   const config = loadConfigWithHierarchy();
   const statusListEndpointBaseUrl = `http://127.0.0.1:${config.trust_anchor.port}`;
-  const expectedSub = `${statusListEndpointBaseUrl}/status-list`;
+
+  const walletOptions = {
+    certFilename: "wallet_provider_cert",
+    certSubject: `CN=${new URL(config.wallet.wallet_provider_base_url).hostname}`,
+    iss: config.wallet.wallet_provider_base_url,
+    jwksFilename: "wallet_provider_jwks",
+    jwksPath: config.wallet.backup_storage_path,
+    statusListEndpointUrl: `${statusListEndpointBaseUrl}/wallet/status-list`,
+  };
 
   it("should set typ header to statuslist+jwt (spec §5.1)", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+    const jwt = await createStatusListToken(walletOptions);
 
     const header = decodeProtectedHeader(jwt);
     expect(header.typ).toBe("statuslist+jwt");
   });
 
   it("should include required alg, kid and x5c in the header", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+    const jwt = await createStatusListToken(walletOptions);
 
     const header = decodeProtectedHeader(jwt);
     expect(header.alg).toBeDefined();
@@ -48,24 +86,19 @@ describe("createStatusListToken", () => {
     expect((header.x5c as string[]).length).toBeGreaterThan(0);
   });
 
-  it("should include required sub and iat payload claims (spec §5.1)", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+  it("should include required iss, sub and iat payload claims (spec §5.1)", async () => {
+    const jwt = await createStatusListToken(walletOptions);
 
     const payload = decodeJwt(jwt);
+    expect(payload.iss).toBe(walletOptions.iss);
     // sub MUST be the URI of the Status List Token (spec §5.1)
-    expect(payload.sub).toBe(expectedSub);
+    expect(payload.sub).toBe(walletOptions.statusListEndpointUrl);
     // iat REQUIRED (spec §5.1)
     expect(typeof payload.iat).toBe("number");
   });
 
   it("should include a valid status_list claim with bits=4 (spec §5.1, IT Wallet §4)", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+    const jwt = await createStatusListToken(walletOptions);
 
     const payload = decodeJwt(jwt);
     const statusListClaim = payload.status_list as
@@ -79,10 +112,7 @@ describe("createStatusListToken", () => {
   });
 
   it("should produce a cryptographically valid signature using the x5c leaf cert (spec §8.3)", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+    const jwt = await createStatusListToken(walletOptions);
 
     const header = decodeProtectedHeader(jwt);
     const x5c = header.x5c as string[];
@@ -95,10 +125,7 @@ describe("createStatusListToken", () => {
   });
 
   it("should decompress the status list and report index 0 as VALID (0x00) (spec §8.3)", async () => {
-    const jwt = await createStatusListToken({
-      statusListEndpointBaseUrl,
-      trustAnchor: config.trust,
-    });
+    const jwt = await createStatusListToken(walletOptions);
 
     const payload = decodeJwt(jwt);
     const { bits, lst } = payload.status_list as {
@@ -111,19 +138,17 @@ describe("createStatusListToken", () => {
     expect(list.getStatus(0)).toBe(0x00);
   });
 
-  it("should throw when the key pair is missing alg or x5c", async () => {
-    vi.spyOn(utils, "loadJwksWithX5C").mockResolvedValueOnce({
+  it("should throw when the key pair is missing alg", async () => {
+    vi.spyOn(utils, "loadJwks").mockResolvedValueOnce({
       privateKey: { alg: "ES256", kty: "EC" } as never,
-      publicKey: { kty: "EC" } as never, // no alg, no x5c
+      publicKey: { kty: "EC" } as never, // no alg
     });
+    vi.spyOn(utils, "loadCertificate").mockResolvedValueOnce("dummycert");
 
     await expect(
-      createStatusListToken({
-        statusListEndpointBaseUrl,
-        trustAnchor: config.trust,
-      }),
+      createStatusListToken(walletOptions),
     ).rejects.toThrow(
-      /Error, the following keys are missing from object: alg, x5c/,
+      /Error, the following keys are missing from object: alg/,
     );
   });
 });

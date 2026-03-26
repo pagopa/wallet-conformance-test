@@ -170,7 +170,7 @@ export async function buildMockSdJwt_V1_3(
       status: {
         status_list: {
           idx: 0,
-          uri: `https://127.0.0.1:${metadata.trustAnchor.port}/status-list`,
+          uri: `https://127.0.0.1:${metadata.trustAnchor.port}/credentials/status-list`,
         },
       },
       sub: unitKey.kid,
