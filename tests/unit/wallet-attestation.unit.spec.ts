@@ -127,7 +127,6 @@ describe("Wallet Attestation Unit Test", () => {
 
 describe("Wallet Attestation V1_3 Unit Test", () => {
   const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
   const walletV1_3 = {
     ...config.wallet,
     wallet_version: ItWalletSpecsVersion.V1_3,

@@ -44,3 +44,8 @@ Thumbs.db
 
 data
 config.ini
+
+# TLS certificates and private keys generated at test runtime
+# Filenames are KSUID-based (collision-resistant) and must never be committed
+*.cert.pem
+*.key.pem
