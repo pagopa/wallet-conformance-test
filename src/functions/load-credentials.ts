@@ -131,6 +131,13 @@ export async function loadCredentialsForPresentation(
   );
 }
 
+/**
+ * Parses a credential and extracts its status claim.
+ *
+ * @param compact - The compact-serialized credential string.
+ * @returns A promise that resolves to the `StatusClaim` if present, or `null` if the format is unsupported or status is missing.
+ * @throws {Error} If the credential cannot be parsed or has an empty payload.
+ */
 export async function parseCredentialStatus(
   compact: string,
 ): Promise<null | StatusClaim> {
@@ -203,6 +210,13 @@ async function createMockCredentialsWithKeys(
     ),
   ]);
 }
+
+/**
+ * Attempts to parse a compact-serialized credential as either SD-JWT or MDOC.
+ *
+ * @param compact - The compact-serialized credential string.
+ * @returns A promise resolving to an object containing either the parsed `Credential` or an error message.
+ */
 async function parseCredential(
   compact: string,
 ): Promise<{ credential?: Credential; error?: string }> {
