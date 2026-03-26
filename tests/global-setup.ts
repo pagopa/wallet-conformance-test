@@ -22,7 +22,7 @@ export default async function setup() {
 
   // Store cert for worker threads — setup-tls.ts reads this in each worker
   process.env["TRUST_ANCHOR_CERT_PEM"] = certPem;
-  tls.setDefaultCACertificates([...tls.getCACertificates("system"), certPem]);
+  tls.setDefaultCACertificates([...tls.getCACertificates("bundled"), certPem]);
 
   trustAnchorServer = trustAnchorHttpsServer.listen(port, () => {
     baseLog.info(

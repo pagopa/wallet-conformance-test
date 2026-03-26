@@ -4,5 +4,5 @@ import * as tls from "node:tls";
 // Must run as a setupFile so every worker thread applies it before making fetch requests.
 const certPem = process.env["TRUST_ANCHOR_CERT_PEM"];
 if (certPem) {
-  tls.setDefaultCACertificates([...tls.getCACertificates("system"), certPem]);
+  tls.setDefaultCACertificates([...tls.getCACertificates("bundled"), certPem]);
 }
