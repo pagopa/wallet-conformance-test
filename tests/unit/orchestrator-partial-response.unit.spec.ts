@@ -113,6 +113,35 @@ function makeStepSuccess<T>(response: T) {
 describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   let orchestrator: WalletIssuanceOrchestratorFlow;
 
+  // Shared fixtures — used across multiple test cases
+  const fetchMetadataSuccess = makeStepSuccess({
+    discoveredVia: "federation" as const,
+    entityStatementClaims: {
+      iss: "https://issuer.example.com",
+      metadata: {
+        oauth_authorization_server: {
+          authorization_endpoint: "https://issuer.example.com/authorize",
+          pushed_authorization_request_endpoint:
+            "https://issuer.example.com/par",
+          token_endpoint: "https://issuer.example.com/token",
+        },
+        openid_credential_issuer: {
+          credential_configurations_supported: {
+            dc_sd_jwt_PersonIdentificationData: {},
+          },
+          credential_endpoint: "https://issuer.example.com/credential",
+          nonce_endpoint: "https://issuer.example.com/nonce",
+        },
+      },
+      sub: "https://issuer.example.com",
+    },
+    status: 200,
+  });
+  const parSuccess = makeStepSuccess({
+    codeVerifier: "mock-code-verifier",
+    request_uri: "urn:ietf:params:oauth:request_uri:mock",
+  });
+
   beforeEach(async () => {
     vi.clearAllMocks();
     orchestrator = new WalletIssuanceOrchestratorFlow(
@@ -144,8 +173,8 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   });
 
   test("step 2 failure — fetchMetadataResponse is populated, PAR response carries the error", async () => {
-    // fetchMetadata succeeds with minimal entity statement so the flow can proceed
-    const fetchMetadataSuccess = makeStepSuccess({
+    // fetchMetadata succeeds with a minimal entity statement (no token_endpoint needed at this stage)
+    const minimalFetchMetadataSuccess = makeStepSuccess({
       discoveredVia: "federation" as const,
       entityStatementClaims: {
         iss: "https://issuer.example.com",
@@ -173,7 +202,7 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
       // @ts-expect-error accessing private field for testing
       orchestrator.fetchMetadataStep,
       "run",
-    ).mockResolvedValue(fetchMetadataSuccess);
+    ).mockResolvedValue(minimalFetchMetadataSuccess);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -184,7 +213,7 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     const result = await orchestrator.issuance();
 
     expect(result.success).toBe(false);
-    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.fetchMetadataResponse).toEqual(minimalFetchMetadataSuccess);
     expect(result.walletAttestationResponse).toBeDefined();
     expect(result.pushedAuthorizationRequestResponse).toEqual(parFailure);
     expect(result.authorizeResponse).toBeUndefined();
@@ -192,34 +221,6 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   });
 
   test("step 6 (credential) failure — returns partial response with success: false and credentialResponse populated", async () => {
-    const metadataPayload = {
-      discoveredVia: "federation" as const,
-      entityStatementClaims: {
-        iss: "https://issuer.example.com",
-        metadata: {
-          oauth_authorization_server: {
-            authorization_endpoint: "https://issuer.example.com/authorize",
-            pushed_authorization_request_endpoint:
-              "https://issuer.example.com/par",
-            token_endpoint: "https://issuer.example.com/token",
-          },
-          openid_credential_issuer: {
-            credential_configurations_supported: {
-              dc_sd_jwt_PersonIdentificationData: {},
-            },
-            credential_endpoint: "https://issuer.example.com/credential",
-            nonce_endpoint: "https://issuer.example.com/nonce",
-          },
-        },
-        sub: "https://issuer.example.com",
-      },
-      status: 200,
-    };
-    const fetchMetadataSuccess = makeStepSuccess(metadataPayload);
-    const parSuccess = makeStepSuccess({
-      codeVerifier: "mock-code-verifier",
-      request_uri: "urn:ietf:params:oauth:request_uri:mock",
-    });
     const authorizeSuccess = makeStepSuccess({
       authorizeResponse: { code: "mock-auth-code" },
       requestObject: { response_uri: "https://issuer.example.com/redirect" },
@@ -297,34 +298,6 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   });
 
   test("step 3 (authorize) failure — returns partial response with success: false", async () => {
-    const metadataPayload = {
-      discoveredVia: "federation" as const,
-      entityStatementClaims: {
-        iss: "https://issuer.example.com",
-        metadata: {
-          oauth_authorization_server: {
-            authorization_endpoint: "https://issuer.example.com/authorize",
-            pushed_authorization_request_endpoint:
-              "https://issuer.example.com/par",
-            token_endpoint: "https://issuer.example.com/token",
-          },
-          openid_credential_issuer: {
-            credential_configurations_supported: {
-              dc_sd_jwt_PersonIdentificationData: {},
-            },
-            credential_endpoint: "https://issuer.example.com/credential",
-            nonce_endpoint: "https://issuer.example.com/nonce",
-          },
-        },
-        sub: "https://issuer.example.com",
-      },
-      status: 200,
-    };
-    const fetchMetadataSuccess = makeStepSuccess(metadataPayload);
-    const parSuccess = makeStepSuccess({
-      codeVerifier: "mock-code-verifier",
-      request_uri: "urn:ietf:params:oauth:request_uri:mock",
-    });
     const authorizeFailure = makeStepFailure(
       "authorization server rejected the request",
     );
