@@ -11,7 +11,6 @@ import {
   CompactEncrypt,
   CompactSign,
   importJWK,
-  JWEHeaderParameters,
   type JWK,
   jwtVerify,
   SignJWT,

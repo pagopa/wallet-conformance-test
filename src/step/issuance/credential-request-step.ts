@@ -24,7 +24,6 @@ import {
   createAndSaveKeys,
   createKeys,
   fetchWithConfig,
-  loadCertificate,
   loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,

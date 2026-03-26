@@ -45,15 +45,23 @@ export const partialCallbacks: Pick<
 };
 
 export function fetchWithConfig(network: Config["network"]): Fetch {
-  return (input, init) =>
-    fetch(input, {
-      signal: AbortSignal.timeout(network.timeout * 1000),
-      ...init,
-      headers: {
-        ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
-        ...init?.headers,
-      },
-    });
+  return (input, init) => {
+    // Normalize all HeadersInit variants (plain object, Headers instance, tuple array)
+    // and set required headers last so callers cannot override them.
+    const headers = new Headers(init?.headers);
+    if (network.user_agent) {
+      headers.set("User-Agent", network.user_agent);
+    }
+
+    // Always enforce the configured timeout; merge with any caller-provided
+    // signal so explicit cancellation still works.
+    const timeoutSignal = AbortSignal.timeout(network.timeout * 1000);
+    const signal = init?.signal
+      ? AbortSignal.any([timeoutSignal, init.signal])
+      : timeoutSignal;
+
+    return fetch(input, { ...init, signal, headers });
+  };
 }
 
 /**
@@ -75,9 +83,6 @@ export async function fetchWithRetries(
       const response = await createFetcher(fetchWithConfig(network))(url, {
         method: "GET",
         ...init,
-        headers: {
-          ...init?.headers,
-        },
       });
 
       return { attempts, response };
