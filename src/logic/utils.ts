@@ -60,7 +60,7 @@ export function fetchWithConfig(network: Config["network"]): Fetch {
       ? AbortSignal.any([timeoutSignal, init.signal])
       : timeoutSignal;
 
-    return fetch(input, { ...init, signal, headers });
+    return fetch(input, { ...init, headers, signal });
   };
 }
 
