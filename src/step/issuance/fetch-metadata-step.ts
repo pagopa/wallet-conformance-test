@@ -1,6 +1,6 @@
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 
-import { partialCallbacks } from "@/logic/utils";
+import { fetchWithConfig } from "@/logic/utils";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
@@ -40,7 +40,7 @@ export class FetchMetadataDefaultStep extends StepFlow {
     return this.execute<FetchMetadataExecuteResponse>(async () => {
       const result = await fetchMetadata({
         callbacks: {
-          fetch: partialCallbacks.fetch,
+          fetch: fetchWithConfig(this.config.network),
         },
         config: this.ioWalletSdkConfig,
         credentialIssuerUrl: options.baseUrl,
