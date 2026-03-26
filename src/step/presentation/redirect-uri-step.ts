@@ -3,7 +3,7 @@ import {
   fetchAuthorizationResponse,
 } from "@pagopa/io-wallet-oid4vp";
 
-import { fetchWithConfig, partialCallbacks } from "@/logic";
+import { fetchWithConfig } from "@/logic";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export type RedirectUriExecuteStepResponse =
