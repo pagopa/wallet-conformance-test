@@ -26,6 +26,7 @@ import {
   buildJwksPath,
   createAndSaveKeys,
   createKeys,
+  fetchWithConfig,
   loadCertificate,
   partialCallbacks,
   signJwtCallback,
@@ -66,7 +67,7 @@ export interface CredentialRequestStepOptions {
    * `callbacks` is deep-merged so that omitted callbacks (e.g. `hash`) are always preserved.
    */
   createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions> & {
-    callbacks?: Partial<Pick<CallbackContext, "signJwt" | "hash">>;
+    callbacks?: Partial<Pick<CallbackContext, "hash" | "signJwt">>;
   };
 
   /**
@@ -295,7 +296,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
   ): Promise<CredentialResponse> {
     const fetchOptions: FetchCredentialResponseOptions = {
       accessToken: options.accessToken,
-      callbacks: { fetch },
+      callbacks: { fetch: fetchWithConfig(this.config.network) },
       credentialEndpoint: options.credentialRequestEndpoint,
       credentialRequest,
       dPoP: dpop,
