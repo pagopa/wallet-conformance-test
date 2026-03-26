@@ -1,6 +1,6 @@
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 
-import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
+import { fetchWithConfig } from "@/logic/utils";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
