@@ -507,8 +507,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
         iss: "https://verifier.example.com",
         metadata: {
           openid_credential_verifier: {
-            authorization_endpoint:
-              "https://verifier.example.com/authorize",
+            authorization_endpoint: "https://verifier.example.com/authorize",
           },
         },
         sub: "https://verifier.example.com",
@@ -555,8 +554,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
         iss: "https://verifier.example.com",
         metadata: {
           openid_credential_verifier: {
-            authorization_endpoint:
-              "https://verifier.example.com/authorize",
+            authorization_endpoint: "https://verifier.example.com/authorize",
           },
         },
         sub: "https://verifier.example.com",
