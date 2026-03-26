@@ -50,7 +50,6 @@ export function fetchWithConfig(network: Config["network"]): Fetch {
       signal: AbortSignal.timeout(network.timeout * 1000),
       ...init,
       headers: {
-        "X-Spec-Version": "1.3",
         ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
         ...init?.headers,
       },
