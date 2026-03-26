@@ -53,3 +53,26 @@ export abstract class StepFlow {
     }
   }
 }
+
+/**
+ * Asserts that a step result indicates success.
+ *
+ * Throws with a descriptive message when `result.success` is `false`, so the
+ * orchestrator `catch` block can record a partial response and return
+ * `{ success: false }`.  Using this helper after every `.run()` call ensures
+ * that no step failure can silently propagate to a `success: true` return.
+ *
+ * @param result   - The `StepResponse` (or any extension of it) to check.
+ * @param stepName - Human-readable step name used in the error message.
+ * @returns The same `result` object, narrowed to `success: true`, so callers
+ *          can use it inline without an extra variable.
+ */
+export function assertStepSuccess<T extends StepResponse>(
+  result: T,
+  stepName: string,
+): asserts result is T & { success: true } {
+  if (!result.success) {
+    const cause = result.error?.message ?? "unknown error";
+    throw result.error ?? new Error(`${stepName} step failed: ${cause}`);
+  }
+}
