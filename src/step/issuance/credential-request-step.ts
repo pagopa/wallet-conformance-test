@@ -23,9 +23,9 @@ import {
   buildJwksPath,
   createAndSaveKeys,
   createKeys,
-  loadWalletProviderCertificate,
   fetchWithConfig,
   loadCertificate,
+  loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";

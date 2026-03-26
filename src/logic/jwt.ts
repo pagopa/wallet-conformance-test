@@ -113,9 +113,7 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
  * @param header The JWE header parameters.
  * @returns An `EncryptJweCallback` function.
  */
-export function getEncryptJweCallback(
-  publicKey: Jwk
-): EncryptJweCallback {
+export function getEncryptJweCallback(publicKey: Jwk): EncryptJweCallback {
   return async (jweEncryptor: JweEncryptor, data: string) => {
     const key = await importJWK(publicKey, jweEncryptor.alg);
 

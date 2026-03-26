@@ -310,8 +310,8 @@ testConfigs.forEach((testConfig) => {
         try {
           const response = await fetchCredentialResponse({
             accessToken: accessToken,
-            callbacks: { 
-              fetch: fetchWithConfig(orchestrator.getConfig().network), 
+            callbacks: {
+              fetch: fetchWithConfig(orchestrator.getConfig().network),
             },
             credentialEndpoint,
             credentialRequest: batchRequestWithDuplicates,

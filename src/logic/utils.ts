@@ -1,6 +1,10 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { createFetcher, Fetch, ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  createFetcher,
+  Fetch,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
@@ -313,7 +317,6 @@ export function saveCredentialToDisk(
     return null;
   }
 }
-
 
 /**
  * Validates that a given key pair has a `kid` and that the `kid` matches between the private and public keys.
