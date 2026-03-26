@@ -1,19 +1,23 @@
+import * as x509 from "@peculiar/x509";
 import express from "express";
+import * as https from "node:https";
 
+import { loadOrCreateCertificateWithKey } from "@/logic";
 import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 import { createStatusListToken } from "@/logic/status-list";
+import { Config } from "@/types";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
+import { LOCAL_TA_BASE_URL, LOCAL_TA_HOST } from "./trust-anchor-resolver";
 
-export const createServer = () => {
+export const createServer = (config: Config) => {
   const app = express();
   app.use(express.json());
 
-  const config = loadConfigWithHierarchy();
-  const trustAnchorBaseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
+  const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.trust_anchor.port}`;
 
   // federation metadata
   app.get("/.well-known/openid-federation", async (_req, res) => {
@@ -75,14 +79,48 @@ export const createServer = () => {
   return app;
 };
 
+export const startServer = async (
+  app: express.Express,
+  config: Config,
+): Promise<{
+  certPath: string;
+  certPem: string;
+  port: number;
+  server: https.Server;
+}> => {
+  const port = config.trust_anchor.port;
+  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
+
+  const { certPath, certPem, keyPem } = await loadOrCreateCertificateWithKey(
+    certDir,
+    "server",
+    `CN=${LOCAL_TA_HOST}`,
+    [
+      new x509.SubjectAlternativeNameExtension(
+        [
+          { type: "dns", value: "localhost" },
+          { type: "dns", value: LOCAL_TA_HOST },
+          { type: "ip", value: "127.0.0.1" },
+        ],
+        false,
+      ),
+    ],
+  );
+
+  const server = https.createServer({ cert: certPem, key: keyPem }, app);
+  return { certPath, certPem, port, server };
+};
+
 if (require.main === module) {
-  const port = 3001;
-  const app = createServer();
-  app.listen(port, () => {
-    console.log(
-      `Local Server started
+  const config = loadConfigWithHierarchy();
+  const app = createServer(config);
+  startServer(app, config).then(({ certPath, port, server }) => {
+    server.listen(port, () => {
+      console.log(
+        `Local Server started
       PID: ${process.pid}
       URL: https://localhost:${port}
+      Cert: ${certPath}
 
       Endpoints:
       [Trust Anchor]
@@ -93,6 +131,7 @@ if (require.main === module) {
       GET /status-list
 
       Started: ${new Date().toISOString()}`,
-    );
+      );
+    });
   });
 }
