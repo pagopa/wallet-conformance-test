@@ -5,14 +5,23 @@ import {
   Fetch,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import * as x509 from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "path";
 
+import { CertificateExpiredError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
   createAndSaveCertificate,
+  createAndSaveCertificateWithKey,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
   verifyJwt,
@@ -255,6 +264,65 @@ export async function loadJwksWithX5C(
     jwksPath,
     caCertPath,
     caSubject,
+  );
+}
+
+/**
+ * Loads an existing cert/key pair from `dir` if one is present, otherwise
+ * creates a new one via {@link createAndSaveCertificateWithKey}.
+ *
+ * File discovery: looks for `${baseName}.cert.pem` and `${baseName}.key.pem` in `dir`.
+ * Falls through to creation if the directory is absent, those files are missing,
+ * or either file cannot be read.
+ *
+ * @param dir Directory to search or write files into.
+ * @param baseName Base filename (without extension) for the cert and key files.
+ * @param subject The subject / CN — used only when creation is needed.
+ * @param extraExtensions Additional X.509 extensions — used only when creation is needed.
+ * @returns The cert PEM, key PEM, and absolute paths of the cert and key files.
+ */
+export async function loadOrCreateCertificateWithKey(
+  dir: string,
+  baseName: string,
+  subject: string,
+  extraExtensions: x509.Extension[] = [],
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> {
+  const dirCreated = ensureDir(dir);
+
+  if (!dirCreated) {
+    const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
+    const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
+    if (existsSync(certPath) && existsSync(keyPath)) {
+      try {
+        const certPem = readFileSync(certPath, "utf-8");
+        const keyPem = readFileSync(keyPath, "utf-8");
+        //TODO: Await WLEO-885 to replace with proper expiration check method
+        const cert = new x509.X509Certificate(certPem);
+        if (cert.notAfter < new Date()) {
+          rmSync(certPath);
+          rmSync(keyPath);
+          //We throw an error to explicitly mark the fact that the flow is stopped,
+          //falling through here makes the code far less understandable.
+          throw new CertificateExpiredError("Stored certificate has expired");
+        } else {
+          return { certPath, certPem, keyPath, keyPem };
+        }
+      } catch {
+        /* fall through to generate */
+      }
+    }
+  }
+
+  return createAndSaveCertificateWithKey(
+    dir,
+    baseName,
+    subject,
+    extraExtensions,
   );
 }
 

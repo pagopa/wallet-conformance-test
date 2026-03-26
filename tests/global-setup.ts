@@ -1,21 +1,33 @@
-import type { Server } from "http";
+import * as https from "node:https";
+import * as tls from "node:tls";
 
 import { createLogger } from "@/logic/logs";
 import { loadConfigWithHierarchy } from "@/logic/utils";
 import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
+import { createServer, startServer } from "@/trust-anchor/server";
 
-import { createServer } from "../src/trust-anchor/server";
-
-let server: Server;
+let trustAnchorServer: https.Server;
 
 export default async function setup() {
   const config = loadConfigWithHierarchy();
-  const port = config.trust_anchor.port;
-  const app = createServer();
   const baseLog = createLogger().withTag("globalSetup");
 
-  server = app.listen(port, () => {
-    baseLog.info(`Trust anchor server running at http://localhost:${port}`);
+  const trustAnchorApp = createServer(config);
+  const {
+    certPath,
+    certPem,
+    port,
+    server: trustAnchorHttpsServer,
+  } = await startServer(trustAnchorApp, config);
+
+  // Store cert for worker threads — setup-tls.ts reads this in each worker
+  process.env["TRUST_ANCHOR_CERT_PEM"] = certPem;
+  tls.setDefaultCACertificates([...tls.getCACertificates("system"), certPem]);
+
+  trustAnchorServer = trustAnchorHttpsServer.listen(port, () => {
+    baseLog.info(
+      `Trust anchor server running at https://localhost:${port} (cert: ${certPath})`,
+    );
   });
 
   await registerWithExternalTrustAnchor(config);
@@ -23,7 +35,7 @@ export default async function setup() {
   // teardown
   return async () => {
     await new Promise<void>((resolve) => {
-      server.close(() => {
+      trustAnchorServer.close(() => {
         baseLog.info("Trust anchor stopped");
         resolve();
       });
