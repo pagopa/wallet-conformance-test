@@ -59,13 +59,17 @@ export const createStatusListToken = async (
     typ: "statuslist+jwt",
     x5c: publicKey.x5c,
   };
+
+  const iat = Math.floor(Date.now() / 1000);
   const payload: JwtPayload = {
-    iat: Math.floor(Date.now() / 1000),
+    exp: iat + 86400, // 24h —  spec recommendation
+    iat,
     status_list: {
       bits: list.getBitsPerStatus(),
       lst: list.compressStatusList(),
     },
     sub: `${options.statusListEndpointBaseUrl}/status-list`,
+    ttl: 43200, // 12h cache TTL (≤ exp - iat)
   };
 
   const signResult = await signJwtCallback([privateKey])(

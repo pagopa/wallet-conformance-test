@@ -387,16 +387,16 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
 };
 
 /**
- * Assertion function checking some object's keys are actually defined
+ * Assertion function checking some object's keys are actually defined (not null or undefined)
  * @param object The object whose properties must be checked
  * @param keys The object's keys that must be defined
- * @throws {MissingFieldError} containing the list of keys that are not defined
+ * @throws {MissingFieldError} containing the list of keys that are null or undefined
  */
 export function hasObjectProperties<T, K extends keyof T>(
   object: T,
   keys: K[],
 ): asserts object is Required<Pick<T, K>> & T {
-  const missingKeys = keys.filter((key) => object[key] === undefined);
+  const missingKeys = keys.filter((key) => object[key] == null);
 
   if (missingKeys.length !== 0)
     throw new MissingFieldError(
