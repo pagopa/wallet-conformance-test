@@ -66,21 +66,10 @@ Copy the `config.example.ini` from the repository into your workspace and custom
 cp wallet-conformance-test/config.example.ini my-example/config.ini
 ```
 
-Then edit `my-example/config.ini` to point to your Relying Party (Verifier). Uncomment and update
-at minimum these fields under the `[presentation]` section:
-
-```ini
-[presentation]
-; URL of your Relying Party authorization endpoint (without query string)
-authorize_request_url = https://your-verifier.example.com/authorize
-```
-
 The `config.example.ini` template includes all available options (wallet configuration, trust
 anchors, logging, network timeouts, etc.) with sensible defaults. You only need to change what
 differs from the example.
 
-> **`authorize_request_url`** is mandatory. If it is missing, `definePresentationTest()` will
-> throw an error when you run the tests.
 
 ---
 
@@ -107,102 +96,100 @@ import type {
 
 // Top-level await is valid in the Vitest ESM context.
 // @ts-expect-error TS1309
-const testConfigs = await definePresentationTest("MyPresentationTest");
+const testConfig = await definePresentationTest("MyPresentationTest");
 
-testConfigs.forEach((testConfig) => {
-  describe(`[${testConfig.name}] My Presentation Tests`, () => {
-    const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
-    const baseLog = orchestrator.getLog();
+describe(`[${testConfig.name}] My Presentation Tests`, () => {
+  const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
+  const baseLog = orchestrator.getLog();
 
-    let authorizationRequestResponse: AuthorizationRequestStepResponse;
-    let redirectUriResponse: RedirectUriStepResponse;
+  let authorizationRequestResult: AuthorizationRequestStepResponse;
+  let redirectUriResult: RedirectUriStepResponse;
 
-    // Run the full presentation flow once before all assertions.
-    beforeAll(async () => {
-      ({ authorizationRequestResponse, redirectUriResponse } =
-        await orchestrator.presentation());
-    });
+  // Run the full presentation flow once before all assertions.
+  beforeAll(async () => {
+    ({ authorizationRequestResult, redirectUriResult } =
+      await orchestrator.presentation());
+  });
 
-    // Register the summary hook (prints pass/fail counts after the suite).
-    useTestSummary(baseLog, testConfig.name);
+  // Register the summary hook (prints pass/fail counts after the suite).
+  useTestSummary(baseLog, testConfig.name);
 
-    // ── Individual test cases ─────────────────────────────────────────────
+  // ── Individual test cases ───────────────────────────────────────────────
 
-    test("CP_001 — authorization request is parsed successfully", async () => {
-      let testSuccess = false;
-      try {
+  test("CP_001 — authorization request is parsed successfully", async () => {
+    let testSuccess = false;
+    try {
+      expect(
+        authorizationRequestResult.success,
+        "authorization request parsing must succeed",
+      ).toBe(true);
+      testSuccess = true;
+    } finally {
+      baseLog.testCompleted("CP_001", testSuccess);
+    }
+  });
+
+  test("CP_002 — VP token is created and included in response", async () => {
+    let testSuccess = false;
+    try {
+      expect(
+        authorizationRequestResult.response?.authorizationResponse.vpToken,
+        "VP token must be present in authorization response",
+      ).toBeDefined();
+      testSuccess = true;
+    } finally {
+      baseLog.testCompleted("CP_002", testSuccess);
+    }
+  });
+
+  test("CP_003 — authorization response is sent to verifier", async () => {
+    let testSuccess = false;
+    try {
+      expect(
+        authorizationRequestResult.response?.responseUri,
+        "response URI must be set",
+      ).toBeDefined();
+      testSuccess = true;
+    } finally {
+      baseLog.testCompleted("CP_003", testSuccess);
+    }
+  });
+
+  test("CP_004 — verifier accepts presentation", async () => {
+    let testSuccess = false;
+    try {
+      expect(
+        redirectUriResult.success,
+        "redirect response must be successful",
+      ).toBe(true);
+
+      // Presentation was accepted if response code is present
+      const isAccepted =
+        redirectUriResult.response?.responseCode !== undefined;
+      expect(isAccepted, "verifier should return a response code").toBe(true);
+
+      testSuccess = true;
+    } finally {
+      baseLog.testCompleted("CP_004", testSuccess);
+    }
+  });
+
+  test("CP_005 — response code is valid", async () => {
+    let testSuccess = false;
+    try {
+      if (redirectUriResult.response?.responseCode) {
         expect(
-          authorizationRequestResponse.success,
-          "authorization request parsing must succeed",
-        ).toBe(true);
+          redirectUriResult.response.responseCode.length,
+          "response code must be a non-empty string",
+        ).toBeGreaterThan(0);
         testSuccess = true;
-      } finally {
-        baseLog.testCompleted("CP_001", testSuccess);
-      }
-    });
-
-    test("CP_002 — VP token is created and included in response", async () => {
-      let testSuccess = false;
-      try {
-        expect(
-          authorizationRequestResponse.response?.authorizationResponse.vpToken,
-          "VP token must be present in authorization response",
-        ).toBeDefined();
+      } else {
+        // If presentation was declined, skip this test
         testSuccess = true;
-      } finally {
-        baseLog.testCompleted("CP_002", testSuccess);
       }
-    });
-
-    test("CP_003 — authorization response is sent to verifier", async () => {
-      let testSuccess = false;
-      try {
-        expect(
-          authorizationRequestResponse.response?.responseUri,
-          "response URI must be set",
-        ).toBeDefined();
-        testSuccess = true;
-      } finally {
-        baseLog.testCompleted("CP_003", testSuccess);
-      }
-    });
-
-    test("CP_004 — verifier accepts presentation", async () => {
-      let testSuccess = false;
-      try {
-        expect(
-          redirectUriResponse.success,
-          "redirect response must be successful",
-        ).toBe(true);
-
-        // Presentation was accepted if response code is present
-        const isAccepted =
-          redirectUriResponse.response?.responseCode !== undefined;
-        expect(isAccepted, "verifier should return a response code").toBe(true);
-
-        testSuccess = true;
-      } finally {
-        baseLog.testCompleted("CP_004", testSuccess);
-      }
-    });
-
-    test("CP_005 — response code is valid", async () => {
-      let testSuccess = false;
-      try {
-        if (redirectUriResponse.response?.responseCode) {
-          expect(
-            redirectUriResponse.response.responseCode.length,
-            "response code must be a non-empty string",
-          ).toBeGreaterThan(0);
-          testSuccess = true;
-        } else {
-          // If presentation was declined, skip this test
-          testSuccess = true;
-        }
-      } finally {
-        baseLog.testCompleted("CP_005", testSuccess);
-      }
-    });
+    } finally {
+      baseLog.testCompleted("CP_005", testSuccess);
+    }
   });
 });
 ```
@@ -210,7 +197,7 @@ testConfigs.forEach((testConfig) => {
 ### What happens when this test runs
 
 1. `definePresentationTest("MyPresentationTest")` reads `config.ini` and creates one
-   `VerifierTestConfiguration`.
+   `PresentationTestConfiguration`.
 2. The `WalletPresentationOrchestratorFlow` executes the full presentation flow:
    **Fetch RP Metadata → Authorization Request → Build VP Token → Send Authorization Response → Redirect**.
 3. The `beforeAll` block stores the step responses; each `test()` block asserts on them.
@@ -234,12 +221,19 @@ cd my-test/wallet-conformance-test
 wct test:presentation \
   --file-ini           ../my-example/config.ini \
   --presentation-tests-dir ../my-example
+  --presentation-authorize-uri 'https://your-verifier.example.com/authorize?....'
 ```
+
+`--presentation-authorize-uri` point to your authorize url Relying Party (Verifier) (generally url included in QR code).
+
+> **`--presentation-authorize-uri`** is mandatory. If it is missing, `definePresentationTest()` will
+> throw an error when you run the tests.
 
 | Option | Description |
 |---|---|
 | `--file-ini <path>` | Path to your `config.ini`, relative to `wallet-conformance-test/` |
 | `--presentation-tests-dir <path>` | Directory where Vitest looks for `*.presentation.spec.ts` files |
+| `--presentation-authorize-uri <uri>` | presentation authorize URL |
 
 > Both paths are resolved relative to `wallet-conformance-test/` (your current working directory).
 > The `../my-example` examples above work because `my-example/` is a sibling of
@@ -337,15 +331,15 @@ test("CP_006 — handle declined presentation gracefully", async () => {
   try {
     // When presentation is declined, redirectUri and responseCode are undefined
     const isDeclined =
-      redirectUriResponse.response?.responseCode === undefined &&
-      redirectUriResponse.response?.redirectUri === undefined;
+      redirectUriResult.response?.responseCode === undefined &&
+      redirectUriResult.response?.redirectUri === undefined;
 
     const isAccepted =
-      redirectUriResponse.response?.responseCode !== undefined;
+      redirectUriResult.response?.responseCode !== undefined;
 
     // Test should pass if request succeeded regardless of accept/decline
     expect(
-      redirectUriResponse.success,
+      redirectUriResult.success,
       "redirect step must complete successfully",
     ).toBe(true);
 
@@ -397,7 +391,7 @@ export class MalformedVpTokenStep extends AuthorizationRequestDefaultStep {
 }
 ```
 
-Then register it in `steps/` and reference it in your test via `IssuerTestConfiguration.createCustom()`.
+Then register it in `steps/` as described in Step 5b — the auto-discovery mechanism will inject the custom step automatically when `definePresentationTest()` is called.
 
 ---
 
