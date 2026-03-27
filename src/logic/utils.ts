@@ -1,14 +1,27 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  createFetcher,
+  Fetch,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
+import * as x509 from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "path";
 
+import { CertificateExpiredError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
   createAndSaveCertificate,
+  createAndSaveCertificateWithKey,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
   verifyJwt,
@@ -23,14 +36,33 @@ export {
 
 export const partialCallbacks: Pick<
   CallbackContext,
-  "fetch" | "generateRandom" | "hash" | "verifyJwt"
+  "generateRandom" | "hash" | "verifyJwt"
 > = {
-  fetch,
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };
+
+export function fetchWithConfig(network: Config["network"]): Fetch {
+  return (input, init) => {
+    // Normalize all HeadersInit variants (plain object, Headers instance, tuple array)
+    // and set required headers last so callers cannot override them.
+    const headers = new Headers(init?.headers);
+    if (network.user_agent) {
+      headers.set("User-Agent", network.user_agent);
+    }
+
+    // Always enforce the configured timeout; merge with any caller-provided
+    // signal so explicit cancellation still works.
+    const timeoutSignal = AbortSignal.timeout(network.timeout * 1000);
+    const signal = init?.signal
+      ? AbortSignal.any([timeoutSignal, init.signal])
+      : timeoutSignal;
+
+    return fetch(input, { ...init, headers, signal });
+  };
+}
 
 /**
  * Fetches a resource with a specified number of retries on failure.
@@ -48,14 +80,9 @@ export async function fetchWithRetries(
 ): Promise<FetchWithRetriesResponse> {
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
-      const response = await fetch(url, {
+      const response = await createFetcher(fetchWithConfig(network))(url, {
         method: "GET",
-        signal: AbortSignal.timeout(network.timeout * 1000),
         ...init,
-        headers: {
-          ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
-          ...init?.headers,
-        },
       });
 
       return { attempts, response };
@@ -245,6 +272,65 @@ export async function loadJwksWithX5C(
 }
 
 /**
+ * Loads an existing cert/key pair from `dir` if one is present, otherwise
+ * creates a new one via {@link createAndSaveCertificateWithKey}.
+ *
+ * File discovery: looks for `${baseName}.cert.pem` and `${baseName}.key.pem` in `dir`.
+ * Falls through to creation if the directory is absent, those files are missing,
+ * or either file cannot be read.
+ *
+ * @param dir Directory to search or write files into.
+ * @param baseName Base filename (without extension) for the cert and key files.
+ * @param subject The subject / CN — used only when creation is needed.
+ * @param extraExtensions Additional X.509 extensions — used only when creation is needed.
+ * @returns The cert PEM, key PEM, and absolute paths of the cert and key files.
+ */
+export async function loadOrCreateCertificateWithKey(
+  dir: string,
+  baseName: string,
+  subject: string,
+  extraExtensions: x509.Extension[] = [],
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> {
+  const dirCreated = ensureDir(dir);
+
+  if (!dirCreated) {
+    const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
+    const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
+    if (existsSync(certPath) && existsSync(keyPath)) {
+      try {
+        const certPem = readFileSync(certPath, "utf-8");
+        const keyPem = readFileSync(keyPath, "utf-8");
+        //TODO: Await WLEO-885 to replace with proper expiration check method
+        const cert = new x509.X509Certificate(certPem);
+        if (cert.notAfter < new Date()) {
+          rmSync(certPath);
+          rmSync(keyPath);
+          //We throw an error to explicitly mark the fact that the flow is stopped,
+          //falling through here makes the code far less understandable.
+          throw new CertificateExpiredError("Stored certificate has expired");
+        } else {
+          return { certPath, certPem, keyPath, keyPem };
+        }
+      } catch {
+        /* fall through to generate */
+      }
+    }
+  }
+
+  return createAndSaveCertificateWithKey(
+    dir,
+    baseName,
+    subject,
+    extraExtensions,
+  );
+}
+
+/**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
  * wallet provider key pair, suitable for use in
  * WalletAttestationOptionsV1_3.signer.x5c.
@@ -303,7 +389,6 @@ export function saveCredentialToDisk(
     return null;
   }
 }
-
 
 /**
  * Validates that a given key pair has a `kid` and that the `kid` matches between the private and public keys.

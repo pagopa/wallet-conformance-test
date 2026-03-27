@@ -15,9 +15,19 @@ import {
   RedirectUriDefaultStep,
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
-import { AttestationResponse, Config, CredentialWithKey } from "@/types";
+import { assertStepSuccess } from "@/step/step-flow";
+import {
+  AttestationResponse,
+  Config,
+  CredentialWithKey,
+  PresentationFlowResponse,
+} from "@/types";
 
 export class WalletPresentationOrchestratorFlow {
+  private _authorizationRequestResult?: AuthorizationRequestStepResponse;
+  private _fetchMetadataResult?: FetchMetadataVpStepResponse;
+  private _redirectUriResult?: RedirectUriStepResponse;
+
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
   private fetchMetadataStep: FetchMetadataVpDefaultStep;
@@ -80,16 +90,15 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  async presentation(): Promise<{
-    authorizationRequestResult: AuthorizationRequestStepResponse;
-    fetchMetadataResult: FetchMetadataVpStepResponse;
-    redirectUriResult: RedirectUriStepResponse;
-  }> {
+  async presentation(): Promise<PresentationFlowResponse> {
+    this.resetResponses();
+
     const TOTAL_STEPS = 3;
     try {
       const fetchMetadataResult = await this.fetchMetadataStep.run({
         baseUrl: this.prepareBaseUrl(),
       });
+      this._fetchMetadataResult = fetchMetadataResult;
       this.log.flowStep(
         1,
         TOTAL_STEPS,
@@ -97,6 +106,7 @@ export class WalletPresentationOrchestratorFlow {
         fetchMetadataResult.success,
         fetchMetadataResult.durationMs ?? 0,
       );
+      assertStepSuccess(fetchMetadataResult, "Fetch Metadata");
 
       const verifierMetadata =
         this.extractVerifierMetadata(fetchMetadataResult);
@@ -137,10 +147,17 @@ export class WalletPresentationOrchestratorFlow {
         authorizationRequestResult,
         fetchMetadataResult,
         redirectUriResult,
+        success: true,
       };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
-      throw e;
+      return {
+        authorizationRequestResult: this._authorizationRequestResult,
+        error: e instanceof Error ? e : new Error(String(e)),
+        fetchMetadataResult: this._fetchMetadataResult,
+        redirectUriResult: this._redirectUriResult,
+        success: false,
+      };
     }
   }
 
@@ -155,12 +172,9 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       });
+    this._authorizationRequestResult = authorizationRequestResponse;
 
-    if (!authorizationRequestResponse.response) {
-      throw new Error(
-        "Authorization Request response is missing or contains an error",
-      );
-    }
+    assertStepSuccess(authorizationRequestResponse, "Authorization Request");
 
     return authorizationRequestResponse;
   }
@@ -172,11 +186,14 @@ export class WalletPresentationOrchestratorFlow {
       throw new Error("Authorization Request response is missing");
     }
 
-    return await this.redirectUriStep.run({
+    const redirectUriResult = await this.redirectUriStep.run({
       authorizationResponse:
         authorizationRequestResult.response.authorizationResponse,
       responseUri: authorizationRequestResult.response.responseUri,
     });
+    this._redirectUriResult = redirectUriResult;
+    assertStepSuccess(redirectUriResult, "Redirect URI");
+    return redirectUriResult;
   }
 
   private extractVerifierMetadata(
@@ -237,5 +254,11 @@ export class WalletPresentationOrchestratorFlow {
     }
 
     return this.config.presentation.verifier;
+  }
+
+  private resetResponses(): void {
+    this._authorizationRequestResult = undefined;
+    this._fetchMetadataResult = undefined;
+    this._redirectUriResult = undefined;
   }
 }

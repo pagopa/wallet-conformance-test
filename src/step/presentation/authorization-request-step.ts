@@ -130,12 +130,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         authorization_encrypted_response_enc,
         callbacks: {
           ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(encryptionKey, {
-            alg: authorization_encrypted_response_alg,
-            enc: authorization_encrypted_response_enc,
-            kid: encryptionKey.kid,
-            typ: "oauth-authz-req+jwt",
-          }),
+          encryptJwe: getEncryptJweCallback(encryptionKey),
         },
         requestObject,
         rpJwks: {

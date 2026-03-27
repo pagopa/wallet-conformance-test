@@ -1,5 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import { definePresentationTest } from "#/config/test-metadata";
+import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -23,12 +24,16 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
   beforeAll(async () => {
     try {
-      ({ authorizationRequestResult, fetchMetadataResult, redirectUriResult } =
-        await orchestrator.presentation());
+      const result = await orchestrator.presentation();
+      assertPresentationFlowSuccess(result);
+
+      authorizationRequestResult = result.authorizationRequestResult;
+      fetchMetadataResult = result.fetchMetadataResult;
+      redirectUriResult = result.redirectUriResult;
 
       baseLog.info("Presentation flow completed successfully");
     } catch (e) {
-      baseLog.error("Presentation flow failed:", e);
+      baseLog.error(e);
       throw e;
     } finally {
       // Give time for all logs to be flushed before starting tests

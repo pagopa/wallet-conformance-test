@@ -87,6 +87,7 @@ export const configSchema = z.object({
     external_ta_onboarding_url: z.string().url().optional(),
     external_ta_url: z.string().url().optional(),
     port: z.coerce.number(),
+    tls_cert_dir: z.string().optional(),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),
