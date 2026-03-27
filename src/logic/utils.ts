@@ -24,6 +24,7 @@ import {
   createAndSaveCertificateWithKey,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
+  hasX509CertificateExpired,
   verifyJwt,
 } from ".";
 
@@ -158,6 +159,50 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
+ * Deep merges two objects, with the second object's values taking precedence.
+ *
+ * @param target The target object (lower priority).
+ * @param source The source object (higher priority).
+ * @returns The merged object.
+ */
+export function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (sourceValue === undefined) {
+      continue;
+    }
+
+    if (
+      typeof sourceValue === "object" &&
+      sourceValue !== null &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === "object" &&
+      targetValue !== null &&
+      !Array.isArray(targetValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<
+        keyof T,
+        string
+      >];
+    } else {
+      // Override with source value
+      result[key] = sourceValue as T[Extract<keyof T, string>];
+    }
+  }
+
+  return result;
+}
+
+/**
  * Ensures a directory exists, creating it if necessary.
  *
  * @param dirPath The directory path to ensure.
@@ -201,6 +246,11 @@ export async function loadCertificate(
         .replace("-----END CERTIFICATE-----", "")
         .replace(/\s+/g, "")
         .trim();
+
+      if (hasX509CertificateExpired(certDerBase64))
+        throw new CertificateExpiredError(
+          "Certificate has expired and has to be regenerated",
+        );
 
       return certDerBase64;
     } catch {
@@ -307,7 +357,7 @@ export async function loadOrCreateCertificateWithKey(
         const keyPem = readFileSync(keyPath, "utf-8");
         //TODO: Await WLEO-885 to replace with proper expiration check method
         const cert = new x509.X509Certificate(certPem);
-        if (cert.notAfter < new Date()) {
+        if (hasX509CertificateExpired(cert)) {
           rmSync(certPath);
           rmSync(keyPath);
           //We throw an error to explicitly mark the fact that the flow is stopped,

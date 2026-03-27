@@ -145,9 +145,7 @@ describe("createStatusListToken", () => {
     });
     vi.spyOn(utils, "loadCertificate").mockResolvedValueOnce("dummycert");
 
-    await expect(
-      createStatusListToken(walletOptions),
-    ).rejects.toThrow(
+    await expect(createStatusListToken(walletOptions)).rejects.toThrow(
       /Error, the following keys are missing from object: alg/,
     );
   });

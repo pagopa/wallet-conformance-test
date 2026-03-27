@@ -3,6 +3,7 @@ import {
   ItWalletEntityConfigurationClaimsOptions,
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
+import { decodeJwt } from "@sd-jwt/decode";
 
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
@@ -225,6 +226,15 @@ export const createSubordinateWalletUnitMetadata = async (
     signedJwks,
   });
 };
+
+export const hasTrustChainExpired = (trust_chain: string[]) =>
+  trust_chain.some((statement) => {
+    const decoded = decodeJwt(statement);
+    const exp = decoded.payload.exp;
+    return (
+      exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now()
+    );
+  });
 
 export async function getTrustMarks(
   trust_anchor_base_url: string,
