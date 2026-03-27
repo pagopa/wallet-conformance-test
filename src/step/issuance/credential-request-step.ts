@@ -137,7 +137,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       status: {
         status_list: {
           idx: 0,
-          uri: "http://example.com",
+          uri: `https://127.0.0.1:${this.config.trust_anchor.port}/wallet/status-list`,
         },
       },
       userAuthentication: ["iso_18045_basic"],
