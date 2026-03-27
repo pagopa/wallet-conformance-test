@@ -133,7 +133,7 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
     let testSuccess = false;
     try {
       expect(
-        authorizationRequestResult.response?.authorizationResponse.vpToken,
+        authorizationRequestResult.response?.authorizationResponse.authorizationResponsePayload.vp_token,
         "VP token must be present in authorization response",
       ).toBeDefined();
       testSuccess = true;

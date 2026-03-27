@@ -159,13 +159,15 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   error?: Error;
   durationMs?: number;
   response?: {
-    authorizeResponse?: AuthorizationResponse;  // Authorization response from issuer
-    iss: string;                                 // Issuer identifier
-    requestObject?: ParsedAuthorizeRequestResult["payload"];  // Parsed request object JWT
-    requestObjectJwt: string;                    // Raw request object JWT
-    // Additional fields for presentation flows
-    vp_token?: string;                           // VP token sent in response
-    // ... other authorization response fields
+    // AuthorizationResponse — the redirect-based code response from the issuer
+    authorizeResponse?: {
+      code: string;   // OAuth2 authorization code to exchange for a token
+      iss: string;    // Issuer identifier (echoed from the request)
+      state: string;  // State parameter (must match what was sent in PAR)
+    };
+    iss: string;                                              // Issuer Base URL (from step options)
+    requestObject?: Openid4vpAuthorizationRequestPayload;     // Parsed request object claims
+    requestObjectJwt: string;                                 // Raw request object JWT string
   }
 }
 ```
@@ -189,6 +191,7 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
     },
     "authorizeResponse": {
       "code": "authorization-code-12345",
+      "iss": "https://issuer.example.com",
       "state": "random-state"
     }
   }
@@ -223,14 +226,19 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: AccessTokenResponse & {
-    access_token: string;                   // The access token
-    token_type: string;                     // Token type (e.g., "Bearer", "DPoP")
-    expires_in?: number;                    // Token expiration time in seconds
+  response?: {
+    // AccessTokenResponse fields
+    access_token: string;                   // The access token JWT
+    token_type: "Bearer" | "DPoP";          // Token type
+    expires_in?: number;                    // Token lifetime in seconds
     refresh_token?: string;                 // Optional refresh token
-    c_nonce?: string;                       // Nonce for next credential request
-    c_nonce_expires_in?: number;            // Nonce expiration
-    // ... other token response fields
+    authorization_details?: Array<{         // Credential-specific authorization details
+      type: "openid_credential";
+      credential_configuration_id?: string;
+      credential_identifiers?: string[];
+    }>;
+    // Step-added field
+    dPoPKey: KeyPair;                       // Ephemeral DPoP key pair — MUST be passed to CredentialRequestStep
   }
 }
 ```
@@ -241,11 +249,20 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   "success": true,
   "durationMs": 187,
   "response": {
-    "access_token": "SlAV32hkKG02ejjyd...eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9",
-    "token_type": "Bearer",
+    "access_token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImF0K2p3dCJ9...",
+    "token_type": "DPoP",
     "expires_in": 3600,
-    "c_nonce": "fUHyO2Dw3L-4-t88bF4b5Q",
-    "c_nonce_expires_in": 86400
+    "authorization_details": [
+      {
+        "type": "openid_credential",
+        "credential_configuration_id": "dc_sd_jwt_PersonIdentificationData",
+        "credential_identifiers": ["PID_1"]
+      }
+    ],
+    "dPoPKey": {
+      "publicKey": { "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "..." },
+      "privateKey": { "kty": "EC", "crv": "P-256", "d": "...", "x": "...", "y": "..." }
+    }
   }
 }
 ```
@@ -253,8 +270,8 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
 **Common Assertions**:
 - `response.success === true`
 - `response.response?.access_token` is a non-empty string
-- `response.response?.token_type` → "Bearer" or "DPoP"
-- `response.response?.c_nonce` is present (if credential endpoint requires it)
+- `response.response?.token_type` is `"Bearer"` or `"DPoP"`
+- `response.response?.dPoPKey` is present (pass it to `CredentialRequestStepOptions.dPoPKey`)
 
 ---
 
@@ -321,6 +338,7 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   clientId: string;                                           // OAuth2 Client ID
   credentialIdentifier: string;                               // Credential configuration ID
   credentialRequestEndpoint: string;                          // Credential endpoint URL
+  dPoPKey: KeyPair;                                           // Ephemeral DPoP key from TokenRequestStep — MUST be the same key
   nonce: string;                                              // Nonce from nonce request
   walletAttestation: Omit<AttestationResponse, "created">;    // Wallet authentication
   createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions>;  // Override specific fields
@@ -334,13 +352,15 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: ImmediateCredentialResponse & {
-    credential: string;                    // The issued credential (SD-JWT, mDOC, etc.)
-    format: string;                        // Credential format (e.g., "vc+sd-jwt", "mso_mdoc")
-    c_nonce?: string;                      // New nonce for next request (batch issuance)
-    c_nonce_expires_in?: number;           // New nonce expiration
-    credentialKeyPair: KeyPair;            // Generated key pair for the credential
-    // ... other credential response fields
+  response?: {
+    // ImmediateCredentialResponse fields
+    credentials: [                         // Non-empty array (at least one element guaranteed)
+      { credential: string },              // credential: the issued token (SD-JWT, mDOC, …)
+      ...{ credential: string }[]
+    ];
+    notification_id?: string;             // Optional notification ID for deferred status
+    // Step-added field
+    credentialKeyPair: KeyPair;            // Key pair generated for this credential's proof
   }
 }
 ```
@@ -351,13 +371,14 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
   "success": true,
   "durationMs": 256,
   "response": {
-    "credential": "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsImtpZCI6ImtleTox...",
-    "format": "vc+sd-jwt",
-    "c_nonce": "newNonceForBatchIssuance",
-    "c_nonce_expires_in": 86400,
+    "credentials": [
+      {
+        "credential": "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsImtpZCI6ImtleTox..."
+      }
+    ],
     "credentialKeyPair": {
-      "publicKey": { ... },
-      "privateKey": "..."
+      "publicKey": { "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "..." },
+      "privateKey": { "kty": "EC", "crv": "P-256", "d": "...", "x": "...", "y": "..." }
     }
   }
 }
@@ -365,8 +386,8 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
 
 **Common Assertions**:
 - `response.success === true`
-- `response.response?.credential` is a non-empty string (JWT or mDOC)
-- `response.response?.format` matches expected credential format
+- `response.response?.credentials` is a non-empty array
+- `response.response?.credentials[0].credential` is a non-empty string (JWT or mDOC)
 - `response.response?.credentialKeyPair` contains public and private key components
 
 **Note**: Use `createCredentialRequestOverrides` to test negative cases (e.g., wrong proofType, invalid nonce).
@@ -411,7 +432,7 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
       "iss": "https://verifier.example.com",
       "sub": "https://verifier.example.com",
       "metadata": {
-        "openid_relying_party": {
+        "openid_credential_verifier": {
           "contacts": ["info@verifier.example.com"],
           "grant_types": ["authorization_code"],
           "redirect_uris": ["https://verifier.example.com/callback"]
@@ -428,7 +449,7 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
 - `response.success === true`
 - `response.response?.status === 200`
 - `response.response?.entityStatementClaims` contains expected verifier metadata
-- `response.response?.entityStatementClaims.metadata.openid_relying_party` is present
+- `response.response?.entityStatementClaims.metadata.openid_credential_verifier` is present
 
 ---
 
@@ -453,14 +474,46 @@ from available credentials, and creates the authorization response.
   error?: Error;
   durationMs?: number;
   response?: {
-    parsedQrCode: ParsedQrCode;                     // Parsed QR code / auth request URL
-    authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;  // Request headers
-    requestObject: ParsedAuthorizeRequestResult["payload"];  // Parsed request object
-    responseUri: string;                            // Response URI for sending auth response
-    authorizationResponse: CreateAuthorizationResponseResult;  // Built authorization response
-    // Contains:
-    //   - jarm: { responseJwe: string }
-    //   - vpToken: string (VP token created from credentials)
+    // ParsedQrCode — decoded from the authorization request URL
+    parsedQrCode: {
+      clientId: string;                    // client_id from the authorization URL
+      requestUri?: string;                 // request_uri from the authorization URL
+      requestUriMethod?: "get" | "post";   // HTTP method used to fetch the request object
+    };
+
+    // Openid4vpAuthorizationRequestHeader — JWT header of the request object (version-dependent)
+    // V1.0: { alg, kid, typ: "oauth-authz-req+jwt", trust_chain: string[] }
+    // V1.3: { alg, kid, typ: "oauth-authz-req+jwt", x5c: string[], trust_chain?: string[] }
+    authorizationRequestHeader: {
+      alg: string;
+      kid: string;
+      typ: "oauth-authz-req+jwt";
+      trust_chain?: string[];  // V1.0: required; V1.3: optional
+      x5c?: string[];          // V1.3 only
+    };
+
+    // Openid4vpAuthorizationRequestPayload — decoded request object claims
+    requestObject: {
+      client_id: string;
+      nonce: string;
+      response_mode: string;     // e.g. "direct_post.jwt"
+      response_type: string;     // "vp_token"
+      response_uri: string;      // Where to POST the authorization response
+      state?: string;
+      dcql_query?: object;       // DCQL credential request query
+      // … other OpenID4VP request object claims
+    };
+
+    responseUri: string;         // Convenience copy of requestObject.response_uri
+
+    // CreateAuthorizationResponseResult — the encrypted JARM response to send back
+    authorizationResponse: {
+      authorizationResponsePayload: object;  // Openid4vpAuthorizationResponse claims
+      jarm: {
+        encryptionJwk: object;   // JWK used to encrypt the response
+        responseJwe: string;     // Compact JWE to POST to responseUri
+      };
+    };
   }
 }
 ```
@@ -472,29 +525,35 @@ from available credentials, and creates the authorization response.
   "durationMs": 523,
   "response": {
     "parsedQrCode": {
-      "clientId": "s6BhdRkqt3",
-      "responseMode": "direct_post",
-      "responseUri": "https://verifier.example.com/response"
+      "clientId": "https://verifier.example.com",
+      "requestUri": "https://verifier.example.com/request/abc123",
+      "requestUriMethod": "get"
     },
     "authorizationRequestHeader": {
       "alg": "ES256",
-      "typ": "JWT",
-      "kid": "verifier_key_1"
+      "typ": "oauth-authz-req+jwt",
+      "kid": "verifier_key_1",
+      "trust_chain": ["eyJ..."]
     },
     "requestObject": {
-      "client_id": "s6BhdRkqt3",
+      "client_id": "https://verifier.example.com",
       "response_type": "vp_token",
       "response_mode": "direct_post.jwt",
       "nonce": "n-0S6_WzA2Mj",
+      "state": "xyz",
       "response_uri": "https://verifier.example.com/response",
-      "dcql_query": { ... }
+      "dcql_query": {}
     },
     "responseUri": "https://verifier.example.com/response",
     "authorizationResponse": {
-      "jarm": {
-        "responseJwe": "eyJhbGciOiJFQ0RILUVTKzEyOCIsImVuYyI6IkExMjhDQkMtSFMyNTYi..."
+      "authorizationResponsePayload": {
+        "vp_token": { "PID_1": "eyJ..." },
+        "state": "xyz"
       },
-      "vpToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..."
+      "jarm": {
+        "encryptionJwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "..." },
+        "responseJwe": "eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTI1NkdDTSJ9..."
+      }
     }
   }
 }
@@ -502,8 +561,7 @@ from available credentials, and creates the authorization response.
 
 **Common Assertions**:
 - `response.success === true`
-- `response.response?.authorizationResponse.jarm.responseJwe` is present
-- `response.response?.authorizationResponse.vpToken` is a valid JWT
+- `response.response?.authorizationResponse.jarm?.responseJwe` is present
 - `response.response?.requestObject.nonce` is non-empty
 - `response.response?.responseUri` matches expected verifier response endpoint
 
@@ -589,9 +647,9 @@ When running orchestrators, you access step outputs via the orchestrator results
 
 ```typescript
 // Issuance flow
-const { 
+const {
   fetchMetadataResponse,
-  pushedAuthorizationResponse,
+  pushedAuthorizationRequestResponse,   // note: full name, not pushedAuthorizationResponse
   authorizeResponse,
   tokenResponse,
   nonceResponse,
@@ -604,7 +662,14 @@ if (!tokenResponse.success) {
 }
 
 // Extract response data
-const { access_token } = tokenResponse.response || {};
+const { access_token, dPoPKey } = tokenResponse.response || {};
+
+// Presentation flow — field names use the "Result" suffix
+const {
+  fetchMetadataResult,
+  authorizationRequestResult,
+  redirectUriResult,
+} = await orchestrator.presentation();
 ```
 
 ## Error Handling
@@ -641,6 +706,6 @@ export class CustomTokenStep extends TokenRequestDefaultStep {
 ## Further Reading
 
 - [ISSUANCE-TESTING-GUIDE.md](./ISSUANCE-TESTING-GUIDE.md) — Step-by-step guide for writing issuance tests
-- [TEST-CONFIGURATION-GUIDE.md](../tests/TEST-CONFIGURATION-GUIDE.md) — Configuration reference
+- [TEST-CONFIGURATION-GUIDE.md](./TEST-CONFIGURATION-GUIDE.md) — Configuration reference
 - `src/orchestrator/` — Orchestrator implementations
 - `src/step/` — All step implementations
