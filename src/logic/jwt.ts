@@ -11,7 +11,6 @@ import {
   CompactEncrypt,
   CompactSign,
   importJWK,
-  JWEHeaderParameters,
   type JWK,
   jwtVerify,
   SignJWT,
@@ -113,18 +112,15 @@ export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
  * @param header The JWE header parameters.
  * @returns An `EncryptJweCallback` function.
  */
-export function getEncryptJweCallback(
-  publicKey: Jwk,
-  header: JWEHeaderParameters & { alg: string; enc: string },
-): EncryptJweCallback {
-  return async (_: JweEncryptor, data: string) => {
-    const key = await importJWK(publicKey, header.alg);
+export function getEncryptJweCallback(publicKey: Jwk): EncryptJweCallback {
+  return async (jweEncryptor: JweEncryptor, data: string) => {
+    const key = await importJWK(publicKey, jweEncryptor.alg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
       .setProtectedHeader({
-        alg: header.alg,
-        enc: header.enc,
+        alg: jweEncryptor.alg,
+        enc: jweEncryptor.enc,
         kid: publicKey.kid,
       })
       .encrypt(key);

@@ -37,6 +37,7 @@ import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   createKeys,
+  fetchWithConfig,
   loadConfigWithHierarchy,
   partialCallbacks,
   signJwtCallback,
@@ -309,7 +310,9 @@ testConfigs.forEach((testConfig) => {
         try {
           const response = await fetchCredentialResponse({
             accessToken: accessToken,
-            callbacks: { fetch: partialCallbacks.fetch },
+            callbacks: {
+              fetch: fetchWithConfig(orchestrator.getConfig().network),
+            },
             credentialEndpoint,
             credentialRequest: batchRequestWithDuplicates,
             dPoP: dpop,

@@ -12,21 +12,19 @@ import {
   fetchCredentialResponse,
   FetchCredentialResponseOptions,
   ImmediateCredentialResponse,
-  KeyAttestationHeader,
-  KeyAttestationPayload,
+  WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
 import {
-  dateToSeconds,
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 
 import {
-  buildCertPath,
   buildJwksPath,
   createAndSaveKeys,
   createKeys,
-  loadCertificate,
+  fetchWithConfig,
+  loadWalletProviderCertificate,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -113,47 +111,36 @@ export class CredentialRequestDefaultStep extends StepFlow {
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
     credentialKeyPair: KeyPair,
-  ) {
-    const { unitKey } = walletAttestation;
+  ): Promise<string> {
+    const { providerKey } = walletAttestation;
 
-    const unitSigner = {
-      alg: "ES256",
-      method: "jwk" as const,
-      publicJwk: unitKey.publicKey,
-    };
-
-    const unitCertificate = await loadCertificate(
-      this.config.wallet.backup_storage_path,
-      buildCertPath("wallet_unit"),
-      unitKey,
-      `CN=${this.config.wallet.wallet_id}`,
+    const x5c = await loadWalletProviderCertificate(
+      this.config.wallet,
+      providerKey,
     );
 
-    const keyAttestationHeader: KeyAttestationHeader = {
-      alg: "ES256",
-      kid: unitSigner.publicJwk.kid,
-      typ: "key-attestation+jwt",
-      x5c: [unitCertificate],
-    };
+    const provider = new WalletProvider(this.ioWalletSdkConfig);
 
-    const keyAttestationPayload: KeyAttestationPayload = {
-      attested_keys: [credentialKeyPair.publicKey],
-      exp: dateToSeconds(new Date(Date.now() + 24 * 60 * 60 * 1000 * 365)),
-      iat: dateToSeconds(new Date()),
-      iss: unitKey.publicKey.kid,
-      key_storage: ["iso_18045_basic"],
+    return provider.createItKeyAttestationJwt({
+      attestedKeys: [credentialKeyPair.publicKey],
+      callbacks: {
+        signJwt: signJwtCallback([providerKey.privateKey]),
+      },
+      issuer: this.config.wallet.wallet_provider_base_url,
+      keyStorage: ["iso_18045_basic"],
+      signer: {
+        alg: "ES256",
+        kid: providerKey.publicKey.kid,
+        method: "x5c",
+        x5c,
+      },
       status: {
         status_list: {
           idx: 0,
-          uri: "http://example.com",
+          uri: `https://127.0.0.1:${this.config.trust_anchor.port}/wallet/status-list`,
         },
       },
-      user_authentication: ["iso_18045_basic"],
-    };
-
-    return signJwtCallback([unitKey.privateKey])(unitSigner, {
-      header: keyAttestationHeader,
-      payload: keyAttestationPayload,
+      userAuthentication: ["iso_18045_basic"],
     });
   }
 
@@ -238,7 +225,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       return createCredentialRequest({
         ...commonOptions,
         config: this.ioWalletSdkConfig,
-        keyAttestation: keyAttestation.jwt,
+        keyAttestation,
         signers: [
           {
             alg: "ES256",
@@ -295,7 +282,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
   ): Promise<CredentialResponse> {
     const fetchOptions: FetchCredentialResponseOptions = {
       accessToken: options.accessToken,
-      callbacks: { fetch },
+      callbacks: { fetch: fetchWithConfig(this.config.network) },
       credentialEndpoint: options.credentialRequestEndpoint,
       credentialRequest,
       dPoP: dpop,

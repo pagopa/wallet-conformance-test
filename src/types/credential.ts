@@ -1,14 +1,25 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
-import { Jwt } from "@sd-jwt/core";
+import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery, DcqlQueryResult } from "dcql";
+import z from "zod";
 
 import { KeyPair, KeyPairJwk } from "./key-pair";
 
-export interface Credential {
+export type Credential = {
   compact: string;
-  parsed: IssuerSignedDocument | Jwt;
-  typ: "dc+sd-jwt" | "mso_mdoc";
-}
+} & (
+  | {
+      parsed: Awaited<ReturnType<typeof SDJwt.decodeSDJwt>>;
+      typ: "dc+sd-jwt";
+    }
+  | {
+      parsed: IssuerSignedDocument;
+      typ: "mso_mdoc";
+    }
+);
+
+export const zTrustChain = z.string().array();
+export const zX5c = z.string().array();
 
 export interface CredentialWithKey {
   credential: string;

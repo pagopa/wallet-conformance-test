@@ -8,7 +8,12 @@ import {
   Jwk,
 } from "@pagopa/io-wallet-oauth2";
 
-import { createKeys, partialCallbacks, signJwtCallback } from "@/logic";
+import {
+  createKeys,
+  fetchWithConfig,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
 
@@ -96,7 +101,7 @@ export class TokenRequestDefaultStep extends StepFlow {
         accessTokenEndpoint: options.accessTokenEndpoint,
         accessTokenRequest: options.accessTokenRequest,
         callbacks: {
-          fetch,
+          fetch: fetchWithConfig(this.config.network),
         },
         clientAttestationDPoP: options.popAttestation,
         dPoP: tokenDPoP.jwt,
