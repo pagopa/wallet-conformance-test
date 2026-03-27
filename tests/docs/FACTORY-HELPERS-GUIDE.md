@@ -16,13 +16,11 @@ Create your step classes using factory helpers and pass them to `IssuerTestConfi
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { IssuerTestConfiguration } from "#/config";
 import {
-  withParOverrides,
   withSignJwtOverride,
   signWithHS256,
   signWithWrongKey,
 } from "#/helpers/par-validation-helpers";
 import { beforeAll, describe, test, expect } from "vitest";
-import { PushedAuthorizationRequestDefaultStep } from "@/step/issuance";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import type { PushedAuthorizationRequestResponse } from "@/step/issuance";
 
@@ -30,27 +28,28 @@ import type { PushedAuthorizationRequestResponse } from "@/step/issuance";
 const testConfigs = await defineIssuanceTest("MyNegativeTests");
 
 testConfigs.forEach((baseConfig) => {
-  describe(`[${baseConfig.name}] Negative PAR Tests`, () => {
-    // Create a variant that uses the wrong PKCE method
-    const wrongChallengeConfig = IssuerTestConfiguration.createCustom({
+  describe(`[${baseConfig.name}] Comprehensive PAR Validation`, () => {
+
+    // Variant 1: Signed with wrong key
+    const wrongKeyConfig = IssuerTestConfiguration.createCustom({
       ...baseConfig,
-      pushedAuthorizationRequestStepClass: withParOverrides(
+      pushedAuthorizationRequestStepClass: withSignJwtOverride(
         baseConfig.pushedAuthorizationRequestStepClass,
-        { code_challenge_method: "plain" },
+        signWithWrongKey(),
       ),
     });
 
-    const orchestrator = new WalletIssuanceOrchestratorFlow(wrongChallengeConfig);
+    const orchestrator = new WalletIssuanceOrchestratorFlow(wrongKeyConfig);
     const log = orchestrator.getLog();
 
     let parResponse: PushedAuthorizationRequestResponse;
-
+    
     beforeAll(async () => {
-      const flow = await orchestrator.issuance();
-      parResponse = flow.pushedAuthorizationRequestResponse;
+      const result = await orchestrator.issuance();
+      parResponse = result.pushedAuthorizationRequestResponse;
     });
 
-    test("CI_010 — PAR with wrong challenge method should fail", () => {
+    test(`Negative test`, () => {
       let testSuccess = false;
       try {
         expect(
@@ -72,24 +71,25 @@ testConfigs.forEach((baseConfig) => {
 
 Each variant gets its own `IssuerTestConfiguration` (created by spreading the base config and overriding one step class) and its own `WalletIssuanceOrchestratorFlow` that runs the full issuance flow independently.
 
-> **Note:** imports are the same as in section 1.1.
-
 ```typescript
+import { defineIssuanceTest } from "#/config/test-metadata";
+import { IssuerTestConfiguration } from "#/config";
+import {
+  withSignJwtOverride,
+  signWithHS256,
+  signWithWrongKey,
+} from "#/helpers/par-validation-helpers";
+import { beforeAll, describe, test, expect } from "vitest";
+import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
+import type { PushedAuthorizationRequestResponse } from "@/step/issuance";
+
 // @ts-expect-error TS1309
-const testConfigs = await defineIssuanceTest("NegativeTests");
+const testConfigs = await defineIssuanceTest("MyNegativeTests");
 
 testConfigs.forEach((baseConfig) => {
   describe(`[${baseConfig.name}] Comprehensive PAR Validation`, () => {
-    // Variant 1: Wrong challenge method
-    const wrongChallengeConfig = IssuerTestConfiguration.createCustom({
-      ...baseConfig,
-      pushedAuthorizationRequestStepClass: withParOverrides(
-        baseConfig.pushedAuthorizationRequestStepClass,
-        { code_challenge_method: "plain" },
-      ),
-    });
 
-    // Variant 2: Signed with wrong key
+    // Variant 1: Signed with wrong key
     const wrongKeyConfig = IssuerTestConfiguration.createCustom({
       ...baseConfig,
       pushedAuthorizationRequestStepClass: withSignJwtOverride(
@@ -98,7 +98,7 @@ testConfigs.forEach((baseConfig) => {
       ),
     });
 
-    // Variant 3: Signed with HS256
+    // Variant 2: Signed with HS256
     const hs256Config = IssuerTestConfiguration.createCustom({
       ...baseConfig,
       pushedAuthorizationRequestStepClass: withSignJwtOverride(
@@ -109,21 +109,32 @@ testConfigs.forEach((baseConfig) => {
 
     // Run each variant independently
     const orchestrators = [
-      { name: "Wrong Challenge", config: wrongChallengeConfig },
       { name: "Wrong Key", config: wrongKeyConfig },
       { name: "HS256", config: hs256Config },
     ];
 
     orchestrators.forEach(({ name, config }) => {
-      let testSuccess = false;
+      const orchestrator = new WalletIssuanceOrchestratorFlow(config);
+      const log = orchestrator.getLog();
+
+      let parResponse: PushedAuthorizationRequestResponse;
+      
       beforeAll(async () => {
-        const orchestrator = new WalletIssuanceOrchestratorFlow(config);
-        const flow = await orchestrator.issuance();
-        // Assert on flow results
+        const result = await orchestrator.issuance();
+        parResponse = result.pushedAuthorizationRequestResponse;
       });
 
       test(`Negative test: ${name}`, () => {
-        // assertions
+        let testSuccess = false;
+        try {
+          expect(
+            parResponse.success,
+            `PAR must fail with ${name}`
+          ).toBe(false);
+          testSuccess = true;
+        } finally {
+          log.testCompleted("CI_010", testSuccess);
+        }
       });
     });
   });
