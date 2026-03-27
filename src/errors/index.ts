@@ -19,6 +19,19 @@ export class CredentialNamespaceNotFoundError extends Error {
   }
 }
 
+export class MissingFieldError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissingFieldError";
+  }
+}
+export class StatusListTokenCreationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StatusListTokenCreationError";
+  }
+}
+
 export class TrustChainExpiredError extends Error {
   constructor(message: string) {
     super(message);

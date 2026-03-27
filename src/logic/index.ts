@@ -5,5 +5,6 @@ export * from "./jwt";
 export * from "./logs";
 export * from "./mdoc";
 export * from "./pem";
+export * from "./status-list";
 export * from "./utils";
 export * from "./vpToken";

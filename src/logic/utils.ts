@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import path from "path";
 
-import { CertificateExpiredError } from "@/errors";
+import { CertificateExpiredError, MissingFieldError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
@@ -453,3 +453,21 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
     throw new Error("invalid key pair: kid does not match");
   }
 };
+
+/**
+ * Assertion function checking some object's keys are actually defined (not null or undefined)
+ * @param object The object whose properties must be checked
+ * @param keys The object's keys that must be defined
+ * @throws {MissingFieldError} containing the list of keys that are null or undefined
+ */
+export function hasObjectProperties<T, K extends keyof T>(
+  object: T,
+  keys: K[],
+): asserts object is Required<Pick<T, K>> & T {
+  const missingKeys = keys.filter((key) => object[key] == null);
+
+  if (missingKeys.length !== 0)
+    throw new MissingFieldError(
+      `Error, the following keys are missing from object: ${missingKeys.map(String).join(", ")}`,
+    );
+}

@@ -7,6 +7,7 @@ import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
+import { createStatusListToken } from "@/logic/status-list";
 import { Config } from "@/types";
 
 import { loadConfigWithHierarchy } from "../logic/utils";
@@ -62,6 +63,40 @@ export const createServer = (config: Config) => {
     }
   });
 
+  app.get("/wallet/status-list", async (_req, res) => {
+    try {
+      const jwt = await createStatusListToken({
+        certFilename: "wallet_provider_cert",
+        certSubject: `CN=${new URL(config.wallet.wallet_provider_base_url).hostname}`,
+        iss: config.wallet.wallet_provider_base_url,
+        jwksFilename: "wallet_provider_jwks",
+        jwksPath: config.wallet.backup_storage_path,
+        statusListEndpointUrl: `https://127.0.0.1:${config.trust_anchor.port}/wallet/status-list`,
+      });
+      res.type("application/statuslist+jwt").send(jwt);
+    } catch (err) {
+      console.error("Failed to create wallet status list token", err);
+      res.status(500).json({ error: "internal_server_error" });
+    }
+  });
+
+  app.get("/credentials/status-list", async (_req, res) => {
+    try {
+      const jwt = await createStatusListToken({
+        certFilename: "issuer_cert",
+        certSubject: "CN=test_issuer",
+        iss: config.wallet.mock_issuer,
+        jwksFilename: "issuer_pid_mocked_jwks",
+        jwksPath: config.wallet.backup_storage_path,
+        statusListEndpointUrl: `https://127.0.0.1:${config.trust_anchor.port}/credentials/status-list`,
+      });
+      res.type("application/statuslist+jwt").send(jwt);
+    } catch (err) {
+      console.error("Failed to create credentials status list token", err);
+      res.status(500).json({ error: "internal_server_error" });
+    }
+  });
+
   return app;
 };
 
@@ -112,6 +147,10 @@ if (require.main === module) {
       [Trust Anchor]
       GET  /.well-known/openid-federation
       GET  /fetch?sub=<subordinate-url>
+
+      [Status List]
+      GET /wallet/status-list
+      GET /credentials/status-list
 
       Started: ${new Date().toISOString()}`,
       );
