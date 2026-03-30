@@ -57,6 +57,10 @@ function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
   if (options.issuanceTestsDir) {
     env.CONFIG_ISSUANCE_TESTS_DIR = options.issuanceTestsDir;
   }
+  if (options.issuanceCertificateSubject) {
+    env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT =
+      options.issuanceCertificateSubject;
+  }
   if (options.presentationTestsDir) {
     env.CONFIG_PRESENTATION_TESTS_DIR = options.presentationTestsDir;
   }
@@ -89,68 +93,81 @@ program
 // Common options for all test commands
 function addCommonOptions(command: Command): Command {
   return command
-    .option("--file-ini <path>", "Path to custom INI configuration file")
+    .option(
+      "--file-ini <path>",
+      "Path to custom INI configuration file (env: CONFIG_FILE_INI)",
+    )
     .option(
       "--credential-issuer-uri <uri>",
-      "Override the credential issuer URL",
+      "Override the credential issuer URL (env: CONFIG_CREDENTIAL_ISSUER_URI)",
     )
-    .option("--credential-offer-uri <uri>", "Override the credential offer URL")
+    .option(
+      "--credential-offer-uri <uri>",
+      "Override the credential offer URL (env: CONFIG_CREDENTIAL_OFFER_URI)",
+    )
     .option(
       "--presentation-authorize-uri <uri>",
-      "Override the presentation authorize URL",
+      "Override the presentation authorize URL (env: CONFIG_PRESENTATION_AUTHORIZE_URI)",
     )
     .option(
       "--credential-types <types>",
-      "Comma-separated list of credential configuration IDs to test",
+      "Comma-separated list of credential configuration IDs to test (env: CONFIG_CREDENTIAL_TYPES)",
     )
-    .option("--timeout <seconds>", "Network timeout in seconds", (val) =>
-      parseInt(val, 10),
+    .option(
+      "--timeout <seconds>",
+      "Network timeout in seconds (env: CONFIG_TIMEOUT)",
+      (val) => parseInt(val, 10),
     )
     .option(
       "--max-retries <number>",
-      "Maximum number of retry attempts",
+      "Maximum number of retry attempts (env: CONFIG_MAX_RETRIES)",
       (val) => parseInt(val, 10),
     )
-    .option("--log-level <level>", "Logging level (DEBUG, INFO, WARN, ERROR)")
-    .option("--log-file <path>", "Path to log file")
-    .option("--port <number>", "Trust Anchor server port", (val) =>
-      parseInt(val, 10),
+    .option(
+      "--log-level <level>",
+      "Logging level (DEBUG, INFO, WARN, ERROR) (env: CONFIG_LOG_LEVEL)",
+    )
+    .option("--log-file <path>", "Path to log file (env: CONFIG_LOG_FILE)")
+    .option(
+      "--port <number>",
+      "Trust Anchor server port (env: CONFIG_PORT)",
+      (val) => parseInt(val, 10),
     )
     .option(
       "--save-credential",
-      "Save the received credential to disk after test issuance",
+      "Save the received credential to disk after test issuance (env: CONFIG_SAVE_CREDENTIAL)",
     )
     .option(
       "--issuance-tests-dir <path>",
-      "Override directory for issuance test specs",
+      "Override directory for issuance test specs (env: CONFIG_ISSUANCE_TESTS_DIR)",
     )
     .option(
-      "--issuance-cerificate-subject <string>",
-      "Override mock issuer's certificate subject (e.g. 'CN=test-issuer.com,OU=issuance,S=IT')",
+      "--issuance-certificate-subject <string>",
+      "Override mock issuer's certificate subject (e.g. 'CN=test-issuer.com,OU=issuance,S=IT') (env: CONFIG_ISSUANCE_CERTIFICATE_SUBJECT)",
     )
     .option(
       "--presentation-tests-dir <path>",
-      "Override directory for presentation test specs",
+      "Override directory for presentation test specs (env: CONFIG_PRESENTATION_TESTS_DIR)",
     )
     .option(
       "--steps-mapping <mapping>",
-      "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation)",
+      "Override steps mapping as comma-separated key=value pairs (e.g., HappyFlowIssuance=./tests/steps/v1/issuance,HappyFlowPresentation=./tests/steps/v1/presentation) (env: CONFIG_STEPS_MAPPING)",
     )
     .option(
       "--unsafe-tls",
-      "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false.",
+      "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false (env: CONFIG_UNSAFE_TLS).",
     )
     .option(
       "--external-ta-url <url>",
-      "URL of an external Trust Anchor to register with",
+      "URL of an external Trust Anchor to register with (env: CONFIG_EXTERNAL_TA_URL)",
     )
     .option(
       "--external-ta-onboarding-url <url>",
-      "Onboarding URL of an external Trust Anchor",
+      "Onboarding URL of an external Trust Anchor (env: CONFIG_EXTERNAL_TA_ONBOARDING_URL)",
     )
     .option(
       "--tests <names>",
-      "Comma separated list of test names, only the specified tests will be run",
+      "Comma separated list of test names, only the specified tests will be run (env: TESTS)",
     );
 }
 
@@ -163,9 +180,7 @@ addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.
-    split(/\s*,\s*/g).
-    filter(i => i.length > 0) ?? [];
+  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
 
   try {
     execFileSync("pnpm", ["test:issuance", ...tests], {
@@ -186,9 +201,7 @@ addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.
-    split(/\s*,\s*/g).
-    filter(i => i.length > 0) ?? [];
+  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
 
   try {
     execFileSync("pnpm", ["test:issuance", ...tests], {
