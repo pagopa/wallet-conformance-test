@@ -18,6 +18,7 @@ import path from "path";
 
 import { CertificateExpiredError, MissingFieldError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
+import { LOCAL_WP_HOST } from "@/servers/wp-server";
 
 import {
   createAndSaveCertificate,
@@ -27,6 +28,8 @@ import {
   hasX509CertificateExpired,
   verifyJwt,
 } from ".";
+import { LOCAL_CI_HOST } from "@/servers/ci-server";
+import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 
 // Re-export config loading functions
 export {
@@ -381,6 +384,41 @@ export async function loadOrCreateCertificateWithKey(
 }
 
 /**
+ *  Loads an existing server certificate/key pair from the specified config, or creates a new one if not found or expired.
+ * @param config The application configuration containing paths and parameters for certificate management.
+ * @returns A promise that resolves to the loaded or generated server certificate and key.
+ */
+export const loadOrCreateServerCertificate = async (
+  config: Config,
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> => {
+  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
+
+  const { certPath, certPem, keyPath, keyPem } = await loadOrCreateCertificateWithKey(
+    certDir,
+    "server",
+    `CN=wct.it`,
+    [
+      new x509.SubjectAlternativeNameExtension(
+        [
+          { type: "dns", value: "localhost" },
+          { type: "dns", value: LOCAL_TA_HOST },
+          { type: "dns", value: LOCAL_WP_HOST },
+          { type: "dns", value: LOCAL_CI_HOST },
+          { type: "ip", value: "127.0.0.1" },
+        ],
+        false,
+      ),
+    ],
+  );
+  return { certPath, certPem, keyPath, keyPem };
+};
+
+/**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
  * wallet provider key pair, suitable for use in
  * WalletAttestationOptionsV1_3.signer.x5c.
@@ -396,7 +434,7 @@ export async function loadWalletProviderCertificate(
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
 ): Promise<[string, ...string[]]> {
-  const providerDomain = new URL(wallet.wallet_provider_base_url).hostname;
+  const providerDomain = LOCAL_WP_HOST;
   const cert = await loadCertificate(
     wallet.backup_storage_path,
     "wallet_provider_cert",
