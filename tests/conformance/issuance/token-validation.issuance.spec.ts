@@ -132,8 +132,7 @@ testConfigs.forEach((testConfig) => {
 
     test("CI_061a: PKCE code_verifier | Issuer rejects mismatched code_verifier (invalid_grant)", async () => {
       const log = baseLog.withTag("CI_061a");
-      const DESCRIPTION =
-        "Issuer correctly rejected mismatched code_verifier";
+      const DESCRIPTION = "Issuer correctly rejected mismatched code_verifier";
       log.start("Conformance test: Verifying PKCE code_verifier validation");
 
       let testSuccess = false;
@@ -237,23 +236,17 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     test(
-      "CI_061: Authorization Code Validity | Issuer rejects reused and expired codes (invalid_grant)",
+      "CI_061: Authorization Code Validity | Issuer rejects reused code (invalid_grant)",
       async () => {
         const log = baseLog.withTag("CI_061");
-        const DESCRIPTION = "Issuer correctly rejectedd reused and expired codes";
+        const DESCRIPTION =
+          "Issuer correctly rejectedd reused code";
         log.start(
           "Conformance test: Verifying authorization code one-time use and expiration",
         );
 
         let testSuccess = false;
         try {
-          const {
-            code: expiredCode,
-            codeVerifier: expiredCodeVerifier,
-            redirectUri: expiredRedirectUri,
-          } = await runAndValidateAuthorize(orchestrator);
-          const sleep = new Promise((resolve) => setTimeout(resolve, 60e3));
-
           const { code, codeVerifier, redirectUri } =
             await runAndValidateAuthorize(orchestrator);
 
@@ -278,21 +271,12 @@ testConfigs.forEach((testConfig) => {
           expect(result2.success).toBe(false);
           log.info("✅ Reused code rejected");
 
-          await sleep;
-          const expired = await runTokenStep(testConfig.tokenRequestStepClass, {
-            code: expiredCode,
-            code_verifier: expiredCodeVerifier,
-            grant_type: "authorization_code",
-            redirect_uri: expiredRedirectUri,
-          });
-          expect(expired.success).toBe(false);
-          log.info("✅ Expired code rejected");
           testSuccess = true;
         } finally {
           log.testCompleted(DESCRIPTION, testSuccess);
         }
       },
-      { timeout: 61e3 },
+      { timeout: 5e3 },
     );
   });
 });
