@@ -5,6 +5,7 @@ import {
   CreateTokenDPoPOptions,
   fetchTokenResponse,
   FetchTokenResponseOptions,
+  Jwk,
 } from "@pagopa/io-wallet-oauth2";
 
 import {
@@ -47,6 +48,12 @@ export interface TokenRequestStepOptions {
    * DPoP is always created in this step using a fresh ephemeral key pair and
    * returned as `dPoPKey` so it can be reused later in the flow.
    */
+  dpopProof?: { jwt: string; signerJwk: Jwk };
+
+  /**
+   * DPoP JWT used to authenticate the client,
+   * if not provided, the DPoP will be created using the wallet attestation
+   */
   popAttestation: string;
 
   /**
@@ -87,7 +94,8 @@ export class TokenRequestDefaultStep extends StepFlow {
           url: options.accessTokenEndpoint,
         },
       };
-      const tokenDPoP = await createTokenDPoP(createTokenDPoPOptions);
+      const tokenDPoP =
+        options.dpopProof ?? (await createTokenDPoP(createTokenDPoPOptions));
 
       const fetchTokenResponseOptions: FetchTokenResponseOptions = {
         accessTokenEndpoint: options.accessTokenEndpoint,
