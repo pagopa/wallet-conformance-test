@@ -1,24 +1,45 @@
 import * as https from "node:https";
 import * as tls from "node:tls";
 
+import { createServer as createMockIssuerServer } from "@/servers/ci-server";
 import { createLogger } from "@/logic/logs";
-import { loadConfigWithHierarchy } from "@/logic/utils";
+import { loadConfigWithHierarchy, loadOrCreateServerCertificate } from "@/logic/utils";
 import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
-import { createServer, startServer } from "@/trust-anchor/server";
+import {
+  createServer,
+} from "@/servers/ta-server";
+import { createServer as createWalletProviderServer } from "@/servers/wp-server";
 
 let trustAnchorServer: https.Server;
+let walletProviderServer: https.Server;
+let mockIssuerServer: https.Server;
 
 export default async function setup() {
   const config = loadConfigWithHierarchy();
   const baseLog = createLogger().withTag("globalSetup");
 
   const trustAnchorApp = createServer(config);
-  const {
-    certPath,
-    certPem,
-    port,
-    server: trustAnchorHttpsServer,
-  } = await startServer(trustAnchorApp, config);
+  const taPort = config.trust_anchor.port;
+  const { certPath, certPem, keyPem } =
+    await loadOrCreateServerCertificate(config);
+  const trustAnchorHttpsServer = https.createServer(
+    { cert: certPem, key: keyPem },
+    trustAnchorApp,
+  );
+
+  const walletProviderApp = createWalletProviderServer(config);
+  const wpPort = config.wallet.port;
+  const wpHttpsServer = https.createServer(
+    { cert: certPem, key: keyPem },
+    walletProviderApp,
+  );
+
+  const mockIssuerApp = createMockIssuerServer(config);
+  const miPort = config.issuer.port;
+  const miHttpsServer = https.createServer(
+    { cert: certPem, key: keyPem },
+    mockIssuerApp,
+  );
 
   // Store cert for worker threads — setup-tls.ts reads this in each worker
   process.env["TRUST_ANCHOR_CERT_PEM"] = certPem;
@@ -28,9 +49,21 @@ export default async function setup() {
     certPem,
   ]);
 
-  trustAnchorServer = trustAnchorHttpsServer.listen(port, () => {
+  trustAnchorServer = trustAnchorHttpsServer.listen(taPort, () => {
     baseLog.info(
-      `Trust anchor server running at https://localhost:${port} (cert: ${certPath})`,
+      `Trust anchor server running at https://localhost:${taPort} (cert: ${certPath})`,
+    );
+  });
+
+  walletProviderServer = wpHttpsServer.listen(wpPort, () => {
+    baseLog.info(
+      `Wallet provider server running at https://localhost:${wpPort}`,
+    );
+  });
+
+  mockIssuerServer = miHttpsServer.listen(miPort, () => {
+    baseLog.info(
+      `Credential Issuer server running at https://localhost:${miPort}`,
     );
   });
 
@@ -38,11 +71,18 @@ export default async function setup() {
 
   // teardown
   return async () => {
-    await new Promise<void>((resolve) => {
-      trustAnchorServer.close(() => {
-        baseLog.info("Trust anchor stopped");
-        resolve();
+    const closeServer = (server: https.Server, name: string) =>
+      new Promise<void>((resolve) => {
+        server.close(() => {
+          baseLog.info(`${name} stopped`);
+          resolve();
+        });
       });
-    });
+
+    await Promise.all([
+      closeServer(trustAnchorServer, "Trust anchor"),
+      closeServer(walletProviderServer, "Wallet provider"),
+      closeServer(mockIssuerServer, "Credential Issuer"),
+    ]);
   };
 }
