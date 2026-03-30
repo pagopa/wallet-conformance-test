@@ -12,6 +12,7 @@ import type { KeyPair } from "@/types";
 import { loadAttestation } from "@/functions";
 import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
@@ -62,11 +63,9 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
-    expect(jwt.payload.iss).toBe(config.wallet.wallet_provider_base_url);
+    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
     expect(jwt.payload.sub).toBe(unitJWK.kid);
-    expect(jwt.payload.wallet_link).toBe(
-      `${config.wallet.wallet_provider_base_url}/wallet`,
-    );
+    expect(jwt.payload.wallet_link).toBe(`${getLocalWpBaseUrl(config.wallet.port)}/wallet`);
     expect(jwt.payload.wallet_name).toBe(config.wallet.wallet_name);
 
     // Verify trust chain structure
@@ -74,8 +73,8 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Wallet Provider Entity Configuration
     const wpDecoded = decodeJwt(wpEntityConfig ?? "");
-    expect(wpDecoded.iss).toBe(config.wallet.wallet_provider_base_url);
-    expect(wpDecoded.sub).toBe(config.wallet.wallet_provider_base_url);
+    expect(wpDecoded.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(wpDecoded.sub).toBe(getLocalWpBaseUrl(config.wallet.port));
     expect(wpDecoded.metadata).toBeDefined();
     // V1_3 uses wallet_solution; V1_0 uses wallet_provider
     const metadata = wpDecoded.metadata as Record<string, unknown>;
@@ -86,7 +85,7 @@ describe("Wallet Attestation Unit Test", () => {
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
     expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
-    expect(taDecoded.sub).toBe(config.wallet.wallet_provider_base_url); // About Wallet Provider
+    expect(taDecoded.sub).toBe(getLocalWpBaseUrl(config.wallet.port)); // About Wallet Provider
   });
 
   test("Load Existing Wallet Attestation", async () => {
@@ -233,11 +232,9 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
-    expect(jwt.payload.iss).toBe(walletV1_3.wallet_provider_base_url);
+    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
     expect(jwt.payload.sub).toBe(unitJWK.kid);
-    expect(jwt.payload.wallet_link).toBe(
-      `${walletV1_3.wallet_provider_base_url}/wallet`,
-    );
+    expect(jwt.payload.wallet_link).toBe(`${getLocalWpBaseUrl(config.wallet.port)}/wallet`);
     expect(jwt.payload.wallet_name).toBe(walletV1_3.wallet_name);
   });
 

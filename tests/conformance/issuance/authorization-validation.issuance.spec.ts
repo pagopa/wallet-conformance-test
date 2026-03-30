@@ -68,9 +68,6 @@ testConfigs.forEach((testConfig) => {
         baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [],
-        ioWalletSdkConfig: new IoWalletSdkConfig({
-          itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
-        }),
         requestUri: requestUri ?? "",
         rpMetadata: entityClaims?.metadata?.openid_credential_verifier,
         walletAttestation: attestationOverride ?? walletAttestationResponse,

@@ -198,6 +198,16 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 }
 
 /**
+ * Options for creating a subordinate Credential Issuer entity statement.
+ */
+export interface CreateSubordinateCredentialIssuerMetadataOptions {
+  sub: string;
+  trustAnchor: Config["trust"];
+  trustAnchorBaseUrl: string;
+  walletBackupStoragePath: string;
+}
+
+/**
  * Creates a subordinate wallet metadata JWT signed by the Trust Anchor.
  *
  * @param options Options for creating the subordinate wallet metadata.
@@ -223,6 +233,36 @@ export const createSubordinateWalletUnitMetadata = async (
       sub: options.sub,
     },
     entityPublicJwk: walletJwks.publicKey,
+    signedJwks,
+  });
+};
+
+/**
+ * Creates a subordinate Credential Issuer entity statement JWT signed by the Trust Anchor.
+ *
+ * @param options Options for creating the subordinate CI entity statement.
+ * @returns The signed subordinate entity statement JWT.
+ */
+export const createSubordinateCredentialIssuerMetadata = async (
+  options: CreateSubordinateCredentialIssuerMetadataOptions,
+): Promise<string> => {
+  const signedJwks = await loadJwksWithX5C(
+    options.trustAnchor.federation_trust_anchors_jwks_path,
+    "trust_anchor",
+    options.trustAnchor.ca_cert_path,
+    options.trustAnchor.certificate_subject,
+  );
+
+  const issuerJwks = await loadJwks(
+    options.walletBackupStoragePath,
+    "issuer_pid_mocked_jwks",
+  );
+  return await createFederationMetadata({
+    claims: {
+      iss: options.trustAnchorBaseUrl,
+      sub: options.sub,
+    },
+    entityPublicJwk: issuerJwks.publicKey,
     signedJwks,
   });
 };
