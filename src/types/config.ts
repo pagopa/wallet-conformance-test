@@ -4,20 +4,12 @@ import { z } from "zod";
 import { parseItWalletSpecVersion } from "./version";
 
 /**
- * Preprocessor that safely coerces INI/env string values to booleans.
+ * Accepts INI/env string values ("true"/"1"/"false"/"0") or real booleans.
  * `z.coerce.boolean()` is unsafe because JavaScript's `Boolean("false")` returns
- * `true` (any non-empty string is truthy), so an INI entry like
- * `tls_reject_unauthorized = false` would mistakenly be treated as `true`.
- * This helper explicitly maps "true"/"1" → true and "false"/"0" → false;
- * real boolean values pass through unchanged.
+ * `true` (any non-empty string is truthy). `z.stringbool()` handles the string
+ * cases; the `z.boolean()` branch passes real boolean values through unchanged.
  */
-const booleanFromString = (val: unknown): unknown => {
-  if (typeof val === "string") {
-    if (val === "true" || val === "1") return true;
-    if (val === "false" || val === "0") return false;
-  }
-  return val;
-};
+const zBooleanFromString = z.union([z.boolean(), z.stringbool()]);
 
 /**
  * Represents the configuration for the wallet conformance test.
@@ -33,10 +25,7 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    save_credential: z
-      .preprocess(booleanFromString, z.boolean())
-      .optional()
-      .default(false),
+    save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
@@ -52,10 +41,7 @@ export const configSchema = z.object({
   network: z.object({
     max_retries: z.coerce.number().default(10),
     timeout: z.coerce.number().default(10),
-    tls_reject_unauthorized: z
-      .preprocess(booleanFromString, z.boolean())
-      .optional()
-      .default(true),
+    tls_reject_unauthorized: zBooleanFromString.optional().default(true),
     user_agent: z.string().optional(),
   }),
   presentation: z.object({
@@ -101,7 +87,10 @@ export const configSchema = z.object({
     wallet_name: z.string(),
     wallet_version: z
       .string({
-        required_error: `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`,
+        error: (issue) =>
+          issue.input === undefined
+            ? `wallet_version is required. Admissible values: ${Object.values(ItWalletSpecsVersion).join(", ")}`
+            : "Invalid wallet_version",
       })
       .refine(
         (version) => parseItWalletSpecVersion(version),
