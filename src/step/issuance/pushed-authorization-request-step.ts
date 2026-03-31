@@ -7,6 +7,7 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
+import { REDIRECT_URI } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -118,7 +119,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             },
           },
           pkceCodeVerifier: options.codeVerifier,
-          redirectUri: "https://client.example.org/cb",
+          redirectUri: REDIRECT_URI,
           responseMode: "query",
         };
 

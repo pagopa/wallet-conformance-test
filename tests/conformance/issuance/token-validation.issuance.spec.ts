@@ -239,8 +239,7 @@ testConfigs.forEach((testConfig) => {
       "CI_061: Authorization Code Validity | Issuer rejects reused code (invalid_grant)",
       async () => {
         const log = baseLog.withTag("CI_061");
-        const DESCRIPTION =
-          "Issuer correctly rejectedd reused code";
+        const DESCRIPTION = "Issuer correctly rejectedd reused code";
         log.start(
           "Conformance test: Verifying authorization code one-time use and expiration",
         );

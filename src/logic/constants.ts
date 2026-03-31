@@ -1,0 +1,1 @@
+export const REDIRECT_URI = "https://client.example.org/cb";
