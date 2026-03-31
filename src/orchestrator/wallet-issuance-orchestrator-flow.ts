@@ -13,6 +13,7 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
+import { REDIRECT_URI } from "@/logic/constants";
 import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
@@ -36,7 +37,6 @@ import {
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
-import { REDIRECT_URI } from "@/logic/constants";
 
 export class WalletIssuanceOrchestratorFlow {
   private _authorizeResponse?: AuthorizeStepResponse;

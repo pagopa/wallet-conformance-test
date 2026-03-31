@@ -7,9 +7,9 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
+import { REDIRECT_URI } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
-import { REDIRECT_URI } from "@/logic/constants";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
