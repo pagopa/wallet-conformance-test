@@ -84,8 +84,10 @@ if (require.main === module) {
     )
     .then((server) =>
       server.listen(config.issuer.port, () => {
+        const ciBaseUrl = getLocalCiBaseUrl(config.issuer.port);
+
         console.log(
-          `[Credential Issuer] Server started
+          `[Credential Issuer] ${ciBaseUrl} Server started
         PID: ${process.pid}
         URL: https://localhost:${config.issuer.port}
 

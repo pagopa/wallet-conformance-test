@@ -74,8 +74,9 @@ if (require.main === module) {
     )
     .then((server) =>
       server.listen(config.wallet.port, () => {
+        const wpBaseUrl = getLocalWpBaseUrl(config.wallet.port);
         console.log(
-          `[Wallet Provider] Server started
+          `[Wallet Provider] ${wpBaseUrl} Server started
       PID: ${process.pid}
       URL: https://localhost:${config.wallet.port}
 
