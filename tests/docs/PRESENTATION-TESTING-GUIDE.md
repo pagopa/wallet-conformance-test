@@ -82,6 +82,11 @@ The imports below use the path aliases defined by the tool (`#/` → `tests/`, `
 They always resolve correctly as long as you run `wct` from the `wallet-conformance-test/`
 directory (see Step 4).
 
+> **Before you write tests**, consult [STEP-OUTPUTS.md](STEP-OUTPUTS.md) to understand the full
+> response structure of each step (`FetchMetadataVpStepResponse`,
+> `AuthorizationRequestStepResponse`, and `RedirectUriStepResponse`). Knowing what fields are
+> available will help you write meaningful assertions.
+
 ```typescript
 /* eslint-disable max-lines-per-function */
 
@@ -92,6 +97,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator";
 import type {
   AuthorizationRequestStepResponse,
+  FetchMetadataVpStepResponse,
   RedirectUriStepResponse,
 } from "@/step/presentation";
 
@@ -103,13 +109,17 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
   const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
   const baseLog = orchestrator.getLog();
 
+  let fetchMetadataResult: FetchMetadataVpStepResponse;
   let authorizationRequestResult: AuthorizationRequestStepResponse;
   let redirectUriResult: RedirectUriStepResponse;
 
   // Run the full presentation flow once before all assertions.
   beforeAll(async () => {
-    ({ authorizationRequestResult, redirectUriResult } =
-      await orchestrator.presentation());
+    ({
+      fetchMetadataResult,
+      authorizationRequestResult,
+      redirectUriResult,
+    } = await orchestrator.presentation());
   });
 
   // Register the summary hook (prints pass/fail counts after the suite).
@@ -117,7 +127,7 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
 
   // ── Individual test cases ───────────────────────────────────────────────
 
-  test("CP_001 — authorization request is parsed successfully", async () => {
+  test("RPR_001 — authorization request is parsed successfully", async () => {
     let testSuccess = false;
     try {
       expect(
@@ -126,11 +136,11 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
       ).toBe(true);
       testSuccess = true;
     } finally {
-      baseLog.testCompleted("CP_001", testSuccess);
+      baseLog.testCompleted("RPR_001", testSuccess);
     }
   });
 
-  test("CP_002 — VP token is created and included in response", async () => {
+  test("RPR_002 — VP token is created and included in response", async () => {
     let testSuccess = false;
     try {
       expect(
@@ -139,11 +149,11 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
       ).toBeDefined();
       testSuccess = true;
     } finally {
-      baseLog.testCompleted("CP_002", testSuccess);
+      baseLog.testCompleted("RPR_002", testSuccess);
     }
   });
 
-  test("CP_003 — authorization response is sent to verifier", async () => {
+  test("RPR_003 — authorization response is sent to verifier", async () => {
     let testSuccess = false;
     try {
       expect(
@@ -152,11 +162,11 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
       ).toBeDefined();
       testSuccess = true;
     } finally {
-      baseLog.testCompleted("CP_003", testSuccess);
+      baseLog.testCompleted("RPR_003", testSuccess);
     }
   });
 
-  test("CP_004 — verifier accepts presentation", async () => {
+  test("RPR_004 — verifier accepts presentation", async () => {
     let testSuccess = false;
     try {
       expect(
@@ -171,11 +181,11 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
 
       testSuccess = true;
     } finally {
-      baseLog.testCompleted("CP_004", testSuccess);
+      baseLog.testCompleted("RPR_004", testSuccess);
     }
   });
 
-  test("CP_005 — response code is valid", async () => {
+  test("RPR_005 — response code is valid", async () => {
     let testSuccess = false;
     try {
       if (redirectUriResult.response?.responseCode) {
@@ -189,7 +199,7 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
         testSuccess = true;
       }
     } finally {
-      baseLog.testCompleted("CP_005", testSuccess);
+      baseLog.testCompleted("RPR_005", testSuccess);
     }
   });
 });
@@ -201,13 +211,7 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
    `PresentationTestConfiguration`.
 2. The `WalletPresentationOrchestratorFlow` executes the full presentation flow:
    **Fetch RP Metadata → Authorization Request → Build VP Token → Send Authorization Response → Redirect**.
-3. The `beforeAll` block stores the step responses; each `test()` block asserts on them.
-
-### Exploring Response Attributes
-
-To understand the structure and attributes of the various step responses
-(`AuthorizationRequestStepResponse` and  `RedirectUriStepResponse`), see
-[STEP-OUTPUTS.md](STEP-OUTPUTS.md) for a detailed reference guide.
+3. The `beforeAll` block stores the three step responses; each `test()` block asserts on them.
 
 ---
 
@@ -221,14 +225,13 @@ cd my-test/wallet-conformance-test
 
 wct test:presentation \
   --file-ini           ../my-example/config.ini \
-  --presentation-tests-dir ../my-example
+  --presentation-tests-dir ../my-example \
   --presentation-authorize-uri 'https://your-verifier.example.com/authorize?....'
 ```
 
 `--presentation-authorize-uri` point to your authorize url Relying Party (Verifier) (generally url included in QR code).
 
-> **`--presentation-authorize-uri`** is mandatory. If it is missing, `definePresentationTest()` will
-> throw an error when you run the tests.
+> **`--presentation-authorize-uri`** is mandatory. If it is missing, `definePresentationTest()` will throw an error when you run the tests.
 
 | Option | Description |
 |---|---|
@@ -327,7 +330,7 @@ The wallet may decline a presentation request in certain scenarios (e.g., user r
 don't match requirements). You can test both acceptance and rejection flows:
 
 ```typescript
-test("CP_006 — handle declined presentation gracefully", async () => {
+test("RPR_006 — handle declined presentation gracefully", async () => {
   let testSuccess = false;
   try {
     // When presentation is declined, redirectUri and responseCode are undefined
@@ -351,7 +354,7 @@ test("CP_006 — handle declined presentation gracefully", async () => {
 
     testSuccess = true;
   } finally {
-    baseLog.testCompleted("CP_006", testSuccess);
+    baseLog.testCompleted("RPR_006", testSuccess);
   }
 });
 ```
@@ -382,8 +385,8 @@ export class MalformedVpTokenStep extends AuthorizationRequestDefaultStep {
       const result = await super.run(options);
 
       // Tamper with the VP token for negative testing
-      if (result.response?.authorizationResponse.vpToken) {
-        result.response.authorizationResponse.vpToken = "malformed.token.here";
+      if (result.response?.authorizationResponse.authorizationResponsePayload.vp_token) {
+        result.response?.authorizationResponse.authorizationResponsePayload.vp_token = "malformed.token.here";
       }
 
       return result;

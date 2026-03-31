@@ -41,13 +41,13 @@ You must have [Node.js >= 22.19.0](https://nodejs.org/en/about/previous-releases
    cd wallet-conformance-test
    ```
 
-3. Install dependencies using npm:
+3. Install dependencies using pnpm:
 
    ```bash
    pnpm install
    ```
 
-4. Install the CLI globally using npm:
+4. Install the CLI globally using pnpm:
 
    ```bash
    pnpm install -g

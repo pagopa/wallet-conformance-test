@@ -136,8 +136,8 @@ a request URI.
 
 ## AuthorizeDefaultStep
 
-**Purpose**: Performs the authorization request to the issuer's authorization endpoint. 
-For presentation (OpenID4VP), constructs the authorization response with the VP token.
+**Purpose**: Performs the authorization redirect to the issuer's authorization endpoint and returns
+the authorization code.
 
 **Input** (`AuthorizeStepOptions`):
 ```typescript
@@ -396,6 +396,25 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
 
 # Presentation Flow Steps
 
+## Quick Reference
+
+| What you want to assert | Full path |
+|-------------------------|-----------|
+| Flow succeeded | `result.authorizationRequestResult.success` |
+| Request nonce | `result.authorizationRequestResult.response?.requestObject.nonce` |
+| Request state | `result.authorizationRequestResult.response?.requestObject.state` |
+| Response mode | `result.authorizationRequestResult.response?.requestObject.response_mode` |
+| JWT header type | `result.authorizationRequestResult.response?.authorizationRequestHeader.typ` |
+| Trust chain (V1.0) | `result.authorizationRequestResult.response?.authorizationRequestHeader.trust_chain` |
+| JARM JWE | `result.authorizationRequestResult.response?.authorizationResponse.jarm.responseJwe` |
+| VP token map | `result.authorizationRequestResult.response?.authorizationResponse.authorizationResponsePayload.vp_token` |
+| Verifier redirect URI | `result.redirectUriResult.response?.redirectUri` |
+| Response code | `result.redirectUriResult.response?.responseCode` |
+| RP entity claims | `result.fetchMetadataResult.response?.entityStatementClaims` |
+| HTTP status | `result.fetchMetadataResult.response?.status` |
+
+---
+
 ## FetchMetadataVpDefaultStep
 
 **Purpose**: Fetches Relying Party (Verifier) metadata from the `.well-known/openid-federation` endpoint.
@@ -450,6 +469,13 @@ For presentation (OpenID4VP), constructs the authorization response with the VP 
 - `response.response?.status === 200`
 - `response.response?.entityStatementClaims` contains expected verifier metadata
 - `response.response?.entityStatementClaims.metadata.openid_credential_verifier` is present
+- `headers` is a Fetch API `Headers` object — use `.get()` to read values:
+  ```typescript
+  // Correct
+  fetchMetadataResult.response?.headers?.get("content-type");
+  // Wrong — always returns undefined
+  fetchMetadataResult.response?.headers?.["content-type"];
+  ```
 
 ---
 
@@ -482,25 +508,33 @@ from available credentials, and creates the authorization response.
     };
 
     // Openid4vpAuthorizationRequestHeader — JWT header of the request object (version-dependent)
-    // V1.0: { alg, kid, typ: "oauth-authz-req+jwt", trust_chain: string[] }
-    // V1.3: { alg, kid, typ: "oauth-authz-req+jwt", x5c: string[], trust_chain?: string[] }
+    // V1.0
     authorizationRequestHeader: {
       alg: string;
       kid: string;
       typ: "oauth-authz-req+jwt";
-      trust_chain?: string[];  // V1.0: required; V1.3: optional
-      x5c?: string[];          // V1.3 only
+      trust_chain: [string, ...string[]]; // required, at least one element
+    };
+    // V1.3
+    authorizationRequestHeader: {
+      alg: string;
+      kid: string;
+      typ: "oauth-authz-req+jwt";
+      trust_chain?: [string, ...string[]]; // optional
+      x5c: string[];                       // required
     };
 
     // Openid4vpAuthorizationRequestPayload — decoded request object claims
     requestObject: {
       client_id: string;
       nonce: string;
-      response_mode: string;     // e.g. "direct_post.jwt"
-      response_type: string;     // "vp_token"
-      response_uri: string;      // Where to POST the authorization response
-      state?: string;
-      dcql_query?: object;       // DCQL credential request query
+      response_mode: "direct_post.jwt"; // literal — use toBe("direct_post.jwt") in assertions
+      response_type: "vp_token";        // literal — use toBe("vp_token") in assertions
+      response_uri: string;             // Where to POST the authorization response
+      state: string;                    // required (always present per schema)
+      exp: number;                      // JWT expiration timestamp (Unix seconds) — asserted in RPR094
+      iss?: string;                     // Issuer identifier (standard JWT claim)
+      dcql_query?: object;              // DCQL credential request query
       // … other OpenID4VP request object claims
     };
 
@@ -508,7 +542,11 @@ from available credentials, and creates the authorization response.
 
     // CreateAuthorizationResponseResult — the encrypted JARM response to send back
     authorizationResponse: {
-      authorizationResponsePayload: object;  // Openid4vpAuthorizationResponse claims
+      authorizationResponsePayload: {
+        state: string;
+        vp_token: Record<string, string | string[]>; // keyed by credential ID from DCQL query (e.g. { "PID_1": "eyJ..." })
+      };
+      // jarm is always present — the step throws "JARM response is missing" if absent
       jarm: {
         encryptionJwk: object;   // JWK used to encrypt the response
         responseJwe: string;     // Compact JWE to POST to responseUri
@@ -561,7 +599,7 @@ from available credentials, and creates the authorization response.
 
 **Common Assertions**:
 - `response.success === true`
-- `response.response?.authorizationResponse.jarm?.responseJwe` is present
+- `response.response?.authorizationResponse.jarm.responseJwe` is present (`jarm` is always present — no `?.` needed)
 - `response.response?.requestObject.nonce` is non-empty
 - `response.response?.responseUri` matches expected verifier response endpoint
 
@@ -586,10 +624,10 @@ redirect URI with response code.
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: {
-    redirectUri?: URL;     // Final redirect URI returned by verifier
-    responseCode?: string; // Response code extracted from redirect URI
-  }
+  // The two fields are always co-present: if redirectUri is defined, responseCode is also defined, and vice versa.
+  response?:
+    | { redirectUri: undefined; responseCode: undefined }  // presentation declined
+    | { redirectUri: URL;       responseCode: string    }; // presentation accepted
 }
 ```
 
