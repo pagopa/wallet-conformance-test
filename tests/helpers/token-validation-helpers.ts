@@ -1,3 +1,4 @@
+import { REDIRECT_URI } from "@/logic/constants";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
   AuthorizeStepResponse,
@@ -32,8 +33,6 @@ export async function runAndValidateAuthorize(
   if (!authorizeResponse.response?.requestObject)
     throw new Error("Authorization Response not found");
 
-  const redirectUri = authorizeResponse.response.requestObject.response_uri;
-
   if (!pushedAuthorizationRequestResponse.response)
     throw new Error(
       "Pushed Authorization Request Step did not return code_verifier",
@@ -46,7 +45,7 @@ export async function runAndValidateAuthorize(
     code,
     codeVerifier,
     fetchMetadataResponse,
-    redirectUri,
+    redirectUri: REDIRECT_URI,
     walletAttestationResponse,
   };
 }

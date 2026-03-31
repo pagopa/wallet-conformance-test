@@ -13,6 +13,7 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
+import { REDIRECT_URI } from "@/logic/constants";
 import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
@@ -529,13 +530,6 @@ export class WalletIssuanceOrchestratorFlow {
           "Check the authorize step for errors.",
       );
 
-    const redirect_uri = requestObject.response_uri;
-    if (!redirect_uri)
-      throw new Error(
-        "Authorization step did not return a redirect_uri. " +
-          "Check the authorize step for errors.",
-      );
-
     const code_verifier =
       pushedAuthorizationRequestResponse.response?.codeVerifier;
     if (!code_verifier)
@@ -548,7 +542,7 @@ export class WalletIssuanceOrchestratorFlow {
       code: authorizeResponse.response.authorizeResponse.code,
       code_verifier,
       grant_type: "authorization_code",
-      redirect_uri,
+      redirect_uri: REDIRECT_URI,
     };
 
     const tokenResponse = await this.tokenRequestStep.run({
