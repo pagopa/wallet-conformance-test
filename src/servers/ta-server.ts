@@ -6,12 +6,14 @@ import {
   createSubordinateWalletUnitMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
-import { Config } from "@/types";
+import {
+  loadConfigWithHierarchy,
+  loadOrCreateServerCertificate,
+} from "@/logic/utils";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
-
-import { loadConfigWithHierarchy, loadOrCreateServerCertificate } from "@/logic/utils";
 import { LOCAL_TA_BASE_URL } from "@/trust-anchor/trust-anchor-resolver";
+import { Config } from "@/types";
 
 export const createServer = (config: Config): express.Express => {
   const app = express();

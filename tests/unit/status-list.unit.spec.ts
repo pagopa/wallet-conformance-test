@@ -2,10 +2,10 @@ import { StatusList } from "@sd-jwt/jwt-status-list";
 import { decodeJwt, decodeProtectedHeader, importX509, jwtVerify } from "jose";
 import { describe, expect, it, vi } from "vitest";
 
-import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { loadConfigWithHierarchy } from "@/logic";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
 describe("status-list endpoint tests", () => {

@@ -1,14 +1,15 @@
 import * as https from "node:https";
 import * as tls from "node:tls";
 
-import { createServer as createMockIssuerServer } from "@/servers/ci-server";
 import { createLogger } from "@/logic/logs";
-import { loadConfigWithHierarchy, loadOrCreateServerCertificate } from "@/logic/utils";
-import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
 import {
-  createServer,
-} from "@/servers/ta-server";
+  loadConfigWithHierarchy,
+  loadOrCreateServerCertificate,
+} from "@/logic/utils";
+import { createServer as createMockIssuerServer } from "@/servers/ci-server";
+import { createServer } from "@/servers/ta-server";
 import { createServer as createWalletProviderServer } from "@/servers/wp-server";
+import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
 
 let trustAnchorServer: https.Server;
 let walletProviderServer: https.Server;

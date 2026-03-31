@@ -28,9 +28,9 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { AttestationResponse } from "@/types/attestation-response";
 import { KeyPair } from "@/types/key-pair";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
 import { StepFlow, StepResponse } from "../step-flow";
 

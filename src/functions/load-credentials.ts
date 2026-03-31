@@ -3,8 +3,8 @@ import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { readdirSync, readFileSync } from "node:fs";
 
-import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { Config, Credential, CredentialWithKey, Logger } from "@/types";
 
 import {

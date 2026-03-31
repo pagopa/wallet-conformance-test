@@ -1,5 +1,4 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
-import * as x509 from "@peculiar/x509";
 import express from "express";
 import * as https from "node:https";
 
@@ -10,7 +9,6 @@ import {
   createStatusListToken,
   loadConfigWithHierarchy,
   loadJwks,
-  loadOrCreateCertificateWithKey,
   loadOrCreateServerCertificate,
 } from "@/logic";
 import { Config } from "@/types";

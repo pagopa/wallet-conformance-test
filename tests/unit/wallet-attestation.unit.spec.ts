@@ -11,8 +11,8 @@ import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
 import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
@@ -65,7 +65,9 @@ describe("Wallet Attestation Unit Test", () => {
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
     expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
     expect(jwt.payload.sub).toBe(unitJWK.kid);
-    expect(jwt.payload.wallet_link).toBe(`${getLocalWpBaseUrl(config.wallet.port)}/wallet`);
+    expect(jwt.payload.wallet_link).toBe(
+      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+    );
     expect(jwt.payload.wallet_name).toBe(config.wallet.wallet_name);
 
     // Verify trust chain structure
@@ -234,7 +236,9 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
     expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
     expect(jwt.payload.sub).toBe(unitJWK.kid);
-    expect(jwt.payload.wallet_link).toBe(`${getLocalWpBaseUrl(config.wallet.port)}/wallet`);
+    expect(jwt.payload.wallet_link).toBe(
+      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+    );
     expect(jwt.payload.wallet_name).toBe(walletV1_3.wallet_name);
   });
 

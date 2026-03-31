@@ -1,4 +1,3 @@
-import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import {
   buildJwksPath,
   createFederationMetadata,
@@ -6,8 +5,9 @@ import {
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
-import { Config } from "@/types";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import { Config } from "@/types";
 
 /**
  * Fetches the Subordinate Statement (entity statement) for the Subject (Wallet Provider or Issuer)

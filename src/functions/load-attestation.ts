@@ -27,6 +27,7 @@ import {
   signJwtCallback,
   validateProviderKeyPair,
 } from "@/logic";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 import {
   isExternalTrustAnchor,
@@ -38,7 +39,6 @@ import {
   type KeyPair,
   zTrustChain,
 } from "@/types";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
 const resolveTaEntityConfiguration = (
   trustAnchor: Config["trust_anchor"],

@@ -1,6 +1,5 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";

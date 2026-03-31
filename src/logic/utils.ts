@@ -17,8 +17,10 @@ import {
 import path from "path";
 
 import { CertificateExpiredError, MissingFieldError } from "@/errors";
-import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
+import { LOCAL_CI_HOST } from "@/servers/ci-server";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
+import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
+import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
   createAndSaveCertificate,
@@ -28,8 +30,6 @@ import {
   hasX509CertificateExpired,
   verifyJwt,
 } from ".";
-import { LOCAL_CI_HOST } from "@/servers/ci-server";
-import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 
 // Re-export config loading functions
 export {
@@ -398,11 +398,8 @@ export const loadOrCreateServerCertificate = async (
 }> => {
   const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
 
-  const { certPath, certPem, keyPath, keyPem } = await loadOrCreateCertificateWithKey(
-    certDir,
-    "server",
-    `CN=wct.it`,
-    [
+  const { certPath, certPem, keyPath, keyPem } =
+    await loadOrCreateCertificateWithKey(certDir, "server", `CN=wct.it`, [
       new x509.SubjectAlternativeNameExtension(
         [
           { type: "dns", value: "localhost" },
@@ -413,8 +410,7 @@ export const loadOrCreateServerCertificate = async (
         ],
         false,
       ),
-    ],
-  );
+    ]);
   return { certPath, certPem, keyPath, keyPem };
 };
 

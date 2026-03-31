@@ -188,9 +188,9 @@ export const createSubordinateTrustAnchorMetadata = async (
 };
 
 /**
- * Options for creating subordinate wallet metadata.
+ * Options for creating a subordinate Credential Issuer entity statement.
  */
-export interface CreateSubordinateWalletUnitMetadataOptions {
+export interface CreateSubordinateCredentialIssuerMetadataOptions {
   sub: string;
   trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
@@ -198,9 +198,9 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 }
 
 /**
- * Options for creating a subordinate Credential Issuer entity statement.
+ * Options for creating subordinate wallet metadata.
  */
-export interface CreateSubordinateCredentialIssuerMetadataOptions {
+export interface CreateSubordinateWalletUnitMetadataOptions {
   sub: string;
   trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
