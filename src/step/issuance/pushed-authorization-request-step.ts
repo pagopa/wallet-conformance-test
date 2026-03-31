@@ -9,6 +9,7 @@ import {
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
+import { REDIRECT_URI } from "@/logic/constants";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
@@ -118,7 +119,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             },
           },
           pkceCodeVerifier: options.codeVerifier,
-          redirectUri: "https://client.example.org/cb",
+          redirectUri: REDIRECT_URI,
           responseMode: "query",
         };
 
