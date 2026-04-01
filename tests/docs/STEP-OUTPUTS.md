@@ -19,6 +19,11 @@ you can extract and assert on from each step's response.
   - [FetchMetadataVpDefaultStep](#fetchmetadatavpdefaultstep)
   - [AuthorizationRequestDefaultStep](#authorizationrequestdefaultstep)
   - [RedirectUriDefaultStep](#redirecturidefaultstep)
+- [Shared Types](#shared-types)
+  - [KeyPair](#keypair-srctypeskey-pairts)
+  - [AttestationResponse](#attestationresponse-srctypesattestation-responsets)
+  - [CredentialWithKey](#credentialwithkey-srctypescredentialts)
+  - [ItWalletCredentialVerifierMetadata](#itwalletcredentialverifiermetadata-pagopaiio-wallet-oid-federation)
 - [Common Response Pattern](#common-response-pattern)
 
 ---
@@ -44,8 +49,16 @@ you can extract and assert on from each step's response.
   durationMs?: number;
   response?: {
     discoveredVia?: "federation" | "oid4vci";  // Discovery method used
-    entityStatementClaims?: any;                // Parsed claims from entity statement JWT
-    status: number;                              // HTTP status code (typically 200)
+    entityStatementClaims?: {                   // Parsed claims from entity statement JWT (shape varies by issuer)
+      iss?: string;                             //   Issuer identifier
+      sub?: string;                             //   Subject (same as iss for self-signed)
+      credential_issuer?: string;               //   Credential Issuer URL
+      authorization_servers?: string[];         //   Authorization server URLs
+      credential_configurations_supported?: Record<string, unknown>;  // Supported credential types
+      jwks?: { keys: unknown[] };               //   Issuer public keys
+      [key: string]: unknown;                   //   Any additional issuer-specific claims
+    };
+    status: number;                             // HTTP status code (typically 200)
   }
 }
 ```
@@ -85,14 +98,37 @@ a request URI.
 **Input** (`PushedAuthorizationRequestStepOptions`):
 ```typescript
 {
-  baseUrl: string;                                    // Issuer Base URL
-  clientId: string;                                   // OAuth2 Client ID (wallet kid)
-  credentialConfigurationIds: string[];               // Credential types to request
-  pushedAuthorizationRequestEndpoint: string;         // PAR endpoint URL
-  walletAttestation: Omit<AttestationResponse, "created">;  // Wallet authentication
-  popAttestation: string;                             // DPoP JWT for client authentication
-  codeVerifier?: string;                              // PKCE code verifier (optional)
-  createParOverrides?: Partial<CreatePushedAuthorizationRequestOptions>;  // Override specific PAR fields
+  baseUrl: string;                    // Issuer Base URL
+  clientId: string;                   // OAuth2 Client ID (wallet kid)
+  credentialConfigurationIds: string[];  // Credential types to request
+  pushedAuthorizationRequestEndpoint: string;  // PAR endpoint URL
+  walletAttestation: {                // Wallet authentication (AttestationResponse without "created")
+    attestation: string;              //   Compact JWT of the Wallet Attestation
+    providerKey: KeyPair;             //   Wallet Provider key pair (EC P-256, JWK format)
+    unitKey: KeyPair;                 //   Wallet Unit key pair (EC P-256, JWK format) — used to sign PAR
+  };
+  popAttestation: string;             // DPoP JWT for client authentication
+  codeVerifier?: string;              // PKCE code verifier (optional — auto-generated if omitted)
+  createParOverrides?: Partial<{      // Override specific PAR fields (CreatePushedAuthorizationRequestOptions)
+    audience: string;                 //   Credential Issuer identifier (aud claim in JAR)
+    authorization_details?: Array<{   //   Credential authorization details
+      type: "openid_credential";
+      credential_configuration_id: string;
+    }>;
+    clientId: string;                 //   OAuth2 client_id (thumbprint of wallet unit key)
+    redirectUri: string;              //   Redirect URI for the authorization response
+    responseMode: string;             //   Response mode (e.g. "query")
+    scope?: string;                   //   OAuth2 scope
+    state?: string;                   //   State parameter (auto-generated if omitted)
+    jti?: string;                     //   JWT ID (auto-generated if omitted)
+    pkceCodeVerifier?: string;        //   PKCE code verifier (auto-generated if omitted)
+    callbacks: {                      //   Crypto callbacks (generateRandom, hash, signJwt)
+      generateRandom: Function;
+      hash: Function;
+      signJwt: Function;
+    };
+    // … additional fields documented in @pagopa/io-wallet-oauth2
+  }>;
 }
 ```
 
@@ -102,11 +138,10 @@ a request URI.
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: PushedAuthorizationResponse & {
-    request_uri: string;                    // Request URI returned by issuer
-    expires_in?: number;                    // Request URI expiration time in seconds
-    codeVerifier: string;                   // PKCE code verifier used
-    // ... other OpenID4VCI PAR response fields
+  response?: {
+    request_uri: string;    // Request URI to use in the authorization redirect
+    expires_in: number;     // Seconds until the request_uri expires (e.g. 600)
+    codeVerifier: string;   // PKCE code verifier (auto-generated or from input) — pass to AuthorizeStep / TokenRequestStep
   }
 }
 ```
@@ -136,19 +171,53 @@ a request URI.
 
 ## AuthorizeDefaultStep
 
-**Purpose**: Performs the authorization redirect to the issuer's authorization endpoint and returns
-the authorization code.
+**Purpose**: Performs the authorization step in the issuance flow. It fetches the request object
+JWT from the issuer's authorization endpoint, parses it (including the DCQL credential query),
+builds a VP token from the wallet's credentials, creates the encrypted JARM authorization response,
+and returns the authorization code.
+
+> **Note**: This step internally constructs and sends the authorization response to the issuer's
+> `response_uri` (JARM-encrypted). The `authorizeResponse.code` in the output is the authorization
+> code the issuer echoes back after validating the VP presentation.
 
 **Input** (`AuthorizeStepOptions`):
 ```typescript
 {
-  authorizationEndpoint: string;           // Issuer authorization endpoint
-  baseUrl: string;                         // Issuer Base URL
-  clientId: string;                        // OAuth2 Client ID (wallet kid)
-  credentials: CredentialWithKey[];        // Issued credentials to use in VP token
-  requestUri?: string;                     // Request URI from PAR step
-  rpMetadata: ItWalletCredentialVerifierMetadata;  // RP metadata
-  walletAttestation: Omit<AttestationResponse, "created">;  // Wallet authentication
+  authorizationEndpoint: string;    // Issuer authorization endpoint
+  baseUrl: string;                  // Issuer Base URL
+  clientId: string;                 // OAuth2 Client ID (wallet kid)
+  credentials: Array<{             // Issued credentials available for VP token (CredentialWithKey[])
+    credential: string;            //   Raw compact credential (SD-JWT or mDOC)
+    dpopJwk: {                     //   DPoP public key bound to this credential (JWK)
+      kid: string;
+      kty: "EC" | "RSA";
+      // … standard JWK fields (crv, x, y, d, n, e, …)
+    };
+    id: string;                    //   Credential identifier (matches DCQL query key, e.g. "PID_1")
+    typ: "dc+sd-jwt" | "mso_mdoc";
+  }>;
+  requestUri?: string;             // Request URI from PAR step
+  rpMetadata: {                    // Relying Party metadata (ItWalletCredentialVerifierMetadata)
+    application_type: "web";
+    authorization_encrypted_response_alg: string;  // e.g. "ECDH-ES"
+    authorization_encrypted_response_enc: string;  // e.g. "A256GCM"
+    authorization_signed_response_alg: string;     // e.g. "ES256"
+    client_id: string;             //   RP identifier URL
+    client_name: string;
+    jwks: { keys: object[] };      //   RP public keys
+    request_uris: string[];
+    response_uris: string[];
+    vp_formats: Record<string, {   //   Supported VP formats and algorithms
+      alg?: string[];
+      "sd-jwt_alg_values"?: string[];
+    }>;
+    // … additional fields from @pagopa/io-wallet-oid-federation
+  };
+  walletAttestation: {             // Wallet authentication (AttestationResponse without "created")
+    attestation: string;           //   Compact JWT of the Wallet Attestation
+    providerKey: KeyPair;          //   Wallet Provider key pair (EC P-256, JWK format)
+    unitKey: KeyPair;              //   Wallet Unit key pair (EC P-256, JWK format)
+  };
 }
 ```
 
@@ -165,9 +234,22 @@ the authorization code.
       iss: string;    // Issuer identifier (echoed from the request)
       state: string;  // State parameter (must match what was sent in PAR)
     };
-    iss: string;                                              // Issuer Base URL (from step options)
-    requestObject?: Openid4vpAuthorizationRequestPayload;     // Parsed request object claims
-    requestObjectJwt: string;                                 // Raw request object JWT string
+    iss: string;               // Issuer Base URL (from step options)
+    requestObject?: {          // Parsed request object claims (Openid4vpAuthorizationRequestPayload)
+      client_id: string;
+      nonce: string;
+      response_mode: "direct_post.jwt";
+      response_type: "vp_token";
+      response_uri: string;   // Where to POST the authorization response
+      state: string;
+      dcql_query: Record<string, unknown>;  // DCQL credential query
+      scope?: string;
+      iss?: string;           // Standard JWT iss claim
+      exp?: number;           // JWT expiration (Unix seconds)
+      iat?: number;
+      // … additional JWT claims
+    };
+    requestObjectJwt: string;  // Raw request object JWT string
   }
 }
 ```
@@ -213,10 +295,26 @@ the authorization code.
 **Input** (`TokenRequestStepOptions`):
 ```typescript
 {
-  accessTokenEndpoint: string;                  // Token endpoint URL
-  accessTokenRequest: AccessTokenRequest;       // Token request body (with auth code, etc.)
-  popAttestation: string;                       // DPoP JWT for client authentication
-  walletAttestation: Omit<AttestationResponse, "created">;  // Wallet authentication
+  accessTokenEndpoint: string;       // Token endpoint URL
+  accessTokenRequest: {              // Token request body (AccessTokenRequest from @openid4vc/oauth2)
+    grant_type:                      //   OAuth2 grant type
+      | "authorization_code"
+      | "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+      | "refresh_token"
+      | string;
+    code?: string;                   //   Authorization code (for authorization_code grant)
+    redirect_uri?: string;           //   Must match the redirect_uri from the PAR request
+    code_verifier?: string;          //   PKCE verifier (required when code_challenge was sent)
+    "pre-authorized_code"?: string;  //   Pre-authorized code (for pre-auth grant)
+    refresh_token?: string;          //   Refresh token (for refresh_token grant)
+    tx_code?: string;                //   Transaction code (pre-auth flows)
+  };
+  popAttestation: string;            // DPoP JWT for client authentication
+  walletAttestation: {               // Wallet authentication (AttestationResponse without "created")
+    attestation: string;             //   Compact JWT of the Wallet Attestation
+    providerKey: KeyPair;            //   Wallet Provider key pair (EC P-256, JWK format)
+    unitKey: KeyPair;                //   Wallet Unit key pair (EC P-256, JWK format)
+  };
 }
 ```
 
@@ -238,7 +336,10 @@ the authorization code.
       credential_identifiers?: string[];
     }>;
     // Step-added field
-    dPoPKey: KeyPair;                       // Ephemeral DPoP key pair — MUST be passed to CredentialRequestStep
+    dPoPKey: {                              // Ephemeral DPoP key pair — MUST be passed to CredentialRequestStep
+      publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
+      privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
+    };
   }
 }
 ```
@@ -296,7 +397,11 @@ the authorization code.
     attempts: number;                              // Number of HTTP attempts before success
     cacheControl: null | string;                   // Cache-Control header value
     contentType: null | string;                    // Content-Type header value
-    nonce: NonceResponsePayload;                   // The nonce payload from the issuer
+    nonce: {                                       // The nonce payload from the issuer (NonceResponsePayload)
+      nonce: string;                               //   Opaque nonce value — pass to CredentialRequestStep
+      nonce_expires_in?: number;                   //   Nonce lifetime in seconds (e.g. 86400)
+      [key: string]: unknown;                      //   Additional issuer-specific fields
+    };
   }
 }
 ```
@@ -333,16 +438,29 @@ the authorization code.
 **Input** (`CredentialRequestStepOptions`):
 ```typescript
 {
-  accessToken: string;                                        // Access token from token step
-  baseUrl: string;                                            // Issuer Base URL
-  clientId: string;                                           // OAuth2 Client ID
-  credentialIdentifier: string;                               // Credential configuration ID
-  credentialRequestEndpoint: string;                          // Credential endpoint URL
-  dPoPKey: KeyPair;                                           // Ephemeral DPoP key from TokenRequestStep — MUST be the same key
-  nonce: string;                                              // Nonce from nonce request
-  walletAttestation: Omit<AttestationResponse, "created">;    // Wallet authentication
-  createCredentialRequestOverrides?: Partial<BaseCredentialRequestOptions>;  // Override specific fields
-  dPoPOverride?: string;                                      // Override DPoP JWT (for error testing)
+  accessToken: string;                  // Access token from token step
+  baseUrl: string;                      // Issuer Base URL
+  clientId: string;                     // OAuth2 Client ID
+  credentialIdentifier: string;         // Credential configuration ID (e.g. "dc_sd_jwt_PersonIdentificationData")
+  credentialRequestEndpoint: string;    // Credential endpoint URL
+  dPoPKey: {                            // Ephemeral DPoP key from TokenRequestStep — MUST be the same key (KeyPair)
+    publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
+    privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
+  };
+  nonce: string;                        // Nonce value from NonceRequestStep (response.nonce.nonce)
+  walletAttestation: {                  // Wallet authentication (AttestationResponse without "created")
+    attestation: string;                //   Compact JWT of the Wallet Attestation
+    providerKey: KeyPair;               //   Wallet Provider key pair (EC P-256, JWK format)
+    unitKey: KeyPair;                   //   Wallet Unit key pair (EC P-256, JWK format)
+  };
+  createCredentialRequestOverrides?: Partial<{  // Override specific credential request fields (BaseCredentialRequestOptions)
+    clientId: string;                   //   OAuth2 client_id
+    credential_identifier: string;      //   Credential identifier
+    issuerIdentifier: string;           //   Issuer base URL
+    nonce: string;                      //   Nonce value
+    // … additional version-specific fields (proof, format, etc.)
+  }>;
+  dPoPOverride?: string;                // Override DPoP JWT (for negative/error testing)
 }
 ```
 
@@ -360,7 +478,10 @@ the authorization code.
     ];
     notification_id?: string;             // Optional notification ID for deferred status
     // Step-added field
-    credentialKeyPair: KeyPair;            // Key pair generated for this credential's proof
+    credentialKeyPair: {                   // Key pair generated for this credential's proof (KeyPair)
+      publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
+      privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
+    };
   }
 }
 ```
@@ -433,9 +554,24 @@ the authorization code.
   error?: Error;
   durationMs?: number;
   response?: {
-    status: number;                 // HTTP status code (typically 200)
-    entityStatementClaims?: any;    // Parsed claims from entity statement JWT
-    headers?: Headers;              // Response headers
+    status: number;                  // HTTP status code (typically 200)
+    entityStatementClaims?: {        // Parsed claims from entity statement JWT (shape varies by RP)
+      iss?: string;                  //   RP identifier
+      sub?: string;                  //   Subject (same as iss for self-signed)
+      metadata?: {
+        openid_credential_verifier?: {  // RP's OpenID4VP verifier metadata
+          client_id?: string;
+          redirect_uris?: string[];
+          response_types_supported?: string[];
+          vp_formats_supported?: Record<string, unknown>;
+          [key: string]: unknown;
+        };
+        [key: string]: unknown;
+      };
+      jwks?: { keys: unknown[] };    //   RP public keys
+      [key: string]: unknown;        //   Any additional claims
+    };
+    headers?: Headers;               // Response headers (Fetch API Headers object — use .get() to read)
   }
 }
 ```
@@ -487,9 +623,38 @@ from available credentials, and creates the authorization response.
 **Input** (`AuthorizationRequestOptions`):
 ```typescript
 {
-  credentials: CredentialWithKey[];                               // Credentials to use for VP token
-  verifierMetadata: ItWalletCredentialVerifierMetadata;          // Verifier metadata
-  walletAttestation: AttestationResponse;                        // Wallet authentication
+  credentials: Array<{             // Credentials to use for VP token (CredentialWithKey[])
+    credential: string;            //   Raw compact credential (SD-JWT or mDOC)
+    dpopJwk: {                     //   DPoP public key bound to this credential (JWK)
+      kid: string;
+      kty: "EC" | "RSA";
+      // … standard JWK fields
+    };
+    id: string;                    //   Credential identifier (matches DCQL query key, e.g. "PID_1")
+    typ: "dc+sd-jwt" | "mso_mdoc";
+  }>;
+  verifierMetadata: {              // Verifier metadata (ItWalletCredentialVerifierMetadata)
+    application_type: "web";
+    authorization_encrypted_response_alg: string;  // e.g. "ECDH-ES"
+    authorization_encrypted_response_enc: string;  // e.g. "A256GCM"
+    authorization_signed_response_alg: string;     // e.g. "ES256"
+    client_id: string;             //   RP identifier URL
+    client_name: string;
+    jwks: { keys: object[] };      //   RP public keys (used to encrypt JARM response)
+    request_uris: string[];
+    response_uris: string[];
+    vp_formats: Record<string, {   //   Supported VP formats and algorithms
+      alg?: string[];
+      "sd-jwt_alg_values"?: string[];
+    }>;
+    // … additional fields from @pagopa/io-wallet-oid-federation
+  };
+  walletAttestation: {             // Full wallet authentication (AttestationResponse)
+    attestation: string;           //   Compact JWT of the Wallet Attestation
+    created: boolean;              //   Whether the attestation was freshly created (true) or cached (false)
+    providerKey: KeyPair;          //   Wallet Provider key pair (EC P-256, JWK format)
+    unitKey: KeyPair;              //   Wallet Unit key pair (EC P-256, JWK format)
+  };
 }
 ```
 
@@ -613,8 +778,17 @@ redirect URI with response code.
 **Input** (`RedirectUriOptions`):
 ```typescript
 {
-  authorizationResponse: CreateAuthorizationResponseResult;  // Authorization response from previous step
-  responseUri: string;                                       // Response URI endpoint
+  authorizationResponse: {         // Authorization response built in the previous step (CreateAuthorizationResponseResult)
+    authorizationResponsePayload: {
+      state: string;               //   Echoes the state from the request object
+      vp_token: Record<string, string | string[]>;  // VP token map (credential ID → compact token)
+    };
+    jarm: {
+      encryptionJwk: object;       //   JWK used to encrypt the JARM response
+      responseJwe: string;         //   Compact JWE to POST to responseUri
+    };
+  };
+  responseUri: string;             // Response URI endpoint (= authorizationRequestResult.response.responseUri)
 }
 ```
 
@@ -663,6 +837,83 @@ redirect URI with response code.
 - If presentation was declined:
   - `response.response?.redirectUri === undefined`
   - `response.response?.responseCode === undefined`
+
+---
+
+# Shared Types
+
+These types appear across multiple steps. They are defined in `src/types/` (internal) or in
+`@pagopa/io-wallet-oauth2` / `@pagopa/io-wallet-oid-federation` (external packages).
+
+## `KeyPair` (`src/types/key-pair.ts`)
+
+An EC (or RSA) key pair in JWK format with a mandatory `kid` field.
+
+```typescript
+interface KeyPair {
+  publicKey:  KeyPairJwk;  // { kid, kty, crv?, x?, y?, n?, e?, alg?, use?, … }
+  privateKey: KeyPairJwk;  // same shape plus private components (d, p, q, …)
+}
+
+// KeyPairJwk = standard JWK (from @pagopa/io-wallet-oauth2 Jwk) & { kid: string } & { kty: "EC" | "RSA" }
+```
+
+In the conformance tests the keys always use curve **P-256** (`"crv": "P-256"`, `"kty": "EC"`).
+
+## `AttestationResponse` (`src/types/attestation-response.ts`)
+
+```typescript
+interface AttestationResponse {
+  attestation: string;   // Compact JWT (Wallet Attestation signed by the Wallet Provider)
+  created: boolean;      // true = freshly issued; false = returned from cache
+  providerKey: KeyPair;  // Wallet Provider key pair (signs the attestation)
+  unitKey: KeyPair;      // Wallet Unit key pair (used by the wallet to sign PAR / credential proof)
+}
+```
+
+Most step inputs accept `Omit<AttestationResponse, "created">`, i.e. every field except `created`.
+The `AuthorizationRequestDefaultStep` (presentation) uses the full `AttestationResponse`.
+
+## `CredentialWithKey` (`src/types/credential.ts`)
+
+```typescript
+interface CredentialWithKey {
+  credential: string;              // Raw compact credential (SD-JWT VC or mDOC)
+  dpopJwk: {                       // DPoP public key bound to this credential (KeyPairJwk)
+    kid: string;
+    kty: "EC" | "RSA";
+    // … standard JWK fields (crv, x, y, …)
+  };
+  id: string;                      // Credential identifier (matches the DCQL query key, e.g. "PID_1")
+  typ: "dc+sd-jwt" | "mso_mdoc";  // Credential format
+}
+```
+
+This type is produced by the issuance orchestrator and consumed by the presentation orchestrator.
+
+## `ItWalletCredentialVerifierMetadata` (`@pagopa/io-wallet-oid-federation`)
+
+The parsed metadata of the Relying Party (Verifier) extracted from its Entity Configuration.
+Key fields:
+
+```typescript
+{
+  application_type: "web";
+  authorization_encrypted_response_alg: string;  // JWE alg, e.g. "ECDH-ES"
+  authorization_encrypted_response_enc: string;  // JWE enc, e.g. "A256GCM"
+  authorization_signed_response_alg: string;     // JWS alg for signed response, e.g. "ES256"
+  client_id: string;                             // RP identifier URL
+  client_name: string;
+  jwks: { keys: object[] };                      // RP JWK Set (used to encrypt the JARM response)
+  request_uris: string[];
+  response_uris: string[];
+  vp_formats: Record<string, {
+    alg?: string[];
+    "sd-jwt_alg_values"?: string[];
+  }>;
+  // Additional optional fields per the IT-Wallet RP metadata spec
+}
+```
 
 ---
 
