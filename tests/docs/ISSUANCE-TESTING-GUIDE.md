@@ -240,6 +240,8 @@ helpers, see [FACTORY-HELPERS-GUIDE.md](FACTORY-HELPERS-GUIDE.md).
 
 ## Additional Resources
 
+- [PAR Validation Testing Guide](PAR-VALIDATION-TESTING-GUIDE.md) — step-by-step walkthrough
+  of `par-validation.issuance.spec.ts`; use as a template for negative-test specs
 - [Test Configuration Guide](TEST-CONFIGURATION-GUIDE.md) — full reference for the
   auto-discovery system, config options, and all available helpers
 - [IT Wallet Documentation](https://italia.github.io/eid-wallet-it-docs/)
