@@ -6,7 +6,7 @@ import { useTestSummary } from "#/helpers/use-test-summary";
 import { SDJwt } from "@sd-jwt/core";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
-import z from "zod/v3";
+import z from "zod";
 
 import { parseMdoc } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";

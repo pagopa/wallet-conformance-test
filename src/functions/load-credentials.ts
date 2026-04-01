@@ -4,6 +4,7 @@ import { digest } from "@sd-jwt/crypto-nodejs";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { Config, Credential, CredentialWithKey, Logger } from "@/types";
 
 import {
@@ -88,7 +89,7 @@ export async function loadCredentialsForPresentation(
         const newCredential = await (credential.typ === "dc+sd-jwt"
           ? createMockSdJwt(
               {
-                iss: "https://issuer.example.com",
+                iss: getLocalCiBaseUrl(config.issuer.port),
                 network: config.network,
                 trust: config.trust,
                 trustAnchor: config.trust_anchor,
@@ -135,7 +136,7 @@ async function createMockCredentialsWithKeys(
 ): Promise<CredentialWithKey[]> {
   const personIdentificationData = await createMockSdJwt(
     {
-      iss: config.wallet.mock_issuer,
+      iss: getLocalCiBaseUrl(config.issuer.port),
       network: config.network,
       trust: config.trust,
       trustAnchor: config.trust_anchor,

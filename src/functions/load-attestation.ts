@@ -27,6 +27,7 @@ import {
   signJwtCallback,
   validateProviderKeyPair,
 } from "@/logic";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 import {
   isExternalTrustAnchor,
@@ -71,7 +72,7 @@ interface LoadAttestationOptions {
   wallet: Config["wallet"];
 }
 
-const buildWpEntityConfiguration = async (
+export const buildWpEntityConfiguration = async (
   trust: Config["trust"],
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
@@ -87,7 +88,7 @@ const buildWpEntityConfiguration = async (
     trust_anchor_base_url: trustAnchorBaseUrl,
     trust_marks,
     wallet_name: wallet.wallet_name,
-    wallet_provider_base_url: wallet.wallet_provider_base_url,
+    wallet_provider_base_url: getLocalWpBaseUrl(wallet.port),
   };
   const wpClaims = loadJsonDumps(
     "wallet_provider_metadata.json",
@@ -111,11 +112,12 @@ const buildAttestationOptions = async (
     ...partialCallbacks,
     signJwt: signJwtCallback([providerKeyPair.privateKey]),
   };
+  const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
   const commonOptions = {
     callbacks,
     dpopJwkPublic: unitPublicKey,
-    issuer: wallet.wallet_provider_base_url,
-    walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+    issuer: wpBaseUrl,
+    walletLink: `${wpBaseUrl}/wallet`,
     walletName: wallet.wallet_name,
   };
   const signerBase = {
@@ -162,7 +164,7 @@ const createAttestation = async (
       trustAnchor,
       trust,
       providerKeyPair.publicKey,
-      wallet.wallet_provider_base_url,
+      getLocalWpBaseUrl(wallet.port),
       trustAnchorBaseUrl,
       wallet.wallet_version,
       network,

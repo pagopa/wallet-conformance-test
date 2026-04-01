@@ -19,6 +19,37 @@ import {
 } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
+export async function buildIssuerEntityConfiguration_V1_3(
+  metadata: {
+    iss: string;
+    trust: Config["trust"];
+    trustAnchor: Config["trust_anchor"];
+  },
+  keyPair: KeyPair,
+): Promise<string> {
+  const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
+  const trust_marks = await getTrustMarks(
+    trustAnchorBaseUrl,
+    metadata.trust.federation_trust_anchors_jwks_path,
+    metadata.iss,
+  );
+  const issClaims = loadJsonDumps(
+    "issuer_metadata.json",
+    {
+      issuer_base_url: metadata.iss,
+      public_key: keyPair.publicKey,
+      trust_anchor_base_url: trustAnchorBaseUrl,
+      trust_marks,
+    },
+    ItWalletSpecsVersion.V1_3,
+  );
+  return createFederationMetadata({
+    claims: issClaims,
+    entityPublicJwk: keyPair.publicKey,
+    signedJwks: keyPair,
+  });
+}
+
 export async function buildMockMdlMdoc_V1_3(
   expiration: Date,
   deviceKey: KeyPairJwk,
@@ -101,27 +132,10 @@ export async function buildMockSdJwt_V1_3(
         walletVersion: ItWalletSpecsVersion.V1_3,
       });
 
-  const trust_marks = await getTrustMarks(
-    trustAnchorBaseUrl,
-    metadata.trust.federation_trust_anchors_jwks_path,
-    metadata.iss,
+  const issEntityConfiguration = await buildIssuerEntityConfiguration_V1_3(
+    metadata,
+    keyPair,
   );
-
-  const issClaims = loadJsonDumps(
-    "issuer_metadata.json",
-    {
-      issuer_base_url: metadata.iss,
-      public_key: keyPair.publicKey,
-      trust_anchor_base_url: trustAnchorBaseUrl,
-      trust_marks,
-    },
-    ItWalletSpecsVersion.V1_3,
-  );
-  const issEntityConfiguration = await createFederationMetadata({
-    claims: issClaims,
-    entityPublicJwk: keyPair.publicKey,
-    signedJwks: keyPair,
-  });
 
   const issuer = {
     keyPair,
@@ -170,7 +184,7 @@ export async function buildMockSdJwt_V1_3(
       status: {
         status_list: {
           idx: 0,
-          uri: `https://127.0.0.1:${metadata.trustAnchor.port}/credentials/status-list`,
+          uri: `${metadata.iss}/status-list`,
         },
       },
       sub: unitKey.kid,

@@ -5,6 +5,8 @@ import {
   loadJsonDumps,
   loadJwks,
 } from "@/logic";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { Config } from "@/types";
 
 /**
@@ -78,7 +80,7 @@ export async function fetchExternalSubordinateStatement(
  * @param config - The full application configuration
  */
 export async function registerWithExternalTrustAnchor(
-  config: Pick<Config, "network" | "trust_anchor" | "wallet">,
+  config: Pick<Config, "issuer" | "network" | "trust_anchor" | "wallet">,
 ): Promise<void> {
   const externalTaUrl = config.trust_anchor.external_ta_url;
 
@@ -87,7 +89,7 @@ export async function registerWithExternalTrustAnchor(
     return;
   }
 
-  const { network, wallet } = config;
+  const { issuer, network, wallet } = config;
 
   // Load WP public key pair
   const providerKeyPair = await loadJwks(
@@ -100,7 +102,7 @@ export async function registerWithExternalTrustAnchor(
     public_key: providerKeyPair.publicKey,
     trust_anchor_base_url: externalTaUrl,
     wallet_name: wallet.wallet_name,
-    wallet_provider_base_url: wallet.wallet_provider_base_url,
+    wallet_provider_base_url: getLocalWpBaseUrl(wallet.port),
   };
   const wpClaims = loadJsonDumps(
     "wallet_provider_metadata.json",
@@ -116,7 +118,7 @@ export async function registerWithExternalTrustAnchor(
 
   // Build CI Entity Configuration JWT
   const ciPlaceholders = {
-    issuer_base_url: wallet.mock_issuer,
+    issuer_base_url: getLocalCiBaseUrl(issuer.port),
     public_key: issuerKeyPair.publicKey,
     trust_anchor_base_url: externalTaUrl,
   };
@@ -128,7 +130,7 @@ export async function registerWithExternalTrustAnchor(
 
   const entityConfigurationJwts = [
     {
-      baseUrl: wallet.wallet_provider_base_url,
+      baseUrl: getLocalWpBaseUrl(wallet.port),
       entity: "WP",
       jwt: await createFederationMetadata({
         claims: wpClaims,
@@ -137,7 +139,7 @@ export async function registerWithExternalTrustAnchor(
       }),
     },
     {
-      baseUrl: wallet.mock_issuer,
+      baseUrl: getLocalCiBaseUrl(issuer.port),
       entity: "CI",
       jwt: await createFederationMetadata({
         claims: ciClaims,

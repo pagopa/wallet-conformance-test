@@ -1,6 +1,5 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
@@ -62,9 +61,6 @@ testConfigs.forEach((testConfig) => {
         baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentials: [],
-        ioWalletSdkConfig: new IoWalletSdkConfig({
-          itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
-        }),
         requestUri: requestUri ?? "",
         rpMetadata: entityClaims?.metadata?.openid_credential_verifier,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
