@@ -96,7 +96,7 @@ They always resolve correctly as long as you run `wct` from the `wallet-conforma
 directory (see Step 4).
 
 > **Before you write tests**, consult [STEP-OUTPUTS.md](STEP-OUTPUTS.md) to understand the full
-> response structure of each step (`FetchMetadataStepResponse`, `PushedAuthorizationRequestResponse`
+> response structure of each step (`FetchMetadataStepResponse`, `PushedAuthorizationRequestResponse`,
 > `AuthorizeStepResponse`, `TokenRequestResponse`, and `CredentialRequestResponse`). 
 > Knowing what fields are available will help you write meaningful assertions.
 
