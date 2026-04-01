@@ -70,7 +70,7 @@ The `config.example.ini` template includes all available options (wallet configu
 anchors, logging, network timeouts, etc.) with sensible defaults. You only need to change what
 differs from the example.
 
-> **`authorize_request_url`** is mandatory. If it is missing, `definePresentationTest()` will
+> **`authorize_request_url`** is mandatory. If it is missing, `definePresentationTest()` will fail configuration validation and throw an error before tests run.
 
 ---
 
