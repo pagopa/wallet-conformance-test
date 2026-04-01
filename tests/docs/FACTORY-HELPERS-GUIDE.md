@@ -828,5 +828,5 @@ const wrongChallengeConfig = createWrongChallengeConfig(baseConfig);
 ## Additional Resources
 
 - [Issuance Testing Guide](./ISSUANCE-TESTING-GUIDE.md#step-7--negative-tests-with-factory-helpers-advanced)
-- [Test Configuration Guide](../tests/TEST-CONFIGURATION-GUIDE.md)
+- [Test Configuration Guide](./TEST-CONFIGURATION-GUIDE.md)
 - Example test specs: [tests/conformance/issuance/](../tests/conformance/issuance/)
