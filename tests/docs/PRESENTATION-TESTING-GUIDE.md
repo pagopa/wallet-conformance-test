@@ -402,9 +402,9 @@ Then register it in `steps/` as described in Step 5b — the auto-discovery mech
 ## Additional Resources
 
 - [Step Outputs Reference](./STEP-OUTPUTS.md) — detailed output structure for each presentation step
-- [Test Configuration Guide](../tests/TEST-CONFIGURATION-GUIDE.md) — full reference for
+- [Test Configuration Guide](./TEST-CONFIGURATION-GUIDE.md) — full reference for
   auto-discovery and config options
-- [Test Configuration Guide – Presentation](../tests/TEST-CONFIGURATION-GUIDE.md#presentation-configuration) —
+- [Test Configuration Guide – Presentation](./TEST-CONFIGURATION-GUIDE.md) —
   presentation-specific settings
 - [IT Wallet Documentation](https://italia.github.io/eid-wallet-it-docs/)
 - [Relying Party Test Matrix](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans-relying-party.html)
