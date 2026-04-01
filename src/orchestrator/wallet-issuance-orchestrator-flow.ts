@@ -74,6 +74,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     this.log.testSuite({
       profile: this.issuanceConfig.credentialConfigurationId,
+      specsVersion: this.config.wallet.wallet_version,
       target: this.config.issuance.url,
       title: this.issuanceConfig.name,
     });

@@ -51,6 +51,7 @@ export class WalletPresentationOrchestratorFlow {
 
     this.log.testSuite({
       profile: this.presentationConfig.name,
+      specsVersion: this.config.wallet.wallet_version,
       target: this.config.presentation.authorize_request_url,
       title: this.presentationConfig.name,
     });

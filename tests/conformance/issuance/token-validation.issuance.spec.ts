@@ -29,6 +29,7 @@ import { AttestationResponse } from "@/types";
 // Module-level test registration
 // ---------------------------------------------------------------------------
 
+// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfigs = await defineIssuanceTest("TokenValidation");
 
 // ---------------------------------------------------------------------------
@@ -53,11 +54,6 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Token Endpoint Validation Tests",
-      });
 
       ({
         authorizationServer,
