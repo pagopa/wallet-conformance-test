@@ -187,7 +187,7 @@ export class MyTokenStep extends TokenRequestDefaultStep {
 
 ```ini
 [steps_mapping]
-MyIssuanceTest = ./tests/example/steps/my-token-step.ts
+MyIssuanceTest = ./tests/example/steps
 ```
 
 **How it works:**
