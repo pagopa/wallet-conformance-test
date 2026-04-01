@@ -216,7 +216,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
 
-The pre-configured happy flow tests and security tests validates the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
+The pre-configured happy flow tests and security tests validate the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
 
 > **Note**: By default, credentials generated during testing are not saved to disk. However, you can configure the tool to save them locally for presentation phase. You can configure that using `config.ini` with `save_credential = true` or using cli option `--save-credential`
 
