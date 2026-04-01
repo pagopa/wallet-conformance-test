@@ -28,6 +28,7 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { AttestationResponse } from "@/types/attestation-response";
 import { KeyPair } from "@/types/key-pair";
 
@@ -126,7 +127,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
-      issuer: this.config.wallet.wallet_provider_base_url,
+      issuer: getLocalWpBaseUrl(this.config.wallet.port),
       keyStorage: ["iso_18045_basic"],
       signer: {
         alg: "ES256",
@@ -137,7 +138,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       status: {
         status_list: {
           idx: 0,
-          uri: `https://127.0.0.1:${this.config.trust_anchor.port}/wallet/status-list`,
+          uri: `${getLocalWpBaseUrl(this.config.wallet.port)}/status-list`,
         },
       },
       userAuthentication: ["iso_18045_basic"],

@@ -5,68 +5,76 @@ import { describe, expect, it, vi } from "vitest";
 import { loadConfigWithHierarchy } from "@/logic";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
 describe("status-list endpoint tests", () => {
   const config = loadConfigWithHierarchy();
-  const baseUrl = `https://127.0.0.1:${config.trust_anchor.port}`;
 
   describe.each([
     {
-      expectedIss: config.wallet.wallet_provider_base_url,
-      path: "/wallet/status-list",
+      baseUrl: `https://127.0.0.1:${config.wallet.port}`,
+      expectedIss: getLocalWpBaseUrl(config.wallet.port),
+      expectedSub: `${getLocalWpBaseUrl(config.wallet.port)}/status-list`,
+      path: "/status-list",
     },
     {
-      expectedIss: config.wallet.mock_issuer,
-      path: "/credentials/status-list",
+      baseUrl: `https://127.0.0.1:${config.issuer.port}`,
+      expectedIss: getLocalCiBaseUrl(config.issuer.port),
+      expectedSub: `${getLocalCiBaseUrl(config.issuer.port)}/status-list`,
+      path: "/status-list",
     },
-  ])("GET $path", ({ expectedIss, path }) => {
-    const endpointUrl = `${baseUrl}${path}`;
+  ])(
+    "GET $path ($expectedIss)",
+    ({ baseUrl, expectedIss, expectedSub, path }) => {
+      const endpointUrl = `${baseUrl}${path}`;
 
-    it("should respond with Content-Type application/statuslist+jwt", async () => {
-      const response = await fetch(endpointUrl);
+      it("should respond with Content-Type application/statuslist+jwt", async () => {
+        const response = await fetch(endpointUrl);
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toContain(
-        "application/statuslist+jwt",
-      );
-    });
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toContain(
+          "application/statuslist+jwt",
+        );
+      });
 
-    it("should set the correct iss and sub to the endpoint URI", async () => {
-      const response = await fetch(endpointUrl);
-      const jwt = await response.text();
-      const payload = decodeJwt(jwt);
+      it("should set the correct iss and sub to the endpoint URI", async () => {
+        const response = await fetch(endpointUrl);
+        const jwt = await response.text();
+        const payload = decodeJwt(jwt);
 
-      expect(payload.iss).toBe(expectedIss);
-      expect(payload.sub).toBe(endpointUrl);
-    });
+        expect(payload.iss).toBe(expectedIss);
+        expect(payload.sub).toBe(expectedSub);
+      });
 
-    it("should include x5c in the header and produce a valid signature", async () => {
-      const response = await fetch(endpointUrl);
-      const jwt = await response.text();
-      const header = decodeProtectedHeader(jwt);
+      it("should include x5c in the header and produce a valid signature", async () => {
+        const response = await fetch(endpointUrl);
+        const jwt = await response.text();
+        const header = decodeProtectedHeader(jwt);
 
-      expect(Array.isArray(header.x5c)).toBe(true);
-      const pem = `-----BEGIN CERTIFICATE-----\n${(header.x5c as string[])[0]}\n-----END CERTIFICATE-----`;
-      const publicKey = await importX509(pem, "ES256");
+        expect(Array.isArray(header.x5c)).toBe(true);
+        const pem = `-----BEGIN CERTIFICATE-----\n${(header.x5c as string[])[0]}\n-----END CERTIFICATE-----`;
+        const publicKey = await importX509(pem, "ES256");
 
-      await expect(
-        jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
-      ).resolves.toBeDefined();
-    });
-  });
+        await expect(
+          jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
+        ).resolves.toBeDefined();
+      });
+    },
+  );
 });
 
 describe("createStatusListToken", () => {
   const config = loadConfigWithHierarchy();
-  const statusListEndpointBaseUrl = `http://127.0.0.1:${config.trust_anchor.port}`;
+  const statusListEndpointBaseUrl = `http://127.0.0.1:${config.wallet.port}`;
 
   const walletOptions = {
     certFilename: "wallet_provider_cert",
-    certSubject: `CN=${new URL(config.wallet.wallet_provider_base_url).hostname}`,
-    iss: config.wallet.wallet_provider_base_url,
+    certSubject: `CN=wallet-provider.wct.it`,
+    iss: getLocalWpBaseUrl(config.wallet.port),
     jwksFilename: "wallet_provider_jwks",
     jwksPath: config.wallet.backup_storage_path,
-    statusListEndpointUrl: `${statusListEndpointBaseUrl}/wallet/status-list`,
+    statusListEndpointUrl: `${statusListEndpointBaseUrl}/status-list`,
   };
 
   it("should set typ header to statuslist+jwt (spec §5.1)", async () => {

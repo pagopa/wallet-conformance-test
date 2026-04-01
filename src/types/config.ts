@@ -29,6 +29,9 @@ export const configSchema = z.object({
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
+  issuer: z.object({
+    port: z.coerce.number(),
+  }),
   logging: z.object({
     log_file: z.string(),
     log_file_format: z.string().optional(),
@@ -78,11 +81,10 @@ export const configSchema = z.object({
   wallet: z.object({
     backup_storage_path: z.string(),
     credentials_storage_path: z.string(),
-    mock_issuer: z.string().default("https://example.issuer.com"),
+    port: z.coerce.number(),
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),
-    wallet_provider_base_url: z.string().url(),
     wallet_version: z
       .string({
         error: (issue) =>
