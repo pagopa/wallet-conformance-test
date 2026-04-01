@@ -213,17 +213,25 @@ function testFailed(this: Logger) {
  */
 function testSuite(
   this: Logger,
-  options: { profile: string; target: string; title: string },
+  options: {
+    profile: string;
+    specsVersion: string;
+    target: string;
+    title: string;
+  },
 ) {
   const version = readPackageVersion();
   const heading = `WCT v${version}  •  ${options.title}`;
-  const targetLine = `Target   ${options.target}`;
-  const profileLine = `Profile  ${options.profile}`;
+  const LABEL_WIDTH = "IT Wallet Specs Version".length;
+  const targetLine = `${"Target".padEnd(LABEL_WIDTH)}  ${options.target}`;
+  const profileLine = `${"Profile".padEnd(LABEL_WIDTH)}  ${options.profile}`;
+  const specsVersionLine = `${"IT Wallet Specs Version".padEnd(LABEL_WIDTH)}  ${options.specsVersion}`;
 
   const innerWidth = Math.max(
     heading.length,
     targetLine.length,
     profileLine.length,
+    specsVersionLine.length,
   );
   // Add 4 chars of padding (2 on each side)
   const boxWidth = innerWidth + 4;
@@ -236,6 +244,7 @@ function testSuite(
   process.stdout.write(`${pad(heading)}\n`);
   process.stdout.write(`${pad(targetLine)}\n`);
   process.stdout.write(`${pad(profileLine)}\n`);
+  process.stdout.write(`${pad(specsVersionLine)}\n`);
   process.stdout.write(`${bottom}\n`);
   process.stdout.write("\n");
 }

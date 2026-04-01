@@ -83,12 +83,6 @@ testConfigs.forEach((testConfig) => {
     beforeAll(async () => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
 
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Credential Request Validation Tests",
-      });
-
       tokenCtx = await orchestrator.runThroughToken();
 
       ({ credentialIssuer, fetchMetadataResponse, walletAttestationResponse } =

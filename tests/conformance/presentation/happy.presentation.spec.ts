@@ -23,12 +23,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   let redirectUriResult: RedirectUriStepResponse;
 
   beforeAll(async () => {
-    baseLog.testSuite({
-      profile: "dc_sd_jwt_PersonIdentificationData",
-      target: orchestrator.getConfig().presentation.authorize_request_url,
-      title: "Presentation Conformance Tests",
-    });
-
     try {
       const result = await orchestrator.presentation();
       assertPresentationFlowSuccess(result);

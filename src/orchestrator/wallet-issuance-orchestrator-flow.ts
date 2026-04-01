@@ -44,7 +44,9 @@ export class WalletIssuanceOrchestratorFlow {
   private _fetchMetadataResponse?: FetchMetadataStepResponse;
   private _nonceResponse?: NonceRequestResponse;
   private _pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
+  private _suitePrinted = false;
   private _tokenResponse?: TokenRequestResponse;
+
   private _walletAttestationResponse?: AttestationResponse;
 
   private authorizeStep: AuthorizeDefaultStep;
@@ -71,22 +73,6 @@ export class WalletIssuanceOrchestratorFlow {
       level: this.config.logging.log_level,
       path: this.config.logging.log_file,
     });
-
-    this.log.debug("Setting Up Wallet conformance Tests - Issuance Flow");
-    this.log.debug(
-      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
-    );
-
-    this.log.debug(
-      "Configuration Loaded:\n",
-      JSON.stringify({
-        credentialsDir: this.config.wallet.credentials_storage_path,
-        issuanceUrl: this.config.issuance.url,
-        maxRetries: this.config.network.max_retries,
-        timeout: `${this.config.network.timeout}s`,
-        userAgent: this.config.network.user_agent,
-      }),
-    );
 
     this.fetchMetadataStep = new issuanceConfig.fetchMetadataStepClass(
       this.config,
@@ -356,6 +342,7 @@ export class WalletIssuanceOrchestratorFlow {
    * both methods re-execute from scratch and will cause duplicate PAR requests.
    */
   async runThroughPar(): Promise<RunThroughParContext> {
+    this.printTestSuiteOnce();
     this.log.info("Starting Test Issuance Flow...");
 
     const { credentialConfigurationIds, credentialIssuer } =
@@ -565,6 +552,33 @@ export class WalletIssuanceOrchestratorFlow {
       );
 
     return { ...authorizeCtx, dPoPKey, tokenResponse };
+  }
+
+  private printTestSuiteOnce(): void {
+    if (this._suitePrinted) return;
+    this._suitePrinted = true;
+    this.log.testSuite({
+      profile: this.issuanceConfig.credentialConfigurationId,
+      specsVersion: this.config.wallet.wallet_version,
+      target: this.config.issuance.url,
+      title: this.issuanceConfig.name,
+    });
+
+    this.log.debug("Setting Up Wallet conformance Tests - Issuance Flow");
+    this.log.debug(
+      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
+    );
+
+    this.log.debug(
+      "Configuration Loaded:\n",
+      JSON.stringify({
+        credentialsDir: this.config.wallet.credentials_storage_path,
+        issuanceUrl: this.config.issuance.url,
+        maxRetries: this.config.network.max_retries,
+        timeout: `${this.config.network.timeout}s`,
+        userAgent: this.config.network.user_agent,
+      }),
+    );
   }
 
   private resetResponses(): void {
