@@ -27,6 +27,7 @@ export class WalletPresentationOrchestratorFlow {
   private _authorizationRequestResult?: AuthorizationRequestStepResponse;
   private _fetchMetadataResult?: FetchMetadataVpStepResponse;
   private _redirectUriResult?: RedirectUriStepResponse;
+  private _suitePrinted = false;
 
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
   private config: Config;
@@ -48,26 +49,6 @@ export class WalletPresentationOrchestratorFlow {
       level: this.config.logging.log_level,
       path: this.config.logging.log_file,
     });
-
-    this.log.testSuite({
-      profile: this.presentationConfig.name,
-      specsVersion: this.config.wallet.wallet_version,
-      target: this.config.presentation.authorize_request_url,
-      title: this.presentationConfig.name,
-    });
-
-    this.log.debug("Setting Up Wallet conformance Tests - Presentation Flow");
-    this.log.debug("Configuration Loaded from config.ini");
-
-    this.log.debug(
-      "Configuration Loaded:\n",
-      JSON.stringify({
-        credentialsDir: this.config.wallet.credentials_storage_path,
-        maxRetries: this.config.network.max_retries,
-        timeout: `${this.config.network.timeout}s`,
-        userAgent: this.config.network.user_agent,
-      }),
-    );
 
     this.fetchMetadataStep = new presentationConfig.fetchMetadataStepClass(
       this.config,
@@ -93,6 +74,7 @@ export class WalletPresentationOrchestratorFlow {
 
   async presentation(): Promise<PresentationFlowResponse> {
     this.resetResponses();
+    this.printTestSuiteOnce();
 
     const TOTAL_STEPS = 3;
     try {
@@ -255,6 +237,32 @@ export class WalletPresentationOrchestratorFlow {
     }
 
     return this.config.presentation.verifier;
+  }
+
+  private printTestSuiteOnce(): void {
+    if (this._suitePrinted) return;
+    this._suitePrinted = true;
+    this.log.testSuite({
+      profile: this.presentationConfig.name,
+      specsVersion: this.config.wallet.wallet_version,
+      target: this.config.presentation.authorize_request_url,
+      title: this.presentationConfig.name,
+    });
+
+    this.log.debug("Setting Up Wallet conformance Tests - Presentation Flow");
+    this.log.debug(
+      "Configuration Loaded (Hierarchy: CLI options > Custom INI > Default INI)",
+    );
+
+    this.log.debug(
+      "Configuration Loaded:\n",
+      JSON.stringify({
+        credentialsDir: this.config.wallet.credentials_storage_path,
+        maxRetries: this.config.network.max_retries,
+        timeout: `${this.config.network.timeout}s`,
+        userAgent: this.config.network.user_agent,
+      }),
+    );
   }
 
   private resetResponses(): void {

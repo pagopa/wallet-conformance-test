@@ -213,7 +213,12 @@ function testFailed(this: Logger) {
  */
 function testSuite(
   this: Logger,
-  options: { profile: string; specsVersion: string; target: string; title: string },
+  options: {
+    profile: string;
+    specsVersion: string;
+    target: string;
+    title: string;
+  },
 ) {
   const version = readPackageVersion();
   const heading = `WCT v${version}  •  ${options.title}`;

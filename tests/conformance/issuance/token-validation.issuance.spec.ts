@@ -54,7 +54,6 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     beforeAll(async () => {
-
       ({
         authorizationServer,
         code,
