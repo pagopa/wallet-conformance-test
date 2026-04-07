@@ -285,7 +285,7 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 
 ## 📋 Official Test Plans
 
-The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation. See [Test Execution Reference](./tests/docs/TEST-EXECUTION-REFERENCE.md) for more details.
+The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation. See [Test Execution Reference](./tests/docs/TEST-EXECUTION-REFERENCE.md) for more details.
 
 This ensures that implementations validated by this tool are aligned with the requirements established by the Italian technical rules for the IT Wallet ecosystem.
 
