@@ -9,6 +9,7 @@ import {
 import path from "node:path";
 
 import { CertificateExpiredError } from "@/errors";
+import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
@@ -269,7 +270,7 @@ export async function loadWalletProviderCertificate(
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
 ): Promise<[string, ...string[]]> {
-  const providerDomain = new URL(wallet.wallet_provider_base_url).hostname;
+  const providerDomain = LOCAL_WP_HOST;
   const cert = await loadCertificate(
     wallet.backup_storage_path,
     "wallet_provider_cert",
