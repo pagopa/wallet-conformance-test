@@ -70,7 +70,7 @@ describe("createStatusListToken", () => {
 
   const walletOptions = {
     certFilename: "wallet_provider_cert",
-    certSubject: `CN=wallet-provider.wct.example.it`,
+    certSubject: `CN=wallet-provider.wct.example`,
     iss: getLocalWpBaseUrl(config.wallet.port),
     jwksFilename: "wallet_provider_jwks",
     jwksPath: config.wallet.backup_storage_path,
