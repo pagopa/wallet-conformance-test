@@ -159,8 +159,8 @@ The `wallet_version` setting (under the `[wallet]` section) controls which versi
 
 | Value  | Description |
 |--------|-------------|
-| `V1_0` | Targets the 1.0.x specification. https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en/ |
-| `V1_3` | Targets the 1.3.x specification, https://italia.github.io/eid-wallet-it-docs/releases/1.3.3/en/ |
+| `V1_0` | Targets the 1.0.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en/). |
+| `V1_3` | Targets the 1.3.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.3.3/en/). |
 
 Set it in your `config.ini`:
 
