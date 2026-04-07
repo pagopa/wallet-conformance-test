@@ -10,7 +10,8 @@ import { writeFileSync } from "node:fs";
 
 import { KeyPair, KeyPairJwk } from "@/types";
 
-import { buildCertPath, loadCertificate } from "./utils";
+import { loadCertificate } from "./pem";
+import { buildCertPath } from "./utils";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.

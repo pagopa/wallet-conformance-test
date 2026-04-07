@@ -3,6 +3,7 @@ import { decodeJwt, decodeProtectedHeader, importX509, jwtVerify } from "jose";
 import { describe, expect, it, vi } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
+import * as pem from "@/logic/pem";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
@@ -151,7 +152,7 @@ describe("createStatusListToken", () => {
       privateKey: { alg: "ES256", kty: "EC" } as never,
       publicKey: { kty: "EC" } as never, // no alg
     });
-    vi.spyOn(utils, "loadCertificate").mockResolvedValueOnce("dummycert");
+    vi.spyOn(pem, "loadCertificate").mockResolvedValueOnce("dummycert");
 
     await expect(createStatusListToken(walletOptions)).rejects.toThrow(
       /Error, the following keys are missing from object: alg/,

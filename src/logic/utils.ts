@@ -5,31 +5,17 @@ import {
   Fetch,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
-import * as x509 from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
-import { CertificateExpiredError, MissingFieldError } from "@/errors";
 import { LOCAL_CI_HOST } from "@/servers/ci-server";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
+import { MissingFieldError } from "@/errors";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
-import {
-  createAndSaveCertificate,
-  createAndSaveCertificateWithKey,
-  createAndSaveKeys,
-  createAndSaveKeysWithX5C,
-  hasX509CertificateExpired,
-  verifyJwt,
-} from ".";
+import { createAndSaveKeys, createAndSaveKeysWithX5C, verifyJwt } from ".";
 
 export const EXPIRY_LEEWAY_MS = 3e4;
 
@@ -224,50 +210,6 @@ export function ensureDir(dirPath: string): boolean {
       `unable to find or create necessary directory ${dirPath}: ${(e as Error).message}`,
     );
   }
-}
-
-/**
- * Loads a certificate from a file, or creates and saves it if it doesn't exist.
- *
- * @param certPath The directory path where the certificate is stored.
- * @param filename The name of the certificate file.
- * @param keyPair The key pair to use if creating a new certificate.
- * @param subject The subject name to use if creating a new certificate.
- * @returns A promise that resolves to the certificate in PEM format.
- */
-export async function loadCertificate(
-  certPath: string,
-  filename: string,
-  keyPair: KeyPair,
-  subject: string,
-): Promise<string> {
-  const dirCreated = ensureDir(certPath);
-
-  if (!dirCreated) {
-    try {
-      const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
-      const certDerBase64 = certPem
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", "")
-        .replace(/\s+/g, "")
-        .trim();
-
-      if (hasX509CertificateExpired(certDerBase64))
-        throw new CertificateExpiredError(
-          "Certificate has expired and has to be regenerated",
-        );
-
-      return certDerBase64;
-    } catch {
-      /* fall through to generate */
-    }
-  }
-
-  return await createAndSaveCertificate(
-    `${certPath}/${filename}`,
-    keyPair,
-    subject,
-  );
 }
 
 /**
