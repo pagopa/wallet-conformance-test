@@ -1,6 +1,6 @@
 import { Config } from "@/types";
 
-export const LOCAL_TA_HOST = "trust-anchor.wct.it";
+export const LOCAL_TA_HOST = "trust-anchor.wct.example.it";
 export const LOCAL_TA_BASE_URL = `https://${LOCAL_TA_HOST}`;
 
 /**

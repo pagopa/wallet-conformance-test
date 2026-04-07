@@ -343,9 +343,9 @@ The tool spins up several **local HTTPS servers** that provide OpenID Federation
 
 | Server | Hostname | Default Port | Purpose |
 |---|---|---|---|
-| **Trust Anchor** | `trust-anchor.wct.it` | `3001` | Root of trust — serves `openid-federation` and `/fetch` endpoints |
-| **Wallet Provider** | `wallet-provider.wct.it` | `3002` | Exposes the Wallet Provider entity configuration and JWKS |
-| **Credential Issuer** | `credential-issuer.wct.it` | `3003` | Exposes the mock PID issuer entity configuration |
+| **Trust Anchor** | `trust-anchor.wct.example.it` | `3001` | Root of trust — serves `openid-federation` and `/fetch` endpoints |
+| **Wallet Provider** | `wallet-provider.wct.example.it` | `3002` | Exposes the Wallet Provider entity configuration and JWKS |
+| **Credential Issuer** | `credential-issuer.wct.example.it` | `3003` | Exposes the mock PID issuer entity configuration |
 
 ### DNS Resolution Requirement
 
@@ -356,7 +356,7 @@ Because these servers listen on HTTPS (port 443 implied by the canonical URLs), 
 Add the following line to `/etc/hosts` (requires `sudo`):
 
 ```bash
-sudo sh -c 'echo "127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it" >> /etc/hosts'
+sudo sh -c 'echo "127.0.0.1  trust-anchor.wct.example.it wallet-provider.wct.example.it credential-issuer.wct.example.it" >> /etc/hosts'
 ```
 
 Or open the file manually:
@@ -368,7 +368,7 @@ sudo nano /etc/hosts
 And append:
 
 ```
-127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it
+127.0.0.1  trust-anchor.wct.example.it wallet-provider.wct.example.it credential-issuer.wct.example.it
 ```
 
 #### Windows
@@ -382,13 +382,13 @@ C:\Windows\System32\drivers\etc\hosts
 Append the following line and save:
 
 ```
-127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it
+127.0.0.1  trust-anchor.wct.example.it wallet-provider.wct.example.it credential-issuer.wct.example.it
 ```
 
 > **Tip:** You can also run the following command in an **Administrator PowerShell** prompt:
 >
 > ```powershell
-> Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it"
+> Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1  trust-anchor.wct.example.it wallet-provider.wct.example.it credential-issuer.wct.example.it"
 > ```
 
 ### Automatic Startup
