@@ -61,7 +61,7 @@ This will make the `wct` command available system-wide. You can use this command
    wct --version
    ```
 
-   This should print the current version of the tool (e.g., `1.0.3`).
+   This should print the current version of the tool (e.g., `1.1.0`).
 
 ### Command not found? 🤔
 
@@ -152,6 +152,24 @@ Override a specific value from the command line:
 Use a custom configuration file:
 
     wct test:issuance --file-ini /path/to/my-config.ini
+
+### Wallet Version
+
+The `wallet_version` setting (under the `[wallet]` section) controls which version of the Italian IT Wallet technical specification the tool targets. Different versions define different data models, credential formats, and protocol behaviours. Supported values:
+
+| Value  | Description |
+|--------|-------------|
+| `V1_0` | Targets the 1.0.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en/). |
+| `V1_3` | Targets the 1.3.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.3.3/en/). |
+
+Set it in your `config.ini`:
+
+```ini
+[wallet]
+wallet_version = V1_3
+```
+
+> **Tip**: Use `V1_3` when testing against issuers or relying parties that implement the latest specification revision. Use `V1_0` for services that still target the first stable release.
 
 ### TLS Unsafe Mode
 
@@ -267,7 +285,7 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 
 ## 📋 Official Test Plans
 
-The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation.
+The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation. See [Test Execution Reference](./tests/docs/TEST-EXECUTION-REFERENCE.md) for more details.
 
 This ensures that implementations validated by this tool are aligned with the requirements established by the Italian technical rules for the IT Wallet ecosystem.
 
