@@ -12,7 +12,7 @@ import { createStatusListToken } from "@/logic/status-list";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config } from "@/types";
 
-export const LOCAL_WP_HOST = "wallet-provider.wct.example";
+export const LOCAL_WP_HOST = "wallet-provider.wct.example.org";
 export const getLocalWpBaseUrl = (port: number): string =>
   `https://${LOCAL_WP_HOST}:${port}`;
 
