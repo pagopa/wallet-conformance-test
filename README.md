@@ -61,7 +61,7 @@ This will make the `wct` command available system-wide. You can use this command
    wct --version
    ```
 
-   This should print the current version of the tool (e.g., `1.0.3`).
+   This should print the current version of the tool (e.g., `1.1.0`).
 
 ### Command not found? 🤔
 
