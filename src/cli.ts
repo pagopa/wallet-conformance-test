@@ -6,7 +6,7 @@
  * to the test runners via environment variables.
  */
 
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { Command } from "commander";
 import { resolve } from "path";
 
@@ -163,10 +163,12 @@ addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.replaceAll(/\s*,\s*/g, " ") ?? "";
+  const tests = env.TESTS?.
+    split(/\s*,\s*/g).
+    filter(i => i.length > 0) ?? [];
 
   try {
-    execSync(`pnpm test:issuance ${tests}`, {
+    execFileSync("pnpm", ["test:issuance", ...tests], {
       env,
       stdio: "inherit",
     });
@@ -184,10 +186,12 @@ addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.replaceAll(/\s*,\s/g, " ") ?? "";
+  const tests = env.TESTS?.
+    split(/\s*,\s*/g).
+    filter(i => i.length > 0) ?? [];
 
   try {
-    execSync(`pnpm test:presentation ${tests}`, {
+    execFileSync("pnpm", ["test:issuance", ...tests], {
       env,
       stdio: "inherit",
     });
