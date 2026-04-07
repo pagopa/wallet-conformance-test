@@ -163,9 +163,7 @@ addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.
-    split(/\s*,\s*/g).
-    filter(i => i.length > 0) ?? [];
+  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
 
   try {
     execFileSync("pnpm", ["test:issuance", ...tests], {
@@ -186,9 +184,7 @@ addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
   const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.
-    split(/\s*,\s*/g).
-    filter(i => i.length > 0) ?? [];
+  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
 
   try {
     execFileSync("pnpm", ["test:issuance", ...tests], {

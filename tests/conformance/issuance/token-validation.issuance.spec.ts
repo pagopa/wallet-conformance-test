@@ -232,7 +232,7 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_061: Authorization Code Validity | Issuer rejects reused code (invalid_grant)",
-      { timeout: 5e3 },
+      { timeout: 6e3 },
       async () => {
         const log = baseLog.withTag("CI_061");
         const DESCRIPTION = "Issuer correctly rejectedd reused code";

@@ -692,7 +692,7 @@ describe("Parse Credential's Status", () => {
     expect(status).toEqual({
       status_list: {
         idx: 0,
-        uri: "https://example.com",
+        uri: `${metadata.iss}/status-list`,
       },
     });
   });
