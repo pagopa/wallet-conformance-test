@@ -3,6 +3,7 @@ import {
   ItWalletEntityConfigurationClaimsOptions,
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
+import { decodeJwt } from "@sd-jwt/decode";
 
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 
@@ -187,6 +188,16 @@ export const createSubordinateTrustAnchorMetadata = async (
 };
 
 /**
+ * Options for creating a subordinate Credential Issuer entity statement.
+ */
+export interface CreateSubordinateCredentialIssuerMetadataOptions {
+  sub: string;
+  trustAnchor: Config["trust"];
+  trustAnchorBaseUrl: string;
+  walletBackupStoragePath: string;
+}
+
+/**
  * Options for creating subordinate wallet metadata.
  */
 export interface CreateSubordinateWalletUnitMetadataOptions {
@@ -225,6 +236,45 @@ export const createSubordinateWalletUnitMetadata = async (
     signedJwks,
   });
 };
+
+/**
+ * Creates a subordinate Credential Issuer entity statement JWT signed by the Trust Anchor.
+ *
+ * @param options Options for creating the subordinate CI entity statement.
+ * @returns The signed subordinate entity statement JWT.
+ */
+export const createSubordinateCredentialIssuerMetadata = async (
+  options: CreateSubordinateCredentialIssuerMetadataOptions,
+): Promise<string> => {
+  const signedJwks = await loadJwksWithX5C(
+    options.trustAnchor.federation_trust_anchors_jwks_path,
+    "trust_anchor",
+    options.trustAnchor.ca_cert_path,
+    options.trustAnchor.certificate_subject,
+  );
+
+  const issuerJwks = await loadJwks(
+    options.walletBackupStoragePath,
+    "issuer_pid_mocked_jwks",
+  );
+  return await createFederationMetadata({
+    claims: {
+      iss: options.trustAnchorBaseUrl,
+      sub: options.sub,
+    },
+    entityPublicJwk: issuerJwks.publicKey,
+    signedJwks,
+  });
+};
+
+export const hasTrustChainExpired = (trust_chain: string[]) =>
+  trust_chain.some((statement) => {
+    const decoded = decodeJwt(statement);
+    const exp = decoded.payload.exp;
+    return (
+      exp === undefined || typeof exp !== "number" || exp * 1000 <= Date.now()
+    );
+  });
 
 export async function getTrustMarks(
   trust_anchor_base_url: string,

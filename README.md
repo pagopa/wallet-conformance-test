@@ -41,13 +41,13 @@ You must have [Node.js >= 22.19.0](https://nodejs.org/en/about/previous-releases
    cd wallet-conformance-test
    ```
 
-3. Install dependencies using npm:
+3. Install dependencies using pnpm:
 
    ```bash
    pnpm install
    ```
 
-4. Install the CLI globally using npm:
+4. Install the CLI globally using pnpm:
 
    ```bash
    pnpm install -g
@@ -216,11 +216,13 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
 
-The pre-configured happy flow test validates the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
+The pre-configured happy flow tests and security tests validate the issuance of the `--credential-types` credential. To modify this default setting, refer to the instructions below.
 
 > **Note**: By default, credentials generated during testing are not saved to disk. However, you can configure the tool to save them locally for presentation phase. You can configure that using `config.ini` with `save_credential = true` or using cli option `--save-credential`
 
-**📖 For detailed test configuration and customization**, see the comprehensive [Test Configuration Guide](./tests/TEST-CONFIGURATION-GUIDE.md). This guide covers:
+**📖 For detailed test configuration and customization**, see the comprehensive [Internal Test Configuration Guide](./tests/docs/TEST-CONFIGURATION-GUIDE.md). If you want to create external test specs see the comprehensive [External Test Configuration Guide](./tests/docs/ISSUANCE-TESTING-GUIDE.md).  
+
+These guides cover:
 
 - Quick start with default configurations
 - Custom credential types and multiple configurations
@@ -317,16 +319,66 @@ When running tests, the tool creates a sample PID credential containing fictiona
 
 > **Note (V1_3 only)**: The `verification` claim is specific to the V1.3 data model. V1_0 uses a different PID data model and does not include this claim.
 
-## 🔐 Trust Anchor Server
+## 🔐 Local Federation Servers
 
-The tool provides a **local Trust Anchor server** for testing purposes. This server is a core component that provides OpenID Federation metadata for testing federation-based wallet interactions. It serves as the root of trust in the federation hierarchy.
+The tool spins up several **local HTTPS servers** that provide OpenID Federation metadata used during conformance testing. Together they simulate a complete federation hierarchy — Trust Anchor → Wallet Provider → Credential Issuer — so that issuers and relying parties under test can resolve and validate entity configurations without any external dependency.
+
+| Server | Hostname | Default Port | Purpose |
+|---|---|---|---|
+| **Trust Anchor** | `trust-anchor.wct.it` | `3001` | Root of trust — serves `openid-federation` and `/fetch` endpoints |
+| **Wallet Provider** | `wallet-provider.wct.it` | `3002` | Exposes the Wallet Provider entity configuration and JWKS |
+| **Credential Issuer** | `credential-issuer.wct.it` | `3003` | Exposes the mock PID issuer entity configuration |
+
+### DNS Resolution Requirement
+
+Because these servers listen on HTTPS (port 443 implied by the canonical URLs), the three hostnames **must resolve to `127.0.0.1`** on the machine where the tests run. This is required so that services under test can reach the federation endpoints advertised in credentials and entity configurations.
+
+#### macOS / Linux
+
+Add the following line to `/etc/hosts` (requires `sudo`):
+
+```bash
+sudo sh -c 'echo "127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it" >> /etc/hosts'
+```
+
+Or open the file manually:
+
+```bash
+sudo nano /etc/hosts
+```
+
+And append:
+
+```
+127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it
+```
+
+#### Windows
+
+Open **Notepad** (or any text editor) **as Administrator**, then open the file:
+
+```
+C:\Windows\System32\drivers\etc\hosts
+```
+
+Append the following line and save:
+
+```
+127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it
+```
+
+> **Tip:** You can also run the following command in an **Administrator PowerShell** prompt:
+>
+> ```powershell
+> Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1  trust-anchor.wct.it wallet-provider.wct.it credential-issuer.wct.it"
+> ```
 
 ### Automatic Startup
 
-The Trust Anchor server **automatically starts when you run tests**. The global test setup handles the server lifecycle:
+All three servers **automatically start when you run tests**. The global test setup handles the server lifecycle:
 
-- Starts the server on `http://localhost:3001` before tests begin
-- Stops the server after all tests complete
+- Starts all servers before tests begin
+- Stops all servers after all tests complete
 
 No manual intervention is required when running test suites.
 

@@ -21,6 +21,7 @@ export type Logger = Omit<
   testFailed: () => void;
   testSuite: (options: {
     profile: string;
+    specsVersion: string;
     target: string;
     title: string;
   }) => void;

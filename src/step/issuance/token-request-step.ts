@@ -5,9 +5,15 @@ import {
   CreateTokenDPoPOptions,
   fetchTokenResponse,
   FetchTokenResponseOptions,
+  Jwk,
 } from "@pagopa/io-wallet-oauth2";
 
-import { createKeys, partialCallbacks, signJwtCallback } from "@/logic";
+import {
+  createKeys,
+  fetchWithConfig,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse, KeyPair } from "@/types";
 
@@ -41,6 +47,12 @@ export interface TokenRequestStepOptions {
    * Note: this is NOT the DPoP key used for token binding. The token-binding
    * DPoP is always created in this step using a fresh ephemeral key pair and
    * returned as `dPoPKey` so it can be reused later in the flow.
+   */
+  dpopProof?: { jwt: string; signerJwk: Jwk };
+
+  /**
+   * DPoP JWT used to authenticate the client,
+   * if not provided, the DPoP will be created using the wallet attestation
    */
   popAttestation: string;
 
@@ -82,13 +94,14 @@ export class TokenRequestDefaultStep extends StepFlow {
           url: options.accessTokenEndpoint,
         },
       };
-      const tokenDPoP = await createTokenDPoP(createTokenDPoPOptions);
+      const tokenDPoP =
+        options.dpopProof ?? (await createTokenDPoP(createTokenDPoPOptions));
 
       const fetchTokenResponseOptions: FetchTokenResponseOptions = {
         accessTokenEndpoint: options.accessTokenEndpoint,
         accessTokenRequest: options.accessTokenRequest,
         callbacks: {
-          fetch,
+          fetch: fetchWithConfig(this.config.network),
         },
         clientAttestationDPoP: options.popAttestation,
         dPoP: tokenDPoP.jwt,

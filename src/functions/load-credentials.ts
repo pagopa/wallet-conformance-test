@@ -1,11 +1,18 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
+import { digest } from "@sd-jwt/crypto-nodejs";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
+import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { Config, Credential, CredentialWithKey, Logger } from "@/types";
 
-import { createMockMdlMdoc, createMockSdJwt } from "./mock-credentials";
+import {
+  createMockMdlMdoc,
+  createMockSdJwt,
+  isCredentialMdocExpired,
+  isCredentialSdJwtExpired,
+} from "./mock-credentials";
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.
@@ -73,14 +80,47 @@ export async function loadCredentialsForPresentation(
   }
 
   return Promise.all(
-    Object.entries(storedCredentials).map(([key, credential]) =>
-      toCredentialWithKey(
-        key,
-        credential.compact,
-        credential.typ,
-        config.wallet.backup_storage_path,
-      ),
-    ),
+    Object.entries(storedCredentials).map(async ([key, credential]) => {
+      const isExpired =
+        credential.typ === "dc+sd-jwt"
+          ? isCredentialSdJwtExpired(credential.parsed)
+          : isCredentialMdocExpired(credential.parsed);
+      if (isExpired) {
+        const newCredential = await (credential.typ === "dc+sd-jwt"
+          ? createMockSdJwt(
+              {
+                iss: getLocalCiBaseUrl(config.issuer.port),
+                network: config.network,
+                trust: config.trust,
+                trustAnchor: config.trust_anchor,
+              },
+              config.wallet.backup_storage_path,
+              config.wallet.credentials_storage_path,
+              config.wallet.wallet_version,
+            )
+          : createMockMdlMdoc(
+              config.issuance.certificate_subject ??
+                `CN=${config.issuance.url}`,
+              config.wallet.backup_storage_path,
+              config.wallet.credentials_storage_path,
+              config.wallet.wallet_version,
+            ));
+
+        return toCredentialWithKey(
+          key,
+          newCredential.compact,
+          newCredential.typ,
+          config.wallet.backup_storage_path,
+        );
+      } else {
+        return toCredentialWithKey(
+          key,
+          credential.compact,
+          credential.typ,
+          config.wallet.backup_storage_path,
+        );
+      }
+    }),
   );
 }
 
@@ -96,7 +136,7 @@ async function createMockCredentialsWithKeys(
 ): Promise<CredentialWithKey[]> {
   const personIdentificationData = await createMockSdJwt(
     {
-      iss: config.wallet.mock_issuer,
+      iss: getLocalCiBaseUrl(config.issuer.port),
       network: config.network,
       trust: config.trust,
       trustAnchor: config.trust_anchor,
@@ -153,7 +193,7 @@ async function parseCredentialFile(
   }
 
   try {
-    const parsed = await SDJwt.extractJwt(compact);
+    const parsed = await SDJwt.decodeSDJwt(compact, digest);
     return { compact, parsed, typ: "dc+sd-jwt" };
   } catch (e) {
     onIgnoreError(

@@ -6,7 +6,8 @@ import {
   fetchPushedAuthorizationResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 
-import { partialCallbacks, signJwtCallback } from "@/logic";
+import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
+import { REDIRECT_URI } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -89,6 +90,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
         const callbacks = {
           ...partialCallbacks,
+          fetch: fetchWithConfig(this.config.network),
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
@@ -117,7 +119,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             },
           },
           pkceCodeVerifier: options.codeVerifier,
-          redirectUri: "https://client.example.org/cb",
+          redirectUri: REDIRECT_URI,
           responseMode: "query",
         };
 
@@ -138,7 +140,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 
         const fetchOptions: fetchPushedAuthorizationResponseOptions = {
-          callbacks: partialCallbacks,
+          callbacks: callbacks,
           clientAttestationDPoP: options.popAttestation,
           pushedAuthorizationRequest,
           pushedAuthorizationRequestEndpoint:

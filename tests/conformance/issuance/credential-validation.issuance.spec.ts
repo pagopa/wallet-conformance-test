@@ -37,6 +37,7 @@ import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
   createKeys,
+  fetchWithConfig,
   loadConfigWithHierarchy,
   partialCallbacks,
   signJwtCallback,
@@ -53,6 +54,7 @@ import { AttestationResponse, RunThroughTokenContext } from "@/types";
 // Module-level test registration
 // ---------------------------------------------------------------------------
 
+// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfigs = await defineIssuanceTest("CredentialValidation");
 
 // ---------------------------------------------------------------------------
@@ -80,12 +82,6 @@ testConfigs.forEach((testConfig) => {
 
     beforeAll(async () => {
       credentialConfigurationId = testConfig.credentialConfigurationId;
-
-      baseLog.testSuite({
-        profile: testConfig.credentialConfigurationId,
-        target: orchestrator.getConfig().issuance.url,
-        title: "Credential Request Validation Tests",
-      });
 
       tokenCtx = await orchestrator.runThroughToken();
 
@@ -309,7 +305,9 @@ testConfigs.forEach((testConfig) => {
         try {
           const response = await fetchCredentialResponse({
             accessToken: accessToken,
-            callbacks: { fetch: partialCallbacks.fetch },
+            callbacks: {
+              fetch: fetchWithConfig(orchestrator.getConfig().network),
+            },
             credentialEndpoint,
             credentialRequest: batchRequestWithDuplicates,
             dPoP: dpop,

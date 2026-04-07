@@ -1,6 +1,10 @@
 import type { CallbackContext } from "@pagopa/io-wallet-oauth2";
 
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  createFetcher,
+  Fetch,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import * as x509 from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
 import {
@@ -12,7 +16,10 @@ import {
 } from "node:fs";
 import path from "path";
 
-import { CertificateExpiredError } from "@/errors";
+import { CertificateExpiredError, MissingFieldError } from "@/errors";
+import { LOCAL_CI_HOST } from "@/servers/ci-server";
+import { LOCAL_WP_HOST } from "@/servers/wp-server";
+import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
@@ -20,6 +27,7 @@ import {
   createAndSaveCertificateWithKey,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
+  hasX509CertificateExpired,
   verifyJwt,
 } from ".";
 
@@ -32,14 +40,33 @@ export {
 
 export const partialCallbacks: Pick<
   CallbackContext,
-  "fetch" | "generateRandom" | "hash" | "verifyJwt"
+  "generateRandom" | "hash" | "verifyJwt"
 > = {
-  fetch,
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
   verifyJwt,
 };
+
+export function fetchWithConfig(network: Config["network"]): Fetch {
+  return (input, init) => {
+    // Normalize all HeadersInit variants (plain object, Headers instance, tuple array)
+    // and set required headers last so callers cannot override them.
+    const headers = new Headers(init?.headers);
+    if (network.user_agent) {
+      headers.set("User-Agent", network.user_agent);
+    }
+
+    // Always enforce the configured timeout; merge with any caller-provided
+    // signal so explicit cancellation still works.
+    const timeoutSignal = AbortSignal.timeout(network.timeout * 1000);
+    const signal = init?.signal
+      ? AbortSignal.any([timeoutSignal, init.signal])
+      : timeoutSignal;
+
+    return fetch(input, { ...init, headers, signal });
+  };
+}
 
 /**
  * Fetches a resource with a specified number of retries on failure.
@@ -57,14 +84,9 @@ export async function fetchWithRetries(
 ): Promise<FetchWithRetriesResponse> {
   for (let attempts = 0; attempts < network.max_retries; attempts++) {
     try {
-      const response = await fetch(url, {
+      const response = await createFetcher(fetchWithConfig(network))(url, {
         method: "GET",
-        signal: AbortSignal.timeout(network.timeout * 1000),
         ...init,
-        headers: {
-          ...(network.user_agent ? { "User-Agent": network.user_agent } : {}),
-          ...init?.headers,
-        },
       });
 
       return { attempts, response };
@@ -140,6 +162,50 @@ export function buildJwksPath(pathPrefix: string): string {
 }
 
 /**
+ * Deep merges two objects, with the second object's values taking precedence.
+ *
+ * @param target The target object (lower priority).
+ * @param source The source object (higher priority).
+ * @returns The merged object.
+ */
+export function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (sourceValue === undefined) {
+      continue;
+    }
+
+    if (
+      typeof sourceValue === "object" &&
+      sourceValue !== null &&
+      !Array.isArray(sourceValue) &&
+      typeof targetValue === "object" &&
+      targetValue !== null &&
+      !Array.isArray(targetValue)
+    ) {
+      // Recursively merge nested objects
+      result[key] = deepMerge(targetValue, sourceValue) as T[Extract<
+        keyof T,
+        string
+      >];
+    } else {
+      // Override with source value
+      result[key] = sourceValue as T[Extract<keyof T, string>];
+    }
+  }
+
+  return result;
+}
+
+/**
  * Ensures a directory exists, creating it if necessary.
  *
  * @param dirPath The directory path to ensure.
@@ -183,6 +249,11 @@ export async function loadCertificate(
         .replace("-----END CERTIFICATE-----", "")
         .replace(/\s+/g, "")
         .trim();
+
+      if (hasX509CertificateExpired(certDerBase64))
+        throw new CertificateExpiredError(
+          "Certificate has expired and has to be regenerated",
+        );
 
       return certDerBase64;
     } catch {
@@ -289,7 +360,7 @@ export async function loadOrCreateCertificateWithKey(
         const keyPem = readFileSync(keyPath, "utf-8");
         //TODO: Await WLEO-885 to replace with proper expiration check method
         const cert = new x509.X509Certificate(certPem);
-        if (cert.notAfter < new Date()) {
+        if (hasX509CertificateExpired(cert)) {
           rmSync(certPath);
           rmSync(keyPath);
           //We throw an error to explicitly mark the fact that the flow is stopped,
@@ -313,6 +384,37 @@ export async function loadOrCreateCertificateWithKey(
 }
 
 /**
+ *  Loads an existing server certificate/key pair from the specified config, or creates a new one if not found or expired.
+ * @param config The application configuration containing paths and parameters for certificate management.
+ * @returns A promise that resolves to the loaded or generated server certificate and key.
+ */
+export const loadOrCreateServerCertificate = async (
+  config: Config,
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> => {
+  const certDir = config.trust_anchor.tls_cert_dir ?? "./data/backup";
+
+  const { certPath, certPem, keyPath, keyPem } =
+    await loadOrCreateCertificateWithKey(certDir, "server", `CN=wct.it`, [
+      new x509.SubjectAlternativeNameExtension(
+        [
+          { type: "dns", value: "localhost" },
+          { type: "dns", value: LOCAL_TA_HOST },
+          { type: "dns", value: LOCAL_WP_HOST },
+          { type: "dns", value: LOCAL_CI_HOST },
+          { type: "ip", value: "127.0.0.1" },
+        ],
+        false,
+      ),
+    ]);
+  return { certPath, certPem, keyPath, keyPem };
+};
+
+/**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
  * wallet provider key pair, suitable for use in
  * WalletAttestationOptionsV1_3.signer.x5c.
@@ -328,7 +430,7 @@ export async function loadWalletProviderCertificate(
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
 ): Promise<[string, ...string[]]> {
-  const providerDomain = new URL(wallet.wallet_provider_base_url).hostname;
+  const providerDomain = LOCAL_WP_HOST;
   const cert = await loadCertificate(
     wallet.backup_storage_path,
     "wallet_provider_cert",
@@ -385,3 +487,21 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
     throw new Error("invalid key pair: kid does not match");
   }
 };
+
+/**
+ * Assertion function checking some object's keys are actually defined (not null or undefined)
+ * @param object The object whose properties must be checked
+ * @param keys The object's keys that must be defined
+ * @throws {MissingFieldError} containing the list of keys that are null or undefined
+ */
+export function hasObjectProperties<T, K extends keyof T>(
+  object: T,
+  keys: K[],
+): asserts object is Required<Pick<T, K>> & T {
+  const missingKeys = keys.filter((key) => object[key] == null);
+
+  if (missingKeys.length !== 0)
+    throw new MissingFieldError(
+      `Error, the following keys are missing from object: ${missingKeys.map(String).join(", ")}`,
+    );
+}

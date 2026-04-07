@@ -8,10 +8,10 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import { SDJwt } from "@sd-jwt/core";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-import type { AttestationResponse, Config, KeyPair } from "@/types";
-
+import { AttestationExpiredError, TrustChainExpiredError } from "@/errors";
 import {
   buildAttestationPath,
   buildJwksPath,
@@ -19,6 +19,7 @@ import {
   createSubordinateTrustAnchorMetadata,
   ensureDir,
   getTrustMarks,
+  hasTrustChainExpired,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificate,
@@ -26,11 +27,18 @@ import {
   signJwtCallback,
   validateProviderKeyPair,
 } from "@/logic";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 import {
   isExternalTrustAnchor,
   resolveTrustAnchorBaseUrl,
 } from "@/trust-anchor/trust-anchor-resolver";
+import {
+  type AttestationResponse,
+  type Config,
+  type KeyPair,
+  zTrustChain,
+} from "@/types";
 
 const resolveTaEntityConfiguration = (
   trustAnchor: Config["trust_anchor"],
@@ -64,7 +72,7 @@ interface LoadAttestationOptions {
   wallet: Config["wallet"];
 }
 
-const buildWpEntityConfiguration = async (
+export const buildWpEntityConfiguration = async (
   trust: Config["trust"],
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
@@ -80,7 +88,7 @@ const buildWpEntityConfiguration = async (
     trust_anchor_base_url: trustAnchorBaseUrl,
     trust_marks,
     wallet_name: wallet.wallet_name,
-    wallet_provider_base_url: wallet.wallet_provider_base_url,
+    wallet_provider_base_url: getLocalWpBaseUrl(wallet.port),
   };
   const wpClaims = loadJsonDumps(
     "wallet_provider_metadata.json",
@@ -104,11 +112,12 @@ const buildAttestationOptions = async (
     ...partialCallbacks,
     signJwt: signJwtCallback([providerKeyPair.privateKey]),
   };
+  const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
   const commonOptions = {
     callbacks,
     dpopJwkPublic: unitPublicKey,
-    issuer: wallet.wallet_provider_base_url,
-    walletLink: `${wallet.wallet_provider_base_url}/wallet`,
+    issuer: wpBaseUrl,
+    walletLink: `${wpBaseUrl}/wallet`,
     walletName: wallet.wallet_name,
   };
   const signerBase = {
@@ -155,7 +164,7 @@ const createAttestation = async (
       trustAnchor,
       trust,
       providerKeyPair.publicKey,
-      wallet.wallet_provider_base_url,
+      getLocalWpBaseUrl(wallet.port),
       trustAnchorBaseUrl,
       wallet.wallet_version,
       network,
@@ -219,6 +228,18 @@ export const loadAttestation = async (
   if (existsSync(attestationPath)) {
     try {
       const attestation = readFileSync(attestationPath, "utf-8");
+      const attestationJwt = await SDJwt.extractJwt(attestation);
+      // Since, at version 0.17.0, the SDJwt.extractJwt method dosn't check for WIA expiration,
+      // it must be done manually
+      const exp = attestationJwt.payload?.exp;
+      if (!exp || typeof exp !== "number" || exp * 1000 < Date.now())
+        throw new AttestationExpiredError("attestation expired");
+      const trust_chain = zTrustChain.safeParse(
+        attestationJwt.header?.trust_chain,
+      );
+      if (trust_chain.success && hasTrustChainExpired(trust_chain.data))
+        throw new TrustChainExpiredError("attestation trust_chain expired");
+
       return {
         attestation,
         created: false,
