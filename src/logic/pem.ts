@@ -227,22 +227,15 @@ export async function loadOrCreateCertificateWithKey(
     const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
     const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
     if (existsSync(certPath) && existsSync(keyPath)) {
-      try {
-        const certPem = readFileSync(certPath, "utf-8");
-        const keyPem = readFileSync(keyPath, "utf-8");
-        //TODO: Await WLEO-885 to replace with proper expiration check method
-        const cert = new x509.X509Certificate(certPem);
-        if (hasX509CertificateExpired(cert)) {
-          rmSync(certPath);
-          rmSync(keyPath);
-          //We throw an error to explicitly mark the fact that the flow is stopped,
-          //falling through here makes the code far less understandable.
-          throw new CertificateExpiredError("Stored certificate has expired");
-        } else {
-          return { certPath, certPem, keyPath, keyPem };
-        }
-      } catch {
-        /* fall through to generate */
+      const certPem = readFileSync(certPath, "utf-8");
+      const keyPem = readFileSync(keyPath, "utf-8");
+
+      const cert = new x509.X509Certificate(certPem);
+      if (hasX509CertificateExpired(cert)) {
+        rmSync(certPath);
+        rmSync(keyPath);
+      } else {
+        return { certPath, certPem, keyPath, keyPem };
       }
     }
   }
