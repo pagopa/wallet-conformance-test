@@ -23,7 +23,8 @@ import {
   verifyJwt,
 } from ".";
 
-export const EXPIRY_LEEWAY_MS = 3e4;
+export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
+export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
 
 // Re-export config loading functions
 export {

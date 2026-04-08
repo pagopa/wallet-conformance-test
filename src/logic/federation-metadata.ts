@@ -10,10 +10,11 @@ import { Config, KeyPair, KeyPairJwk } from "@/types";
 import { signCallback, signJwtCallback } from "./jwt";
 import {
   buildJwksPath,
-  EXPIRY_LEEWAY_MS,
+  CLOCK_SKEW_TOLERANCE_MS,
   loadJsonDumps,
   loadJwks,
   loadJwksWithX5C,
+  VALIDITY_MS,
 } from "./utils";
 
 export interface CreateFederationMetadataOptions {
@@ -275,7 +276,7 @@ export const hasTrustChainExpired = (trust_chain: string[]) =>
     return (
       exp === undefined ||
       typeof exp !== "number" ||
-      exp * 1000 < Date.now() - EXPIRY_LEEWAY_MS
+      exp * 1000 < Date.now() - CLOCK_SKEW_TOLERANCE_MS
     );
   });
 
@@ -290,7 +291,7 @@ export async function getTrustMarks(
 
   const iat = Math.floor(Date.now() / 1000);
   const trustMarkPayload = {
-    exp: iat + 24 * 60 * 60 * 365,
+    exp: iat + (VALIDITY_MS / 1000),
     iat,
     iss: trust_anchor_base_url,
     logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",

@@ -9,11 +9,10 @@ import {
 import path from "node:path";
 
 import { CertificateExpiredError } from "@/errors";
-import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
-import { ensureDir, EXPIRY_LEEWAY_MS } from "./utils";
+import { ensureDir, CLOCK_SKEW_TOLERANCE_MS, VALIDITY_MS } from "./utils";
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -123,7 +122,7 @@ export async function createCertificate(
 
   // Create self-signed cert (X.509)
   const notBefore = new Date();
-  const notAfter = new Date(notBefore.getTime() + 1000 * 60 * 60 * 24 * 365);
+  const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
       new x509.BasicConstraintsExtension(false, undefined, true),
@@ -148,7 +147,7 @@ export async function createCertificate(
 export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
   const certificate =
     typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
-  return certificate.notAfter.getTime() < Date.now() - EXPIRY_LEEWAY_MS;
+  return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
 }
 
 /**
@@ -158,7 +157,9 @@ export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
  * @param filename The name of the certificate file.
  * @param keyPair The key pair to use if creating a new certificate.
  * @param subject The subject name to use if creating a new certificate.
- * @returns A promise that resolves to the certificate in PEM format.
+ * @returns A promise that resolves to the base64-DER encoded certificate
+ *          (DER-encoded X.509, base64-encoded, no PEM headers) — suitable
+ *          for use in an x5c header array per RFC 7517 §4.7.
  */
 export async function loadCertificate(
   certPath: string,
@@ -252,32 +253,6 @@ export async function loadOrCreateCertificateWithKey(
     subject,
     extraExtensions,
   );
-}
-
-/**
- * Loads (or lazily generates and caches on disk) an X.509 certificate for the
- * wallet provider key pair, suitable for use in
- * WalletAttestationOptionsV1_3.signer.x5c.
- *
- * Follows the same lazy-cache pattern as loadCertificate /
- * loadTAJwksWithSelfSignedX5c.
- *
- * @param wallet - The wallet configuration section from Config
- * @param providerKeyPair - The provider key pair loaded from backup_storage_path
- * @returns A non-empty tuple of base64-DER certificate strings: [leaf, ...chain]
- */
-export async function loadWalletProviderCertificate(
-  wallet: Config["wallet"],
-  providerKeyPair: KeyPair,
-): Promise<[string, ...string[]]> {
-  const providerDomain = LOCAL_WP_HOST;
-  const cert = await loadCertificate(
-    wallet.backup_storage_path,
-    "wallet_provider_cert",
-    providerKeyPair,
-    `CN=${providerDomain}`,
-  );
-  return [cert];
 }
 
 /**

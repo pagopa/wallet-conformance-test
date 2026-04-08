@@ -18,7 +18,7 @@ import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
-  EXPIRY_LEEWAY_MS,
+  CLOCK_SKEW_TOLERANCE_MS,
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
@@ -236,7 +236,7 @@ export const loadAttestation = async (
       if (
         !exp ||
         typeof exp !== "number" ||
-        exp * 1000 < Date.now() - EXPIRY_LEEWAY_MS
+        exp * 1000 < Date.now() - CLOCK_SKEW_TOLERANCE_MS
       )
         throw new AttestationExpiredError("attestation expired");
       const trust_chain = zTrustChain.safeParse(
