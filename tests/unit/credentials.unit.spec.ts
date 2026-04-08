@@ -40,6 +40,7 @@ import { KeyPairJwk, zTrustChain, zX5c } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
+const iss = "https://issuer.example.com";
 
 describe("Load Mocked Credentials", async () => {
   const config = loadConfig("./config.ini");
@@ -501,7 +502,6 @@ describe("Load Mocked Credentials", async () => {
 
 describe("Generate Mocked Credentials", () => {
   const config = loadConfig("./config.ini");
-  const iss = "https://issuer.example.com";
   const metadata = {
     iss,
     network: config.network,
@@ -623,7 +623,7 @@ describe("Generate Mocked Credentials", () => {
     async (version) => {
       const credential = await createMockMdlMdoc(
         "CN=test_issuer",
-        "https://issuer.example.com",
+        iss,
         backupDir,
         backupDir,
         version,
@@ -660,7 +660,7 @@ describe("Parse Credential's Status", () => {
 
   const config = loadConfig("./config.ini");
   const metadata = {
-    iss: "https://issuer.example.com",
+    iss,
     network: config.network,
     trust: config.trust,
     trustAnchor: config.trust_anchor,
@@ -701,7 +701,7 @@ describe("Parse Credential's Status", () => {
   it("should retrieve status from MDOC (V1_0)", async () => {
     const credential = await createMockMdlMdoc(
       "CN=test_issuer",
-      "https://issuer.example.com",
+      iss,
       backupDir,
       backupDir,
       ItWalletSpecsVersion.V1_0,
@@ -717,7 +717,7 @@ describe("Parse Credential's Status", () => {
   it("should retrieve status from MDOC (V1_3)", async () => {
     const credential = await createMockMdlMdoc(
       "CN=test_issuer",
-      "https://issuer.example.com",
+      iss,
       backupDir,
       backupDir,
       ItWalletSpecsVersion.V1_3,
@@ -726,7 +726,7 @@ describe("Parse Credential's Status", () => {
     expect(status).toEqual({
       status_list: {
         idx: 0,
-        uri: "https://example.com",
+        uri: `${iss}/status-list`,
       },
     });
   });
