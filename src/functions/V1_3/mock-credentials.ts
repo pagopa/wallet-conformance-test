@@ -55,6 +55,7 @@ export async function buildMockMdlMdoc_V1_3(
   deviceKey: KeyPairJwk,
   issuerCertificate: string,
   issuerKeyPair: KeyPair,
+  issuerBaseUrl: string,
 ): Promise<Credential> {
   const claims = loadJsonDumps(
     "mDL.json",
@@ -86,7 +87,7 @@ export async function buildMockMdlMdoc_V1_3(
         status: {
           status_list: {
             idx: 0,
-            uri: "https://example.com",
+            uri: `${issuerBaseUrl}/status-list`,
           },
         },
       }),

@@ -108,6 +108,7 @@ export async function loadCredentialsForPresentation(
           : createMockMdlMdoc(
               config.issuance.certificate_subject ??
                 `CN=${config.issuance.url}`,
+              getLocalCiBaseUrl(config.issuer.port),
               config.wallet.backup_storage_path,
               config.wallet.credentials_storage_path,
               config.wallet.wallet_version,
@@ -204,6 +205,7 @@ async function createMockCredentialsWithKeys(
   );
   const mobileDriverLicence = await createMockMdlMdoc(
     config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+    getLocalCiBaseUrl(config.issuer.port),
     config.wallet.backup_storage_path,
     config.wallet.credentials_storage_path,
     config.wallet.wallet_version,

@@ -623,6 +623,7 @@ describe("Generate Mocked Credentials", () => {
     async (version) => {
       const credential = await createMockMdlMdoc(
         "CN=test_issuer",
+        "https://issuer.example.com",
         backupDir,
         backupDir,
         version,
@@ -700,6 +701,7 @@ describe("Parse Credential's Status", () => {
   it("should retrieve status from MDOC (V1_0)", async () => {
     const credential = await createMockMdlMdoc(
       "CN=test_issuer",
+      "https://issuer.example.com",
       backupDir,
       backupDir,
       ItWalletSpecsVersion.V1_0,
@@ -715,6 +717,7 @@ describe("Parse Credential's Status", () => {
   it("should retrieve status from MDOC (V1_3)", async () => {
     const credential = await createMockMdlMdoc(
       "CN=test_issuer",
+      "https://issuer.example.com",
       backupDir,
       backupDir,
       ItWalletSpecsVersion.V1_3,
