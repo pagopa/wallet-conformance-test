@@ -13,7 +13,7 @@ import {
 } from "@/logic";
 import { Config } from "@/types";
 
-export const LOCAL_CI_HOST = "credential-issuer.wct.it";
+export const LOCAL_CI_HOST = "credential-issuer.wct.example.org";
 export const getLocalCiBaseUrl = (port: number): string =>
   `https://${LOCAL_CI_HOST}:${port}`;
 
