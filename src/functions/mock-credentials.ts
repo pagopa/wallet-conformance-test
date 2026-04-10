@@ -10,10 +10,12 @@ import {
   buildCertPath,
   buildJwksPath,
   ensureDir,
+  CLOCK_SKEW_TOLERANCE_MS,
   hasTrustChainExpired,
   hasX509CertificateExpired,
   loadCertificate,
   loadJwks,
+  VALIDITY_MS,
 } from "@/logic";
 import {
   Config,
@@ -52,7 +54,7 @@ export async function createMockMdlMdoc(
     subject,
   );
 
-  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
+  const expiration = new Date(Date.now() + VALIDITY_MS);
   let mockedMdoc: Credential;
   switch (version) {
     case ItWalletSpecsVersion.V1_0:
@@ -111,7 +113,7 @@ export async function createMockSdJwt(
     "CN=test_issuer",
   );
 
-  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000 * 365);
+  const expiration = new Date(Date.now() + VALIDITY_MS);
   let mockedSdjwt: Credential;
   switch (version) {
     case ItWalletSpecsVersion.V1_0:
@@ -227,11 +229,13 @@ export function isCredentialMdocExpired(
   const now = Date.now();
   const isCredentialExpired =
     path !== undefined &&
-    getCredentialMdocExpiration(document, path).getTime() < now;
+    getCredentialMdocExpiration(document, path).getTime() <
+     now - CLOCK_SKEW_TOLERANCE_MS;
 
   const exp =
     document.issuerSigned.issuerAuth.decodedPayload.validityInfo.validUntil.getTime();
-  const isMDocExpired = checks.mdoc && exp < now;
+  const isMDocExpired = checks.mdoc && exp <
+   now - CLOCK_SKEW_TOLERANCE_MS;
 
   const isCertExpired =
     checks.cert &&
@@ -281,14 +285,15 @@ export function isCredentialSdJwtExpired(
   const now = Date.now();
   const isCredentialExpired =
     claimName !== undefined &&
-    getCredentialSdJwtExpiration(parsed, claimName).getTime() < now;
+    getCredentialSdJwtExpiration(parsed, claimName).getTime() <
+      now - CLOCK_SKEW_TOLERANCE_MS;
 
   const exp = parsed.jwt.payload?.exp;
   const isJwtExpired =
     checks.jwt &&
     exp !== undefined &&
     typeof exp === "number" &&
-    exp * 1000 < now;
+    exp * 1000 < now - CLOCK_SKEW_TOLERANCE_MS;
 
   const jwt_trust_chain = zTrustChain.safeParse(parsed.jwt.header?.trust_chain);
   const isTrustChainExpired =

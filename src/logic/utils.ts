@@ -7,29 +7,24 @@ import {
 } from "@pagopa/io-wallet-utils";
 import * as x509 from "@peculiar/x509";
 import { BinaryLike, createHash, randomBytes } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
-import { CertificateExpiredError, MissingFieldError } from "@/errors";
+import { MissingFieldError } from "@/errors";
 import { LOCAL_CI_HOST } from "@/servers/ci-server";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 
 import {
-  createAndSaveCertificate,
-  createAndSaveCertificateWithKey,
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
-  hasX509CertificateExpired,
+  loadOrCreateCertificateWithKey,
   verifyJwt,
 } from ".";
+
+export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
+export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
 
 // Re-export config loading functions
 export {
@@ -225,50 +220,6 @@ export function ensureDir(dirPath: string): boolean {
 }
 
 /**
- * Loads a certificate from a file, or creates and saves it if it doesn't exist.
- *
- * @param certPath The directory path where the certificate is stored.
- * @param filename The name of the certificate file.
- * @param keyPair The key pair to use if creating a new certificate.
- * @param subject The subject name to use if creating a new certificate.
- * @returns A promise that resolves to the certificate in PEM format.
- */
-export async function loadCertificate(
-  certPath: string,
-  filename: string,
-  keyPair: KeyPair,
-  subject: string,
-): Promise<string> {
-  const dirCreated = ensureDir(certPath);
-
-  if (!dirCreated) {
-    try {
-      const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
-      const certDerBase64 = certPem
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", "")
-        .replace(/\s+/g, "")
-        .trim();
-
-      if (hasX509CertificateExpired(certDerBase64))
-        throw new CertificateExpiredError(
-          "Certificate has expired and has to be regenerated",
-        );
-
-      return certDerBase64;
-    } catch {
-      /* fall through to generate */
-    }
-  }
-
-  return await createAndSaveCertificate(
-    `${certPath}/${filename}`,
-    keyPair,
-    subject,
-  );
-}
-
-/**
  * Loads or generates JWKS saving it to a file.
  * @param jwksPath The directory path where JWKS files are stored.
  * @param filename The name of the JWKS file to load or create.
@@ -325,65 +276,6 @@ export async function loadJwksWithX5C(
 }
 
 /**
- * Loads an existing cert/key pair from `dir` if one is present, otherwise
- * creates a new one via {@link createAndSaveCertificateWithKey}.
- *
- * File discovery: looks for `${baseName}.cert.pem` and `${baseName}.key.pem` in `dir`.
- * Falls through to creation if the directory is absent, those files are missing,
- * or either file cannot be read.
- *
- * @param dir Directory to search or write files into.
- * @param baseName Base filename (without extension) for the cert and key files.
- * @param subject The subject / CN — used only when creation is needed.
- * @param extraExtensions Additional X.509 extensions — used only when creation is needed.
- * @returns The cert PEM, key PEM, and absolute paths of the cert and key files.
- */
-export async function loadOrCreateCertificateWithKey(
-  dir: string,
-  baseName: string,
-  subject: string,
-  extraExtensions: x509.Extension[] = [],
-): Promise<{
-  certPath: string;
-  certPem: string;
-  keyPath: string;
-  keyPem: string;
-}> {
-  const dirCreated = ensureDir(dir);
-
-  if (!dirCreated) {
-    const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
-    const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
-    if (existsSync(certPath) && existsSync(keyPath)) {
-      try {
-        const certPem = readFileSync(certPath, "utf-8");
-        const keyPem = readFileSync(keyPath, "utf-8");
-        //TODO: Await WLEO-885 to replace with proper expiration check method
-        const cert = new x509.X509Certificate(certPem);
-        if (hasX509CertificateExpired(cert)) {
-          rmSync(certPath);
-          rmSync(keyPath);
-          //We throw an error to explicitly mark the fact that the flow is stopped,
-          //falling through here makes the code far less understandable.
-          throw new CertificateExpiredError("Stored certificate has expired");
-        } else {
-          return { certPath, certPem, keyPath, keyPem };
-        }
-      } catch {
-        /* fall through to generate */
-      }
-    }
-  }
-
-  return createAndSaveCertificateWithKey(
-    dir,
-    baseName,
-    subject,
-    extraExtensions,
-  );
-}
-
-/**
  *  Loads an existing server certificate/key pair from the specified config, or creates a new one if not found or expired.
  * @param config The application configuration containing paths and parameters for certificate management.
  * @returns A promise that resolves to the loaded or generated server certificate and key.
@@ -413,32 +305,6 @@ export const loadOrCreateServerCertificate = async (
     ]);
   return { certPath, certPem, keyPath, keyPem };
 };
-
-/**
- * Loads (or lazily generates and caches on disk) an X.509 certificate for the
- * wallet provider key pair, suitable for use in
- * WalletAttestationOptionsV1_3.signer.x5c.
- *
- * Follows the same lazy-cache pattern as loadCertificate /
- * loadTAJwksWithSelfSignedX5c.
- *
- * @param wallet - The wallet configuration section from Config
- * @param providerKeyPair - The provider key pair loaded from backup_storage_path
- * @returns A non-empty tuple of base64-DER certificate strings: [leaf, ...chain]
- */
-export async function loadWalletProviderCertificate(
-  wallet: Config["wallet"],
-  providerKeyPair: KeyPair,
-): Promise<[string, ...string[]]> {
-  const providerDomain = LOCAL_WP_HOST;
-  const cert = await loadCertificate(
-    wallet.backup_storage_path,
-    "wallet_provider_cert",
-    providerKeyPair,
-    `CN=${providerDomain}`,
-  );
-  return [cert];
-}
 
 /**
  * Saves a credential to disk.

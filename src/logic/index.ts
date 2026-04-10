@@ -8,3 +8,4 @@ export * from "./pem";
 export * from "./status-list";
 export * from "./utils";
 export * from "./vpToken";
+export * from "./wallet-provider";
