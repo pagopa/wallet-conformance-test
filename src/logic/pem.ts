@@ -1,10 +1,18 @@
 import * as x509 from "@peculiar/x509";
-import { mkdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
-import { KeyPair } from "@/types";
+import { CertificateExpiredError } from "@/errors";
+import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
+import { ensureDir, CLOCK_SKEW_TOLERANCE_MS, VALIDITY_MS } from "./utils";
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -113,7 +121,8 @@ export async function createCertificate(
   const keys = { privateKey, publicKey };
 
   // Create self-signed cert (X.509)
-  const now = new Date();
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
       new x509.BasicConstraintsExtension(false, undefined, true),
@@ -127,7 +136,8 @@ export async function createCertificate(
     ],
     keys,
     name: subject,
-    notBefore: now,
+    notAfter,
+    notBefore,
     signingAlgorithm,
   });
 
@@ -137,7 +147,105 @@ export async function createCertificate(
 export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
   const certificate =
     typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
-  return certificate.notAfter.getTime() < Date.now();
+  return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
+}
+
+/**
+ * Loads a certificate from a file, or creates and saves it if it doesn't exist.
+ *
+ * @param certPath The directory path where the certificate is stored.
+ * @param filename The name of the certificate file.
+ * @param keyPair The key pair to use if creating a new certificate.
+ * @param subject The subject name to use if creating a new certificate.
+ * @returns A promise that resolves to the base64-DER encoded certificate
+ *          (DER-encoded X.509, base64-encoded, no PEM headers) — suitable
+ *          for use in an x5c header array per RFC 7517 §4.7.
+ */
+export async function loadCertificate(
+  certPath: string,
+  filename: string,
+  keyPair: KeyPair,
+  subject: string,
+): Promise<string> {
+  const dirCreated = ensureDir(certPath);
+
+  if (!dirCreated) {
+    try {
+      const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
+      const certDerBase64 = certPem
+        .replace("-----BEGIN CERTIFICATE-----", "")
+        .replace("-----END CERTIFICATE-----", "")
+        .replace(/\s+/g, "")
+        .trim();
+
+      if (hasX509CertificateExpired(certDerBase64))
+        throw new CertificateExpiredError(
+          "Certificate has expired and has to be regenerated",
+        );
+
+      return certDerBase64;
+    } catch {
+      /* fall through to generate */
+    }
+  }
+
+  return await createAndSaveCertificate(
+    `${certPath}/${filename}`,
+    keyPair,
+    subject,
+  );
+}
+
+/**
+ * Loads an existing cert/key pair from `dir` if one is present, otherwise
+ * creates a new one via {@link createAndSaveCertificateWithKey}.
+ *
+ * File discovery: looks for `${baseName}.cert.pem` and `${baseName}.key.pem` in `dir`.
+ * Falls through to creation if the directory is absent, those files are missing,
+ * or either file cannot be read.
+ *
+ * @param dir Directory to search or write files into.
+ * @param baseName Base filename (without extension) for the cert and key files.
+ * @param subject The subject / CN — used only when creation is needed.
+ * @param extraExtensions Additional X.509 extensions — used only when creation is needed.
+ * @returns The cert PEM, key PEM, and absolute paths of the cert and key files.
+ */
+export async function loadOrCreateCertificateWithKey(
+  dir: string,
+  baseName: string,
+  subject: string,
+  extraExtensions: x509.Extension[] = [],
+): Promise<{
+  certPath: string;
+  certPem: string;
+  keyPath: string;
+  keyPem: string;
+}> {
+  const dirCreated = ensureDir(dir);
+
+  if (!dirCreated) {
+    const certPath = path.resolve(path.join(dir, `${baseName}.cert.pem`));
+    const keyPath = path.resolve(path.join(dir, `${baseName}.key.pem`));
+    if (existsSync(certPath) && existsSync(keyPath)) {
+      const certPem = readFileSync(certPath, "utf-8");
+      const keyPem = readFileSync(keyPath, "utf-8");
+
+      const cert = new x509.X509Certificate(certPem);
+      if (hasX509CertificateExpired(cert)) {
+        rmSync(certPath);
+        rmSync(keyPath);
+      } else {
+        return { certPath, certPem, keyPath, keyPem };
+      }
+    }
+  }
+
+  return createAndSaveCertificateWithKey(
+    dir,
+    baseName,
+    subject,
+    extraExtensions,
+  );
 }
 
 /**

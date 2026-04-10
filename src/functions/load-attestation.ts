@@ -18,6 +18,7 @@ import {
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
+  CLOCK_SKEW_TOLERANCE_MS,
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
@@ -232,7 +233,11 @@ export const loadAttestation = async (
       // Since, at version 0.17.0, the SDJwt.extractJwt method dosn't check for WIA expiration,
       // it must be done manually
       const exp = attestationJwt.payload?.exp;
-      if (!exp || typeof exp !== "number" || exp * 1000 < Date.now())
+      if (
+        !exp ||
+        typeof exp !== "number" ||
+        exp * 1000 < Date.now() - CLOCK_SKEW_TOLERANCE_MS
+      )
         throw new AttestationExpiredError("attestation expired");
       const trust_chain = zTrustChain.safeParse(
         attestationJwt.header?.trust_chain,

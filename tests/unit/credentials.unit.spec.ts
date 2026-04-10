@@ -16,19 +16,21 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 import {
   createMockMdlMdoc,
+  createMockSdJwt,
   getCredentialMdocExpiration,
   getCredentialSdJwtExpiration,
   isCredentialMdocExpired,
   isCredentialSdJwtExpired,
   loadCredentials,
   loadCredentialsForPresentation,
+  parseCredentialStatus,
 } from "@/functions";
-import { createMockSdJwt } from "@/functions";
 import {
   buildJwksPath,
   createKeys,
   createLogger,
   createVpTokenMdoc,
+  CLOCK_SKEW_TOLERANCE_MS,
   loadCertificate,
   loadConfig,
   loadJsonDumps,
@@ -39,6 +41,7 @@ import { KeyPairJwk, zTrustChain, zX5c } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
+const iss = "https://issuer.example.com";
 
 describe("Load Mocked Credentials", async () => {
   const config = loadConfig("./config.ini");
@@ -171,7 +174,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(expiration) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialSdJwtExpired(pid.parsed, "expiry_date", {
               jwt: false,
@@ -201,7 +206,7 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the jwt expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((jwtExpiration + 1) * 1000);
+          vi.setSystemTime((jwtExpiration + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS);
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: true,
@@ -245,7 +250,7 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the trust_chain expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((trustChainMinExp + 1) * 1000);
+          vi.setSystemTime((trustChainMinExp + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS);
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: false,
@@ -284,7 +289,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the x5c certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(x5cMinExp) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(x5cMinExp) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialSdJwtExpired(pid.parsed, undefined, {
               jwt: false,
@@ -335,7 +342,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the expiration date claim", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(expiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(expiration) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialMdocExpired(
               mDL.parsed,
@@ -366,7 +375,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the mdoc expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(mDocExpiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(mDocExpiration) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: false,
@@ -393,7 +404,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(certExpiration) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(certExpiration) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: true,
@@ -433,7 +446,9 @@ describe("Load Mocked Credentials", async () => {
         });
         it("should return true because it's not past the trust chain certificate expiration", async () => {
           // Set system time to a second after expiration
-          vi.setSystemTime((dateToSeconds(trustChainMinExp) + 1) * 1000);
+          vi.setSystemTime(
+            (dateToSeconds(trustChainMinExp) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
+          );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: false,
@@ -500,7 +515,6 @@ describe("Load Mocked Credentials", async () => {
 
 describe("Generate Mocked Credentials", () => {
   const config = loadConfig("./config.ini");
-  const iss = "https://issuer.example.com";
   const metadata = {
     iss,
     network: config.network,
@@ -622,6 +636,7 @@ describe("Generate Mocked Credentials", () => {
     async (version) => {
       const credential = await createMockMdlMdoc(
         "CN=test_issuer",
+        iss,
         backupDir,
         backupDir,
         version,
@@ -642,6 +657,98 @@ describe("Generate Mocked Credentials", () => {
       );
     },
   );
+});
+
+describe("Parse Credential's Status", () => {
+  afterAll(() => {
+    for (const version of ["V1_0", "V1_3"]) {
+      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+        force: true,
+      });
+      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, {
+        force: true,
+      });
+    }
+  });
+
+  const config = loadConfig("./config.ini");
+  const metadata = {
+    iss,
+    network: config.network,
+    trust: config.trust,
+    trustAnchor: config.trust_anchor,
+    trustAnchorBaseUrl: `https://127.0.0.1:${config.trust_anchor.port}`,
+  };
+
+  it("should retrieve status from SD-JWT (V1_0)", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_0,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_assertion: {
+        credential_hash_alg: "sha-256",
+      },
+    });
+  });
+
+  it("should retrieve status from SD-JWT (V1_3)", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_3,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: `${metadata.iss}/status-list`,
+      },
+    });
+  });
+
+  it("should retrieve status from MDOC (V1_0)", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      iss,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_0,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_assertion: {
+        credential_hash_alg: "sha-256",
+      },
+    });
+  });
+
+  it("should retrieve status from MDOC (V1_3)", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      iss,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_3,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: `${iss}/status-list`,
+      },
+    });
+  });
+
+  it("should throw error for invalid credential format", async () => {
+    await expect(parseCredentialStatus("invalid_data")).rejects.toThrow(
+      "unable to unmarshal string into sd-jwt or mdoc credential",
+    );
+  });
 });
 
 describe("createVpTokenMdoc", () => {

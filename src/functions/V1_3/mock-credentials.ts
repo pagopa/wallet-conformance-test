@@ -2,7 +2,7 @@ import { DataItem, Document } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { encode, Tagged } from "cbor";
+import { decode, encode, Tagged } from "cbor";
 import { decodeJwt } from "jose";
 
 import {
@@ -55,6 +55,7 @@ export async function buildMockMdlMdoc_V1_3(
   deviceKey: KeyPairJwk,
   issuerCertificate: string,
   issuerKeyPair: KeyPair,
+  issuerBaseUrl: string,
 ): Promise<Credential> {
   const claims = loadJsonDumps(
     "mDL.json",
@@ -78,6 +79,23 @@ export async function buildMockMdlMdoc_V1_3(
     });
 
   const issuerSigned = document.prepare().get("issuerSigned");
+  const payloadWithStatus = encode(
+    new Tagged(
+      24,
+      encode({
+        ...decode(decode(issuerSigned.issuerAuth[2]).value),
+        status: {
+          status_list: {
+            idx: 0,
+            uri: `${issuerBaseUrl}/status-list`,
+          },
+        },
+      }),
+    ),
+  );
+  issuerSigned.issuerAuth[2] = payloadWithStatus;
+  const parsed = document as any;
+  parsed.issuerSigned.issuerAuth.payload = payloadWithStatus;
 
   const nameSpaces = new Map<string, Tagged[]>();
   for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<

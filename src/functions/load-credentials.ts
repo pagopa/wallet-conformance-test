@@ -1,11 +1,18 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
+import { decode } from "cbor";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
-import { Config, Credential, CredentialWithKey, Logger } from "@/types";
+import {
+  Config,
+  Credential,
+  CredentialWithKey,
+  Logger,
+  StatusClaim,
+} from "@/types";
 
 import {
   createMockMdlMdoc,
@@ -101,6 +108,7 @@ export async function loadCredentialsForPresentation(
           : createMockMdlMdoc(
               config.issuance.certificate_subject ??
                 `CN=${config.issuance.url}`,
+              getLocalCiBaseUrl(config.issuer.port),
               config.wallet.backup_storage_path,
               config.wallet.credentials_storage_path,
               config.wallet.wallet_version,
@@ -122,6 +130,56 @@ export async function loadCredentialsForPresentation(
       }
     }),
   );
+}
+
+/**
+ * Parses a credential and extracts its status claim.
+ *
+ * @param compact - The compact-serialized credential string.
+ * @returns A promise that resolves to the `StatusClaim` if present, or `null` if the format is unsupported or status is missing.
+ * @throws {Error} If the credential cannot be parsed or has an empty payload.
+ */
+export async function parseCredentialStatus(
+  compact: string,
+): Promise<null | StatusClaim> {
+  const parsed = await parseCredential(compact);
+
+  const { credential } = parsed;
+  if (!credential)
+    throw new Error(
+      "unable to unmarshal string into sd-jwt or mdoc credential",
+    );
+
+  switch (credential.typ) {
+    case "dc+sd-jwt":
+      const sdJwtPayload = credential.parsed.jwt.payload;
+      if (!sdJwtPayload || typeof sdJwtPayload !== "object")
+        throw new Error("parsed sd-jwt has empty or malformed payload");
+
+      if (!sdJwtPayload.status) return null;
+
+      return sdJwtPayload.status as StatusClaim;
+    case "mso_mdoc":
+      const mdocPayloadTag = decode(
+        credential.parsed.issuerSigned.issuerAuth.payload,
+      );
+      if (
+        !mdocPayloadTag.value ||
+        !mdocPayloadTag.tag ||
+        mdocPayloadTag.tag !== 24
+      )
+        throw new Error("could not extract payload from mdoc");
+
+      const mdocPayload = decode(mdocPayloadTag.value);
+      if (typeof mdocPayload !== "object")
+        throw new Error("parsed mdoc has malformed payload");
+
+      if (!mdocPayload.status) return null;
+
+      return mdocPayload.status as StatusClaim;
+    default:
+      return null;
+  }
 }
 
 /**
@@ -147,6 +205,7 @@ async function createMockCredentialsWithKeys(
   );
   const mobileDriverLicence = await createMockMdlMdoc(
     config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+    getLocalCiBaseUrl(config.issuer.port),
     config.wallet.backup_storage_path,
     config.wallet.credentials_storage_path,
     config.wallet.wallet_version,
@@ -166,6 +225,34 @@ async function createMockCredentialsWithKeys(
       config.wallet.backup_storage_path,
     ),
   ]);
+}
+
+/**
+ * Attempts to parse a compact-serialized credential as either SD-JWT or MDOC.
+ *
+ * @param compact - The compact-serialized credential string.
+ * @returns A promise resolving to an object containing either the parsed `Credential` or an error message.
+ */
+async function parseCredential(
+  compact: string,
+): Promise<{ credential?: Credential; error?: string }> {
+  let error: null | string = null;
+
+  try {
+    const parsed = await SDJwt.decodeSDJwt(compact, digest);
+    return { credential: { compact, parsed, typ: "dc+sd-jwt" } };
+  } catch (e) {
+    error = `Local credential was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`;
+  }
+
+  try {
+    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
+    return { credential: { compact, parsed, typ: "mso_mdoc" }, error };
+  } catch (e) {
+    return {
+      error: `Local credential was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
 }
 
 /**
@@ -192,23 +279,10 @@ async function parseCredentialFile(
     return null;
   }
 
-  try {
-    const parsed = await SDJwt.decodeSDJwt(compact, digest);
-    return { compact, parsed, typ: "dc+sd-jwt" };
-  } catch (e) {
-    onIgnoreError(
-      `Local credential '${fileName}' was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
+  const parsed = await parseCredential(compact);
+  if (parsed.error) onIgnoreError(`${fileName}: ${parsed.error}`);
 
-  try {
-    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
-    return { compact, parsed, typ: "mso_mdoc" };
-  } catch (e) {
-    onIgnoreError(
-      `Local credential '${fileName}' was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
+  if (parsed.credential) return parsed.credential;
 
   return null;
 }

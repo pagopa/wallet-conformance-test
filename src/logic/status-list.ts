@@ -7,7 +7,8 @@ import {
 import { StatusListTokenCreationError } from "@/errors";
 
 import { signJwtCallback } from "./jwt";
-import { hasObjectProperties, loadCertificate, loadJwks } from "./utils";
+import { loadCertificate } from "./pem";
+import { hasObjectProperties, loadJwks } from "./utils";
 
 export interface CreateStatusListTokenOptions {
   certFilename: string;
