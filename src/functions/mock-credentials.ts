@@ -36,6 +36,7 @@ import {
 
 export async function createMockMdlMdoc(
   subject: string,
+  issuerBaseUrl: string,
   backupPath: string,
   credentialsPath: string,
   version: ItWalletSpecsVersion,
@@ -71,6 +72,7 @@ export async function createMockMdlMdoc(
         deviceKey,
         issuerCertificate,
         issuerKeyPair,
+        issuerBaseUrl,
       );
       break;
     default:
