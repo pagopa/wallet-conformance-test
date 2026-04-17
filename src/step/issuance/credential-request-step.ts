@@ -24,7 +24,7 @@ import {
   createAndSaveKeys,
   createKeys,
   fetchWithConfig,
-  loadWalletProviderCertificate,
+  loadWalletProviderCertificateChain,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -115,9 +115,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
   ): Promise<string> {
     const { providerKey } = walletAttestation;
 
-    const x5c = await loadWalletProviderCertificate(
+    const x5c = await loadWalletProviderCertificateChain(
       this.config.wallet,
       providerKey,
+      this.config.trust,
     );
 
     const provider = new WalletProvider(this.ioWalletSdkConfig);

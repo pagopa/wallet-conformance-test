@@ -23,7 +23,7 @@ import {
   hasTrustChainExpired,
   loadJsonDumps,
   loadJwks,
-  loadWalletProviderCertificate,
+  loadWalletProviderCertificateChain,
   partialCallbacks,
   signJwtCallback,
   validateProviderKeyPair,
@@ -108,6 +108,7 @@ const buildAttestationOptions = async (
   providerKeyPair: KeyPair,
   unitPublicKey: KeyPair["publicKey"],
   trustChain: [string, string],
+  trust: Config["trust"],
 ): Promise<WalletAttestationOptions> => {
   const callbacks = {
     ...partialCallbacks,
@@ -136,10 +137,14 @@ const buildAttestationOptions = async (
       return attestationOptions;
     }
     case ItWalletSpecsVersion.V1_3: {
-      const x5c = await loadWalletProviderCertificate(wallet, providerKeyPair);
+      const x5c = await loadWalletProviderCertificateChain(
+        wallet,
+        providerKeyPair,
+        trust,
+      );
       const attestationOptions: WalletAttestationOptionsV1_3 = {
         ...commonOptions,
-        signer: { ...signerBase, method: "x5c", trustChain, x5c },
+        signer: { ...signerBase, method: "x5c", x5c },
       };
       return attestationOptions;
     }
@@ -183,6 +188,7 @@ const createAttestation = async (
     providerKeyPair,
     unitKeyPair.publicKey,
     [wpEntityConfiguration, taEntityConfiguration],
+    trust,
   );
 
   const provider = new WalletProvider(

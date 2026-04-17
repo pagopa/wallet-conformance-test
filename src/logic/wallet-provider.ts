@@ -1,7 +1,9 @@
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
-import { loadCertificate } from "./pem";
+import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, KeyPair } from "@/types";
 
+import { CertificateBuilder } from "./pem";
+import { loadJwks } from "./utils";
 
 /**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
@@ -15,16 +17,41 @@ import { Config, KeyPair } from "@/types";
  * @param providerKeyPair - The provider key pair loaded from backup_storage_path
  * @returns A non-empty tuple of base64-DER certificate strings: [leaf, ...chain]
  */
-export async function loadWalletProviderCertificate(
+export async function loadWalletProviderCertificateChain(
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
+  trust: Config["trust"],
 ): Promise<[string, ...string[]]> {
-  const providerDomain = LOCAL_WP_HOST;
-  const cert = await loadCertificate(
-    wallet.backup_storage_path,
-    "wallet_provider_cert",
-    providerKeyPair,
-    `CN=${providerDomain}`,
+  const certWpSelfSignedResult = await new CertificateBuilder()
+    .withSubject(`CN=${LOCAL_WP_HOST}`)
+    .withKeyPair(providerKeyPair)
+    .selfSigned()
+    .loadOrCreate(
+      wallet.backup_storage_path,
+      "wallet_provider_self_signed_cert",
+    );
+
+  const taJwks = await loadJwks(
+    trust.federation_trust_anchors_jwks_path,
+    "trust_anchor",
   );
-  return [cert];
+  const certTAResult = await new CertificateBuilder()
+    .withSubject(`CN=${LOCAL_TA_HOST}`)
+    .withKeyPair(taJwks)
+    .selfSigned()
+    .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
+
+  const certWpResult = await new CertificateBuilder()
+    .withSubject(`CN=${LOCAL_WP_HOST}`)
+    .withKeyPair(providerKeyPair)
+    .signedBy(certTAResult.certificate, taJwks)
+    .loadOrCreate(
+      wallet.backup_storage_path,
+      "wallet_provider_self_signed_cert",
+    );
+  return [
+    certWpSelfSignedResult.certDerBase64,
+    certWpResult.certDerBase64,
+    certTAResult.certDerBase64,
+  ];
 }
