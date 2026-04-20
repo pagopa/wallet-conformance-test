@@ -366,7 +366,11 @@ async function createCertificateIssuerSigned(
 
   const cert = await x509.X509CertificateGenerator.create({
     extensions: [
-      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.BasicConstraintsExtension(
+        isCA,
+        isCA ? caPathLen : undefined,
+        true,
+      ),
       new x509.KeyUsagesExtension(
         isCA
           ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign
@@ -378,7 +382,10 @@ async function createCertificateIssuerSigned(
         false,
       ),
       await x509.SubjectKeyIdentifierExtension.create(publicKey),
-      await x509.AuthorityKeyIdentifierExtension.create(issuerCertificate, false),
+      await x509.AuthorityKeyIdentifierExtension.create(
+        issuerCertificate,
+        false,
+      ),
       ...extraExtensions,
     ],
     issuer: issuerCertificate.subject,
@@ -404,7 +411,11 @@ async function createCertificateSelfIssued(
   caPathLen?: number,
   validityMs = VALIDITY_MS,
 ): Promise<x509.X509Certificate> {
-  const signingAlgorithm = { hash: "SHA-256", name: "ECDSA", namedCurve: "P-256" };
+  const signingAlgorithm = {
+    hash: "SHA-256",
+    name: "ECDSA",
+    namedCurve: "P-256",
+  };
 
   const publicKey = await crypto.subtle.importKey(
     "jwk",
@@ -433,7 +444,11 @@ async function createCertificateSelfIssued(
 
   return x509.X509CertificateGenerator.create({
     extensions: [
-      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.BasicConstraintsExtension(
+        isCA,
+        isCA ? caPathLen : undefined,
+        true,
+      ),
       new x509.KeyUsagesExtension(
         isCA
           ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign
@@ -500,7 +515,11 @@ async function createCertificateSelfSigned(
   const notAfter = new Date(notBefore.getTime() + validityMs);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
-      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.BasicConstraintsExtension(
+        isCA,
+        isCA ? caPathLen : undefined,
+        true,
+      ),
       new x509.KeyUsagesExtension(
         isCA
           ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign

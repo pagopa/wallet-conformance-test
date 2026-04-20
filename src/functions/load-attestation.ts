@@ -15,19 +15,19 @@ import { AttestationExpiredError, TrustChainExpiredError } from "@/errors";
 import {
   buildAttestationPath,
   buildJwksPath,
+  CLOCK_SKEW_TOLERANCE_MS,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
-  CLOCK_SKEW_TOLERANCE_MS,
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
   loadJwks,
   loadWalletProviderCertificateChain,
+  loadWalletUnitJwksWithCert,
   partialCallbacks,
   signJwtCallback,
   validateProviderKeyPair,
-  loadWalletUnitJwksWithCert,
 } from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
@@ -224,7 +224,10 @@ export const loadAttestation = async (
   );
   ensureDir(wallet.backup_storage_path);
 
-  const providerKeyPair = await loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider"));
+  const providerKeyPair = await loadJwks(
+    wallet.backup_storage_path,
+    buildJwksPath("wallet_provider"),
+  );
   const unitKeyPair = await loadWalletUnitJwksWithCert(wallet, providerKeyPair);
 
   const attestationPath = buildAttestationPath(
