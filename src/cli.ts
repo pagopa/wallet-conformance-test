@@ -10,15 +10,33 @@ import { execFileSync } from "child_process";
 import { Command } from "commander";
 import { resolve } from "path";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { version } = require("../package.json") as { version: string };
+import type { CliOptions } from "@/logic";
+
+import { version } from "../package.json";
+
+function runTestCommand(
+  script: "test:issuance" | "test:presentation",
+  options: CliOptions,
+) {
+  const env = setEnvFromOptions(options);
+  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
+
+  try {
+    execFileSync("pnpm", [script, ...tests], {
+      env,
+      stdio: "inherit",
+    });
+  } catch {
+    process.exit(1);
+  }
+}
 
 /**
  * Sets environment variables from CLI options
  * @param options Commander options object
  * @returns Updated environment object
  */
-function setEnvFromOptions(options: any): NodeJS.ProcessEnv {
+function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
   if (options.fileIni) {
@@ -179,17 +197,7 @@ const testIssuance = program
 addCommonOptions(testIssuance);
 
 testIssuance.action((options) => {
-  const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
-
-  try {
-    execFileSync("pnpm", ["test:issuance", ...tests], {
-      env,
-      stdio: "inherit",
-    });
-  } catch {
-    process.exit(1);
-  }
+  runTestCommand("test:issuance", options);
 });
 
 // Test Presentation Flow
@@ -200,17 +208,7 @@ const testPresentation = program
 addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
-  const env = setEnvFromOptions(options);
-  const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
-
-  try {
-    execFileSync("pnpm", ["test:presentation", ...tests], {
-      env,
-      stdio: "inherit",
-    });
-  } catch {
-    process.exit(1);
-  }
+  runTestCommand("test:presentation", options);
 });
 
 // Parse command-line arguments
