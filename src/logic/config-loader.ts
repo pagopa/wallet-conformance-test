@@ -28,6 +28,7 @@ export interface CliOptions {
   presentationTestsDir?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
+  tests?: string;
   timeout?: number;
   trustAnchorCertDir?: string;
   unsafeTls?: boolean;
