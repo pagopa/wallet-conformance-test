@@ -74,14 +74,24 @@ export class CertificateBuilder {
             this._caPathLen,
             this._validityMs,
           )
-        : await createCertificateSelfSigned(
-            keyPair,
-            subject,
-            this._extensions,
-            this._isCA,
-            this._caPathLen,
-            this._validityMs,
-          );
+        : this._issuerKeyPair
+          ? await createCertificateSelfIssued(
+              keyPair,
+              subject,
+              this._issuerKeyPair,
+              this._extensions,
+              this._isCA,
+              this._caPathLen,
+              this._validityMs,
+            )
+          : await createCertificateSelfSigned(
+              keyPair,
+              subject,
+              this._extensions,
+              this._isCA,
+              this._caPathLen,
+              this._validityMs,
+            );
 
     const certPem = certificate.toString("pem");
     const certDerBase64 = Buffer.from(certificate.rawData).toString("base64");
@@ -139,10 +149,18 @@ export class CertificateBuilder {
     return { ...result, certPath };
   }
 
-  /** Mark the certificate as self-signed (default behaviour). */
-  selfSigned(): this {
+  /**
+   * Mark the certificate as self-issued (issuer DN = subject DN).
+   *
+   * - No argument: the subject key pair also signs the certificate (truly self-signed).
+   * - With `signerKeyPair`: the certificate is signed by `signerKeyPair` while the
+   *   public key in the certificate comes from {@link withKeyPair}. This produces a
+   *   self-issued Protocol Certificate per IT-Wallet §6.14.2 — the federation entity
+   *   key (Key A) certifies a separate protocol key (Key B).
+   */
+  selfIssued(signerKeyPair?: KeyPair): this {
     this._issuerCert = undefined;
-    this._issuerKeyPair = undefined;
+    this._issuerKeyPair = signerKeyPair;
     return this;
   }
 
@@ -277,7 +295,7 @@ export async function loadCertificate(
   const result = await new CertificateBuilder()
     .withSubject(subject)
     .withKeyPair(keyPair)
-    .selfSigned()
+    .selfIssued()
     .loadOrCreate(certPath, filename);
   return result.certDerBase64;
 }
@@ -300,7 +318,7 @@ export async function loadOrCreateCertificateWithKey(
   const result = await new CertificateBuilder()
     .withSubject(subject)
     .withGeneratedKey()
-    .selfSigned()
+    .selfIssued()
     .withExtensions(extraExtensions)
     .loadOrCreate(dir, baseName);
   return {
@@ -374,6 +392,71 @@ async function createCertificateIssuerSigned(
   });
 
   return cert;
+}
+
+// Self-issued: issuer DN = subject DN, signed by a (potentially different) key pair.
+async function createCertificateSelfIssued(
+  keyPair: KeyPair,
+  subject: string,
+  signerKeyPair: KeyPair,
+  extraExtensions: x509.Extension[] = [],
+  isCA = false,
+  caPathLen?: number,
+  validityMs = VALIDITY_MS,
+): Promise<x509.X509Certificate> {
+  const signingAlgorithm = { hash: "SHA-256", name: "ECDSA", namedCurve: "P-256" };
+
+  const publicKey = await crypto.subtle.importKey(
+    "jwk",
+    keyPair.publicKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["verify"],
+  );
+  const signerPublicKey = await crypto.subtle.importKey(
+    "jwk",
+    signerKeyPair.publicKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["verify"],
+  );
+  const signingKey = await crypto.subtle.importKey(
+    "jwk",
+    signerKeyPair.privateKey,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign"],
+  );
+
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore.getTime() + validityMs);
+
+  return x509.X509CertificateGenerator.create({
+    extensions: [
+      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.KeyUsagesExtension(
+        isCA
+          ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign
+          : x509.KeyUsageFlags.digitalSignature,
+        true,
+      ),
+      new x509.ExtendedKeyUsageExtension(
+        [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
+        false,
+      ),
+      await x509.SubjectKeyIdentifierExtension.create(publicKey),
+      await x509.AuthorityKeyIdentifierExtension.create(signerPublicKey),
+      ...extraExtensions,
+    ],
+    issuer: subject,
+    notAfter,
+    notBefore,
+    publicKey,
+    serialNumber: crypto.randomUUID().replace(/-/g, ""),
+    signingAlgorithm,
+    signingKey,
+    subject,
+  });
 }
 
 // ---------------------------------------------------------------------------

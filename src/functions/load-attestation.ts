@@ -106,7 +106,7 @@ export const buildWpEntityConfiguration = async (
 const buildAttestationOptions = async (
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
-  unitPublicKey: KeyPair["publicKey"],
+  unitKeyPair: KeyPair,
   trustChain: [string, string],
   trust: Config["trust"],
 ): Promise<WalletAttestationOptions> => {
@@ -117,7 +117,7 @@ const buildAttestationOptions = async (
   const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
   const commonOptions = {
     callbacks,
-    dpopJwkPublic: unitPublicKey,
+    dpopJwkPublic: unitKeyPair.publicKey,
     issuer: wpBaseUrl,
     walletLink: `${wpBaseUrl}/wallet`,
     walletName: wallet.wallet_name,
@@ -139,6 +139,7 @@ const buildAttestationOptions = async (
     case ItWalletSpecsVersion.V1_3: {
       const x5c = await loadWalletProviderCertificateChain(
         wallet,
+        unitKeyPair,
         providerKeyPair,
         trust,
       );
@@ -186,7 +187,7 @@ const createAttestation = async (
   const attestationOptions = await buildAttestationOptions(
     wallet,
     providerKeyPair,
-    unitKeyPair.publicKey,
+    unitKeyPair,
     [wpEntityConfiguration, taEntityConfiguration],
     trust,
   );
@@ -221,6 +222,7 @@ export const loadAttestation = async (
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
   );
   ensureDir(wallet.backup_storage_path);
+  
 
   const [providerKeyPair, unitKeyPair] = await Promise.all([
     loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider")),
