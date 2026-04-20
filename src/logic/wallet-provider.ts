@@ -5,7 +5,7 @@ import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, KeyPair } from "@/types";
 
 import { CertificateBuilder } from "./pem";
-import { loadJwks } from "./utils";
+import { CA_VALIDITY_MS, loadJwks } from "./utils";
 
 /**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
@@ -52,6 +52,7 @@ export async function loadWalletProviderCertificateChain(
     .withKeyPair(taJwks)
     .selfSigned()
     .withCaCapability(0)
+    .withValidity(CA_VALIDITY_MS)
     .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
 
   const certWpResult = await new CertificateBuilder()

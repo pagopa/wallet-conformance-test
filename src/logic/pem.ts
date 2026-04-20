@@ -47,6 +47,7 @@ export class CertificateBuilder {
   private _issuerKeyPair?: KeyPair;
   private _keyPair?: KeyPair;
   private _subject?: string;
+  private _validityMs = VALIDITY_MS;
 
   /**
    * Create the certificate in memory without persisting to disk.
@@ -71,6 +72,7 @@ export class CertificateBuilder {
             this._extensions,
             this._isCA,
             this._caPathLen,
+            this._validityMs,
           )
         : await createCertificateSelfSigned(
             keyPair,
@@ -78,6 +80,7 @@ export class CertificateBuilder {
             this._extensions,
             this._isCA,
             this._caPathLen,
+            this._validityMs,
           );
 
     const certPem = certificate.toString("pem");
@@ -183,6 +186,12 @@ export class CertificateBuilder {
   /** Set the subject (CN) for the certificate. */
   withSubject(subject: string): this {
     this._subject = subject;
+    return this;
+  }
+
+  /** Override the certificate validity window (default: VALIDITY_MS = 1 year). */
+  withValidity(ms: number): this {
+    this._validityMs = ms;
     return this;
   }
 
@@ -310,6 +319,7 @@ async function createCertificateIssuerSigned(
   extraExtensions: x509.Extension[] = [],
   isCA = false,
   caPathLen?: number,
+  validityMs = VALIDITY_MS,
 ): Promise<x509.X509Certificate> {
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -334,7 +344,7 @@ async function createCertificateIssuerSigned(
   );
 
   const notBefore = new Date();
-  const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
+  const notAfter = new Date(notBefore.getTime() + validityMs);
 
   const cert = await x509.X509CertificateGenerator.create({
     extensions: [
@@ -350,6 +360,7 @@ async function createCertificateIssuerSigned(
         false,
       ),
       await x509.SubjectKeyIdentifierExtension.create(publicKey),
+      await x509.AuthorityKeyIdentifierExtension.create(issuerCertificate, false),
       ...extraExtensions,
     ],
     issuer: issuerCertificate.subject,
@@ -376,6 +387,7 @@ async function createCertificateSelfSigned(
   extraExtensions: x509.Extension[] = [],
   isCA = false,
   caPathLen?: number,
+  validityMs = VALIDITY_MS,
 ): Promise<x509.X509Certificate> {
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -402,7 +414,7 @@ async function createCertificateSelfSigned(
   const keys = { privateKey, publicKey };
 
   const notBefore = new Date();
-  const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
+  const notAfter = new Date(notBefore.getTime() + validityMs);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
       new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),

@@ -25,6 +25,7 @@ import {
 
 export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
 export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
+export const CA_VALIDITY_MS = 1000 * 60 * 60 * 24 * 365 * 5; // 5 years — root CA lifetime
 
 // Re-export config loading functions
 export {
