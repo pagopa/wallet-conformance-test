@@ -5,7 +5,7 @@ import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, KeyPair } from "@/types";
 
-import { CertificateBuilder } from "./pem";
+import { CertificateBuilder, CertificateResult } from "./pem";
 import { buildJwksPath, CA_VALIDITY_MS, loadJwks } from "./utils";
 
 /**
@@ -23,26 +23,21 @@ import { buildJwksPath, CA_VALIDITY_MS, loadJwks } from "./utils";
  */
 export async function loadWalletProviderCertificateChain(
   wallet: Config["wallet"],
-  unitKeyPair: KeyPair,
   providerKeyPair: KeyPair,
   trust: Config["trust"],
 ): Promise<[string, ...string[]]> {
   const wpSanExtension = buildWpSanExtension(LOCAL_WP_HOST);
 
+  const wpCertResult = await loadWPCertificateChain(wallet, trust);
+
   const certWpSelfIssuedResult = await new CertificateBuilder()
     .withSubject(`CN=${LOCAL_WP_HOST}`)
-    .withKeyPair(unitKeyPair)
-    .selfIssued(providerKeyPair)
+    .withKeyPair(providerKeyPair)
+    .selfIssued(wpCertResult.keyPair)
     .withExtensions([wpSanExtension])
     .loadOrCreate(wallet.backup_storage_path, "wallet_unit_self_issued_cert");
 
-  const wpCertDer = await loadWPCertificateChain(
-    wallet,
-    providerKeyPair,
-    trust,
-  );
-
-  return [certWpSelfIssuedResult.certDerBase64, wpCertDer];
+  return [certWpSelfIssuedResult.certDerBase64, wpCertResult.certDerBase64];
 }
 
 /**
@@ -77,14 +72,12 @@ export async function loadWalletUnitJwksWithCert(
 }
 
 /**
- * Loads (or lazily generates and caches on disk) the TA CA cert and the WP cert
- * signed by the TA. Returns the WP cert DER base64.
+ * Loads the Wallet Provider cert signed by the TA which contains keys to sign self-issued certs that contains wallet provider keys.
  */
 export async function loadWPCertificateChain(
   wallet: Config["wallet"],
-  providerKeyPair: KeyPair,
   trust: Config["trust"],
-): Promise<string> {
+): Promise<CertificateResult> {
   const wpSanExtension = buildWpSanExtension(LOCAL_WP_HOST);
 
   const taJwks = await loadJwks(
@@ -99,14 +92,19 @@ export async function loadWPCertificateChain(
     .withValidity(CA_VALIDITY_MS)
     .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
 
+  const wpCertJwks = await loadJwks(
+    wallet.backup_storage_path,
+    buildJwksPath("wallet_provider_cert"),
+  );
+
   const certWpResult = await new CertificateBuilder()
     .withSubject(`CN=${LOCAL_WP_HOST}`)
-    .withKeyPair(providerKeyPair)
+    .withKeyPair(wpCertJwks)
     .signedBy(certTAResult.certificate, taJwks)
     .withExtensions([wpSanExtension])
     .loadOrCreate(wallet.backup_storage_path, "wallet_provider_cert");
 
-  return certWpResult.certDerBase64;
+  return certWpResult;
 }
 
 function buildWpSanExtension(

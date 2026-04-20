@@ -140,7 +140,6 @@ const buildAttestationOptions = async (
     case ItWalletSpecsVersion.V1_3: {
       const x5c = await loadWalletProviderCertificateChain(
         wallet,
-        unitKeyPair,
         providerKeyPair,
         trust,
       );
@@ -222,7 +221,6 @@ export const loadAttestation = async (
   ensureDir(
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
   );
-  ensureDir(wallet.backup_storage_path);
 
   const providerKeyPair = await loadJwks(
     wallet.backup_storage_path,
@@ -235,6 +233,8 @@ export const loadAttestation = async (
     trustAnchor.external_ta_url,
   );
 
+  // If an attestation already exists, try to load and validate it before deciding to create a new one.
+  // If the existing attestation cannot be loaded or is invalid/expired, it will be replaced with a new one.
   if (existsSync(attestationPath)) {
     try {
       const attestation = readFileSync(attestationPath, "utf-8");
