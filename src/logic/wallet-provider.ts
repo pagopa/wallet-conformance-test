@@ -1,3 +1,5 @@
+import * as x509 from "@peculiar/x509";
+
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, KeyPair } from "@/types";
@@ -22,10 +24,20 @@ export async function loadWalletProviderCertificateChain(
   providerKeyPair: KeyPair,
   trust: Config["trust"],
 ): Promise<[string, ...string[]]> {
+  const wpHostname = new URL(LOCAL_WP_HOST).hostname;
+  const wpSanExtension = new x509.SubjectAlternativeNameExtension(
+    [
+      { type: "url", value: LOCAL_WP_HOST },
+      { type: "dns", value: wpHostname },
+    ],
+    false,
+  );
+
   const certWpSelfSignedResult = await new CertificateBuilder()
-    .withSubject(`CN=${LOCAL_WP_HOST}`)
+    .withSubject(`CN=${wpHostname}`)
     .withKeyPair(providerKeyPair)
     .selfSigned()
+    .withExtensions([wpSanExtension])
     .loadOrCreate(
       wallet.backup_storage_path,
       "wallet_provider_self_signed_cert",
@@ -43,9 +55,10 @@ export async function loadWalletProviderCertificateChain(
     .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
 
   const certWpResult = await new CertificateBuilder()
-    .withSubject(`CN=${LOCAL_WP_HOST}`)
+    .withSubject(`CN=${wpHostname}`)
     .withKeyPair(providerKeyPair)
     .signedBy(certTAResult.certificate, taJwks)
+    .withExtensions([wpSanExtension])
     .loadOrCreate(
       wallet.backup_storage_path,
       "wallet_provider_cert",
