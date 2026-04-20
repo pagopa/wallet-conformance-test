@@ -59,7 +59,7 @@ export const createServer = (config: Config): express.Express => {
     try {
       const jwt = await createStatusListToken({
         certFilename: "issuer_cert",
-        certSubject: "CN=test_issuer",
+        certSubject: "CN=${LOCAL_CI_HOST}",
         iss: ciBaseUrl,
         jwksFilename: buildJwksPath("issuer_pid_mocked"),
         jwksPath: config.wallet.backup_storage_path,
