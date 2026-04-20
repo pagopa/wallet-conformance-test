@@ -27,6 +27,7 @@ import {
   partialCallbacks,
   signJwtCallback,
   validateProviderKeyPair,
+  loadWalletUnitJwksWithCert,
 } from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
@@ -145,7 +146,7 @@ const buildAttestationOptions = async (
       );
       const attestationOptions: WalletAttestationOptionsV1_3 = {
         ...commonOptions,
-        signer: { ...signerBase, method: "x5c", x5c },
+        signer: { ...signerBase, method: "x5c", trustChain, x5c },
       };
       return attestationOptions;
     }
@@ -222,12 +223,9 @@ export const loadAttestation = async (
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
   );
   ensureDir(wallet.backup_storage_path);
-  
 
-  const [providerKeyPair, unitKeyPair] = await Promise.all([
-    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider")),
-    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_unit")),
-  ]);
+  const providerKeyPair = await loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider"));
+  const unitKeyPair = await loadWalletUnitJwksWithCert(wallet, providerKeyPair);
 
   const attestationPath = buildAttestationPath(
     wallet,

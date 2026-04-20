@@ -187,7 +187,7 @@ testPresentation.action((options) => {
   const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
 
   try {
-    execFileSync("pnpm", ["test:issuance", ...tests], {
+    execFileSync("pnpm", ["test:presentation", ...tests], {
       env,
       stdio: "inherit",
     });
