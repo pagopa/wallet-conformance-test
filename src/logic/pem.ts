@@ -39,8 +39,10 @@ export interface CertificateResult {
 // ---------------------------------------------------------------------------
 
 export class CertificateBuilder {
+  private _caPathLen?: number;
   private _extensions: x509.Extension[] = [];
   private _generateKey = false;
+  private _isCA = false;
   private _issuerCert?: x509.X509Certificate;
   private _issuerKeyPair?: KeyPair;
   private _keyPair?: KeyPair;
@@ -67,8 +69,16 @@ export class CertificateBuilder {
             this._issuerCert,
             this._issuerKeyPair.privateKey,
             this._extensions,
+            this._isCA,
+            this._caPathLen,
           )
-        : await createCertificateSelfSigned(keyPair, subject, this._extensions);
+        : await createCertificateSelfSigned(
+            keyPair,
+            subject,
+            this._extensions,
+            this._isCA,
+            this._caPathLen,
+          );
 
     const certPem = certificate.toString("pem");
     const certDerBase64 = Buffer.from(certificate.rawData).toString("base64");
@@ -140,6 +150,13 @@ export class CertificateBuilder {
   ): this {
     this._issuerCert = issuerCertificate;
     this._issuerKeyPair = issuerKeyPair;
+    return this;
+  }
+
+  /** Mark this certificate as a CA (BasicConstraints cA=TRUE, KeyUsage keyCertSign|cRLSign). */
+  withCaCapability(pathLen?: number): this {
+    this._isCA = true;
+    this._caPathLen = pathLen;
     return this;
   }
 
@@ -291,6 +308,8 @@ async function createCertificateIssuerSigned(
   issuerCertificate: x509.X509Certificate,
   issuerPrivateKey: JsonWebKey,
   extraExtensions: x509.Extension[] = [],
+  isCA = false,
+  caPathLen?: number,
 ): Promise<x509.X509Certificate> {
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -319,8 +338,13 @@ async function createCertificateIssuerSigned(
 
   const cert = await x509.X509CertificateGenerator.create({
     extensions: [
-      new x509.BasicConstraintsExtension(false, undefined, true),
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature, true),
+      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.KeyUsagesExtension(
+        isCA
+          ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign
+          : x509.KeyUsageFlags.digitalSignature,
+        true,
+      ),
       new x509.ExtendedKeyUsageExtension(
         [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
         false,
@@ -350,6 +374,8 @@ async function createCertificateSelfSigned(
   keyPair: KeyPair,
   subject: string,
   extraExtensions: x509.Extension[] = [],
+  isCA = false,
+  caPathLen?: number,
 ): Promise<x509.X509Certificate> {
   const signingAlgorithm = {
     hash: "SHA-256",
@@ -379,8 +405,13 @@ async function createCertificateSelfSigned(
   const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
   const cert = await x509.X509CertificateGenerator.createSelfSigned({
     extensions: [
-      new x509.BasicConstraintsExtension(false, undefined, true),
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature, true),
+      new x509.BasicConstraintsExtension(isCA, isCA ? caPathLen : undefined, true),
+      new x509.KeyUsagesExtension(
+        isCA
+          ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign
+          : x509.KeyUsageFlags.digitalSignature,
+        true,
+      ),
       new x509.ExtendedKeyUsageExtension(
         [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
         false,

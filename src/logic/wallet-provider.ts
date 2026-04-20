@@ -39,6 +39,7 @@ export async function loadWalletProviderCertificateChain(
     .withSubject(`CN=${LOCAL_TA_HOST}`)
     .withKeyPair(taJwks)
     .selfSigned()
+    .withCaCapability(0)
     .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
 
   const certWpResult = await new CertificateBuilder()
@@ -47,7 +48,7 @@ export async function loadWalletProviderCertificateChain(
     .signedBy(certTAResult.certificate, taJwks)
     .loadOrCreate(
       wallet.backup_storage_path,
-      "wallet_provider_self_signed_cert",
+      "wallet_provider_cert",
     );
   return [
     certWpSelfSignedResult.certDerBase64,
