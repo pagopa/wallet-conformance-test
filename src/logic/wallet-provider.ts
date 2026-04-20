@@ -114,7 +114,7 @@ function buildWpSanExtension(
 ): x509.SubjectAlternativeNameExtension {
   return new x509.SubjectAlternativeNameExtension(
     [
-      { type: "url", value: LOCAL_WP_HOST },
+      { type: "url", value: `https://${wpHostname}` },
       { type: "dns", value: wpHostname },
     ],
     false,
