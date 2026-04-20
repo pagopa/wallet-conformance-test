@@ -27,11 +27,10 @@ export async function loadWalletProviderCertificateChain(
   providerKeyPair: KeyPair,
   trust: Config["trust"],
 ): Promise<[string, ...string[]]> {
-  const wpHostname = new URL(LOCAL_WP_HOST).hostname;
-  const wpSanExtension = buildWpSanExtension(wpHostname);
+  const wpSanExtension = buildWpSanExtension(LOCAL_WP_HOST);
 
   const certWpSelfIssuedResult = await new CertificateBuilder()
-    .withSubject(`CN=${wpHostname}`)
+    .withSubject(`CN=${LOCAL_WP_HOST}`)
     .withKeyPair(unitKeyPair)
     .selfIssued(providerKeyPair)
     .withExtensions([wpSanExtension])
@@ -54,8 +53,7 @@ export async function loadWalletUnitJwksWithCert(
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
 ): Promise<KeyPair> {
-  const wpHostname = new URL(LOCAL_WP_HOST).hostname;
-  const wpSanExtension = buildWpSanExtension(wpHostname);
+  const wpSanExtension = buildWpSanExtension(LOCAL_WP_HOST);
 
   const unitKeyPair = await loadJwks(
     wallet.backup_storage_path,
@@ -63,7 +61,7 @@ export async function loadWalletUnitJwksWithCert(
   );
 
   const certResult = await new CertificateBuilder()
-    .withSubject(`CN=${wpHostname}`)
+    .withSubject(`CN=${LOCAL_WP_HOST}`)
     .withKeyPair(unitKeyPair)
     .selfIssued(providerKeyPair)
     .withExtensions([wpSanExtension])
@@ -87,8 +85,7 @@ export async function loadWPCertificateChain(
   providerKeyPair: KeyPair,
   trust: Config["trust"],
 ): Promise<string> {
-  const wpHostname = new URL(LOCAL_WP_HOST).hostname;
-  const wpSanExtension = buildWpSanExtension(wpHostname);
+  const wpSanExtension = buildWpSanExtension(LOCAL_WP_HOST);
 
   const taJwks = await loadJwks(
     trust.federation_trust_anchors_jwks_path,
@@ -103,7 +100,7 @@ export async function loadWPCertificateChain(
     .loadOrCreate(trust.ca_cert_path, "trust_anchor_cert");
 
   const certWpResult = await new CertificateBuilder()
-    .withSubject(`CN=${wpHostname}`)
+    .withSubject(`CN=${LOCAL_WP_HOST}`)
     .withKeyPair(providerKeyPair)
     .signedBy(certTAResult.certificate, taJwks)
     .withExtensions([wpSanExtension])

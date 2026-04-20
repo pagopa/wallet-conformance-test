@@ -54,7 +54,7 @@ export const createServer = (config: Config): express.Express => {
           sub,
           trustAnchor: config.trust,
           trustAnchorBaseUrl,
-          walletBackupStoragePath: config.wallet.backup_storage_path,
+          wallet: config.wallet,
         });
       } else if (sub === ciBaseUrl) {
         subordinateStatement = await createSubordinateCredentialIssuerMetadata({

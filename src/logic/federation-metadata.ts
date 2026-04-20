@@ -16,6 +16,7 @@ import {
   loadJwksWithX5C,
   VALIDITY_MS,
 } from "./utils";
+import { loadWalletUnitJwksWithCert } from "./wallet-provider";
 
 export interface CreateFederationMetadataOptions {
   claims: Omit<
@@ -206,7 +207,7 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
   sub: string;
   trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
-  walletBackupStoragePath: string;
+  wallet: Config["wallet"];
 }
 
 /**
@@ -225,16 +226,21 @@ export const createSubordinateWalletUnitMetadata = async (
     options.trustAnchor.certificate_subject,
   );
 
-  const walletJwks = await loadJwks(
-    options.walletBackupStoragePath,
-    buildJwksPath("wallet_unit"),
+  const walletProviderJwks = await loadJwks(
+    options.wallet.backup_storage_path,
+    buildJwksPath("wallet_provider"),
+  );
+
+  const unitKeyPair = await loadWalletUnitJwksWithCert(
+    options.wallet,
+    walletProviderJwks,
   );
   return await createFederationMetadata({
     claims: {
       iss: options.trustAnchorBaseUrl,
       sub: options.sub,
     },
-    entityPublicJwk: walletJwks.publicKey,
+    entityPublicJwk: unitKeyPair.publicKey,
     signedJwks,
   });
 };
@@ -291,7 +297,7 @@ export async function getTrustMarks(
 
   const iat = Math.floor(Date.now() / 1000);
   const trustMarkPayload = {
-    exp: iat + (VALIDITY_MS / 1000),
+    exp: iat + VALIDITY_MS / 1000,
     iat,
     iss: trust_anchor_base_url,
     logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",
