@@ -15,10 +15,10 @@ import { AttestationExpiredError, TrustChainExpiredError } from "@/errors";
 import {
   buildAttestationPath,
   buildJwksPath,
+  CLOCK_SKEW_TOLERANCE_MS,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
-  CLOCK_SKEW_TOLERANCE_MS,
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
@@ -43,15 +43,14 @@ const resolveTaEntityConfiguration = (
   walletProviderBaseUrl: string,
   trustAnchorBaseUrl: string,
   walletVersion: Config["wallet"]["wallet_version"],
-): Promise<string> => {
-  return createSubordinateTrustAnchorMetadata({
+): Promise<string> =>
+  createSubordinateTrustAnchorMetadata({
     entityPublicJwk: providerPublicKey,
     federationTrustAnchor: trust,
     sub: walletProviderBaseUrl,
     trustAnchorBaseUrl,
     walletVersion,
   });
-};
 
 interface LoadAttestationOptions {
   network: Config["network"];
@@ -188,13 +187,12 @@ const createAttestation = async (
  * @param options.trustAnchor - Trust anchor configuration
  * @param options.trust - Federation trust configuration, including trust anchor JWKS paths
  * @param options.wallet - Wallet configuration (provider URL, version, storage paths, etc.)
- * @param options.network - Network configuration
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (
   options: LoadAttestationOptions,
 ): Promise<AttestationResponse> => {
-  const { trustAnchor, wallet } = options;
+  const { wallet } = options;
 
   ensureDir(
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
