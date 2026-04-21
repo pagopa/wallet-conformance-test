@@ -53,7 +53,6 @@ const resolveTaEntityConfiguration = (
   });
 
 interface LoadAttestationOptions {
-  network: Config["network"];
   trust: Config["trust"];
   trustAnchor: Config["trust_anchor"];
   wallet: Config["wallet"];
