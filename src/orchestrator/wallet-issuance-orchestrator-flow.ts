@@ -15,6 +15,12 @@ import {
 } from "@/logic";
 import { REDIRECT_URI } from "@/logic/constants";
 import {
+  CredentialConfigurationError,
+  IssuerMetadataError,
+  OrchestratorError,
+  StepOutputError,
+} from "@/orchestrator/errors";
+import {
   AuthorizeDefaultStep,
   AuthorizeStepResponse,
   CredentialRequestDefaultStep,
@@ -136,7 +142,7 @@ export class WalletIssuanceOrchestratorFlow {
         );
     } else {
       this.log.debug(
-        "Missing Credential Offer URI: using Credetntial Issuer and Credential ID from configuration",
+        "Missing Credential Offer URI: using Credential Issuer and Credential ID from configuration",
       );
 
       credentialIssuer = this.config.issuance.url;
@@ -145,8 +151,11 @@ export class WalletIssuanceOrchestratorFlow {
       ];
 
       if (credentialConfigurationIds.length === 0)
-        throw new Error(
-          "Cannot proceed: credential configuration id was not defined",
+        throw new OrchestratorError(
+          "No credential configuration ID could be resolved. " +
+            "Neither the test configuration nor the credential offer provided one. " +
+            "Set 'credential_types[]' in config.ini or pass --credential_types=<id>.",
+          "CREDENTIAL_CONFIGURATION_ID_UNRESOLVED",
         );
     }
     return { credentialConfigurationIds, credentialIssuer };
@@ -175,11 +184,7 @@ export class WalletIssuanceOrchestratorFlow {
       } = await this.runThroughToken();
 
       const accessToken = tokenResponse.response?.access_token;
-      if (!accessToken)
-        throw new Error(
-          "Token step did not return an access token. " +
-            "Check the token step for errors.",
-        );
+      if (!accessToken) throw new StepOutputError("TOKEN", "access_token");
 
       const entityStatementClaims =
         fetchMetadataResponse.response?.entityStatementClaims;
@@ -202,11 +207,7 @@ export class WalletIssuanceOrchestratorFlow {
       const nonce = nonceResponse.response?.nonce as
         | undefined
         | { c_nonce: string };
-      if (!nonce)
-        throw new Error(
-          "Nonce step did not return a nonce. " +
-            "Check the nonce step for errors.",
-        );
+      if (!nonce) throw new StepOutputError("NONCE", "c_nonce");
 
       const credentialResponse = await this.credentialRequestStep.run({
         accessToken,
@@ -300,9 +301,10 @@ export class WalletIssuanceOrchestratorFlow {
         ?.authorization_endpoint;
 
     if (!authorizationEndpoint)
-      throw new Error(
-        "Issuer metadata is missing 'authorization_endpoint' " +
-          "in 'oauth_authorization_server'. Cannot perform Authorization Request.",
+      throw new IssuerMetadataError(
+        "authorization_endpoint",
+        "oauth_authorization_server",
+        "Authorization Request",
       );
 
     this.log.info("Loading credentials...");
@@ -381,7 +383,12 @@ export class WalletIssuanceOrchestratorFlow {
     const entityStatementClaims =
       fetchMetadataResponse.response?.entityStatementClaims;
     if (!entityStatementClaims) {
-      throw new Error("Entity Statement Claims not found in response");
+      throw new OrchestratorError(
+        "Fetch Metadata step returned no entity statement claims. " +
+          "Verify the issuer URL is reachable and returns a valid " +
+          "OpenID Federation Entity Statement.",
+        "ENTITY_STATEMENT_CLAIMS_MISSING",
+      );
     }
 
     // Validate credentialConfigurationId is supported by the issuer
@@ -394,10 +401,10 @@ export class WalletIssuanceOrchestratorFlow {
       const requestedId = this.issuanceConfig.credentialConfigurationId;
 
       if (!supportedIds.includes(requestedId)) {
-        throw new Error(
-          `Credential configuration '${requestedId}' is not supported by the issuer.\n` +
-            `Supported credential configurations: ${supportedIds.join(", ")}\n` +
-            `Please update your test configuration with a valid credentialConfigurationId.`,
+        throw new CredentialConfigurationError(
+          requestedId,
+          "unsupported_by_issuer",
+          supportedIds,
         );
       }
 
@@ -405,17 +412,17 @@ export class WalletIssuanceOrchestratorFlow {
         this.config.issuance.credential_offer_uri &&
         !credentialConfigurationIds.includes(requestedId)
       ) {
-        throw new Error(
-          `Credential configuration '${requestedId}' is configured in your test but was not ` +
-            `included in the credential offer (credential_offer_uri).\n` +
-            `Offer includes: ${credentialConfigurationIds.join(", ")}\n` +
-            `Please check that your credential_offer_uri targets the correct credential.`,
+        throw new CredentialConfigurationError(
+          requestedId,
+          "not_in_offer",
+          credentialConfigurationIds,
         );
       }
     } else
       this.log.warn(
-        "Warning: Could not verify credentialConfigurationId - " +
-          "credential_configurations_supported not found in issuer metadata",
+        "Skipping credentialConfigurationId validation: " +
+          "'credential_configurations_supported' is absent from issuer metadata. " +
+          "This may indicate a non-conformant issuer or an incomplete metadata endpoint.",
       );
 
     const popAttestation = await createClientAttestationPopJwt({
@@ -429,9 +436,10 @@ export class WalletIssuanceOrchestratorFlow {
         ?.pushed_authorization_request_endpoint;
 
     if (!pushedAuthorizationRequestEndpoint) {
-      throw new Error(
-        "Issuer metadata is missing 'pushed_authorization_request_endpoint' " +
-          "in 'oauth_authorization_server'. Cannot perform Pushed Authorization Request.",
+      throw new IssuerMetadataError(
+        "pushed_authorization_request_endpoint",
+        "oauth_authorization_server",
+        "Pushed Authorization Request",
       );
     }
 
@@ -494,29 +502,28 @@ export class WalletIssuanceOrchestratorFlow {
       !authorizeResponse.response ||
       !authorizeResponse.response.authorizeResponse
     ) {
-      throw new Error("Authorization Response not found");
+      throw new OrchestratorError(
+        "Authorization step returned no response object. " +
+          "The authorization redirect may not have been captured. " +
+          "Verify that the redirect_uri is reachable and that the " +
+          "authorize step completed successfully.",
+        "AUTHORIZATION_RESPONSE_MISSING",
+      );
     }
 
     const code = authorizeResponse.response.authorizeResponse?.code;
-    if (!code)
-      throw new Error(
-        "Authorization step did not return a code. " +
-          "Check the authorize step for errors.",
-      );
+    if (!code) throw new StepOutputError("AUTHORIZE", "code");
 
     const { requestObject } = authorizeResponse.response;
     if (!requestObject)
-      throw new Error(
-        "Authorization step did not return Request Object. " +
-          "Check the authorize step for errors.",
-      );
+      throw new StepOutputError("AUTHORIZE", "request_object");
 
     const code_verifier =
       pushedAuthorizationRequestResponse.response?.codeVerifier;
     if (!code_verifier)
-      throw new Error(
-        "Pushed Authorization Request Step step did not return a code_verifier. " +
-          "Check the PAR Step step for errors.",
+      throw new StepOutputError(
+        "PUSHED_AUTHORIZATION_REQUEST",
+        "code_verifier",
       );
 
     const accessTokenRequest: AccessTokenRequest = {
@@ -545,11 +552,7 @@ export class WalletIssuanceOrchestratorFlow {
     assertStepSuccess(tokenResponse, "Token Request");
 
     const dPoPKey = tokenResponse.response?.dPoPKey;
-    if (!dPoPKey)
-      throw new Error(
-        "Token step did not return the ephemeral DPoP key. " +
-          "Check the token step for errors.",
-      );
+    if (!dPoPKey) throw new StepOutputError("TOKEN", "dpop_key");
 
     return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
