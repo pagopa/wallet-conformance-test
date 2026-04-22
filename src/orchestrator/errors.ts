@@ -24,7 +24,7 @@ export class CredentialConfigurationError extends OrchestratorError {
         : `not included in the credential offer. Offer IDs: ${availableIds.join(", ")}`;
     super(
       `Credential configuration '${requestedId}' is ${context}. ` +
-        `Fix: update config.ini → credential_types[] = <id>  or  --credential_types=<id>.`,
+        `Fix: update config.ini → credential_types[] = <id>  or  --credential-types <types>.`,
       "CREDENTIAL_CONFIGURATION_MISMATCH",
     );
     this.name = "CredentialConfigurationError";
