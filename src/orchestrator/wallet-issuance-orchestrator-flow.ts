@@ -137,8 +137,9 @@ export class WalletIssuanceOrchestratorFlow {
       credentialConfigurationIds = credentialOffer.credential_configuration_ids;
 
       if (credentialConfigurationIds.length === 0)
-        throw new Error(
+        throw new OrchestratorError(
           "Cannot proceed: The credential offer returned no credential configuration IDs",
+          "CREDENTIAL_CONFIGURATION_ID_UNRESOLVED",
         );
     } else {
       this.log.debug(
