@@ -552,7 +552,7 @@ export class WalletIssuanceOrchestratorFlow {
     assertStepSuccess(tokenResponse, "Token Request");
 
     const dPoPKey = tokenResponse.response?.dPoPKey;
-    if (!dPoPKey) throw new StepOutputError("TOKEN", "dpop_key");
+    if (!dPoPKey) throw new StepOutputError("TOKEN_REQUEST", "dPoPKey");
 
     return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
