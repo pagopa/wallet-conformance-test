@@ -15,10 +15,10 @@ import { AttestationExpiredError, TrustChainExpiredError } from "@/errors";
 import {
   buildAttestationPath,
   buildJwksPath,
+  CLOCK_SKEW_TOLERANCE_MS,
   createFederationMetadata,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
-  CLOCK_SKEW_TOLERANCE_MS,
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,

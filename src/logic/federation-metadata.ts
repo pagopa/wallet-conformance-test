@@ -291,7 +291,7 @@ export async function getTrustMarks(
 
   const iat = Math.floor(Date.now() / 1000);
   const trustMarkPayload = {
-    exp: iat + (VALIDITY_MS / 1000),
+    exp: iat + VALIDITY_MS / 1000,
     iat,
     iss: trust_anchor_base_url,
     logo_uri: "https://io.italia.it/assets/img/io-it-logo-blue.svg",

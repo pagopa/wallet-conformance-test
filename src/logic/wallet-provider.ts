@@ -1,7 +1,7 @@
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
-import { loadCertificate } from "./pem";
 import { Config, KeyPair } from "@/types";
 
+import { loadCertificate } from "./pem";
 
 /**
  * Loads (or lazily generates and caches on disk) an X.509 certificate for the
