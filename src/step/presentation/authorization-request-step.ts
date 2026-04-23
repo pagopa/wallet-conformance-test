@@ -53,12 +53,12 @@ export type AuthorizationRequestStepResponse = StepResponse & {
  * and creating the authorization response to be sent back to the verifier.
  */
 export class AuthorizationRequestDefaultStep extends StepFlow {
-  tag = "AUTHORIZATION";
+  static readonly tag = "AUTHORIZATION_REQUEST";
 
   async run(
     options: AuthorizationRequestOptions,
   ): Promise<AuthorizationRequestStepResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
@@ -147,5 +147,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         responseUri,
       };
     });
+  }
+
+  tag(): string {
+    return AuthorizationRequestDefaultStep.tag;
   }
 }

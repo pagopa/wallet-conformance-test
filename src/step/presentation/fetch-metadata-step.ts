@@ -21,12 +21,12 @@ export type FetchMetadataVpStepResponse = StepResponse & {
 };
 
 export class FetchMetadataVpDefaultStep extends StepFlow {
-  tag = "FETCH METADATA";
+  static readonly tag = "FETCH_METADATA_VP";
 
   async run(
     options: FetchMetadataVpOptions,
   ): Promise<FetchMetadataVpStepResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
     const url = `${options.baseUrl}/.well-known/openid-federation`;
 
     log.info("Discovering metadata...");
@@ -70,5 +70,9 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
         status: res.response.status,
       };
     });
+  }
+
+  tag(): string {
+    return FetchMetadataVpDefaultStep.tag;
   }
 }

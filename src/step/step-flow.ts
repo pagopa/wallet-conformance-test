@@ -13,7 +13,6 @@ export interface StepResponse {
 }
 
 export abstract class StepFlow {
-  abstract tag: string;
   protected config: Config;
   protected ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
 
@@ -21,13 +20,15 @@ export abstract class StepFlow {
 
   constructor(config: Config, logger: ReturnType<typeof createLogger>) {
     this.config = config;
-    this.log = logger;
+    this.log = logger.withTag(this.tag());
     this.ioWalletSdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: this.config.wallet.wallet_version,
     });
   }
 
   abstract run(...args: unknown[]): Promise<StepResponse>;
+
+  abstract tag(): string;
 
   protected async execute<T>(
     action: () => Promise<T>,
@@ -36,15 +37,13 @@ export abstract class StepFlow {
     try {
       const response = await action();
       const durationMs = Date.now() - start;
-      this.log.withTag(this.tag).debug(`${this.tag} step succeeded ✅`);
+      this.log.debug(`step succeeded ✅`);
       return { durationMs, response, success: true };
     } catch (error: unknown) {
       const durationMs = Date.now() - start;
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      this.log
-        .withTag(this.tag)
-        .error(`${this.tag} step failed: ${errorMessage}`);
+      this.log.error(`step failed: ${errorMessage}`);
       return {
         durationMs,
         error: error instanceof Error ? error : new Error(String(error)),

@@ -186,10 +186,7 @@ export class WalletIssuanceOrchestratorFlow {
 
       const accessToken = tokenResponse.response?.access_token;
       if (!accessToken)
-        throw new StepOutputError(
-          TokenRequestDefaultStep.tag,
-          "access_token",
-        );
+        throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
 
       const entityStatementClaims =
         fetchMetadataResponse.response?.entityStatementClaims;

@@ -79,10 +79,10 @@ export type AuthorizeStepResponse = StepResponse & {
  * - requestObjectJwt: The raw authorization request object JWT as a string.
  */
 export class AuthorizeDefaultStep extends StepFlow {
-  tag = "AUTHORIZE";
+  static readonly tag = "AUTHORIZE";
 
   async run(options: AuthorizeStepOptions): Promise<AuthorizeStepResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
 
     log.debug(`Starting Authorize Step`);
 
@@ -202,5 +202,9 @@ export class AuthorizeDefaultStep extends StepFlow {
         requestObjectJwt,
       };
     });
+  }
+
+  tag(): string {
+    return AuthorizeDefaultStep.tag;
   }
 }
