@@ -6,7 +6,7 @@
  * to the test runners via environment variables.
  */
 
-import { execFileSync } from "child_process";
+import { spawnSync } from "child_process";
 import { Command } from "commander";
 import { resolve } from "path";
 
@@ -20,21 +20,15 @@ function runTestCommand(
 ) {
   const env = setEnvFromOptions(options);
   const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
-  const command = process.platform === "win32" ? "cmd.exe" : "pnpm";
-  const args =
-    process.platform === "win32"
-      ? ["/d", "/s", "/c", "pnpm", script, ...tests]
-      : [script, ...tests];
 
-  try {
-    execFileSync(command, args, {
-      env,
-      stdio: "inherit",
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to execute ${script}: ${message}`);
-    process.exit(1);
+  const result = spawnSync("pnpm", [script, ...tests], {
+    env,
+    shell: process.platform === "win32",
+    stdio: "inherit",
+  });
+
+  if (result.error || result.status !== 0) {
+    process.exit(result.status ?? 1);
   }
 }
 
