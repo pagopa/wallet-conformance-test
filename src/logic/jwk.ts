@@ -70,7 +70,7 @@ export async function createKeys(): Promise<KeyPair> {
   const priv = await exportJWK(keyPair.privateKey);
   const pub = await exportJWK(keyPair.publicKey);
 
-  const kid = await calculateJwkThumbprint({ alg: "ES256", ...pub }, "sha256");
+  const kid = await calculateJwkThumbprint(pub, "sha256");
   const exportedPair: KeyPair = {
     privateKey: parseWithErrorHandling(jsonWebKeySchema, {
       alg: "ES256",
