@@ -4,8 +4,13 @@ import {
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt, exportJWK, generateKeyPair, importX509 } from "jose";
-import KSUID from "ksuid";
+import {
+  calculateJwkThumbprint,
+  decodeJwt,
+  exportJWK,
+  generateKeyPair,
+  importX509,
+} from "jose";
 import { writeFileSync } from "node:fs";
 
 import { KeyPair, KeyPairJwk } from "@/types";
@@ -65,7 +70,7 @@ export async function createKeys(): Promise<KeyPair> {
   const priv = await exportJWK(keyPair.privateKey);
   const pub = await exportJWK(keyPair.publicKey);
 
-  const kid = KSUID.randomSync().string;
+  const kid = await calculateJwkThumbprint({ alg: "ES256", ...pub }, "sha256");
   const exportedPair: KeyPair = {
     privateKey: parseWithErrorHandling(jsonWebKeySchema, {
       alg: "ES256",
