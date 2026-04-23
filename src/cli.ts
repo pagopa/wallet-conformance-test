@@ -20,14 +20,20 @@ function runTestCommand(
 ) {
   const env = setEnvFromOptions(options);
   const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
-  const pnpmCommand = process.platform === "win32" ? "pnpm.CMD" : "pnpm";
+  const command = process.platform === "win32" ? "cmd.exe" : "pnpm";
+  const args =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", "pnpm", script, ...tests]
+      : [script, ...tests];
 
   try {
-    execFileSync(pnpmCommand, [script, ...tests], {
+    execFileSync(command, args, {
       env,
       stdio: "inherit",
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Failed to execute ${script}: ${message}`);
     process.exit(1);
   }
 }
