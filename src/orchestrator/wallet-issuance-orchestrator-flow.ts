@@ -155,7 +155,7 @@ export class WalletIssuanceOrchestratorFlow {
         throw new OrchestratorError(
           "No credential configuration ID could be resolved. " +
             "Neither the test configuration nor the credential offer provided one. " +
-            "Set 'credential_types[]' in config.ini or pass --credential_types=<id>.",
+            "Set 'credential_types[]' in config.ini or pass --credential-types <types>.",
           "CREDENTIAL_CONFIGURATION_ID_UNRESOLVED",
         );
     }
