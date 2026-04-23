@@ -4,6 +4,7 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
+import { v4 as uuidv4 } from "uuid";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
@@ -422,6 +423,7 @@ export class WalletIssuanceOrchestratorFlow {
       authorizationServer: credentialIssuer,
       callbacks,
       clientAttestation: walletAttestationResponse.attestation,
+      jti: uuidv4(),
     });
 
     const pushedAuthorizationRequestEndpoint =
