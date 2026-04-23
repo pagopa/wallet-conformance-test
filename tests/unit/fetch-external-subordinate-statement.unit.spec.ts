@@ -6,6 +6,7 @@ import * as logic from "@/logic";
 import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
 
 const network: Config["network"] = {
+  bind_address: "127.0.0.1",
   max_retries: 1,
   timeout: 5,
   tls_reject_unauthorized: true,

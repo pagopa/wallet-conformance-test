@@ -73,7 +73,7 @@ if (require.main === module) {
       https.createServer({ cert: certPem, key: keyPem }, app),
     )
     .then((server) =>
-      server.listen(config.wallet.port, "0.0.0.0", () => {
+      server.listen(config.wallet.port, config.network.bind_address, () => {
         const wpBaseUrl = getLocalWpBaseUrl(config.wallet.port);
         console.log(
           `[Wallet Provider] ${wpBaseUrl} Server started

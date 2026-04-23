@@ -39,6 +39,7 @@ export const configSchema = z.object({
     log_level: z.string(),
   }),
   network: z.object({
+    bind_address: z.string().optional().default("127.0.0.1"),
     max_retries: z.coerce.number().default(10),
     timeout: z.coerce.number().default(10),
     tls_reject_unauthorized: zBooleanFromString.optional().default(true),

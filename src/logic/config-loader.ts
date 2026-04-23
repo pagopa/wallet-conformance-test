@@ -12,6 +12,7 @@ import { deepMerge } from "./utils";
  */
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
+  bindAddress?: string;
   credentialIssuerUri?: string;
   credentialOfferUri?: string;
   credentialTypes?: string;
@@ -214,11 +215,15 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   }
 
   if (
+    options.bindAddress !== undefined ||
     options.timeout !== undefined ||
     options.maxRetries !== undefined ||
     options.unsafeTls !== undefined
   ) {
     const network: Partial<Config["network"]> = {};
+    if (options.bindAddress !== undefined) {
+      network.bind_address = options.bindAddress;
+    }
     if (options.timeout !== undefined) {
       network.timeout = options.timeout;
     }
@@ -396,6 +401,9 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_TRUST_ANCHOR_CERT_DIR) {
     options.trustAnchorCertDir = process.env.CONFIG_TRUST_ANCHOR_CERT_DIR;
+  }
+  if (process.env.OIDF_SERVERS_BIND_ADDRESS) {
+    options.bindAddress = process.env.OIDF_SERVERS_BIND_ADDRESS;
   }
 
   return options;
