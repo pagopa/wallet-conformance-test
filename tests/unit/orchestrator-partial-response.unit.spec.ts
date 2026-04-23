@@ -44,7 +44,6 @@ vi.mock("@/logic", async (importOriginal) => {
       steps_mapping: { mapping: {} },
       trust: { trust_anchor_entity_configuration_url: "" },
       trust_anchor: {
-        external_ta_url: "",
         port: 3000,
         ta_url: "http://localhost:3000",
       },

@@ -76,7 +76,7 @@ tests/
 │   ├── par-validation-helpers.ts          # Factory helpers for negative PAR tests
 │   └── use-test-summary.ts                # useTestSummary() hook
 │
-└── global-setup.ts                        # Global test setup (starts Trust Anchor)
+└── global-setup.ts                        # Global test setup (starts local Trust Anchor)
 ```
 
 ## Quick Start
