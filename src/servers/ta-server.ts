@@ -85,7 +85,7 @@ if (require.main === module) {
       https.createServer({ cert: certPem, key: keyPem }, app),
     )
     .then((server) =>
-      server.listen(config.trust_anchor.port, () => {
+      server.listen(config.trust_anchor.port, "0.0.0.0", () => {
         console.log(
           `[Trust Anchor] Server started
         PID: ${process.pid}
