@@ -18,10 +18,7 @@ describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
-    const attestationPath = buildAttestationPath(
-      config.wallet,
-      config.trust_anchor.external_ta_url,
-    );
+    const attestationPath = buildAttestationPath(config.wallet);
 
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
@@ -99,7 +96,7 @@ describe("Wallet Attestation Unit Test", () => {
     });
 
     const attestation = readFileSync(
-      buildAttestationPath(config.wallet, config.trust_anchor.external_ta_url),
+      buildAttestationPath(config.wallet),
       "utf-8",
     );
     expect(response.attestation).toBe(attestation);

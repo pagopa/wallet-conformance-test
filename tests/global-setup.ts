@@ -9,7 +9,6 @@ import {
 import { createServer as createMockIssuerServer } from "@/servers/ci-server";
 import { createServer } from "@/servers/ta-server";
 import { createServer as createWalletProviderServer } from "@/servers/wp-server";
-import { registerWithExternalTrustAnchor } from "@/trust-anchor/external-ta-registration";
 
 let trustAnchorServer: https.Server;
 let walletProviderServer: https.Server;
@@ -67,8 +66,6 @@ export default async function setup() {
       `Credential Issuer server running at https://localhost:${miPort}`,
     );
   });
-
-  await registerWithExternalTrustAnchor(config);
 
   // teardown
   return async () => {
