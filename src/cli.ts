@@ -20,9 +20,10 @@ function runTestCommand(
 ) {
   const env = setEnvFromOptions(options);
   const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
+  const pnpmCommand = process.platform === "win32" ? "pnpm.CMD" : "pnpm";
 
   try {
-    execFileSync("pnpm", [script, ...tests], {
+    execFileSync(pnpmCommand, [script, ...tests], {
       env,
       stdio: "inherit",
     });
