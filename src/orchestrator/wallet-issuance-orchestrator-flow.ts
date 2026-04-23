@@ -208,7 +208,8 @@ export class WalletIssuanceOrchestratorFlow {
       const nonce = nonceResponse.response?.nonce as
         | undefined
         | { c_nonce: string };
-      if (!nonce) throw new StepOutputError("NONCE", "c_nonce");
+      if (!nonce)
+        throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
 
       const credentialResponse = await this.credentialRequestStep.run({
         accessToken,
