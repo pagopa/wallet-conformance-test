@@ -6,9 +6,9 @@
  * to the test runners via environment variables.
  */
 
-import { spawnSync } from "child_process";
 import { Command } from "commander";
-import { resolve } from "path";
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 
 import type { CliOptions } from "@/logic";
 
