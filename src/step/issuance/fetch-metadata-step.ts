@@ -31,9 +31,10 @@ export type FetchMetadataStepResponse = StepResponse & {
  * - entityStatementClaims: The parsed claims from the entity statement JWT.
  */
 export class FetchMetadataDefaultStep extends StepFlow {
-  tag = "FetchMetadata";
+  static readonly tag = "FETCH_METADATA";
+
   async run(options: FetchMetadataOptions): Promise<FetchMetadataStepResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
 
     log.info("Discovering metadata...");
 
@@ -52,5 +53,9 @@ export class FetchMetadataDefaultStep extends StepFlow {
         status: 200,
       };
     });
+  }
+
+  tag(): string {
+    return FetchMetadataDefaultStep.tag;
   }
 }
