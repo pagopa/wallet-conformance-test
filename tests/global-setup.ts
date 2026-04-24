@@ -53,19 +53,19 @@ export default async function setup() {
 
   trustAnchorServer = trustAnchorHttpsServer.listen(taPort, bindAddress, () => {
     baseLog.info(
-      `Trust anchor server running at https://localhost:${taPort} (cert: ${certPath})`,
+      `Trust anchor server running at https://${bindAddress}:${taPort} (cert: ${certPath})`,
     );
   });
 
   walletProviderServer = wpHttpsServer.listen(wpPort, bindAddress, () => {
     baseLog.info(
-      `Wallet provider server running at https://localhost:${wpPort}`,
+      `Wallet provider server running at https://${bindAddress}:${wpPort}`,
     );
   });
 
   mockIssuerServer = miHttpsServer.listen(miPort, bindAddress, () => {
     baseLog.info(
-      `Credential Issuer server running at https://localhost:${miPort}`,
+      `Credential Issuer server running at https://${bindAddress}:${miPort}`,
     );
   });
 
