@@ -16,8 +16,6 @@ export interface CliOptions {
   credentialIssuerUri?: string;
   credentialOfferUri?: string;
   credentialTypes?: string;
-  externalTaOnboardingUrl?: string;
-  externalTaUrl?: string;
   fileIni?: string;
   issuanceCertificateSubject?: string;
   issuanceTestsDir?: string;
@@ -249,19 +247,11 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
 
   if (
     options.port !== undefined ||
-    options.externalTaUrl !== undefined ||
-    options.externalTaOnboardingUrl !== undefined ||
     options.trustAnchorCertDir !== undefined
   ) {
     const trustAnchor: Partial<Config["trust_anchor"]> = {};
     if (options.port !== undefined) {
       trustAnchor.port = options.port;
-    }
-    if (options.externalTaUrl !== undefined) {
-      trustAnchor.external_ta_url = options.externalTaUrl;
-    }
-    if (options.externalTaOnboardingUrl !== undefined) {
-      trustAnchor.external_ta_onboarding_url = options.externalTaOnboardingUrl;
     }
     if (options.trustAnchorCertDir !== undefined) {
       trustAnchor.tls_cert_dir = options.trustAnchorCertDir;
@@ -391,13 +381,6 @@ function readCliOptionsFromEnv(): CliOptions {
   }
   if (process.env.CONFIG_UNSAFE_TLS) {
     options.unsafeTls = process.env.CONFIG_UNSAFE_TLS === "true";
-  }
-  if (process.env.CONFIG_EXTERNAL_TA_URL) {
-    options.externalTaUrl = process.env.CONFIG_EXTERNAL_TA_URL;
-  }
-  if (process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL) {
-    options.externalTaOnboardingUrl =
-      process.env.CONFIG_EXTERNAL_TA_ONBOARDING_URL;
   }
   if (process.env.CONFIG_TRUST_ANCHOR_CERT_DIR) {
     options.trustAnchorCertDir = process.env.CONFIG_TRUST_ANCHOR_CERT_DIR;

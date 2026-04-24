@@ -29,11 +29,7 @@ import {
   validateProviderKeyPair,
 } from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
-import { fetchExternalSubordinateStatement } from "@/trust-anchor/external-ta-registration";
-import {
-  isExternalTrustAnchor,
-  resolveTrustAnchorBaseUrl,
-} from "@/trust-anchor/trust-anchor-resolver";
+import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   type AttestationResponse,
   type Config,
@@ -42,32 +38,21 @@ import {
 } from "@/types";
 
 const resolveTaEntityConfiguration = (
-  trustAnchor: Config["trust_anchor"],
   trust: Config["trust"],
   providerPublicKey: KeyPair["publicKey"],
   walletProviderBaseUrl: string,
   trustAnchorBaseUrl: string,
   walletVersion: Config["wallet"]["wallet_version"],
-  network: Config["network"],
-): Promise<string> => {
-  if (isExternalTrustAnchor(trustAnchor.external_ta_url)) {
-    return fetchExternalSubordinateStatement(
-      trustAnchor.external_ta_url,
-      walletProviderBaseUrl,
-      network,
-    );
-  }
-  return createSubordinateTrustAnchorMetadata({
+): Promise<string> =>
+  createSubordinateTrustAnchorMetadata({
     entityPublicJwk: providerPublicKey,
     federationTrustAnchor: trust,
     sub: walletProviderBaseUrl,
     trustAnchorBaseUrl,
     walletVersion,
   });
-};
 
 interface LoadAttestationOptions {
-  network: Config["network"];
   trust: Config["trust"];
   trustAnchor: Config["trust_anchor"];
   wallet: Config["wallet"];
@@ -151,7 +136,7 @@ const buildAttestationOptions = async (
 };
 
 const createAttestation = async (
-  { network, trust, trustAnchor, wallet }: LoadAttestationOptions,
+  { trust, trustAnchor, wallet }: LoadAttestationOptions,
   providerKeyPair: KeyPair,
   unitKeyPair: KeyPair,
   attestationPath: string,
@@ -162,13 +147,11 @@ const createAttestation = async (
 
   const [taEntityConfiguration, wpEntityConfiguration] = await Promise.all([
     resolveTaEntityConfiguration(
-      trustAnchor,
       trust,
       providerKeyPair.publicKey,
       getLocalWpBaseUrl(wallet.port),
       trustAnchorBaseUrl,
       wallet.wallet_version,
-      network,
     ),
     buildWpEntityConfiguration(
       trust,
@@ -200,16 +183,15 @@ const createAttestation = async (
  * If the attestation is not found, a new one is generated and saved.
  *
  * @param options - Configuration options for loading or generating the attestation
- * @param options.trustAnchor - Trust anchor configuration (local or external TA URL, port, etc.)
+ * @param options.trustAnchor - Trust anchor configuration
  * @param options.trust - Federation trust configuration, including trust anchor JWKS paths
  * @param options.wallet - Wallet configuration (provider URL, version, storage paths, etc.)
- * @param options.network - Network configuration used for external trust anchor requests
  * @returns A promise that resolves to the wallet attestation response.
  */
 export const loadAttestation = async (
   options: LoadAttestationOptions,
 ): Promise<AttestationResponse> => {
-  const { trustAnchor, wallet } = options;
+  const { wallet } = options;
 
   ensureDir(
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
@@ -221,10 +203,7 @@ export const loadAttestation = async (
     loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_unit")),
   ]);
 
-  const attestationPath = buildAttestationPath(
-    wallet,
-    trustAnchor.external_ta_url,
-  );
+  const attestationPath = buildAttestationPath(wallet);
 
   if (existsSync(attestationPath)) {
     try {
