@@ -43,10 +43,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Expose wct CLI
+        shell: bash
+        run: echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+
+      - name: Verify wct CLI
+        shell: bash
+        run: wct --version
+
       # ── Issuance tests ──────────────────────────────────────────────────────
       - name: Run issuance tests
         shell: bash
-        run: pnpm test:issuance
+        run: wct test:issuance
         env:
           CONFIG_CREDENTIAL_ISSUER_URI: ${{ vars.CONFIG_CREDENTIAL_ISSUER_URI }}
 
@@ -77,5 +85,5 @@ jobs:
       # ── Presentation tests ───────────────────────────────────────────────────
       - name: Run presentation tests
         shell: bash
-        run: pnpm test:presentation
+        run: wct test:presentation
         # CONFIG_PRESENTATION_AUTHORIZE_URI is set in GITHUB_ENV by the previous step
