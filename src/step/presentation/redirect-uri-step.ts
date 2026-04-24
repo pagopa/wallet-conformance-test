@@ -30,10 +30,10 @@ export type RedirectUriStepResponse = StepResponse & {
  * This step handles processing the redirect URI after the authorization response.
  */
 export class RedirectUriDefaultStep extends StepFlow {
-  tag = "REDIRECT URI";
+  static readonly tag = "REDIRECT_URI";
 
   async run(options: RedirectUriOptions): Promise<RedirectUriStepResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
     log.debug("Starting redirect uri step...");
 
     return this.execute<RedirectUriExecuteStepResponse>(async () => {
@@ -71,5 +71,9 @@ export class RedirectUriDefaultStep extends StepFlow {
         responseCode,
       };
     });
+  }
+
+  tag(): string {
+    return RedirectUriDefaultStep.tag;
   }
 }

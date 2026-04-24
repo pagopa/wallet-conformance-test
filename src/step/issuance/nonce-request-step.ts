@@ -24,10 +24,10 @@ export type NonceResponsePayload = Record<string, unknown>;
  * The nonce is typically used in subsequent requests to ensure freshness and prevent replay attacks.
  */
 export class NonceRequestDefaultStep extends StepFlow {
-  tag = "NONCE_REQUEST";
+  static readonly tag = "NONCE_REQUEST";
 
   async run(options: NonceRequestStepOptions): Promise<NonceRequestResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
 
     log.debug(`Starting Nonce Request Step`);
 
@@ -48,5 +48,9 @@ export class NonceRequestDefaultStep extends StepFlow {
         nonce: await fetchNonce.response.json(),
       };
     });
+  }
+
+  tag(): string {
+    return NonceRequestDefaultStep.tag;
   }
 }

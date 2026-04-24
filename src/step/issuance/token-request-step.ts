@@ -67,10 +67,10 @@ export interface TokenRequestStepOptions {
  * Flow step to request an access token from the issuer's token endpoint.
  */
 export class TokenRequestDefaultStep extends StepFlow {
-  tag = "TOKEN_REQUEST";
+  static readonly tag = "TOKEN_REQUEST";
 
   async run(options: TokenRequestStepOptions): Promise<TokenRequestResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
 
     log.debug(`Starting Token Request Step`);
 
@@ -114,5 +114,9 @@ export class TokenRequestDefaultStep extends StepFlow {
         dPoPKey,
       };
     });
+  }
+
+  tag(): string {
+    return TokenRequestDefaultStep.tag;
   }
 }

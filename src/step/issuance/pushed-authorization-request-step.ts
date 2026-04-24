@@ -75,14 +75,14 @@ export interface PushedAuthorizationRequestStepOptions {
  * The response of this step includes the pushed authorization response containing the request URI and other details.
  */
 export class PushedAuthorizationRequestDefaultStep extends StepFlow {
-  tag = "PUSHED_AUTHORIZATION_REQUEST";
+  static readonly tag = "PUSHED_AUTHORIZATION_REQUEST";
 
   async run(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
     return await this.execute<PushedAuthorizationRequestExecuteResponse>(
       async () => {
-        const log = this.log.withTag(this.tag);
+        const log = this.log;
 
         log.debug(`Starting PushedAuthorizationRequest Step`);
 
@@ -160,5 +160,9 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         };
       },
     );
+  }
+
+  tag(): string {
+    return PushedAuthorizationRequestDefaultStep.tag;
   }
 }

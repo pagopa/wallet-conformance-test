@@ -107,7 +107,7 @@ export interface CredentialRequestStepOptions {
  * It uses the access token obtained in the Token Request Step and the nonce from the Nonce Request Step.
  */
 export class CredentialRequestDefaultStep extends StepFlow {
-  tag = "CREDENTIAL_REQUEST";
+  static readonly tag = "CREDENTIAL_REQUEST";
 
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
@@ -148,7 +148,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
   async run(
     options: CredentialRequestStepOptions,
   ): Promise<CredentialRequestResponse> {
-    const log = this.log.withTag(this.tag);
+    const log = this.log;
 
     log.debug("Starting Credential Request Step");
 
@@ -187,6 +187,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
         ...credentialResponse,
       } as CredentialRequestExecuteResponse;
     });
+  }
+
+  tag(): string {
+    return CredentialRequestDefaultStep.tag;
   }
 
   private async buildCredentialRequest(
