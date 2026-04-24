@@ -6,8 +6,7 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { encodeToBase64Url } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
-import KSUID from "ksuid";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import {
@@ -297,7 +296,7 @@ export function withDPoPSignedByWrongKey(
         await generateKeyPair("ES256", { extractable: true });
       const wrongPrivateJwk = await exportJWK(wrongPrivate);
       const wrongPublicJwk = await exportJWK(wrongPublic);
-      const wrongKid = KSUID.randomSync().string;
+      const wrongKid = randomUUID();
 
       const wrongSigner: JwtSignerJwk = {
         alg: "ES256",
