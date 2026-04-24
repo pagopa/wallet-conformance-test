@@ -12,7 +12,7 @@ import { CertificateExpiredError } from "@/errors";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
-import { ensureDir, CLOCK_SKEW_TOLERANCE_MS, VALIDITY_MS } from "./utils";
+import { CLOCK_SKEW_TOLERANCE_MS, ensureDir, VALIDITY_MS } from "./utils";
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.

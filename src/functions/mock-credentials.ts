@@ -9,8 +9,8 @@ import { CredentialNamespaceNotFoundError } from "@/errors";
 import {
   buildCertPath,
   buildJwksPath,
-  ensureDir,
   CLOCK_SKEW_TOLERANCE_MS,
+  ensureDir,
   hasTrustChainExpired,
   hasX509CertificateExpired,
   loadCertificate,
@@ -232,12 +232,11 @@ export function isCredentialMdocExpired(
   const isCredentialExpired =
     path !== undefined &&
     getCredentialMdocExpiration(document, path).getTime() <
-     now - CLOCK_SKEW_TOLERANCE_MS;
+      now - CLOCK_SKEW_TOLERANCE_MS;
 
   const exp =
     document.issuerSigned.issuerAuth.decodedPayload.validityInfo.validUntil.getTime();
-  const isMDocExpired = checks.mdoc && exp <
-   now - CLOCK_SKEW_TOLERANCE_MS;
+  const isMDocExpired = checks.mdoc && exp < now - CLOCK_SKEW_TOLERANCE_MS;
 
   const isCertExpired =
     checks.cert &&

@@ -85,9 +85,12 @@ if (require.main === module) {
       https.createServer({ cert: certPem, key: keyPem }, app),
     )
     .then((server) =>
-      server.listen(config.trust_anchor.port, () => {
-        console.log(
-          `[Trust Anchor] Server started
+      server.listen(
+        config.trust_anchor.port,
+        config.network.bind_address,
+        () => {
+          console.log(
+            `[Trust Anchor] Server started
         PID: ${process.pid}
         URL: https://localhost:${config.trust_anchor.port}
 
@@ -96,7 +99,8 @@ if (require.main === module) {
       GET  /fetch?sub=<subordinate-url>
 
       Started: ${new Date().toISOString()}`,
-        );
-      }),
+          );
+        },
+      ),
     );
 }
