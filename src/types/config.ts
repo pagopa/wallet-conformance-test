@@ -73,8 +73,6 @@ export const configSchema = z.object({
     federation_trust_anchors_jwks_path: z.string(),
   }),
   trust_anchor: z.object({
-    external_ta_onboarding_url: z.string().url().optional(),
-    external_ta_url: z.string().url().optional(),
     port: z.coerce.number(),
     tls_cert_dir: z.string().optional(),
   }),

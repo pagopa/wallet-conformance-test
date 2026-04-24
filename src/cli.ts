@@ -89,12 +89,6 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.unsafeTls) {
     env.CONFIG_UNSAFE_TLS = "true";
   }
-  if (options.externalTaUrl) {
-    env.CONFIG_EXTERNAL_TA_URL = options.externalTaUrl;
-  }
-  if (options.externalTaOnboardingUrl) {
-    env.CONFIG_EXTERNAL_TA_ONBOARDING_URL = options.externalTaOnboardingUrl;
-  }
   if (options.tests) {
     env.TESTS = options.tests;
   }
@@ -175,14 +169,6 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--unsafe-tls",
       "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false (env: CONFIG_UNSAFE_TLS).",
-    )
-    .option(
-      "--external-ta-url <url>",
-      "URL of an external Trust Anchor to register with (env: CONFIG_EXTERNAL_TA_URL)",
-    )
-    .option(
-      "--external-ta-onboarding-url <url>",
-      "Onboarding URL of an external Trust Anchor (env: CONFIG_EXTERNAL_TA_ONBOARDING_URL)",
     )
     .option(
       "--tests <names>",
