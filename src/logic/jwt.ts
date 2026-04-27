@@ -7,13 +7,7 @@ import type {
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
-import {
-  CompactEncrypt,
-  importJWK,
-  type JWK,
-  jwtVerify,
-  SignJWT,
-} from "jose";
+import { CompactEncrypt, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
 import { jwkFromSigner } from "./jwk";
 
@@ -61,9 +55,10 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
   // importJWK already selects the correct curve from the JWK, but crypto.subtle
   // does not derive the hash automatically — it must be passed separately.
   // ES256 → SHA-256, ES384 → SHA-384, ES512 → SHA-512 (per RFC 7518 §3.4).
-  const hashAlgorithm = alg === "ES384" ? "SHA-384" : alg === "ES512" ? "SHA-512" : "SHA-256";
+  const hashAlgorithm =
+    alg === "ES384" ? "SHA-384" : alg === "ES512" ? "SHA-512" : "SHA-256";
   const signatureBuffer = await crypto.subtle.sign(
-    { name: "ECDSA", hash: hashAlgorithm },
+    { hash: hashAlgorithm, name: "ECDSA" },
     key as CryptoKey,
     // Buffer.from copies bytes into a plain ArrayBuffer, satisfying BufferSource type
     Buffer.from(toBeSigned),
