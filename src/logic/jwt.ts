@@ -9,7 +9,6 @@ import type {
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
 import {
   CompactEncrypt,
-  CompactSign,
   importJWK,
   type JWK,
   jwtVerify,
@@ -48,33 +47,29 @@ export function signJwtCallback(privateJwks: JWK[]): SignJwtCallback {
 /**
  * Signs the given payload using the provided JWK and returns the raw signature bytes.
  *
- * @param toBeSigned - The payload to sign (typically the header and payload of a JWT)
+ * @param toBeSigned - The signing input bytes ("header_b64url.payload_b64url")
  * @param jwk - The JSON Web Key to use for signing
- * @returns A Buffer containing the raw signature bytes
+ * @returns A Uint8Array containing the raw signature bytes
  */
 export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
   const alg = jwk.alg ?? "ES256";
   const key = await importJWK(jwk as unknown as JWK, alg);
 
-  // sign with JWS compact format.
-  const jws = await new CompactSign(toBeSigned)
-    .setProtectedHeader({ alg: alg })
-    .sign(key);
-
-  // JWS compact format is "header.payload.signature"
-  const parts = jws.split(".");
-  if (parts.length !== 3) {
-    throw new Error("JWS compact format is not valid");
-  }
-  const signatureBase64Url = parts[2];
-  if (!signatureBase64Url) {
-    throw new Error("Invalid JWS format: signature part is empty");
-  }
-  const signatureBytes = new Uint8Array(
-    Buffer.from(signatureBase64Url, "base64url"),
+  // crypto.subtle.sign requires the hash algorithm to be specified explicitly as a
+  // Web Crypto API name ("SHA-256", "SHA-384", "SHA-512"), whereas JWA algorithm names
+  // (e.g. "ES256") encode both the curve and the hash in a single string.
+  // importJWK already selects the correct curve from the JWK, but crypto.subtle
+  // does not derive the hash automatically — it must be passed separately.
+  // ES256 → SHA-256, ES384 → SHA-384, ES512 → SHA-512 (per RFC 7518 §3.4).
+  const hashAlgorithm = alg === "ES384" ? "SHA-384" : alg === "ES512" ? "SHA-512" : "SHA-256";
+  const signatureBuffer = await crypto.subtle.sign(
+    { name: "ECDSA", hash: hashAlgorithm },
+    key as CryptoKey,
+    // Buffer.from copies bytes into a plain ArrayBuffer, satisfying BufferSource type
+    Buffer.from(toBeSigned),
   );
 
-  return signatureBytes;
+  return new Uint8Array(signatureBuffer);
 };
 
 /**
