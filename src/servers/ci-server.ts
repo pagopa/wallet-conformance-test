@@ -83,7 +83,7 @@ if (require.main === module) {
       https.createServer({ cert: certPem, key: keyPem }, app),
     )
     .then((server) =>
-      server.listen(config.issuer.port, () => {
+      server.listen(config.issuer.port, config.network.bind_address, () => {
         const ciBaseUrl = getLocalCiBaseUrl(config.issuer.port);
 
         console.log(

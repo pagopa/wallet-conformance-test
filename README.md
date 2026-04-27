@@ -197,7 +197,6 @@ There are three equivalent ways to enable it, listed in priority order (highest 
    tls_reject_unauthorized = false
    ```
 
-
 ### Running Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
@@ -409,6 +408,27 @@ pnpm ta:server
 ```
 
 The server will start on port `3001` by default.
+
+### Bind Address
+
+By default, all three servers bind to `127.0.0.1`, making them reachable only from the local machine. When running inside a container or on a remote host where the service under test needs to reach back to these servers, bind them to all interfaces instead.
+
+There are two ways to configure it, listed in priority order (highest first):
+
+1. **Environment variable** (highest priority):
+
+   ```bash
+   OIDF_SERVERS_BIND_ADDRESS=0.0.0.0 pnpm test:issuance
+   ```
+
+2. **`config.ini`** (lowest priority):
+
+   ```ini
+   [network]
+   bind_address = 0.0.0.0
+   ```
+
+> **Note**: Binding to `0.0.0.0` exposes the servers on all network interfaces. Use this only in controlled environments (CI, Docker networks, private LANs) — never on a public-facing host.
 
 ## 🤝 Contributing
 
