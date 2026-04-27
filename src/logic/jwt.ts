@@ -60,7 +60,6 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
   const signatureBuffer = await crypto.subtle.sign(
     { hash: hashAlgorithm, name: "ECDSA" },
     key as CryptoKey,
-    // Buffer.from copies bytes into a plain ArrayBuffer, satisfying BufferSource type
     Buffer.from(toBeSigned),
   );
 
