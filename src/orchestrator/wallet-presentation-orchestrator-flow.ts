@@ -22,11 +22,12 @@ import {
   CredentialWithKey,
   PresentationFlowResponse,
 } from "@/types";
+import { RunThroughAuthorizeContext } from "@/types/presentation-orchestrator-context";
 
 export class WalletPresentationOrchestratorFlow {
-  private _authorizationRequestResult?: AuthorizationRequestStepResponse;
-  private _fetchMetadataResult?: FetchMetadataVpStepResponse;
-  private _redirectUriResult?: RedirectUriStepResponse;
+  private _authorizationRequestResponse?: AuthorizationRequestStepResponse;
+  private _fetchMetadataResponse?: FetchMetadataVpStepResponse;
+  private _redirectUriResponse?: RedirectUriStepResponse;
   private _suitePrinted = false;
 
   private authorizationRequestStep: AuthorizationRequestDefaultStep;
@@ -36,6 +37,7 @@ export class WalletPresentationOrchestratorFlow {
 
   private presentationConfig: PresentationTestConfiguration;
   private redirectUriStep: RedirectUriDefaultStep;
+  private readonly TOTAL_STEPS = 3;
 
   constructor(presentationConfig: PresentationTestConfiguration) {
     this.presentationConfig = presentationConfig;
@@ -74,74 +76,88 @@ export class WalletPresentationOrchestratorFlow {
 
   async presentation(): Promise<PresentationFlowResponse> {
     this.resetResponses();
-    this.printTestSuiteOnce();
 
-    const TOTAL_STEPS = 3;
     try {
-      const fetchMetadataResult = await this.fetchMetadataStep.run({
-        baseUrl: this.prepareBaseUrl(),
-      });
-      this._fetchMetadataResult = fetchMetadataResult;
-      this.log.flowStep(
-        1,
-        TOTAL_STEPS,
-        "Fetch Metadata",
-        fetchMetadataResult.success,
-        fetchMetadataResult.durationMs ?? 0,
-      );
-      assertStepSuccess(fetchMetadataResult, "Fetch Metadata");
+      const { authorizationRequestResponse, fetchMetadataResponse } =
+        await this.runThroughAuthorize();
 
-      const verifierMetadata =
-        this.extractVerifierMetadata(fetchMetadataResult);
-
-      const walletAttestation = await this.loadWalletAttestation();
-
-      const credentials = await loadCredentialsForPresentation(
-        this.config,
-        this.log,
-      );
-      this.log.info(`Presenting ${credentials.length} local credentials`);
-
-      const authorizationRequestResult = await this.executeAuthorizationRequest(
-        credentials,
-        verifierMetadata,
-        walletAttestation,
-      );
-      this.log.flowStep(
-        2,
-        TOTAL_STEPS,
-        "Authorization Request",
-        authorizationRequestResult.success,
-        authorizationRequestResult.durationMs ?? 0,
-      );
-
-      const redirectUriResult = await this.executeRedirectUri(
-        authorizationRequestResult,
+      const redirectUriResponse = await this.executeRedirectUri(
+        authorizationRequestResponse,
       );
       this.log.flowStep(
         3,
-        TOTAL_STEPS,
+        this.TOTAL_STEPS,
         "Redirect URI",
-        redirectUriResult.success,
-        redirectUriResult.durationMs ?? 0,
+        redirectUriResponse.success,
+        redirectUriResponse.durationMs ?? 0,
       );
 
       return {
-        authorizationRequestResult,
-        fetchMetadataResult,
-        redirectUriResult,
+        authorizationRequestResponse,
+        fetchMetadataResponse,
+        redirectUriResponse,
         success: true,
       };
     } catch (e) {
       this.log.error("Error in Presentation Flow Tests!", e);
       return {
-        authorizationRequestResult: this._authorizationRequestResult,
+        authorizationRequestResponse: this._authorizationRequestResponse,
         error: e instanceof Error ? e : new Error(String(e)),
-        fetchMetadataResult: this._fetchMetadataResult,
-        redirectUriResult: this._redirectUriResult,
+        fetchMetadataResponse: this._fetchMetadataResponse,
+        redirectUriResponse: this._redirectUriResponse,
         success: false,
       };
     }
+  }
+
+  async runThroughAuthorize(): Promise<RunThroughAuthorizeContext> {
+    this.printTestSuiteOnce();
+
+    const fetchMetadataResponse = await this.fetchMetadataStep.run({
+      baseUrl: this.prepareBaseUrl(),
+    });
+    this._fetchMetadataResponse = fetchMetadataResponse;
+    this.log.flowStep(
+      1,
+      this.TOTAL_STEPS,
+      "Fetch Metadata",
+      fetchMetadataResponse.success,
+      fetchMetadataResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
+
+    const verifierMetadata = this.extractVerifierMetadata(
+      fetchMetadataResponse,
+    );
+
+    const walletAttestationResponse = await this.loadWalletAttestation();
+
+    const credentials = await loadCredentialsForPresentation(
+      this.config,
+      this.log,
+    );
+    this.log.info(`Presenting ${credentials.length} local credentials`);
+
+    const authorizationRequestResponse = await this.executeAuthorizationRequest(
+      credentials,
+      verifierMetadata,
+      walletAttestationResponse,
+    );
+    this.log.flowStep(
+      2,
+      this.TOTAL_STEPS,
+      "Authorization Request",
+      authorizationRequestResponse.success,
+      authorizationRequestResponse.durationMs ?? 0,
+    );
+
+    return {
+      authorizationRequestResponse,
+      credentials,
+      fetchMetadataResponse,
+      verifierMetadata,
+      walletAttestationResponse,
+    };
   }
 
   private async executeAuthorizationRequest(
@@ -155,7 +171,7 @@ export class WalletPresentationOrchestratorFlow {
         verifierMetadata,
         walletAttestation,
       });
-    this._authorizationRequestResult = authorizationRequestResponse;
+    this._authorizationRequestResponse = authorizationRequestResponse;
 
     assertStepSuccess(authorizationRequestResponse, "Authorization Request");
 
@@ -163,27 +179,27 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private async executeRedirectUri(
-    authorizationRequestResult: AuthorizationRequestStepResponse,
+    authorizationRequestResponse: AuthorizationRequestStepResponse,
   ) {
-    if (!authorizationRequestResult.response) {
+    if (!authorizationRequestResponse.response) {
       throw new Error("Authorization Request response is missing");
     }
 
-    const redirectUriResult = await this.redirectUriStep.run({
+    const redirectUriResponse = await this.redirectUriStep.run({
       authorizationResponse:
-        authorizationRequestResult.response.authorizationResponse,
-      responseUri: authorizationRequestResult.response.responseUri,
+        authorizationRequestResponse.response.authorizationResponse,
+      responseUri: authorizationRequestResponse.response.responseUri,
     });
-    this._redirectUriResult = redirectUriResult;
-    assertStepSuccess(redirectUriResult, "Redirect URI");
-    return redirectUriResult;
+    this._redirectUriResponse = redirectUriResponse;
+    assertStepSuccess(redirectUriResponse, "Redirect URI");
+    return redirectUriResponse;
   }
 
   private extractVerifierMetadata(
-    fetchMetadataResult: FetchMetadataVpStepResponse,
+    fetchMetadataResponse: FetchMetadataVpStepResponse,
   ) {
     const entityStatementClaims =
-      fetchMetadataResult.response?.entityStatementClaims;
+      fetchMetadataResponse.response?.entityStatementClaims;
 
     if (!entityStatementClaims) {
       throw new Error("Entity Statement Claims not found in response");
@@ -266,8 +282,8 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   private resetResponses(): void {
-    this._authorizationRequestResult = undefined;
-    this._fetchMetadataResult = undefined;
-    this._redirectUriResult = undefined;
+    this._authorizationRequestResponse = undefined;
+    this._fetchMetadataResponse = undefined;
+    this._redirectUriResponse = undefined;
   }
 }

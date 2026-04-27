@@ -27,9 +27,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const result = await orchestrator.presentation();
       assertPresentationFlowSuccess(result);
 
-      authorizationRequestResult = result.authorizationRequestResult;
-      fetchMetadataResult = result.fetchMetadataResult;
-      redirectUriResult = result.redirectUriResult;
+      authorizationRequestResult = result.authorizationRequestResponse;
+      fetchMetadataResult = result.fetchMetadataResponse;
+      redirectUriResult = result.redirectUriResponse;
 
       baseLog.info("Presentation flow completed successfully");
     } catch (e) {
