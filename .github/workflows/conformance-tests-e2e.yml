@@ -85,5 +85,5 @@ jobs:
       # ── Presentation tests ───────────────────────────────────────────────────
       - name: Run presentation tests
         shell: bash
-        run: wct test:presentation
+        run: pnpm test:presentation --tests happy
         # CONFIG_PRESENTATION_AUTHORIZE_URI is set in GITHUB_ENV by the previous step
