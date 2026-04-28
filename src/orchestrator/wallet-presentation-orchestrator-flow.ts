@@ -22,7 +22,7 @@ import {
   CredentialWithKey,
   PresentationFlowResponse,
 } from "@/types";
-import { RunThroughAuthorizeContext } from "@/types/presentation-orchestrator-context";
+import { RunThroughAuthorizeVpContext } from "@/types/presentation-orchestrator-context";
 
 export class WalletPresentationOrchestratorFlow {
   private _authorizationRequestResponse?: AuthorizationRequestStepResponse;
@@ -110,7 +110,7 @@ export class WalletPresentationOrchestratorFlow {
     }
   }
 
-  async runThroughAuthorize(): Promise<RunThroughAuthorizeContext> {
+  async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
     this.printTestSuiteOnce();
 
     const fetchMetadataResponse = await this.fetchMetadataStep.run({

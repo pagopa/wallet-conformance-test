@@ -575,12 +575,12 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.success).toBe(false);
     // assertStepSuccess now throws the step's own error immediately
     expect(result.error?.message).toContain("verifier metadata unreachable");
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataFailure);
-    expect(result.authorizationRequestResult).toBeUndefined();
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataFailure);
+    expect(result.authorizationRequestResponse).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 2 (authorizationRequest) failure — fetchMetadataResult populated, authorizationRequestResult carries error", async () => {
+  test("step 2 (authorizationRequest) failure — fetchMetadataResponse populated, authorizationRequestResponse carries error", async () => {
     const fetchMetadataSuccess = makeStepSuccess({
       discoveredVia: "federation" as const,
       entityStatementClaims: {
@@ -619,12 +619,12 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.error?.message).toBe(
       "verifier rejected the authorization request",
     );
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
     expect(
-      result.authorizationRequestResult,
-      "authorizationRequestResult must be populated even on failure",
+      result.authorizationRequestResponse,
+      "authorizationRequestResponse must be populated even on failure",
     ).toEqual(authorizationRequestFailure);
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
   test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResult carries error", async () => {
@@ -674,12 +674,12 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       "presentation() must return success: false on redirectUri step failure",
     ).toBe(false);
     expect(result.error?.message).toBe("redirect URI endpoint returned 400");
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
-    expect(result.authorizationRequestResult).toEqual(
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResponse).toEqual(
       authorizationRequestSuccess,
     );
     expect(
-      result.redirectUriResult,
+      result.redirectUriResponse,
       "redirectUriResult must be populated even on failure",
     ).toEqual(redirectUriFailure);
   });

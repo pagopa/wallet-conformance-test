@@ -13,7 +13,7 @@ export interface PresentationFlowResponse {
   success: boolean;
 }
 
-export interface RunThroughAuthorizeContext {
+export interface RunThroughAuthorizeVpContext {
   authorizationRequestResponse: AuthorizationRequestStepResponse;
   credentials: CredentialWithKey[];
   fetchMetadataResponse: FetchMetadataVpStepResponse;

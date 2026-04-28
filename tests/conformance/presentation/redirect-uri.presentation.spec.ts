@@ -1,12 +1,9 @@
 /* eslint-disable max-lines-per-function */
 import type { CreateAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
-import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { definePresentationTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
-
-import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import {
   createQuietLogger,
@@ -26,9 +23,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
   const baseLog = orchestrator.getLog();
 
-  let verifierMetadata: ItWalletCredentialVerifierMetadata;
-  let walletAttestationResponse: AttestationResponse;
-  let credentials: CredentialWithKey[];
+  let validResponseUri: string;
+  let validAuthResponse: CreateAuthorizationResponseResult;
 
   // -----------------------------------------------------------------------
   // Shared setup – run once
@@ -37,36 +33,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   beforeAll(async () => {
     const ctx = await orchestrator.runThroughAuthorize();
 
-    verifierMetadata = ctx.verifierMetadata;
-    walletAttestationResponse = ctx.walletAttestationResponse;
-    credentials = ctx.credentials;
+    const authResult = ctx.authorizationRequestResponse;
+    validResponseUri = authResult.response!.responseUri;
+    validAuthResponse = authResult.response!.authorizationResponse;
   });
 
   useTestSummary(baseLog, testConfig.name);
-
-  // -----------------------------------------------------------------------
-  // Helper: run a fresh authorization step to get responseUri + JARM
-  // -----------------------------------------------------------------------
-
-  async function getFreshAuthorizationResponse(): Promise<{
-    authorizationResponse: CreateAuthorizationResponseResult;
-    responseUri: string;
-  }> {
-    const config = loadConfigWithHierarchy();
-    const step = new testConfig.authorizeStepClass(config, createQuietLogger());
-    const result = await step.run({
-      credentials,
-      verifierMetadata,
-      walletAttestation: walletAttestationResponse,
-    });
-    expect(result.success, "helper: authorization step must succeed").toBe(
-      true,
-    );
-    return {
-      authorizationResponse: result.response!.authorizationResponse,
-      responseUri: result.response!.responseUri,
-    };
-  }
 
   // -----------------------------------------------------------------------
   // Helper: run a redirect step with given options
@@ -115,19 +87,17 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { authorizationResponse, responseUri } =
-        await getFreshAuthorizationResponse();
+      log.info("→ Running redirect step with a tampered response_uri...");
 
-      log.debug("→ Running redirect step with a tampered response_uri...");
       // Pass the valid JARM but post it to a different (invalid) response_uri
       const tamperedResponseUri = "https://invalid.example.com/response";
       const result = await runRedirectStep(
-        authorizationResponse,
+        validAuthResponse,
         tamperedResponseUri,
       );
 
       log.debug(`  Result success: ${result.success}`);
-      log.debug("→ Validating that the step failed with invalid redirect...");
+      log.info("→ Validating that the step failed with invalid redirect...");
       expect(result.success).toBe(false);
 
       testSuccess = true;
@@ -147,35 +117,34 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { authorizationResponse, responseUri } =
-        await getFreshAuthorizationResponse();
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const result = await runRedirectStep(validAuthResponse, validResponseUri);
+      expect(result.success).toBe(true);
 
-      log.debug("→ Running redirect step to get a valid redirect_uri...");
-      const result = await runRedirectStep(authorizationResponse, responseUri);
-      expect(result.success, "redirect step must succeed first").toBe(true);
-
-      if (result.response?.redirectUri) {
-        log.debug("→ Replaying redirect_uri with an invalid response_code...");
-        const redirectUrl = new URL(result.response.redirectUri.href);
-        redirectUrl.searchParams.set(
-          "response_code",
-          "invalid-response-code-rpr-029",
-        );
-
-        const config = loadConfigWithHierarchy();
-        const replayResponse = await fetchWithConfig(config.network)(
-          redirectUrl.href,
-          { method: "GET" },
-        );
-
-        log.debug(`  Replay response status: ${replayResponse.status}`);
-        log.debug("→ Validating RP rejected the invalid response_code...");
-        expect(replayResponse.ok).toBe(false);
-      } else {
-        log.debug(
-          "→ No redirect_uri returned by RP (optional field); skipping replay",
-        );
+      expect(result.response).toBeDefined();
+      if (!result.response)
+        throw new Error("Invalid state: RedirectStep response is undefined");
+      if (!result.response?.redirectUri) {
+        throw new Error("Invalid state: redirectUri is undefined");
       }
+
+      const redirectUrl = new URL(result.response.redirectUri.href);
+      redirectUrl.searchParams.set(
+        "response_code",
+        "invalid-response-code-rpr-029",
+      );
+      log.debug(`→ Using redirect_uri: ${redirectUrl.href}`);
+      log.info("→ Replaying redirect_uri with an invalid response_code...");
+
+      const config = loadConfigWithHierarchy();
+      const replayResponse = await fetchWithConfig(config.network)(
+        redirectUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Replay response status: ${replayResponse.status}`);
+      log.info("→ Validating RP rejected the invalid response_code...");
+      expect(replayResponse.ok).toBe(false);
 
       testSuccess = true;
     } finally {
@@ -195,20 +164,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
-        "→ Posting to response_uri without the 'response' parameter...",
-      );
+      log.info("→ Posting to response_uri without the 'response' parameter...");
       // Send an empty form body (missing required 'response' parameter)
       const emptyBody = new URLSearchParams();
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         emptyBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the missing parameter...");
+      log.info("→ Validating RP rejected the missing parameter...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -228,18 +193,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
+      log.info(
         "→ Posting raw garbage data to response_uri as form-urlencoded...",
       );
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         "this-is-not-valid-form-data=!@#$%^&*()",
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the malformed payload...");
+      log.info("→ Validating RP rejected the malformed payload...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -259,16 +222,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
-        "→ Sending invalid request to response_uri to trigger error...",
-      );
+      log.info("→ Sending invalid request to response_uri to trigger error...");
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
@@ -276,7 +235,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       const contentType = response.headers.get("content-type") ?? "";
       log.debug(`  Content-Type: ${contentType}`);
 
-      log.debug(
+      log.info(
         "→ Validating error response has application/json content type...",
       );
       expect(response.ok).toBe(false);
@@ -302,16 +261,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
-        "→ Sending invalid request to response_uri to trigger error...",
-      );
+      log.info("→ Sending invalid request to response_uri to trigger error...");
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
@@ -321,7 +276,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       const body = await response.json().catch(() => ({}));
       log.debug(`  Response body: ${JSON.stringify(body)}`);
 
-      log.debug(
+      log.info(
         "→ Validating error response contains error and error_description...",
       );
       expect(
@@ -351,22 +306,21 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
+      log.info("→ Posting an explicit authorization error to response_uri...");
 
-      log.debug("→ Posting an explicit authorization error to response_uri...");
       // Send an OAuth 2.0 error response per OpenID4VP spec instead of a success JARM
       const errorBody = new URLSearchParams({
         error: "access_denied",
         error_description: "User denied the presentation request",
       });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         errorBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
 
-      log.debug(
+      log.info(
         "→ Validating RP accepted or acknowledged the error response...",
       );
       // The RP should acknowledge the error (status may vary: 200 or 4xx depending on RP implementation)
@@ -393,23 +347,21 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Posting authorization error as x-www-form-urlencoded...");
+      log.info("→ Posting authorization error as x-www-form-urlencoded...");
       const errorBody = new URLSearchParams({
         error: "invalid_request",
         error_description: "Wallet could not satisfy the requested credentials",
         state: "conformance-test-state-rpr-109",
       });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         errorBody.toString(),
         { contentType: "application/x-www-form-urlencoded" },
       );
 
       log.debug(`  Response status: ${response.status}`);
 
-      log.debug(
+      log.info(
         "→ Validating RP processed the form-urlencoded error response...",
       );
       // The RP should not crash and should return a valid response
@@ -435,9 +387,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
+      log.info(
         "→ Posting a structurally valid but semantically wrong JARM to trigger validation error...",
       );
       // Send a well-formed but semantically invalid response to trigger RP-side validation
@@ -446,7 +396,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
           "eyJhbGciOiJFQ0RILUVTLN0.ZW5jcnlwdGVk.aXY.Y2lwaGVydGV4dA.dGFn",
       });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
@@ -460,7 +410,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       const body = await response.json().catch(() => ({}));
       log.debug(`  Response body: ${JSON.stringify(body)}`);
 
-      log.debug("→ Validating the error response has proper structure...");
+      log.info("→ Validating the error response has proper structure...");
       expect(
         body.error,
         "Validation error response must contain 'error' field",
