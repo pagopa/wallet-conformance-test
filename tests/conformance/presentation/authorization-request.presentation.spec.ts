@@ -49,13 +49,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     credentials = ctx.credentials;
 
     // Run a fresh authorization step to capture a valid JARM + responseUri
-    const authResult = await runAuthorizationStep(
-      testConfig.authorizeStepClass,
-    );
-    expect(
-      authResult.success,
-      "beforeAll: authorization step must succeed",
-    ).toBe(true);
+    const authResult = ctx.authorizationRequestResponse;
     validResponseUri = authResult.response!.responseUri;
     validJarmJwe = authResult.response!.authorizationResponse.jarm.responseJwe;
   });
@@ -100,24 +94,6 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   }
 
   // -----------------------------------------------------------------------
-  // Helper: get a fresh responseUri + JARM from a new authorization step
-  // -----------------------------------------------------------------------
-
-  async function getFreshAuthorizationResponse(): Promise<{
-    jarmJwe: string;
-    responseUri: string;
-  }> {
-    const result = await runAuthorizationStep(testConfig.authorizeStepClass);
-    expect(result.success, "helper: authorization step must succeed").toBe(
-      true,
-    );
-    return {
-      jarmJwe: result.response!.authorizationResponse.jarm.responseJwe,
-      responseUri: result.response!.responseUri,
-    };
-  }
-
-  // -----------------------------------------------------------------------
   // RPR-25 — Malformed claims in presentation payload
   // -----------------------------------------------------------------------
 
@@ -128,9 +104,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Building JARM with malformed vp_token claims...");
+      log.info("→ Building JARM with malformed vp_token claims...");
       // Encrypt a malformed payload (invalid vp_token) with the RP's encryption key
       const encryptionKey = verifierMetadata.jwks.keys.find(
         (k) => k.use === "enc",
@@ -156,15 +130,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         malformedPayload,
       );
 
-      log.debug("→ Posting tampered JARM to response_uri...");
+      log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the malformed payload...");
+      log.info("→ Validating RP rejected the malformed payload...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -185,9 +159,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Building JARM with malformed credential-level claims...");
+      log.info("→ Building JARM with malformed credential-level claims...");
       const encryptionKey = verifierMetadata.jwks.keys.find(
         (k) => k.use === "enc",
       );
@@ -215,15 +187,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         malformedPayload,
       );
 
-      log.debug("→ Posting tampered JARM to response_uri...");
+      log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the malformed credentials...");
+      log.info("→ Validating RP rejected the malformed credentials...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -244,9 +216,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Generating a random EC key for wrong encryption...");
+      log.info("→ Generating a random EC key for wrong encryption...");
       const { publicKey } = await generateKeyPair("ECDH-ES");
 
       const plaintext = new TextEncoder().encode(
@@ -260,15 +230,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         })
         .encrypt(publicKey);
 
-      log.debug("→ Posting wrongly-encrypted JARM to response_uri...");
+      log.info("→ Posting wrongly-encrypted JARM to response_uri...");
       const formBody = new URLSearchParams({ response: wrongJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the response...");
+      log.info("→ Validating RP rejected the response...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -289,11 +259,9 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Tampering with the JARM JWE ciphertext...");
+      log.info("→ Tampering with the JARM JWE ciphertext...");
       // A JWE compact serialization has 5 base64url-encoded parts: header.ek.iv.ciphertext.tag
-      const parts = jarmJwe.split(".");
+      const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Tamper with the authentication tag to invalidate integrity
       const tag = parts[4]!;
@@ -302,15 +270,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       parts[4] = tamperedTag;
       const tamperedJwe = parts.join(".");
 
-      log.debug("→ Posting tampered JARM to response_uri...");
+      log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the tampered content...");
+      log.info("→ Validating RP rejected the tampered content...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -338,7 +306,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       const { requestObject, responseUri } = authResult.response!;
 
-      log.debug(
+      log.info(
         "→ Building JARM with a wrong nonce via createAuthorizationResponse...",
       );
 
@@ -378,7 +346,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
             .authorizationResponsePayload.vp_token,
       });
 
-      log.debug("→ Posting JARM with wrong nonce to response_uri...");
+      log.info("→ Posting JARM with wrong nonce to response_uri...");
       const formBody = new URLSearchParams({
         response: tamperedAuthorizationResponse.jarm.responseJwe,
       });
@@ -388,7 +356,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the nonce mismatch...");
+      log.info("→ Validating RP rejected the nonce mismatch...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -409,20 +377,18 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug(
+      log.info(
         "→ Posting JARM to response_uri with Content-Type: text/plain...",
       );
-      const formBody = new URLSearchParams({ response: jarmJwe });
+      const formBody = new URLSearchParams({ response: validJarmJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
         { contentType: "text/plain" },
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the unsupported content type...");
+      log.info("→ Validating RP rejected the unsupported content type...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -442,18 +408,16 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Posting completely malformed JWE to response_uri...");
+      log.info("→ Posting completely malformed JWE to response_uri...");
       const malformedJwe = "eyJhbGciOiJFQ0RILUVTLN0.bad.bad.bad.bad";
       const formBody = new URLSearchParams({ response: malformedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the malformed JWE...");
+      log.info("→ Validating RP rejected the malformed JWE...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -473,16 +437,14 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Sending GET request to response_uri...");
+      log.info("→ Sending GET request to response_uri...");
       const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(responseUri, {
+      const response = await fetchWithConfig(config.network)(validResponseUri, {
         method: "GET",
       });
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the GET method...");
+      log.info("→ Validating RP rejected the GET method...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -503,25 +465,23 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Corrupting the JARM JWE ciphertext segment...");
-      const parts = jarmJwe.split(".");
+      log.info("→ Corrupting the JARM JWE ciphertext segment...");
+      const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Corrupt the ciphertext (4th part, index 3)
       const ciphertext = parts[3]!;
       parts[3] = ciphertext.slice(0, 4) + "TAMPERED" + ciphertext.slice(12);
       const corruptedJwe = parts.join(".");
 
-      log.debug("→ Posting corrupted JARM to response_uri...");
+      log.info("→ Posting corrupted JARM to response_uri...");
       const formBody = new URLSearchParams({ response: corruptedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the corrupted content...");
+      log.info("→ Validating RP rejected the corrupted content...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -542,20 +502,18 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
+      log.info("→ Appending garbage to the JARM JWE to break integrity...");
+      const tamperedJwe = validJarmJwe + "BROKEN";
 
-      log.debug("→ Appending garbage to the JARM JWE to break integrity...");
-      const tamperedJwe = jarmJwe + "BROKEN";
-
-      log.debug("→ Posting broken JARM to response_uri...");
+      log.info("→ Posting broken JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the broken JWT...");
+      log.info("→ Validating RP rejected the broken JWT...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -576,9 +534,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { responseUri } = await getFreshAuthorizationResponse();
-
-      log.debug("→ Building JARM with completely invalid claims...");
+      log.info("→ Building JARM with completely invalid claims...");
       const encryptionKey = verifierMetadata.jwks.keys.find(
         (k) => k.use === "enc",
       );
@@ -605,15 +561,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         invalidPayload,
       );
 
-      log.debug("→ Posting JARM with invalid claims to response_uri...");
+      log.info("→ Posting JARM with invalid claims to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
       const response = await postToResponseUri(
-        responseUri,
+        validResponseUri,
         formBody.toString(),
       );
 
       log.debug(`  Response status: ${response.status}`);
-      log.debug("→ Validating RP rejected the invalid claims...");
+      log.info("→ Validating RP rejected the invalid claims...");
       expect(response.ok).toBe(false);
 
       testSuccess = true;
@@ -633,14 +589,12 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
-      const { jarmJwe, responseUri } = await getFreshAuthorizationResponse();
-
       const unsupportedMethods = ["PUT", "DELETE", "PATCH"];
       for (const method of unsupportedMethods) {
-        log.debug(`→ Sending ${method} request to response_uri...`);
-        const formBody = new URLSearchParams({ response: jarmJwe });
+        log.info(`→ Sending ${method} request to response_uri...`);
+        const formBody = new URLSearchParams({ response: validJarmJwe });
         const response = await postToResponseUri(
-          responseUri,
+          validResponseUri,
           formBody.toString(),
           { method },
         );
