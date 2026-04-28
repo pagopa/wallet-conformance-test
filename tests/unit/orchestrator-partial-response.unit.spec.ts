@@ -526,8 +526,8 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       baseUrl: "https://verifier.example.com/",
     });
     expect(result.success).toBe(false);
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
-    expect(result.authorizationRequestResult).toEqual(
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResponse).toEqual(
       authorizationRequestFailure,
     );
     expect(result.error?.message).toBe(
@@ -554,9 +554,9 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       'Unsupported client_id format: "custom-client-id". Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). ',
     );
     expect(fetchMetadataRun).not.toHaveBeenCalled();
-    expect(result.fetchMetadataResult).toBeUndefined();
-    expect(result.authorizationRequestResult).toBeUndefined();
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.fetchMetadataResponse).toBeUndefined();
+    expect(result.authorizationRequestResponse).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
   test("step 1 failure — returns partial response with only fetchMetadataResult", async () => {
