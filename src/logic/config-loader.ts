@@ -245,10 +245,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
     partialConfig.logging = logging as Config["logging"];
   }
 
-  if (
-    options.port !== undefined ||
-    options.trustAnchorCertDir !== undefined
-  ) {
+  if (options.port !== undefined || options.trustAnchorCertDir !== undefined) {
     const trustAnchor: Partial<Config["trust_anchor"]> = {};
     if (options.port !== undefined) {
       trustAnchor.port = options.port;

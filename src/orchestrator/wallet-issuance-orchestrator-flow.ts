@@ -4,7 +4,7 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import { randomUUID } from "node:crypto"; 
+import { randomUUID } from "node:crypto";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
@@ -372,7 +372,6 @@ export class WalletIssuanceOrchestratorFlow {
     assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
 
     const walletAttestationResponse = await loadAttestation({
-      network: this.config.network,
       trust: this.config.trust,
       trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,

@@ -476,6 +476,87 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     orchestrator = new WalletPresentationOrchestratorFlow(
       PresentationTestConfiguration.createDefault(),
     );
+    const presentationConfig = orchestrator.getConfig().presentation;
+    presentationConfig.authorize_request_url =
+      "https://verifier.example.com/authorize?client_id=https://verifier.example.com";
+    presentationConfig.tests_dir = "./tests/presentation";
+    presentationConfig.verifier = "https://verifier.example.com";
+  });
+
+  test("uses normalized prefixed client_id from authorize_request_url when verifier is unset", async () => {
+    const config = orchestrator.getConfig();
+    config.presentation.authorize_request_url =
+      "https://rp.example.com/authorize?client_id=openid_federation:https://verifier.example.com";
+    delete config.presentation.verifier;
+
+    const fetchMetadataSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://verifier.example.com",
+        metadata: {
+          openid_credential_verifier: {
+            authorization_endpoint: "https://verifier.example.com/authorize",
+          },
+        },
+        sub: "https://verifier.example.com",
+      },
+      status: 200,
+    });
+    const authorizationRequestFailure = makeStepFailure(
+      "authorization request intentionally stopped after metadata fetch",
+    );
+
+    const fetchMetadataRun = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.fetchMetadataStep,
+        "run",
+      )
+      .mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizationRequestStep,
+      "run",
+    ).mockResolvedValue(authorizationRequestFailure);
+
+    const result = await orchestrator.presentation();
+
+    expect(fetchMetadataRun).toHaveBeenCalledWith({
+      baseUrl: "https://verifier.example.com/",
+    });
+    expect(result.success).toBe(false);
+    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResult).toEqual(
+      authorizationRequestFailure,
+    );
+    expect(result.error?.message).toBe(
+      "authorization request intentionally stopped after metadata fetch",
+    );
+  });
+
+  test("returns an error for unsupported client_id format when verifier is unset", async () => {
+    const config = orchestrator.getConfig();
+    config.presentation.authorize_request_url =
+      "https://rp.example.com/authorize?client_id=custom-client-id";
+    delete config.presentation.verifier;
+
+    const fetchMetadataRun = vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    );
+
+    const result = await orchestrator.presentation();
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe(
+      'Unsupported client_id format: "custom-client-id". Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). ',
+    );
+    expect(fetchMetadataRun).not.toHaveBeenCalled();
+    expect(result.fetchMetadataResult).toBeUndefined();
+    expect(result.authorizationRequestResult).toBeUndefined();
+    expect(result.redirectUriResult).toBeUndefined();
   });
 
   test("step 1 failure — returns partial response with only fetchMetadataResult", async () => {
