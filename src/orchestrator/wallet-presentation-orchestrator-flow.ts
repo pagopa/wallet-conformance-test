@@ -78,8 +78,10 @@ export class WalletPresentationOrchestratorFlow {
 
     const TOTAL_STEPS = 3;
     try {
+      const baseUrl = this.prepareBaseUrl();
+      this.log.debug(`Using baseUrl for metadata fetching: ${baseUrl}`);
       const fetchMetadataResult = await this.fetchMetadataStep.run({
-        baseUrl: this.prepareBaseUrl(),
+        baseUrl,
       });
       this._fetchMetadataResult = fetchMetadataResult;
       this.log.flowStep(
@@ -205,7 +207,6 @@ export class WalletPresentationOrchestratorFlow {
     this.log.debug("Loading Wallet Attestation...");
 
     const walletAttestation = await loadAttestation({
-      network: this.config.network,
       trust: this.config.trust,
       trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,
@@ -229,7 +230,20 @@ export class WalletPresentationOrchestratorFlow {
         );
       }
 
-      const baseUrl = new URL(clientId);
+      // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
+      const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
+      const normalizedClientId = CLIENT_ID_PREFIX_RE.test(clientId)
+        ? clientId.replace(CLIENT_ID_PREFIX_RE, "$1")
+        : clientId;
+
+      if (!normalizedClientId.startsWith("https://")) {
+        throw new Error(
+          `Unsupported client_id format: "${clientId}". ` +
+            `Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). `,
+        );
+      }
+
+      const baseUrl = new URL(normalizedClientId);
       this.log.debug(
         `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
       );
