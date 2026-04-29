@@ -9,7 +9,7 @@ import {
 import path from "node:path";
 
 import { CertificateExpiredError } from "@/errors";
-import { Config, KeyPair } from "@/types";
+import { KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
 import { CLOCK_SKEW_TOLERANCE_MS, ensureDir, VALIDITY_MS } from "./utils";
