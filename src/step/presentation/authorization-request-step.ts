@@ -104,37 +104,31 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       );
       log.info("VP Token built successfully from DCQL query.");
 
-      const metadata = {
-        ...options.verifierMetadata,
-        authorization_encrypted_response_alg:
-          options.verifierMetadata.authorization_encrypted_response_alg ||
-          "ECDH-ES",
-        authorization_encrypted_response_enc:
-          options.verifierMetadata.authorization_encrypted_response_enc ||
-          "A128CBC-HS256",
-      };
+      const verifierMetadata = options.verifierMetadata;
 
-      const {
-        authorization_encrypted_response_alg,
-        authorization_encrypted_response_enc,
-        jwks,
-      } = metadata;
-
-      const encryptionKey = jwks.keys.find((k) => k.use === "enc");
+      const encryptionKey = verifierMetadata.jwks.keys.find(
+        (k) => k.use === "enc",
+      );
       if (!encryptionKey) {
         throw new Error("no encryption key found in verifier metadata");
       }
 
       const authorizationResponse = await createAuthorizationResponse({
-        authorization_encrypted_response_alg,
-        authorization_encrypted_response_enc,
+        authorization_encrypted_response_alg:
+          verifierMetadata.authorization_encrypted_response_alg || undefined,
+        authorization_encrypted_response_enc:
+          verifierMetadata.authorization_encrypted_response_enc || undefined,
         callbacks: {
           ...partialCallbacks,
           encryptJwe: getEncryptJweCallback(encryptionKey),
         },
         requestObject,
         rpJwks: {
-          jwks: metadata.jwks,
+          encrypted_response_enc_values_supported:
+            verifierMetadata.encrypted_response_enc_values_supported as
+              | string[]
+              | undefined,
+          jwks: verifierMetadata.jwks,
         },
         vp_token,
       });
