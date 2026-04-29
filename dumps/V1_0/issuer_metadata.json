@@ -164,11 +164,11 @@
                 },
                 {
                   "locale": "en-US",
-                  "name": "National tax identification code"
+                  "name": "Italian Fiscal Code"
                 }
               ],
               "path": [
-                "fiscal_code"
+                "tax_id_code"
               ]
             },
             {

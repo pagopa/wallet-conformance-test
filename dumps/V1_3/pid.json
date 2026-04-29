@@ -9,5 +9,6 @@
   "family_name": "Rossi",
   "given_name": "Mario",
   "nationalities": ["IT"],
-  "personal_administrative_number": "XX00000XX"
+  "personal_administrative_number": "XX00000XX",
+  "tax_id_code": "RSSMRA80A10H501Z"
 }
