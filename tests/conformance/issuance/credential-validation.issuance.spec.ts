@@ -25,7 +25,6 @@ import { useTestSummary } from "#/helpers/use-test-summary";
 import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
 import {
   createCredentialRequest,
-  CredentialRequestV1_3,
   fetchCredentialResponse,
 } from "@pagopa/io-wallet-oid4vci";
 import {
@@ -287,16 +286,24 @@ testConfigs.forEach((testConfig) => {
               publicJwk: duplicateKeyPair.publicKey,
             },
           ],
-        } satisfies Parameters<typeof createCredentialRequest>[0]);
+        });
 
-        // Duplicate the proof to create a batch request with same JWK in both proofs
+        // Duplicate the proof JWT to create a batch request with the same proof key twice
         const { proofs } = batchRequest;
+
+        const [firstJwt, ...restProofs] = proofs.jwt;
+        if (!firstJwt) {
+          throw new Error("Batch request does not contain any JWT proofs");
+        }
+
         const batchRequestWithDuplicates = {
           ...batchRequest,
-          proofs: { jwt: [proofs.jwt[0], proofs.jwt[0]] },
-        } as CredentialRequestV1_3;
+          proofs: {
+            jwt: [firstJwt, firstJwt, ...restProofs],
+          },
+        };
 
-        log.debug("→ Sending raw batch request with duplicate proofs...");
+        log.debug("→ Sending raw batch request with duplicated proof JWT...");
 
         log.debug(
           "→ Validating issuer rejected the duplicate-key batch request...",
