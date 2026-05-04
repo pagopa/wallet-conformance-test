@@ -224,8 +224,6 @@ The presentation flow validates credential presentation conformance according to
 
 #### Metadata and Configuration Tests
 
-- **RPR082**: Reads `openid_credential_verifier.response_types_supported` from the RP's Entity Configuration and asserts that the array contains `"vp_token"`. Confirms the RP declares its support for the VP Token response type, which is required for the OpenID4VP cross-device flow.
-
 - **RPR083**: Verifies two things end-to-end: (1) the `response_uri` in the Request Object JWT is a valid HTTPS URL, and (2) the redirect URI step, which POSTs the VP token to that `response_uri`, succeeded and returned a valid redirect URL. Confirms that the RP correctly exposes and handles the `response_uri` endpoint.
 
 - **RPR095**: Verifies that the FetchMetadata step completed successfully and that the HTTP response status was 200. Confirms that the RP's `.well-known/openid-federation` endpoint is reachable and returns a well-formed response.

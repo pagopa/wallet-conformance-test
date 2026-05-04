@@ -562,7 +562,6 @@ and returns the authorization code.
         openid_credential_verifier?: {  // RP's OpenID4VP verifier metadata
           client_id?: string;
           redirect_uris?: string[];
-          response_types_supported?: string[];
           vp_formats_supported?: Record<string, unknown>;
           [key: string]: unknown;
         };
