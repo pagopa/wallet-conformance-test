@@ -348,6 +348,21 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
 };
 
 /**
+ * Normalises a `client_id` value that may carry a custom scheme prefix
+ * (e.g. `openid_federation:https://rp.example.com`) to a plain HTTPS URL.
+ *
+ * If no prefix is present the value is returned unchanged.
+ *
+ * @example
+ * normalizeClientId("openid_federation:https://rp.example.com")
+ * // → "https://rp.example.com"
+ *
+ * normalizeClientId("https://rp.example.com")
+ * // → "https://rp.example.com"
+ */
+export const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
+
+/**
  * Assertion function checking some object's keys are actually defined (not null or undefined)
  * @param object The object whose properties must be checked
  * @param keys The object's keys that must be defined
@@ -363,4 +378,10 @@ export function hasObjectProperties<T, K extends keyof T>(
     throw new MissingFieldError(
       `Error, the following keys are missing from object: ${missingKeys.map(String).join(", ")}`,
     );
+}
+
+export function normalizeClientId(clientId: string): string {
+  return CLIENT_ID_PREFIX_RE.test(clientId)
+    ? clientId.replace(CLIENT_ID_PREFIX_RE, "$1")
+    : clientId;
 }
