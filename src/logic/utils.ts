@@ -347,19 +347,7 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
   }
 };
 
-/**
- * Normalises a `client_id` value that may carry a custom scheme prefix
- * (e.g. `openid_federation:https://rp.example.com`) to a plain HTTPS URL.
- *
- * If no prefix is present the value is returned unchanged.
- *
- * @example
- * normalizeClientId("openid_federation:https://rp.example.com")
- * // → "https://rp.example.com"
- *
- * normalizeClientId("https://rp.example.com")
- * // → "https://rp.example.com"
- */
+/** Matches a `client_id` that carries a custom scheme prefix (e.g. `openid_federation:https://…`). */
 export const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
 
 /**
@@ -380,6 +368,19 @@ export function hasObjectProperties<T, K extends keyof T>(
     );
 }
 
+/**
+ * Normalises a `client_id` value that may carry a custom scheme prefix
+ * (e.g. `openid_federation:https://rp.example.com`) to a plain HTTP(S) URL.
+ *
+ * If no prefix is present the value is returned unchanged.
+ *
+ * @example
+ * normalizeClientId("openid_federation:https://rp.example.com")
+ * // → "https://rp.example.com"
+ *
+ * normalizeClientId("https://rp.example.com")
+ * // → "https://rp.example.com"
+ */
 export function normalizeClientId(clientId: string): string {
   return CLIENT_ID_PREFIX_RE.test(clientId)
     ? clientId.replace(CLIENT_ID_PREFIX_RE, "$1")
