@@ -296,10 +296,16 @@ testConfigs.forEach((testConfig) => {
           throw new Error("Batch request does not contain any JWT proofs");
         }
 
+        const duplicatedJwtProofs: [string, ...string[]] = [
+          firstJwt,
+          firstJwt,
+          ...restProofs,
+        ];
+
         const batchRequestWithDuplicates = {
           ...batchRequest,
           proofs: {
-            jwt: [firstJwt, firstJwt, ...restProofs],
+            jwt: duplicatedJwtProofs,
           },
         };
 
