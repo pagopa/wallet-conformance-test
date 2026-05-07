@@ -559,7 +559,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 1 failure — returns partial response with only fetchMetadataResult", async () => {
+  test("step 1 failure — returns partial response with only fetchMetadataResponse", async () => {
     const fetchMetadataFailure = makeStepFailure(
       "verifier metadata unreachable",
     );
@@ -627,7 +627,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResult carries error", async () => {
+  test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResponse carries error", async () => {
     const fetchMetadataSuccess = makeStepSuccess({
       discoveredVia: "federation" as const,
       entityStatementClaims: {
@@ -680,7 +680,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     );
     expect(
       result.redirectUriResponse,
-      "redirectUriResult must be populated even on failure",
+      "redirectUriResponse must be populated even on failure",
     ).toEqual(redirectUriFailure);
   });
 

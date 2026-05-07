@@ -1,3 +1,5 @@
+import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
+
 import type { AuthorizationRequestStepResponse } from "@/step/presentation";
 import type { FetchMetadataVpStepResponse } from "@/step/presentation";
 import type { RedirectUriStepResponse } from "@/step/presentation";
@@ -17,6 +19,6 @@ export interface RunThroughAuthorizeVpContext {
   authorizationRequestResponse: AuthorizationRequestStepResponse;
   credentials: CredentialWithKey[];
   fetchMetadataResponse: FetchMetadataVpStepResponse;
-  verifierMetadata: any;
+  verifierMetadata: ItWalletCredentialVerifierMetadata;
   walletAttestationResponse: AttestationResponse;
 }

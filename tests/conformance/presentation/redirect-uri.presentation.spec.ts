@@ -89,15 +89,22 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Running redirect step with a tampered response_uri...");
 
-      // Pass the valid JARM but post it to a different (invalid) response_uri
-      const tamperedResponseUri = "https://invalid.example.com/response";
+      // Keep the request on the RP's reachable origin and tamper only the target
+      // so any failure is attributable to RP-side handling rather than DNS/network errors.
+      const tamperedUrl = new URL(validResponseUri);
+      tamperedUrl.pathname = tamperedUrl.pathname.endsWith("/")
+        ? `${tamperedUrl.pathname}invalid-target`
+        : `${tamperedUrl.pathname}/invalid-target`;
+      const tamperedResponseUri = tamperedUrl.toString();
       const result = await runRedirectStep(
         validAuthResponse,
         tamperedResponseUri,
       );
 
       log.debug(`  Result success: ${result.success}`);
-      log.info("→ Validating that the step failed with invalid redirect...");
+      log.info(
+        "→ Validating that the step failed for a tampered RP-hosted redirect target...",
+      );
       expect(result.success).toBe(false);
 
       testSuccess = true;
