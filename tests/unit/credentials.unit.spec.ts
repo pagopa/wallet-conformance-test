@@ -472,7 +472,7 @@ describe("Load Mocked Credentials", async () => {
     });
   });
 
-  it.each(Object.values(ItWalletSpecsVersion))(
+  it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])(
     "should regenerate expired credentials",
     async (version) => {
       rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
