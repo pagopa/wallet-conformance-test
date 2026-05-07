@@ -167,7 +167,7 @@ const createAttestation = async (
       wallet,
       providerKeyPair,
       trustAnchorBaseUrl,
-      log
+      log,
     ),
   ]);
 

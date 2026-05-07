@@ -25,7 +25,7 @@ export interface CredentialWithKey {
   credential: string;
   dpopJwk: KeyPairJwk;
   id: string;
-  typ: "dc+sd-jwt" | "mso_mdoc";
+  typ: "dc+sd-jwt" | "mso_mdoc" | "oauth-client-attestation+jwt";
 }
 
 export type DcqlMatchSuccess = Extract<

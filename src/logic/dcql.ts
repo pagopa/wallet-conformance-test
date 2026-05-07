@@ -2,7 +2,11 @@ import { DcqlQuery, type DcqlQueryResult } from "dcql";
 
 import { CredentialWithKey, Logger } from "@/types";
 
-import { parseCredentialFromMdoc, parseCredentialFromSdJwt } from "./vpToken";
+import {
+  parseCredentialFromMdoc,
+  parseCredentialFromSdJwt,
+  parseCredentialFromWA,
+} from "./vpToken";
 
 type DcqlMatchSuccess = Extract<
   DcqlQueryResult.CredentialMatch,
@@ -110,6 +114,9 @@ export async function validateDcqlQuery(
       if (credential.typ === "mso_mdoc")
         return parseCredentialFromMdoc(credential.credential);
 
+      if (credential.typ === "oauth-client-attestation+jwt")
+        return parseCredentialFromWA(credential.credential);
+
       throw new Error(`credential type not implemented: ${credential.typ}`);
     }),
   );
@@ -176,7 +183,10 @@ function formatDcqlFailCause(
     const queryResult = result as {
       credential_query_id: string;
       failed_credentials: unknown[];
+      success: boolean;
     };
+
+    if (queryResult.success) continue;
 
     errorMessage.push(
       `\n  Query index: ${k}, query id: ${queryResult.credential_query_id}\n`,
@@ -213,8 +223,23 @@ function formatDcqlFailCause(
         errorMessage.push(
           `      ${Object.entries(queryFailed.trusted_authorities.issues)
             .map(([attribute, issues]) => `${attribute}: ${issues}`)
-            .join("\n      ")}`,
+            .join("\n      ")}\n`,
         );
+
+        continue;
+      }
+
+      errorMessage.push(`    → Meta `);
+      if (queryFailed.meta.success) errorMessage.push(`passed\n`);
+      else {
+        errorMessage.push(`failed ❌\n`);
+        errorMessage.push(
+          `      ${Object.entries(queryFailed.meta.issues)
+            .map(([attribute, issues]) => `${attribute}: ${issues}`)
+            .join("\n      ")}\n`,
+        );
+
+        continue;
       }
 
       errorMessage.push(`    → Claims `);
@@ -228,17 +253,6 @@ function formatDcqlFailCause(
               .map(([claim, issues]) => `${claim}: ${issues}`)
               .join(", ")}\n`,
           );
-      }
-
-      errorMessage.push(`    → Meta `);
-      if (queryFailed.meta.success) errorMessage.push(`passed\n`);
-      else {
-        errorMessage.push(`failed ❌\n`);
-        errorMessage.push(
-          `      ${Object.entries(queryFailed.meta.issues)
-            .map(([attribute, issues]) => `${attribute}: ${issues}`)
-            .join("\n      ")}`,
-        );
       }
 
       errorMessage.push("\n");

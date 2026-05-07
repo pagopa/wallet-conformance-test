@@ -206,11 +206,14 @@ export class WalletPresentationOrchestratorFlow {
   private async loadWalletAttestation() {
     this.log.debug("Loading Wallet Attestation...");
 
-    const walletAttestation = await loadAttestation({
-      trust: this.config.trust,
-      trustAnchor: this.config.trust_anchor,
-      wallet: this.config.wallet,
-    }, this.log.withTag("ATTESTATION"));
+    const walletAttestation = await loadAttestation(
+      {
+        trust: this.config.trust,
+        trustAnchor: this.config.trust_anchor,
+        wallet: this.config.wallet,
+      },
+      this.log.withTag("ATTESTATION"),
+    );
 
     this.log.debug("Wallet Attestation Loaded.");
 
@@ -239,7 +242,7 @@ export class WalletPresentationOrchestratorFlow {
       if (!normalizedClientId.startsWith("https://")) {
         throw new Error(
           `Unsupported client_id format: "${clientId}". ` +
-          `Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). `,
+            `Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). `,
         );
       }
 

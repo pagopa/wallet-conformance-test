@@ -6,7 +6,12 @@ import { DcqlMdocCredential, DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import type { Logger } from "@/types/logger";
 
-import { CredentialWithKey, DcqlMatchSuccess, VpTokenOptions } from "@/types";
+import {
+  AttestationResponse,
+  CredentialWithKey,
+  DcqlMatchSuccess,
+  VpTokenOptions,
+} from "@/types";
 
 import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
 import { parseMdoc } from "./mdoc";
@@ -28,9 +33,19 @@ export async function buildVpToken(
   query: DcqlQuery.Input,
   options: Omit<VpTokenOptions, "credential" | "dcqlQuery" | "dpopJwk">,
   version: ItWalletSpecsVersion,
+  walletAttestation: AttestationResponse,
   logger?: Logger,
 ): Promise<Record<string, [string, ...string[]] | string>> {
-  const queryResult = await validateDcqlQuery(credentials, query, logger);
+  const allCredentials = [...credentials];
+  if (version === ItWalletSpecsVersion.V1_0) {
+    allCredentials.push({
+      credential: walletAttestation.attestation,
+      dpopJwk: walletAttestation.unitKey.publicKey,
+      id: "wallet_attestation",
+      typ: "oauth-client-attestation+jwt",
+    });
+  }
+  const queryResult = await validateDcqlQuery(allCredentials, query, logger);
   const matches: [string, DcqlMatchSuccess][] =
     getDcqlQueryMatches(queryResult);
 
@@ -59,7 +74,7 @@ export async function buildVpToken(
         res = await prepareCredentials_V1_0(
           match.valid_credentials,
           credentialQueryId,
-          credentials,
+          allCredentials,
           prepareCredentialOptions,
         );
         break;
@@ -67,7 +82,7 @@ export async function buildVpToken(
         res = await prepareCredentials_V1_3(
           match.valid_credentials,
           credentialQueryId,
-          credentials,
+          allCredentials,
           prepareCredentialOptions,
         );
         break;
@@ -135,5 +150,40 @@ export async function parseCredentialFromSdJwt(
     credential_format: credentialFormat,
     cryptographic_holder_binding: true,
     vct,
+  };
+}
+
+/**
+ * Parses the Wallet Attestation and transforms it into the format required for DCQL processing.
+ *
+ * @param credential The Wallet Attestation.
+ * @returns A promise that resolves to the parsed credential in `DcqlSdJwtVcCredential` format.
+ * @throws An error if the credential format is unsupported or if the `vct` claim is missing.
+ */
+export async function parseCredentialFromWA(
+  credential: string,
+): Promise<DcqlSdJwtVcCredential> {
+  const { disclosures, jwt } = await decodeSdJwt(credential, digest);
+
+  const claims = disclosures.reduce(
+    (acc, disclosure) => {
+      const disclosureData = disclosure.decode();
+      const claim = disclosureData[1] as string;
+      acc[claim] = disclosureData;
+      return acc;
+    },
+    {} as Record<string, DisclosureData<unknown>>,
+  );
+
+  const credentialFormat = jwt.header.typ;
+  if (credentialFormat !== "oauth-client-attestation+jwt") {
+    throw new Error(`Unsupported credential format: ${credentialFormat}`);
+  }
+
+  return {
+    claims: claims as DcqlSdJwtVcCredential["claims"],
+    credential_format: "dc+sd-jwt",
+    cryptographic_holder_binding: true,
+    vct: "urn:eudi:pid:it:1",
   };
 }
