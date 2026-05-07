@@ -155,8 +155,8 @@ export class WalletIssuanceOrchestratorFlow {
       if (credentialConfigurationIds.length === 0)
         throw new OrchestratorError(
           "No credential configuration ID could be resolved. " +
-            "Neither the test configuration nor the credential offer provided one. " +
-            "Set 'credential_types[]' in config.ini or pass --credential-types <types>.",
+          "Neither the test configuration nor the credential offer provided one. " +
+          "Set 'credential_types[]' in config.ini or pass --credential-types <types>.",
           "CREDENTIAL_CONFIGURATION_ID_UNRESOLVED",
         );
     }
@@ -375,7 +375,7 @@ export class WalletIssuanceOrchestratorFlow {
       trust: this.config.trust,
       trustAnchor: this.config.trust_anchor,
       wallet: this.config.wallet,
-    });
+    }, this.log.withTag("ATTESTATION"));
     this._walletAttestationResponse = walletAttestationResponse;
 
     const callbacks = {
@@ -388,8 +388,8 @@ export class WalletIssuanceOrchestratorFlow {
     if (!entityStatementClaims) {
       throw new OrchestratorError(
         "Fetch Metadata step returned no entity statement claims. " +
-          "Verify the issuer URL is reachable and returns a valid " +
-          "OpenID Federation Entity Statement.",
+        "Verify the issuer URL is reachable and returns a valid " +
+        "OpenID Federation Entity Statement.",
         "ENTITY_STATEMENT_CLAIMS_MISSING",
       );
     }
@@ -424,8 +424,8 @@ export class WalletIssuanceOrchestratorFlow {
     } else
       this.log.warn(
         "Skipping credentialConfigurationId validation: " +
-          "'credential_configurations_supported' is absent from issuer metadata. " +
-          "This may indicate a non-conformant issuer or an incomplete metadata endpoint.",
+        "'credential_configurations_supported' is absent from issuer metadata. " +
+        "This may indicate a non-conformant issuer or an incomplete metadata endpoint.",
       );
 
     const popAttestation = await createClientAttestationPopJwt({
@@ -508,9 +508,9 @@ export class WalletIssuanceOrchestratorFlow {
     ) {
       throw new OrchestratorError(
         "Authorization step returned no response object. " +
-          "The authorization redirect may not have been captured. " +
-          "Verify that the redirect_uri is reachable and that the " +
-          "authorize step completed successfully.",
+        "The authorization redirect may not have been captured. " +
+        "Verify that the redirect_uri is reachable and that the " +
+        "authorize step completed successfully.",
         "AUTHORIZATION_RESPONSE_MISSING",
       );
     }

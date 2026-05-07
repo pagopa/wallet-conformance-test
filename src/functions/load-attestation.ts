@@ -17,7 +17,6 @@ import {
   buildJwksPath,
   CLOCK_SKEW_TOLERANCE_MS,
   createFederationMetadata,
-  createLogger,
   createSubordinateTrustAnchorMetadata,
   ensureDir,
   getTrustMarks,
@@ -35,10 +34,9 @@ import {
   type AttestationResponse,
   type Config,
   type KeyPair,
+  Logger,
   zTrustChain,
 } from "@/types";
-
-const log = createLogger().withTag("ATTESTATION");
 
 const resolveTaEntityConfiguration = (
   trust: Config["trust"],
@@ -66,6 +64,7 @@ export const buildWpEntityConfiguration = async (
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
   trustAnchorBaseUrl: string,
+  log: Logger,
 ): Promise<string> => {
   const trust_marks = await getTrustMarks(
     trustAnchorBaseUrl,
@@ -146,6 +145,7 @@ const createAttestation = async (
   providerKeyPair: KeyPair,
   unitKeyPair: KeyPair,
   attestationPath: string,
+  log: Logger,
 ): Promise<string> => {
   validateProviderKeyPair(providerKeyPair);
   log.debug(
@@ -167,6 +167,7 @@ const createAttestation = async (
       wallet,
       providerKeyPair,
       trustAnchorBaseUrl,
+      log
     ),
   ]);
 
@@ -199,6 +200,7 @@ const createAttestation = async (
  */
 export const loadAttestation = async (
   options: LoadAttestationOptions,
+  log: Logger,
 ): Promise<AttestationResponse> => {
   const { wallet } = options;
 
@@ -250,6 +252,7 @@ export const loadAttestation = async (
     providerKeyPair,
     unitKeyPair,
     attestationPath,
+    log,
   );
 
   return {

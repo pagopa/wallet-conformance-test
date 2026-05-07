@@ -4,6 +4,7 @@ import * as https from "node:https";
 import { buildWpEntityConfiguration } from "@/functions/load-attestation";
 import {
   buildJwksPath,
+  createLogger,
   loadConfigWithHierarchy,
   loadJwks,
   loadOrCreateServerCertificate,
@@ -34,6 +35,7 @@ export const createServer = (config: Config): express.Express => {
         config.wallet,
         providerKeyPair,
         trustAnchorBaseUrl,
+        createLogger().withTag("ATTESTATION"),
       );
       res.type("application/entity-statement+jwt").send(jwt);
     } catch (err) {

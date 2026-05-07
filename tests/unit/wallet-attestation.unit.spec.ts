@@ -10,12 +10,13 @@ import { describe, expect, test, vi } from "vitest";
 import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import { buildAttestationPath, createQuietLogger, loadConfigWithHierarchy } from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
+  const attestationLogger = createQuietLogger().withTag("ATTESTATION");
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
     const attestationPath = buildAttestationPath(config.wallet);
@@ -27,7 +28,7 @@ describe("Wallet Attestation Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
-    });
+    }, attestationLogger);
 
     // Verify attestation was created
     expect(response.attestation).toBeDefined();
@@ -91,7 +92,7 @@ describe("Wallet Attestation Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
-    });
+    }, attestationLogger);
 
     const attestation = readFileSync(
       buildAttestationPath(config.wallet),
@@ -140,7 +141,7 @@ describe("Wallet Attestation Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
-    });
+    }, attestationLogger);
 
     vi.setSystemTime(thirtyMinutesLater);
 
@@ -149,7 +150,7 @@ describe("Wallet Attestation Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
-    });
+    }, attestationLogger);
 
     vi.setSystemTime(oneYearLater);
 
@@ -158,7 +159,7 @@ describe("Wallet Attestation Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: config.wallet,
-    });
+    }, attestationLogger);
 
     expect(firstAttestationResponse.created).toEqual(true);
     expect(secondAttestationResponse.created).toEqual(false);
@@ -170,6 +171,7 @@ describe("Wallet Attestation Unit Test", () => {
 
 describe("Wallet Attestation V1_3 Unit Test", () => {
   const config = loadConfigWithHierarchy();
+  const attestationLogger = createQuietLogger().withTag("ATTESTATION");
   const walletV1_3 = {
     ...config.wallet,
     wallet_version: ItWalletSpecsVersion.V1_3,
@@ -185,7 +187,7 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: walletV1_3,
-    });
+    }, attestationLogger);
 
     expect(response.attestation).toBeDefined();
     expect(response.created).toBe(true);
@@ -238,7 +240,7 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
       trust: config.trust,
       trustAnchor: config.trust_anchor,
       wallet: walletV1_3,
-    });
+    }, attestationLogger);
 
     // Should load from disk (not create a new one)
     expect(response.created).toBe(false);
