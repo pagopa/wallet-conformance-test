@@ -4,6 +4,7 @@ import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers"
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
+import { normalizeClientId } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -71,7 +72,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       if (issuer) {
         log.debug(`  Expected: ${issuer}`);
         log.debug(`  Actual: ${parsedQrCode?.clientId}`);
-        expect(parsedQrCode?.clientId).toBe(issuer);
+        const rawClientId = parsedQrCode?.clientId ?? "";
+        expect(normalizeClientId(rawClientId)).toBe(issuer);
         log.debug("  ✅ client_id matches entity statement issuer");
       }
 
