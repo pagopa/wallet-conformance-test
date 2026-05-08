@@ -2,6 +2,7 @@
 import type { CreateAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
 
 import { definePresentationTest } from "#/config/test-metadata";
+import { postToResponseUri } from "#/helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -33,9 +34,14 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   beforeAll(async () => {
     const ctx = await orchestrator.runThroughAuthorize();
 
-    const authResult = ctx.authorizationRequestResponse;
-    validResponseUri = authResult.response!.responseUri;
-    validAuthResponse = authResult.response!.authorizationResponse;
+    const authResponse = ctx.authorizationRequestResponse.response;
+    if (!authResponse) {
+      throw new Error(
+        "Setup failed: authorizationRequestResponse.response is undefined — RP did not return a valid authorization response",
+      );
+    }
+    validResponseUri = authResponse.responseUri;
+    validAuthResponse = authResponse.authorizationResponse;
   });
 
   useTestSummary(baseLog, testConfig.name);
@@ -57,29 +63,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   }
 
   // -----------------------------------------------------------------------
-  // Helper: POST to response_uri with custom options
-  // -----------------------------------------------------------------------
-
-  async function postToResponseUri(
-    responseUri: string,
-    body: string,
-    options?: { contentType?: string; method?: string },
-  ): Promise<Response> {
-    const config = loadConfigWithHierarchy();
-    return fetchWithConfig(config.network)(responseUri, {
-      body,
-      headers: {
-        "Content-Type":
-          options?.contentType ?? "application/x-www-form-urlencoded",
-      },
-      method: options?.method ?? "POST",
-    });
-  }
-
-  // -----------------------------------------------------------------------
   // RPR-20 — Invalid redirect_uri handling
   // -----------------------------------------------------------------------
 
+  // NOTE: This test verifies path-level rejection only. Host-level redirect_uri
+  // security (unattested host) cannot be tested without RP-side DNS control.
+  // See IT-Wallet spec RPR_020 for full scenario.
   test("RPR_020: Invalid redirect_uri handling | RP rejects when wallet follows a redirect to an invalid target", async () => {
     const log = baseLog.withTag("RPR_020");
     const DESCRIPTION = "RP securely rejects invalid redirect_uri overrides";
@@ -89,16 +78,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Running redirect step with a tampered response_uri...");
 
-      // Keep the request on the RP's reachable origin and tamper only the target
-      // so any failure is attributable to RP-side handling rather than DNS/network errors.
-      const tamperedUrl = new URL(validResponseUri);
-      tamperedUrl.pathname = tamperedUrl.pathname.endsWith("/")
-        ? `${tamperedUrl.pathname}invalid-target`
-        : `${tamperedUrl.pathname}/invalid-target`;
-      const tamperedResponseUri = tamperedUrl.toString();
       const result = await runRedirectStep(
         validAuthResponse,
-        tamperedResponseUri,
+        "invalid_response_uri",
       );
 
       log.debug(`  Result success: ${result.success}`);
@@ -174,10 +156,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       log.info("→ Posting to response_uri without the 'response' parameter...");
       // Send an empty form body (missing required 'response' parameter)
       const emptyBody = new URLSearchParams();
-      const response = await postToResponseUri(
-        validResponseUri,
-        emptyBody.toString(),
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: emptyBody.toString(),
+      });
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the missing parameter...");
@@ -203,10 +184,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       log.info(
         "→ Posting raw garbage data to response_uri as form-urlencoded...",
       );
-      const response = await postToResponseUri(
-        validResponseUri,
-        "this-is-not-valid-form-data=!@#$%^&*()",
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: "this-is-not-valid-form-data=!@#$%^&*()",
+      });
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the malformed payload...");
@@ -233,10 +213,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
-      const response = await postToResponseUri(
-        validResponseUri,
-        formBody.toString(),
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: formBody.toString(),
+      });
 
       log.debug(`  Response status: ${response.status}`);
       const contentType = response.headers.get("content-type") ?? "";
@@ -272,10 +251,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
-      const response = await postToResponseUri(
-        validResponseUri,
-        formBody.toString(),
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: formBody.toString(),
+      });
 
       log.debug(`  Response status: ${response.status}`);
       expect(response.ok).toBe(false);
@@ -320,10 +298,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         error: "access_denied",
         error_description: "User denied the presentation request",
       });
-      const response = await postToResponseUri(
-        validResponseUri,
-        errorBody.toString(),
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: errorBody.toString(),
+      });
 
       log.debug(`  Response status: ${response.status}`);
 
@@ -332,9 +309,21 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       );
       // The RP should acknowledge the error (status may vary: 200 or 4xx depending on RP implementation)
       // The key check: the response must be a valid JSON body, not a server crash
+      expect(
+        response.status,
+        "RP must respond 200 to wallet error responses per OID4VP §8.2",
+      ).toBe(200);
+      const contentType = response.headers.get("content-type") ?? "";
+      expect(
+        contentType.includes("application/json"),
+        "RP must return application/json for wallet error responses",
+      ).toBe(true);
       const body = await response.text();
+      expect(
+        body.includes("at Object.<anonymous>"),
+        "RP must not leak stack traces",
+      ).toBe(false);
       log.debug(`  Response body: ${body}`);
-      expect(body).toBeDefined();
 
       testSuccess = true;
     } finally {
@@ -360,11 +349,10 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         error_description: "Wallet could not satisfy the requested credentials",
         state: "conformance-test-state-rpr-109",
       });
-      const response = await postToResponseUri(
-        validResponseUri,
-        errorBody.toString(),
-        { contentType: "application/x-www-form-urlencoded" },
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: errorBody.toString(),
+        contentType: "application/x-www-form-urlencoded",
+      });
 
       log.debug(`  Response status: ${response.status}`);
 
@@ -372,9 +360,21 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         "→ Validating RP processed the form-urlencoded error response...",
       );
       // The RP should not crash and should return a valid response
+      expect(
+        response.status,
+        "RP must respond 200 to wallet error responses per OID4VP §8.2",
+      ).toBe(200);
+      const contentType = response.headers.get("content-type") ?? "";
+      expect(
+        contentType.includes("application/json"),
+        "RP must return application/json for wallet error responses",
+      ).toBe(true);
       const body = await response.text();
+      expect(
+        body.includes("at Object.<anonymous>"),
+        "RP must not leak stack traces",
+      ).toBe(false);
       log.debug(`  Response body: ${body}`);
-      expect(body).toBeDefined();
 
       testSuccess = true;
     } finally {
@@ -402,10 +402,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         response:
           "eyJhbGciOiJFQ0RILUVTLN0.ZW5jcnlwdGVk.aXY.Y2lwaGVydGV4dA.dGFn",
       });
-      const response = await postToResponseUri(
-        validResponseUri,
-        formBody.toString(),
-      );
+      const response = await postToResponseUri(validResponseUri, {
+        body: formBody.toString(),
+      });
 
       log.debug(`  Response status: ${response.status}`);
       expect(response.ok).toBe(false);
@@ -421,6 +420,10 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       expect(
         body.error,
         "Validation error response must contain 'error' field",
+      ).toBeDefined();
+      expect(
+        body.error_description,
+        "Error response must contain 'error_description' field",
       ).toBeDefined();
 
       testSuccess = true;
