@@ -86,6 +86,8 @@ export async function buildVpToken(
           prepareCredentialOptions,
         );
         break;
+      default:
+        throw new Error(`Unsupported IT Wallet specs version: ${version}`);
     }
 
     Object.assign(result, res);
