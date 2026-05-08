@@ -107,7 +107,12 @@ export class TokenRequestDefaultStep extends StepFlow {
         dPoP: tokenDPoP.jwt,
         walletAttestation: options.walletAttestation.attestation,
       };
+
+      log.debug("Token request options:", JSON.stringify(fetchTokenResponseOptions, null, 2));
+
       const tokenResponse = await fetchTokenResponse(fetchTokenResponseOptions);
+
+      log.debug("Token response:", JSON.stringify(tokenResponse, null, 2));
 
       return {
         ...tokenResponse,
