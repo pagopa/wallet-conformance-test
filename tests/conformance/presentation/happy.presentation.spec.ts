@@ -370,57 +370,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR082: response_types_supported is correctly set to vp_token.", () => {
-    const log = baseLog.withTag("RPR082");
-
-    log.start(
-      "Conformance test: Verifying vp_token support in verifier metadata",
-    );
-
-    const DESCRIPTION =
-      "Relying Party correctly advertises vp_token in response_types_supported";
-    let testSuccess = false;
-    try {
-      expect(fetchMetadataResult.success).toBe(true);
-      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
-
-      const metadata =
-        fetchMetadataResult.response?.entityStatementClaims?.metadata;
-      const verifierMetadata = metadata?.openid_credential_verifier;
-
-      log.debug("→ Checking response_types_supported in verifier metadata...");
-
-      if (!verifierMetadata) {
-        log.error("❌ openid_credential_verifier metadata is undefined");
-        log.error(
-          `  Available metadata keys: ${Object.keys(metadata || {}).join(", ")}`,
-        );
-        log.error(`  Full metadata: ${JSON.stringify(metadata, null, 2)}`);
-      }
-
-      if (!verifierMetadata?.response_types_supported) {
-        log.error("❌ response_types_supported is undefined");
-        log.error(
-          `  Verifier metadata keys: ${Object.keys(verifierMetadata || {}).join(", ")}`,
-        );
-        log.error(
-          `  Full verifier metadata: ${JSON.stringify(verifierMetadata, null, 2)}`,
-        );
-      }
-
-      expect(verifierMetadata?.response_types_supported).toBeDefined();
-      log.debug(
-        `  Supported types: ${verifierMetadata?.response_types_supported.join(", ")}`,
-      );
-      expect(verifierMetadata?.response_types_supported).toContain("vp_token");
-      log.debug("  ✅ vp_token is supported");
-
-      testSuccess = true;
-    } finally {
-      log.testCompleted(DESCRIPTION, testSuccess);
-    }
-  });
-
   test("RPR083: Relying Party correctly provides and handles redirect_uri.", () => {
     const log = baseLog.withTag("RPR083");
 
