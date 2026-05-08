@@ -2,7 +2,11 @@ import { PresentationTestConfiguration } from "#/config";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
-import { createLogger, loadConfigWithHierarchy } from "@/logic";
+import {
+  createLogger,
+  loadConfigWithHierarchy,
+  normalizeClientId,
+} from "@/logic";
 import {
   FetchMetadataVpDefaultStep,
   FetchMetadataVpStepResponse,
@@ -245,10 +249,7 @@ export class WalletPresentationOrchestratorFlow {
       }
 
       // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
-      const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
-      const normalizedClientId = CLIENT_ID_PREFIX_RE.test(clientId)
-        ? clientId.replace(CLIENT_ID_PREFIX_RE, "$1")
-        : clientId;
+      const normalizedClientId = normalizeClientId(clientId);
 
       if (!normalizedClientId.startsWith("https://")) {
         throw new Error(
