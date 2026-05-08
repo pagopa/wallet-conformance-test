@@ -18,41 +18,6 @@ const CA_INTERMEDIATE_CERT = "ca_intermediate_cert";
 const WALLET_PROVIDER_CERT = "wallet_provider_cert";
 
 /**
- * Strips PEM headers/footers and whitespace, returning the raw base64-DER
- * string suitable for an x5c array entry.
- */
-function pemToBase64Der(pem: string): string {
-  return pem
-    .replace("-----BEGIN CERTIFICATE-----", "")
-    .replace("-----END CERTIFICATE-----", "")
-    .replace(/\s+/g, "")
-    .trim();
-}
-
-/**
- * Loads a persisted base64-DER certificate from disk.
- * Returns `undefined` if the file does not exist or is expired.
- */
-function loadCachedCert(filePath: string): string | undefined {
-  if (!existsSync(filePath)) return undefined;
-
-  try {
-    const certPem = readFileSync(filePath, "utf-8");
-    const certDerBase64 = pemToBase64Der(certPem);
-
-    if (hasX509CertificateExpired(certDerBase64)) {
-      throw new CertificateExpiredError(
-        "Certificate has expired and has to be regenerated",
-      );
-    }
-
-    return certDerBase64;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
  * Loads (or lazily generates and caches on disk) the X.509 certificate chain
  * for the wallet provider key pair, suitable for use in the `x5c` header
  * of wallet attestations and key attestations.
@@ -94,7 +59,11 @@ export async function loadWalletProviderCertificate(
   const cachedCA1 = loadCachedCert(ca1Path);
   const cachedCA2 = loadCachedCert(ca2Path);
 
-  if (cachedCA1 && cachedCA2 && !hasAnyCertificateExpired([cachedCA2, cachedCA1])) {
+  if (
+    cachedCA1 &&
+    cachedCA2 &&
+    !hasAnyCertificateExpired([cachedCA2, cachedCA1])
+  ) {
     return [cachedCA2, cachedCA1];
   }
 
@@ -102,9 +71,6 @@ export async function loadWalletProviderCertificate(
   for (const p of [ca1Path, ca2Path]) {
     if (existsSync(p)) rmSync(p);
   }
-
-  const intermediateJwksPath = `${caCertPath}/${CA_INTERMEDIATE_JWKS}`;
-  if (existsSync(intermediateJwksPath)) rmSync(intermediateJwksPath);
 
   // ── Load Trust Anchor key pair ────────────────────────────────────────
   const taKeyPair = await loadJwks(
@@ -114,6 +80,9 @@ export async function loadWalletProviderCertificate(
 
   // ── Generate intermediate key pair (KY1) ──────────────────────────────
   const intermediateKeyPair = await createKeys();
+  const intermediateJwksPath = `${caCertPath}/${CA_INTERMEDIATE_JWKS}`;
+
+  if (existsSync(intermediateJwksPath)) rmSync(intermediateJwksPath);
   writeFileSync(intermediateJwksPath, JSON.stringify(intermediateKeyPair));
 
   // ── CA1: signed by TA, attests KY1 (isCA = true) ─────────────────────
@@ -146,4 +115,39 @@ export async function loadWalletProviderCertificate(
   const ca2Base64 = Buffer.from(ca2Cert.rawData).toString("base64");
 
   return [ca2Base64, ca1Base64];
+}
+
+/**
+ * Loads a persisted base64-DER certificate from disk.
+ * Returns `undefined` if the file does not exist or is expired.
+ */
+function loadCachedCert(filePath: string): string | undefined {
+  if (!existsSync(filePath)) return undefined;
+
+  try {
+    const certPem = readFileSync(filePath, "utf-8");
+    const certDerBase64 = pemToBase64Der(certPem);
+
+    if (hasX509CertificateExpired(certDerBase64)) {
+      throw new CertificateExpiredError(
+        "Certificate has expired and has to be regenerated",
+      );
+    }
+
+    return certDerBase64;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Strips PEM headers/footers and whitespace, returning the raw base64-DER
+ * string suitable for an x5c array entry.
+ */
+function pemToBase64Der(pem: string): string {
+  return pem
+    .replace("-----BEGIN CERTIFICATE-----", "")
+    .replace("-----END CERTIFICATE-----", "")
+    .replace(/\s+/g, "")
+    .trim();
 }

@@ -120,7 +120,11 @@ const buildAttestationOptions = async (
       return attestationOptions;
     }
     case ItWalletSpecsVersion.V1_3: {
-      const x5c = await loadWalletProviderCertificate(wallet, trust, providerKeyPair);
+      const x5c = await loadWalletProviderCertificate(
+        wallet,
+        trust,
+        providerKeyPair,
+      );
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
         signer: { ...signerBase, method: "x5c", trustChain, x5c },

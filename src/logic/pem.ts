@@ -213,21 +213,15 @@ export async function createSignedCertificate(
   const cert = await x509.X509CertificateGenerator.create({
     extensions,
     issuer: issuerSubject,
-    subject: subjectName,
     notAfter,
     notBefore,
     publicKey,
     signingAlgorithm,
     signingKey,
+    subject: subjectName,
   });
 
   return cert;
-}
-
-export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
-  const certificate =
-    typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
-  return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
 }
 
 /**
@@ -235,6 +229,12 @@ export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
  */
 export function hasAnyCertificateExpired(x5cChain: string[]): boolean {
   return x5cChain.some((cert) => hasX509CertificateExpired(cert));
+}
+
+export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
+  const certificate =
+    typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
+  return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
 }
 
 /**
