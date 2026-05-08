@@ -82,7 +82,6 @@ export async function loadWalletProviderCertificate(
   const intermediateKeyPair = await createKeys();
   const intermediateJwksPath = `${caCertPath}/${CA_INTERMEDIATE_JWKS}`;
 
-  if (existsSync(intermediateJwksPath)) rmSync(intermediateJwksPath);
   writeFileSync(intermediateJwksPath, JSON.stringify(intermediateKeyPair));
 
   // ── CA1: signed by TA, attests KY1 (isCA = true) ─────────────────────
