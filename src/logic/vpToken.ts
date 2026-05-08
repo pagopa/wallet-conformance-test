@@ -33,7 +33,7 @@ export async function buildVpToken(
   query: DcqlQuery.Input,
   options: Omit<VpTokenOptions, "credential" | "dcqlQuery" | "dpopJwk">,
   version: ItWalletSpecsVersion,
-  walletAttestation: AttestationResponse,
+  walletAttestation: Omit<AttestationResponse, "created">,
   logger?: Logger,
 ): Promise<Record<string, [string, ...string[]] | string>> {
   const allCredentials = [...credentials];
@@ -158,7 +158,7 @@ export async function parseCredentialFromSdJwt(
  *
  * @param credential The Wallet Attestation.
  * @returns A promise that resolves to the parsed credential in `DcqlSdJwtVcCredential` format.
- * @throws An error if the credential format is unsupported or if the `vct` claim is missing.
+ * @throws An error if the credential format is unsupported.
  */
 export async function parseCredentialFromWA(
   credential: string,
@@ -180,10 +180,15 @@ export async function parseCredentialFromWA(
     throw new Error(`Unsupported credential format: ${credentialFormat}`);
   }
 
+  const vct =
+    typeof jwt.payload.vct === "string"
+      ? jwt.payload.vct
+      : "urn:eudi:wallet_attestation:it:1";
+
   return {
     claims: claims as DcqlSdJwtVcCredential["claims"],
     credential_format: "dc+sd-jwt",
     cryptographic_holder_binding: true,
-    vct: "urn:eudi:pid:it:1",
+    vct,
   };
 }
