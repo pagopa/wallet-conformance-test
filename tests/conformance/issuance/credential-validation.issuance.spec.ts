@@ -315,6 +315,7 @@ testConfigs.forEach((testConfig) => {
           "→ Validating issuer rejected the duplicate-key batch request...",
         );
 
+        let rejection: unknown;
         try {
           const response = await fetchCredentialResponse({
             accessToken: accessToken,
@@ -329,15 +330,16 @@ testConfigs.forEach((testConfig) => {
 
           testSuccess = false;
         } catch (error) {
+          rejection = error;
           log.debug(
             "  Request failed as expected with error: " +
               (error instanceof Error ? error.message : String(error)),
           );
-          expect(error).toBeInstanceOf(Error);
-          expect((error as Error).message).toMatch(/invalid_proof/i);
 
           testSuccess = true;
         }
+        expect(rejection).toBeInstanceOf(Error);
+        expect((rejection as Error).message).toMatch(/invalid_proof/i);
       } finally {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
@@ -645,41 +647,54 @@ testConfigs.forEach((testConfig) => {
           log.debug(`  Status claim present: ${statusClaim !== undefined}`);
 
           const specVersion = ioWalletSdkConfig.itWalletSpecsVersion;
-          if (specVersion === ItWalletSpecsVersion.V1_3) {
-            expect(
-              statusClaim?.["status_list"],
-              "V1.3 MUST contain 'status_list'",
-            ).toBeDefined();
-            const sl = statusClaim?.["status_list"] as
-              | Record<string, unknown>
-              | undefined;
-            expect(
-              typeof sl?.["idx"],
-              "'status_list.idx' MUST be a number",
-            ).toBe("number");
-            expect(
-              typeof sl?.["uri"],
-              "'status_list.uri' MUST be a string",
-            ).toBe("string");
+          const statusList = statusClaim?.["status_list"] as
+            | Record<string, unknown>
+            | undefined;
+          const statusAssertion = statusClaim?.["status_assertion"] as
+            | Record<string, unknown>
+            | undefined;
+          const requiredStatusField =
+            specVersion === ItWalletSpecsVersion.V1_3
+              ? {
+                  message: "V1.3 MUST contain 'status_list'",
+                  value: statusList,
+                }
+              : {
+                  message: "V1.0 MUST contain 'status_assertion'",
+                  value: statusAssertion,
+                };
+          const statusTypeChecks =
+            specVersion === ItWalletSpecsVersion.V1_3
+              ? [
+                  {
+                    actual: typeof statusList?.["idx"],
+                    expected: "number",
+                    message: "'status_list.idx' MUST be a number",
+                  },
+                  {
+                    actual: typeof statusList?.["uri"],
+                    expected: "string",
+                    message: "'status_list.uri' MUST be a string",
+                  },
+                ]
+              : [
+                  {
+                    actual: typeof statusAssertion?.["credential_hash_alg"],
+                    expected: "string",
+                    message: "'credential_hash_alg' MUST be a string",
+                  },
+                ];
 
-            log.debug(
-              "  ✅ Credential contains a status claim referencing a status list",
-            );
-          } else {
-            expect(
-              statusClaim?.["status_assertion"],
-              "V1.0 MUST contain 'status_assertion'",
-            ).toBeDefined();
-            const sa = statusClaim?.["status_assertion"] as
-              | Record<string, unknown>
-              | undefined;
-            expect(
-              typeof sa?.["credential_hash_alg"],
-              "'credential_hash_alg' MUST be a string",
-            ).toBe("string");
-
-            log.debug("  ✅ Credential contains a status assertion");
+          expect(requiredStatusField.value).toBeDefined();
+          for (const check of statusTypeChecks) {
+            expect(check.actual).toBe(check.expected);
           }
+
+          log.debug(
+            specVersion === ItWalletSpecsVersion.V1_3
+              ? "  ✅ Credential contains a status claim referencing a status list"
+              : "  ✅ Credential contains a status assertion",
+          );
         }
 
         testSuccess = true;

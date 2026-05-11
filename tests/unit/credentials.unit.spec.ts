@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { IssuerSignedDocument } from "@auth0/mdl";
 import {
   addSecondsToDate,
@@ -55,6 +56,7 @@ describe("Load Mocked Credentials", async () => {
   );
 
   it("should load a mix of valid sd-jwt and mdoc credentials V1_0", async () => {
+    let validationErrorMessage: string | undefined;
     try {
       const credentials = await loadCredentials(
         credentialsDir,
@@ -72,13 +74,12 @@ describe("Load Mocked Credentials", async () => {
     } catch (e) {
       if (e instanceof ValidationError) {
         console.error("Schema validation failed");
-        expect
-          .soft(
-            e.message.replace(": ", ":\n\t").replace(/,([A-Za-z])/g, "\n\t$1"),
-          )
-          .toBeNull();
+        validationErrorMessage = e.message
+          .replace(": ", ":\n\t")
+          .replace(/,([A-Za-z])/g, "\n\t$1");
       } else throw e;
     }
+    expect.soft(validationErrorMessage).toBeUndefined();
   });
 
   it("should create a new certificate", async () => {
@@ -97,11 +98,11 @@ describe("Load Mocked Credentials", async () => {
   });
 
   it("should create a new certificate in case the current one is actually expired", async () => {
-    (rmSync(
+    rmSync(
       "tests/mocked-data/federation_trust_anchors/localhost/trust_anchor_cert",
       { force: true },
-    ),
-      vi.useFakeTimers());
+    );
+    vi.useFakeTimers();
     const baseDate = new Date(2000, 1, 1);
     //Default expiration for the certificates is an year, so in two years it will be surely expired
     const twoYearsLater = new Date(2002, 1, 1);
@@ -586,10 +587,15 @@ describe("Generate Mocked Credentials", () => {
     );
 
     const claimsFromDecoded = decoded.disclosures?.reduce(
-      (prev, disclosure) => ({
-        ...prev,
-        [disclosure.key!]: disclosure.value,
-      }),
+      (prev, disclosure) => {
+        if (!disclosure.key) {
+          throw new Error("Disclosure key is required");
+        }
+        return {
+          ...prev,
+          [disclosure.key]: disclosure.value,
+        };
+      },
       {},
     );
 
@@ -625,10 +631,15 @@ describe("Generate Mocked Credentials", () => {
     );
 
     const claimsFromDecoded = decoded.disclosures?.reduce(
-      (prev, disclosure) => ({
-        ...prev,
-        [disclosure.key!]: disclosure.value,
-      }),
+      (prev, disclosure) => {
+        if (!disclosure.key) {
+          throw new Error("Disclosure key is required");
+        }
+        return {
+          ...prev,
+          [disclosure.key]: disclosure.value,
+        };
+      },
       {},
     );
 
@@ -834,8 +845,11 @@ describe("createVpTokenMdoc", () => {
     const documents = decode(Buffer.from(result, "base64url")).documents;
     expect(documents).toBeDefined();
 
-    const document = documents[0]!;
+    const document = documents[0];
     expect(document).toBeDefined();
+    if (!document) {
+      throw new Error("Expected device response to contain one document");
+    }
     expect(document.docType).toBe(docType);
     expect(document.issuerSigned.nameSpaces).toBeDefined();
     expect(document.issuerSigned.nameSpaces).toHaveProperty(namespace);

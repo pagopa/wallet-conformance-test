@@ -163,7 +163,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
         options,
         credentialKeyPair,
       );
-      log.debug("Credential Request:", JSON.stringify(credentialRequest, null, 2));
+      log.debug(
+        "Credential Request:",
+        JSON.stringify(credentialRequest, null, 2),
+      );
 
       log.info("Generating DPoP...");
       const dpop =
@@ -183,7 +186,10 @@ export class CredentialRequestDefaultStep extends StepFlow {
         credentialRequest,
         dpop,
       );
-      log.debug("Credential Response:", JSON.stringify(credentialResponse, null, 2));
+      log.debug(
+        "Credential Response:",
+        JSON.stringify(credentialResponse, null, 2),
+      );
 
       return {
         credentialKeyPair,

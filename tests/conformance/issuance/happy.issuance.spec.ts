@@ -570,12 +570,22 @@ testConfigs.forEach((testConfig) => {
 
         const claims = decodeJwt(token ?? "");
         const currentTime = Date.now() / 1e3;
+        const issuedAt = claims.iat;
+        const expiresAt = claims.exp;
 
-        log.debug(`  iat: ${new Date(claims.iat! * 1000).toISOString()}`);
-        log.debug(`  exp: ${new Date(claims.exp! * 1000).toISOString()}`);
+        expect(issuedAt).toEqual(expect.any(Number));
+        expect(expiresAt).toEqual(expect.any(Number));
+        if (typeof issuedAt !== "number" || typeof expiresAt !== "number") {
+          throw new Error(
+            "Access token must contain numeric iat and exp claims",
+          );
+        }
 
-        expect(claims.exp).toBeGreaterThan(currentTime);
-        expect(claims.iat).toBeLessThan(currentTime);
+        log.debug(`  iat: ${new Date(issuedAt * 1000).toISOString()}`);
+        log.debug(`  exp: ${new Date(expiresAt * 1000).toISOString()}`);
+
+        expect(expiresAt).toBeGreaterThan(currentTime);
+        expect(issuedAt).toBeLessThan(currentTime);
 
         testSuccess = true;
       } finally {
@@ -813,15 +823,19 @@ testConfigs.forEach((testConfig) => {
             "SD-JWT credential must contain cnf claim for key binding",
           ).toBeDefined();
 
-          if (payload?.cnf?.jwk) {
-            const credentialJkt = await calculateJwkThumbprint(payload.cnf.jwk);
-            log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
-            expect(credentialJkt).toBe(expectedJkt);
-          } else {
-            expect.fail(
+          const confirmationJwk = payload?.cnf?.jwk;
+          expect(
+            confirmationJwk,
+            "SD-JWT credential cnf claim must contain either jkt or jwk",
+          ).toBeDefined();
+          if (!confirmationJwk) {
+            throw new Error(
               "SD-JWT credential cnf claim must contain either jkt or jwk",
             );
           }
+          const credentialJkt = await calculateJwkThumbprint(confirmationJwk);
+          log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
+          expect(credentialJkt).toBe(expectedJkt);
         }
 
         testSuccess = true;
@@ -841,13 +855,14 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
+        let hasValidFormat = false;
         for (const credential of credentialResponse.response?.credentials ??
           []) {
           try {
             await SDJwt.extractJwt(credential.credential);
             log.debug("  Format: SD-JWT VC");
-            testSuccess = true;
-            return;
+            hasValidFormat = true;
+            break;
           } catch {
             log.debug("  Not SD-JWT, trying mdoc-CBOR...");
           }
@@ -855,14 +870,17 @@ testConfigs.forEach((testConfig) => {
           try {
             parseMdoc(Buffer.from(credential.credential));
             log.debug("  Format: mdoc-CBOR");
-            testSuccess = true;
-            return;
+            hasValidFormat = true;
+            break;
           } catch {
             log.error("  Credential is neither SD-JWT VC nor mdoc-CBOR format");
           }
         }
 
-        log.error("  No credentials found in valid format");
+        expect(hasValidFormat, "No credentials found in valid format").toBe(
+          true,
+        );
+        testSuccess = hasValidFormat;
       } finally {
         log.testCompleted(DESCRIPTION, testSuccess);
       }

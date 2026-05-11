@@ -15,6 +15,12 @@ import { DcqlQuery } from "dcql";
 
 import { issuerSignedSchema, VpTokenOptions } from "@/types";
 
+interface DcqlMdocClaim {
+  claim_name?: string;
+  namespace?: string;
+  path?: string[];
+}
+
 /**
  * Creates a Verifiable Presentation (VP) token in mdoc format.
  *
@@ -134,9 +140,10 @@ function convertDcqlToPresentationDefinition(
   }
 
   // Extract namespaces and elements from claims
+  const claims = credentialQuery.claims as readonly DcqlMdocClaim[] | undefined;
   const fields =
-    credentialQuery.claims
-      ?.map((claim: any) => {
+    claims
+      ?.map((claim) => {
         if ((!claim.namespace || !claim.claim_name) && !claim.path) {
           return null;
         }
@@ -144,7 +151,7 @@ function convertDcqlToPresentationDefinition(
         return {
           intent_to_retain: true,
           path: claim.path
-            ? [claim.path.map((p: string) => `['${p}']`).join("")]
+            ? [claim.path.map((p) => `['${p}']`).join("")]
             : [`['${claim.namespace}']`, `['${claim.claim_name}']`],
         };
       })

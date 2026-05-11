@@ -109,14 +109,17 @@ export async function buildTamperedPopJwt(
     signJwt: signJwtCallback([realUnitKey]),
   };
 
+  const publicJwk = Object.fromEntries(
+    Object.entries(realUnitKey).filter(
+      ([key]) => !["alg", "d", "dp", "dq", "p", "q", "qi"].includes(key),
+    ),
+  ) as Jwk;
+
   const signer: JwtSignerJwk = {
     alg: realUnitKey.alg ?? "ES256",
     kid: realUnitKey.kid,
     method: "jwk",
-    // Strip private key fields
-    publicJwk: (({ alg: _alg, d, dp, dq, p, q, qi, ...pub }) => pub)(
-      realUnitKey,
-    ) as Jwk,
+    publicJwk,
   };
 
   return createClientAttestationPopJwt({
