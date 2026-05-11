@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for agentic coding agents working in this repository.
+Guidance for agentic coding agents weorking in this repository.
 
 ## Project Overview
 
@@ -21,7 +21,6 @@ pnpm format:check          # Prettier check only
 pnpm lint                  # ESLint --fix
 pnpm lint:check            # ESLint check only
 pnpm pre-commit            # format + lint (run before every commit)
-pnpm pre-push              # format + lint + type-check + all tests
 
 # Tests
 pnpm test                  # All tests (vitest run)
@@ -139,12 +138,12 @@ OrchestratorError (base)            code: string
 
 When to use each class:
 
-| Situation | Class | `code` |
-| --------- | ----- | ------ |
-| A step's result is missing a required field | `StepOutputError(stepTag, missingField)` | `"STEP_OUTPUT_MISSING"` |
-| Issuer metadata lacks a required field | `IssuerMetadataError(missingField, parentObject, requiredFor)` | `"ISSUER_METADATA_MISSING_FIELD"` |
-| Requested credential ID not supported by issuer or not in offer | `CredentialConfigurationError(requestedId, reason, availableIds)` | `"CREDENTIAL_CONFIGURATION_MISMATCH"` |
-| Any other orchestrator-level error with no dedicated class | `OrchestratorError(message, "SPECIFIC_CODE")` | e.g. `"CREDENTIAL_CONFIGURATION_ID_UNRESOLVED"`, `"ENTITY_STATEMENT_CLAIMS_MISSING"`, `"AUTHORIZATION_RESPONSE_MISSING"` |
+| Situation                                                       | Class                                                             | `code`                                                                                                                   |
+| --------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| A step's result is missing a required field                     | `StepOutputError(stepTag, missingField)`                          | `"STEP_OUTPUT_MISSING"`                                                                                                  |
+| Issuer metadata lacks a required field                          | `IssuerMetadataError(missingField, parentObject, requiredFor)`    | `"ISSUER_METADATA_MISSING_FIELD"`                                                                                        |
+| Requested credential ID not supported by issuer or not in offer | `CredentialConfigurationError(requestedId, reason, availableIds)` | `"CREDENTIAL_CONFIGURATION_MISMATCH"`                                                                                    |
+| Any other orchestrator-level error with no dedicated class      | `OrchestratorError(message, "SPECIFIC_CODE")`                     | e.g. `"CREDENTIAL_CONFIGURATION_ID_UNRESOLVED"`, `"ENTITY_STATEMENT_CLAIMS_MISSING"`, `"AUTHORIZATION_RESPONSE_MISSING"` |
 
 Rules:
 
