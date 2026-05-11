@@ -163,12 +163,14 @@ export class CredentialRequestDefaultStep extends StepFlow {
         options,
         credentialKeyPair,
       );
+      log.debug("Credential Request:", JSON.stringify(credentialRequest, null, 2));
 
       log.info("Generating DPoP...");
       const dpop =
         options.dPoPOverride !== undefined
           ? options.dPoPOverride
           : await this.buildDPoP(options);
+      log.debug("DPoP JWT:", dpop);
 
       log.info(
         `Fetching Credential Response from ${options.credentialRequestEndpoint}`,
@@ -181,6 +183,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         credentialRequest,
         dpop,
       );
+      log.debug("Credential Response:", JSON.stringify(credentialResponse, null, 2));
 
       return {
         credentialKeyPair,
@@ -226,6 +229,8 @@ export class CredentialRequestDefaultStep extends StepFlow {
         options.walletAttestation,
         credentialKeyPair,
       );
+
+      this.log.debug("Key Attestation JWT created:", keyAttestation);
 
       return createCredentialRequest({
         ...commonOptions,

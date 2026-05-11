@@ -70,6 +70,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
           authorizeRequestUrl,
           callbacks: { fetch },
         });
+      log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
+      log.debug("Request Object JWT:", requestObjectJwt);
 
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: { verifyJwt },
@@ -133,6 +135,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         },
         vp_token,
       });
+      log.debug("Authorization Response created:", JSON.stringify(authorizationResponse, null, 2));
 
       return {
         authorizationRequestHeader: parsedAuthorizeRequest.header,
