@@ -29,6 +29,7 @@
     "lint:check": "eslint \"{src,tests}/**/*.{js,ts}\"",
     "pre-commit": "pnpm format && pnpm lint",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
+    "prepare": "husky",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
     "test:issuance": "vitest run --config vitest.issuance.config.mjs",
     "test:issuance:ui": "vitest --config vitest.issuance.config.mjs --ui",
