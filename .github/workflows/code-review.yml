@@ -1,0 +1,37 @@
+name: "Code Review"
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch: {}
+
+jobs:
+  code_review:
+    timeout-minutes: 5
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        with:
+          fetch-depth: 2
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda #v4.1.0
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org/"
+          node-version-file: ".node-version"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: "Code review"
+        run: pnpm code-review
