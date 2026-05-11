@@ -53,6 +53,8 @@ export class RedirectUriDefaultStep extends StepFlow {
         presentationResponseUri: options.responseUri,
       });
 
+      log.debug("Fetched redirect_uri:", redirect_uri);
+
       if (!redirect_uri) {
         return {
           redirectUri: undefined,
@@ -62,6 +64,7 @@ export class RedirectUriDefaultStep extends StepFlow {
 
       const redirectUri = new URL(redirect_uri);
       const responseCode = redirectUri.searchParams.get("response_code");
+      log.debug("Extracted response_code:", responseCode);
       if (!responseCode) {
         throw new Error("Response code is missing in the redirect URI");
       }

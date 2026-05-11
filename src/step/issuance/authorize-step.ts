@@ -102,6 +102,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         config: this.ioWalletSdkConfig,
         requestObjectJwt,
       });
+      log.debug("Parsed Authorize Request:", JSON.stringify(parsedAuthorizeRequest, null, 2));
 
       const requestObject = parsedAuthorizeRequest.payload;
       const responseUri = requestObject.response_uri;
@@ -144,6 +145,7 @@ export class AuthorizeDefaultStep extends StepFlow {
         this.log,
       );
       log.info("VP Token built successfully from DCQL query.");
+      log.debug("VP Token built:", JSON.stringify(vp_token, null, 2));
 
       log.info("Creating Authorization Response...");
       log.debug(
@@ -169,6 +171,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       const authorizationResponse = await createAuthorizationResponse(
         createAuthorizationResponseOptions,
       );
+      log.debug("Authorization Response created:", JSON.stringify(authorizationResponse, null, 2));
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
@@ -194,6 +197,7 @@ export class AuthorizeDefaultStep extends StepFlow {
       const authorizeResponse = await sendAuthorizationResponseAndExtractCode(
         sendAuthorizationResponseAndExtractCodeOptions,
       );
+      log.debug("Authorize response extracted code:", JSON.stringify(authorizeResponse, null, 2));
 
       return {
         authorizeResponse,

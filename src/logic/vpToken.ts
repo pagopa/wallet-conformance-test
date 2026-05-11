@@ -34,6 +34,8 @@ export async function buildVpToken(
   const matches: [string, DcqlMatchSuccess][] =
     getDcqlQueryMatches(queryResult);
 
+  logger?.debug("DCQL query matches:", JSON.stringify(matches, null, 2));
+
   const result: Record<string, [string, ...string[]] | string> = {};
 
   for (const [credentialQueryId, match] of matches) {

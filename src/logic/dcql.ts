@@ -150,6 +150,7 @@ export async function validateDcqlQuery(
   });
 
   const queryResult = DcqlQuery.query(parsedQuery, parsedCredentials);
+
   if (!queryResult.can_be_satisfied) {
     logger?.warn(
       `Tip: verify that the credential types in the wallet satisfy the DCQL query. Mocked credentials are stored in the "data/credentials" directory.`,
