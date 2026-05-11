@@ -87,6 +87,40 @@ Sì, il tool genera automaticamente un mock PID in formato SD-JWT VC. Note impor
 
 ---
 
+### 🛠️ Debugging e Risoluzione Avanzata (L3 Support)
+
+#### 13. Come posso aumentare il livello di dettaglio dei log (Verbose/Debug)?
+È possibile aumentare il livello di log per vedere i dettagli dello scambio di messaggi:
+- **In `config.ini`**: Impostare `log_level = DEBUG` o `log_level = TRACE` nella sezione `[logging]`.
+- **Via CLI**: Aggiungere il flag `--log-level DEBUG`.
+- **Log su file**: Configurare `log_file = ./path/to/file.log` per salvare i log persistenti.
+
+#### 14. Dove posso ispezionare i JWT scambiati (Richieste PAR, Token, Credenziali)?
+I log a livello `DEBUG` stampano i payload e gli header dei JWT. Inoltre:
+- Nel report HTML generato in `./data`, è presente una sezione di log dettagliata per ogni test.
+- Se si sviluppano test custom, è possibile usare `orchestrator.getLog()` per stampare informazioni specifiche.
+
+#### 15. Come funzionano esattamente i server di federazione locali?
+Il tool avvia i seguenti processi su porte predefinite:
+- **Trust Anchor (3001)**: Serve la Entity Configuration e l'endpoint `/fetch`.
+- **Wallet Provider (3002)**: Simula il fornitore del Wallet.
+- **Credential Issuer Mock (3003)**: Emette il mock PID.
+Questi server usano chiavi generate all'avvio (o caricate da `./data/backup`). Per ispezionare il loro comportamento, è possibile avviarli singolarmente con `pnpm ta:server`, `pnpm wp:server` o `pnpm ci:server`.
+
+#### 16. Posso simulare errori specifici nel protocollo per testare la resilienza del mio servizio?
+Sì, tramite la mappatura degli step (`[steps_mapping]`):
+1. Creare uno step custom (es. `MyTokenStep`) che altera il payload o la firma.
+2. Mapparlo nel `config.ini`: `NomeTuoTest = path/to/custom/steps`.
+3. Il tool userà la tua implementazione invece di quella standard per quel test specifico.
+
+#### 17. Il tool fallisce nel risolvere gli hostname locali. Come verifico il networking?
+Assicurarsi che:
+1. Gli hostname in `/etc/hosts` siano corretti.
+2. Se si usa Docker, `bind_address = 0.0.0.0` sia configurato in `config.ini` e gli hostname puntino all'IP dell'host.
+3. Se necessario, usare `tls_reject_unauthorized = false` per ignorare problemi di certificati sui server locali.
+
+---
+
 # English
 
 ## FAQ: IT-Wallet Conformance Tool (Service Management Support)
@@ -174,3 +208,36 @@ Yes, the tool automatically generates a mock PID in SD-JWT VC format. Important 
 - The mock issuer is `https://issuer.example.com`.
 - The service under test **must disable Trust Anchor validity checks** or load the public keys provided by the tool's local server, as keys are dynamically generated and do not belong to a real trust chain.
 
+---
+
+### 🛠️ Advanced Troubleshooting (L3 Support)
+
+#### 13. How can I increase the log verbosity (Verbose/Debug)?
+You can increase the log level to see protocol exchange details:
+- **In `config.ini`**: Set `log_level = DEBUG` or `log_level = TRACE` under the `[logging]` section.
+- **Via CLI**: Add the `--log-level DEBUG` flag.
+- **File logging**: Configure `log_file = ./path/to/file.log` to save persistent logs.
+
+#### 14. Where can I inspect the exchanged JWTs (PAR requests, Tokens, Credentials)?
+`DEBUG` level logs print JWT payloads and headers. Additionally:
+- The HTML report generated in `./data` includes a detailed log section for each test.
+- If developing custom tests, you can use `orchestrator.getLog()` to print specific information.
+
+#### 15. How do the local federation servers work exactly?
+The tool starts the following processes on predefined ports:
+- **Trust Anchor (3001)**: Serves Entity Configuration and the `/fetch` endpoint.
+- **Wallet Provider (3002)**: Simulates the Wallet Provider.
+- **Credential Issuer Mock (3003)**: Issues the mock PID.
+These servers use keys generated at startup (or loaded from `./data/backup`). To inspect their behavior, you can start them individually with `pnpm ta:server`, `pnpm wp:server`, or `pnpm ci:server`.
+
+#### 16. Can I simulate specific protocol errors to test my service's resilience?
+Yes, using step mapping (`[steps_mapping]`):
+1. Create a custom step (e.g., `MyTokenStep`) that alters the payload or signature.
+2. Map it in `config.ini`: `YourTestName = path/to/custom/steps`.
+3. The tool will use your implementation instead of the standard one for that specific test.
+
+#### 17. The tool fails to resolve local hostnames. How do I verify networking?
+Ensure that:
+1. Hostnames in `/etc/hosts` are correct.
+2. If using Docker, `bind_address = 0.0.0.0` is configured in `config.ini` and hostnames point to the host IP.
+3. If necessary, use `tls_reject_unauthorized = false` to ignore certificate issues on local servers.
