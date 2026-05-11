@@ -15,6 +15,10 @@ import { generateSRIHash } from "@/logic/sd-jwt";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
+interface MutableIssuerAuthPayload {
+  payload: Uint8Array;
+}
+
 export async function buildIssuerEntityConfiguration_V1_3(
   metadata: {
     iss: string;
@@ -90,8 +94,9 @@ export async function buildMockMdlMdoc_V1_3(
     ),
   );
   issuerSigned.issuerAuth[2] = payloadWithStatus;
-  const parsed = document as any;
-  parsed.issuerSigned.issuerAuth.payload = payloadWithStatus;
+  const parsedIssuerAuth = document.issuerSigned
+    .issuerAuth as unknown as MutableIssuerAuthPayload;
+  parsedIssuerAuth.payload = payloadWithStatus;
 
   const nameSpaces = new Map<string, Tagged[]>();
   for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<

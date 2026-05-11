@@ -6,7 +6,8 @@ import { StepFlow, StepResponse } from "../step-flow";
 
 export interface FetchMetadataExecuteResponse {
   discoveredVia?: "federation" | "oid4vci";
-  entityStatementClaims?: any;
+  // Entity statement metadata is version-dependent and consumed structurally by orchestrators/tests.
+  entityStatementClaims?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   status: number;
 }
 
