@@ -27,7 +27,7 @@
     "format:check": "prettier --check \"{src,tests}/**/*.{js,ts}\"",
     "lint": "eslint --fix \"{src,tests}/**/*.{js,ts}\"",
     "lint:check": "eslint \"{src,tests}/**/*.{js,ts}\"",
-    "pre-commit": "pnpm format && pnpm lint",
+    "pre-commit": "pnpm format && pnpm lint && pnpm types:check",
     "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
     "prepare": "husky",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
