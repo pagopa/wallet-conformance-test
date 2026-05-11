@@ -108,7 +108,10 @@ export class TokenRequestDefaultStep extends StepFlow {
         walletAttestation: options.walletAttestation.attestation,
       };
 
-      log.debug("Token request options:", JSON.stringify(fetchTokenResponseOptions, null, 2));
+      log.debug(
+        "Token request options:",
+        JSON.stringify(fetchTokenResponseOptions, null, 2),
+      );
 
       const tokenResponse = await fetchTokenResponse(fetchTokenResponseOptions);
 

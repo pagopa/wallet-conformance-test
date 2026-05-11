@@ -47,7 +47,10 @@ export class FetchMetadataDefaultStep extends StepFlow {
         credentialIssuerUrl: options.baseUrl,
       });
 
-      log.debug("Metadata fetched successfully:", JSON.stringify(result, null, 2));
+      log.debug(
+        "Metadata fetched successfully:",
+        JSON.stringify(result, null, 2),
+      );
 
       return {
         discoveredVia: result.discoveredVia,
