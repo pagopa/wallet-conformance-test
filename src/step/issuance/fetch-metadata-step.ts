@@ -47,6 +47,8 @@ export class FetchMetadataDefaultStep extends StepFlow {
         credentialIssuerUrl: options.baseUrl,
       });
 
+      log.debug("Metadata fetched successfully:", JSON.stringify(result, null, 2));
+
       return {
         discoveredVia: result.discoveredVia,
         entityStatementClaims: result.openid_federation_claims,

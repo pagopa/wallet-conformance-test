@@ -128,6 +128,8 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           ...options.createParOverrides,
         };
 
+        log.debug("Final PAR options:", JSON.stringify(finalParOptions, null, 2));
+
         log.info(
           `Sending PAR request to ${options.pushedAuthorizationRequestEndpoint}`,
         );
@@ -154,8 +156,11 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
         log.debug(`PKCE code verifier ${codeVerifier}`);
 
+        const parResponse = await fetchPushedAuthorizationResponse(fetchOptions);
+        log.debug("PAR response:", JSON.stringify(parResponse, null, 2));
+
         return {
-          ...(await fetchPushedAuthorizationResponse(fetchOptions)),
+          ...parResponse,
           codeVerifier,
         };
       },
