@@ -13,14 +13,14 @@ import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { createQuietLogger, loadConfigWithHierarchy } from "@/logic";
 import { getEncryptJweCallback } from "@/logic/jwt";
-import { partialCallbacks } from "@/logic/utils";
+import { hasObjectProperties, partialCallbacks } from "@/logic/utils";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResponse,
 } from "@/step/presentation/authorization-request-step";
+import { assertStepSuccess } from "@/step/step-flow";
 
-// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfig = await definePresentationTest(
   "AuthorizationRequestValidation",
 );
@@ -244,7 +244,12 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Tamper with the authentication tag to invalidate integrity
-      const tag = parts[4]!;
+      const tag = parts.at(4);
+      if (!tag) {
+        throw new Error(
+          "Malformed JWE compact serialization: authentication tag is missing",
+        );
+      }
       const tamperedTag =
         tag.slice(0, -4) + (tag.endsWith("AAAA") ? "BBBB" : "AAAA");
       parts[4] = tamperedTag;
@@ -282,8 +287,11 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         testConfig.authorizeStepClass,
       );
       expect(authResult.success).toBe(true);
+      assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+      hasObjectProperties(authResult, ["response"]);
 
-      const { requestObject, responseUri } = authResult.response!;
+      const { authorizationResponse, requestObject, responseUri } =
+        authResult.response;
 
       log.info(
         "→ Building JARM with a wrong nonce via createAuthorizationResponse...",
@@ -315,9 +323,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         },
         requestObject: tamperedRequestObject,
         rpJwks: { jwks: metadata.jwks },
-        vp_token:
-          authResult.response!.authorizationResponse
-            .authorizationResponsePayload.vp_token,
+        vp_token: authorizationResponse.authorizationResponsePayload.vp_token,
       });
 
       log.info("→ Posting JARM with wrong nonce to response_uri...");
@@ -443,7 +449,12 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Corrupt the ciphertext (4th part, index 3)
-      const ciphertext = parts[3]!;
+      const ciphertext = parts.at(3);
+      if (!ciphertext) {
+        throw new Error(
+          "Malformed JWE compact serialization: ciphertext is missing",
+        );
+      }
       parts[3] = ciphertext.slice(0, 4) + "TAMPERED" + ciphertext.slice(12);
       const corruptedJwe = parts.join(".");
 

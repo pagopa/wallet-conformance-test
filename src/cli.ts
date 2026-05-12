@@ -8,11 +8,14 @@
 
 import { Command } from "commander";
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
 
 import type { CliOptions } from "@/logic";
 
-import { version } from "../package.json";
+import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
+
+const nodeRequire = createRequire(import.meta.url);
 
 function runTestCommand(
   script: "test:issuance" | "test:presentation",
@@ -20,12 +23,21 @@ function runTestCommand(
 ) {
   const env = setEnvFromOptions(options);
   const tests = env.TESTS?.split(/\s*,\s*/g).filter((i) => i.length > 0) ?? [];
+  const configFile =
+    script === "test:issuance"
+      ? "vitest.issuance.config.js"
+      : "vitest.presentation.config.js";
+  const vitestBin = nodeRequire.resolve("vitest/vitest.mjs");
 
-  const result = spawnSync("pnpm", [script, ...tests], {
-    env,
-    shell: process.platform === "win32",
-    stdio: "inherit",
-  });
+  const result = spawnSync(
+    process.execPath,
+    [vitestBin, "run", "--config", join(packageRoot, configFile), ...tests],
+    {
+      env,
+      shell: process.platform === "win32",
+      stdio: "inherit",
+    },
+  );
 
   if (result.error || result.status !== 0) {
     process.exit(result.status ?? 1);
@@ -101,7 +113,7 @@ const program = new Command();
 program
   .name("wct")
   .description("Automated conformance testing for IT Wallet ecosystem services")
-  .version(version);
+  .version(readPackageVersion());
 
 // Common options for all test commands
 function addCommonOptions(command: Command): Command {
