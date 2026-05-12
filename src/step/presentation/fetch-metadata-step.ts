@@ -1,10 +1,18 @@
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt } from "jose";
+import {
+  decodeJwt,
+  decodeProtectedHeader,
+  importJWK,
+  type JWK,
+  jwtVerify,
+} from "jose";
 
-import { fetchWithRetries } from "@/logic/utils";
+import { fetchWithConfig, fetchWithRetries } from "@/logic/utils";
 
 import { StepFlow, StepResponse } from "../step-flow";
+import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
+import { createVerifyJwt } from "@/logic";
 
 export interface FetchMetadataVpExecuteResponse {
   entityStatementClaims?: any;
@@ -33,41 +41,21 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     log.info(`Fetching Relying Party metadata from ${url}`);
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
-      const res = await fetchWithRetries(url, this.config.network);
-      log.info(
-        `Request completed with status ${res.response.status} after ${res.attempts} failed attempts`,
-      );
-      const entityStatementJwt = await res.response.text();
-
-      log.info("Parsing entity statement JWT...");
-
-      let entityStatementJwtDecoded;
-      try {
-        entityStatementJwtDecoded = decodeJwt(entityStatementJwt);
-        log.debug(
-          "Decoded entity statement JWT:",
-          JSON.stringify(entityStatementJwtDecoded),
-        );
-      } catch (e) {
-        log.info("Failed to decode entity statement JWT:", e);
-      }
-
-      let entityStatementClaims;
-      try {
-        const schema = itWalletEntityStatementClaimsSchema;
-        entityStatementClaims = parseWithErrorHandling(
-          schema,
-          entityStatementJwtDecoded,
-        );
-      } catch (e) {
-        entityStatementClaims = entityStatementJwtDecoded;
-        log.info("Failed to parse entity statement claims:", e);
-      }
+      const result = await fetchMetadata({
+        callbacks: {
+          fetch: fetchWithConfig(this.config.network),
+          verifyJwt: createVerifyJwt(
+            this.config.trust.federation_trust_anchors,
+          ),
+        },
+        config: this.ioWalletSdkConfig,
+        credentialIssuerUrl: options.baseUrl,
+      });
 
       return {
-        entityStatementClaims,
-        headers: res.response.headers,
-        status: res.response.status,
+        discoveredVia: result.discoveredVia,
+        entityStatementClaims: result.openid_federation_claims,
+        status: 200,
       };
     });
   }

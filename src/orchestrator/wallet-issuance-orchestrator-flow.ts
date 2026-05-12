@@ -12,6 +12,7 @@ import {
   partialCallbacks,
   saveCredentialToDisk,
   signJwtCallback,
+  verifyJwt,
 } from "@/logic";
 import {
   AuthorizeDefaultStep,
@@ -36,6 +37,7 @@ import {
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
+import { jsonWebKeySetSchema } from "@pagopa/io-wallet-oid-federation";
 
 export class WalletIssuanceOrchestratorFlow {
   private _authorizeResponse?: AuthorizeStepResponse;
@@ -242,6 +244,14 @@ export class WalletIssuanceOrchestratorFlow {
         credentialResponse.durationMs ?? 0,
       );
       assertStepSuccess(credentialResponse, "Credential Request");
+
+      //Verify the obtained credentials are signed by one of the expected issuer keys
+      const rawCredentialIssuerKeys = entityStatementClaims?.metadata?.openid_credential_issuer?.jwks.keys
+      const credentialIssuerKeys = jsonWebKeySetSchema.parse(rawCredentialIssuerKeys)
+
+      credentialResponse.response?.credentials.forEach(credential => {
+        
+      })
 
       // Save credential to disk if configured
       // Currently, only the first credential is saved because we support requesting one at a time

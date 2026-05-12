@@ -7,9 +7,11 @@ import type {
 } from "@pagopa/io-wallet-oauth2";
 
 import { SignCallback } from "@pagopa/io-wallet-oid-federation";
+import { Fetch } from "@pagopa/io-wallet-utils";
 import {
   CompactEncrypt,
   CompactSign,
+  decodeJwt,
   importJWK,
   type JWK,
   jwtVerify,
@@ -78,29 +80,55 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
 };
 
 /**
+ * Returns a `VerifyJwtCallback` that verifies JWT signatures and, for federation
+ * signers, cryptographically validates the trust chain and optionally checks that
+ * the chain's root issuer is one of the supplied trust anchor URLs.
+ *
+ * @param trustAnchorUrls Optional list of trusted TA base URLs used for anchor binding.
+ * @returns A `VerifyJwtCallback` suitable for passing to SDK functions.
+ */
+export function createVerifyJwt(trustAnchorUrls?: string[]): VerifyJwtCallback {
+  return async (signer, jwt) => {
+    // When the federation signer lacks a trust chain, extract the JWT's iss claim
+    // so jwkFromSigner can resolve the chain via authority_hints + fetch endpoint.
+    let jwkOptions: { fetch?: Fetch; issuerUrl?: string } | undefined;
+    if (signer.method === "federation" && !signer.trustChain?.length) {
+      try {
+        const { iss } = decodeJwt(jwt.compact);
+        if (typeof iss === "string") {
+          jwkOptions = { fetch, issuerUrl: iss };
+        }
+      } catch {
+        // ignore: proceed without issuerUrl; jwkFromSigner will throw if chain absent
+      }
+    }
+
+    const publicJwk = await jwkFromSigner(signer, trustAnchorUrls, jwkOptions);
+    const key = await importJWK(publicJwk as JWK, signer.alg);
+
+    try {
+      await jwtVerify(jwt.compact, key);
+
+      return {
+        signerJwk: publicJwk as Jwk,
+        verified: true,
+      };
+    } catch {
+      return {
+        verified: false,
+      };
+    }
+  };
+}
+
+/**
  * Verifies a JWT with the signer's public key.
  *
  * @param signer The JWT signer.
  * @param jwt The JWT to verify.
  * @returns A promise that resolves to an object containing the verification result.
  */
-export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-  const publicJwk = await jwkFromSigner(signer);
-  const key = await importJWK(publicJwk as JWK, signer.alg);
-
-  try {
-    await jwtVerify(jwt.compact, key);
-
-    return {
-      signerJwk: publicJwk as Jwk,
-      verified: true,
-    };
-  } catch {
-    return {
-      verified: false,
-    };
-  }
-};
+export const verifyJwt: VerifyJwtCallback = createVerifyJwt();
 
 /**
  * Returns a callback function for JWE encryption.

@@ -12,7 +12,7 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 import { DcqlQuery } from "dcql";
 
 import { buildVpToken } from "@/logic";
-import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
+import { createVerifyJwt, getEncryptJweCallback } from "@/logic/jwt";
 import { fetchWithRetries, partialCallbacks } from "@/logic/utils";
 import { AttestationResponse, CredentialWithKey } from "@/types";
 
@@ -86,6 +86,9 @@ export class AuthorizeDefaultStep extends StepFlow {
 
     log.debug(`Starting Authorize Step`);
 
+    const verifyJwt = createVerifyJwt(
+      this.config.trust.federation_trust_anchors,
+    );
     const authorizeUrl = `${options.authorizationEndpoint}?client_id=${options.clientId}&request_uri=${options.requestUri}`;
 
     return this.execute<AuthorizeExecuteResponse>(async () => {

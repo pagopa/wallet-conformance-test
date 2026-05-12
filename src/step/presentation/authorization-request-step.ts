@@ -13,7 +13,7 @@ import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
-import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
+import { createVerifyJwt, getEncryptJweCallback } from "@/logic/jwt";
 import { partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
@@ -60,6 +60,10 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   ): Promise<AuthorizationRequestStepResponse> {
     const log = this.log.withTag(this.tag);
     log.debug("Starting authorization request step...");
+
+    const verifyJwt = createVerifyJwt(
+      this.config.trust.federation_trust_anchors,
+    );
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
       const authorizeRequestUrl =
