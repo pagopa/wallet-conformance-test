@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -13,6 +14,12 @@ import { KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
 import { CLOCK_SKEW_TOLERANCE_MS, ensureDir, VALIDITY_MS } from "./utils";
+
+const SIGNING_ALGORITHM = {
+  hash: "SHA-256",
+  name: "ECDSA",
+  namedCurve: "P-256",
+} as const satisfies EcdsaParams & EcKeyImportParams;
 
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
@@ -70,7 +77,7 @@ export async function createAndSaveCertificateWithKey(
   const privateKey = await crypto.subtle.importKey(
     "jwk",
     keyPair.privateKey,
-    { name: "ECDSA", namedCurve: "P-256" },
+    SIGNING_ALGORITHM,
     true,
     ["sign"],
   );
@@ -96,16 +103,11 @@ export async function createCertificate(
   extraExtensions: x509.Extension[] = [],
 ): Promise<x509.X509Certificate> {
   // Import JWK -> CryptoKey
-  const signingAlgorithm = {
-    hash: "SHA-256",
-    name: "ECDSA",
-    namedCurve: "P-256",
-  };
 
   const privateKey = await crypto.subtle.importKey(
     "jwk",
     keyPair.privateKey,
-    { name: "ECDSA", namedCurve: "P-256" },
+    SIGNING_ALGORITHM,
     true,
     ["sign"],
   );
@@ -113,7 +115,7 @@ export async function createCertificate(
   const publicKey = await crypto.subtle.importKey(
     "jwk",
     keyPair.publicKey,
-    { name: "ECDSA", namedCurve: "P-256" },
+    SIGNING_ALGORITHM,
     true,
     ["verify"],
   );
@@ -138,7 +140,7 @@ export async function createCertificate(
     name: subject,
     notAfter,
     notBefore,
-    signingAlgorithm,
+    signingAlgorithm: SIGNING_ALGORITHM,
   });
 
   return cert;
@@ -165,16 +167,10 @@ export async function createSignedCertificate(
   subjectName: string,
   isCA: boolean,
 ): Promise<x509.X509Certificate> {
-  const signingAlgorithm = {
-    hash: "SHA-256",
-    name: "ECDSA",
-    namedCurve: "P-256",
-  };
-
   const signingKey = await crypto.subtle.importKey(
     "jwk",
     issuerKeyPair.privateKey,
-    { name: "ECDSA", namedCurve: "P-256" },
+    SIGNING_ALGORITHM,
     true,
     ["sign"],
   );
@@ -182,7 +178,7 @@ export async function createSignedCertificate(
   const publicKey = await crypto.subtle.importKey(
     "jwk",
     subjectKeyPair.publicKey,
-    { name: "ECDSA", namedCurve: "P-256" },
+    SIGNING_ALGORITHM,
     true,
     ["verify"],
   );
@@ -191,7 +187,7 @@ export async function createSignedCertificate(
   const notAfter = new Date(notBefore.getTime() + VALIDITY_MS);
 
   const extensions: x509.Extension[] = [
-    new x509.BasicConstraintsExtension(isCA, undefined, true),
+    new x509.BasicConstraintsExtension(isCA, isCA ? 0 : undefined, true),
     new x509.KeyUsagesExtension(
       isCA
         ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.digitalSignature // eslint-disable-line no-bitwise
@@ -201,22 +197,14 @@ export async function createSignedCertificate(
     await x509.SubjectKeyIdentifierExtension.create(publicKey),
   ];
 
-  if (!isCA) {
-    extensions.push(
-      new x509.ExtendedKeyUsageExtension(
-        [x509.ExtendedKeyUsage.serverAuth, x509.ExtendedKeyUsage.clientAuth],
-        false,
-      ),
-    );
-  }
-
   const cert = await x509.X509CertificateGenerator.create({
     extensions,
     issuer: issuerSubject,
     notAfter,
     notBefore,
     publicKey,
-    signingAlgorithm,
+    serialNumber: randomBytes(16).toString("hex"),
+    signingAlgorithm: SIGNING_ALGORITHM,
     signingKey,
     subject: subjectName,
   });
@@ -224,14 +212,9 @@ export async function createSignedCertificate(
   return cert;
 }
 
-/**
- * Returns `true` if any certificate in the given base64-DER array is expired.
- */
-export function hasAnyCertificateExpired(x5cChain: string[]): boolean {
-  return x5cChain.some((cert) => hasX509CertificateExpired(cert));
-}
-
-export function hasX509CertificateExpired(x5c: string | x509.X509Certificate) {
+export function hasX509CertificateExpired(
+  x5c: string | x509.X509Certificate,
+): boolean {
   const certificate =
     typeof x5c === "string" ? new x509.X509Certificate(x5c) : x5c;
   return certificate.notAfter.getTime() < Date.now() - CLOCK_SKEW_TOLERANCE_MS;
@@ -259,11 +242,7 @@ export async function loadCertificate(
   if (!dirCreated) {
     try {
       const certPem = readFileSync(`${certPath}/${filename}`, "utf-8");
-      const certDerBase64 = certPem
-        .replace("-----BEGIN CERTIFICATE-----", "")
-        .replace("-----END CERTIFICATE-----", "")
-        .replace(/\s+/g, "")
-        .trim();
+      const certDerBase64 = pemToBase64Der(certPem);
 
       if (hasX509CertificateExpired(certDerBase64))
         throw new CertificateExpiredError(
@@ -333,6 +312,19 @@ export async function loadOrCreateCertificateWithKey(
     subject,
     extraExtensions,
   );
+}
+
+/**
+ * Strips PEM headers/footers and whitespace, returning the raw base64-DER
+ * string suitable for an x5c array entry.
+ */
+export function pemToBase64Der(pem: string): string {
+  // Single-certificate PEM only. Multi-cert bundles are not supported.
+  return pem
+    .replaceAll("-----BEGIN CERTIFICATE-----", "")
+    .replaceAll("-----END CERTIFICATE-----", "")
+    .replace(/\s+/g, "")
+    .trim();
 }
 
 /**

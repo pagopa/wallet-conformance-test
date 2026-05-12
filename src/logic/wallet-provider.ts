@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-import { CertificateExpiredError } from "@/errors";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
 import {
   createSignedCertificate,
-  hasAnyCertificateExpired,
   hasX509CertificateExpired,
+  pemToBase64Der,
 } from "./pem";
 import { ensureDir, loadJwks } from "./utils";
 
@@ -52,18 +52,14 @@ export async function loadWalletProviderCertificate(
   ensureDir(caCertPath);
   ensureDir(backupPath);
 
-  const ca1Path = `${caCertPath}/${CA_INTERMEDIATE_CERT}`;
-  const ca2Path = `${backupPath}/${WALLET_PROVIDER_CERT}`;
+  const ca1Path = path.resolve(path.join(caCertPath, CA_INTERMEDIATE_CERT));
+  const ca2Path = path.resolve(path.join(backupPath, WALLET_PROVIDER_CERT));
 
   // ── Try loading the cached chain ──────────────────────────────────────
   const cachedCA1 = loadCachedCert(ca1Path);
   const cachedCA2 = loadCachedCert(ca2Path);
 
-  if (
-    cachedCA1 &&
-    cachedCA2 &&
-    !hasAnyCertificateExpired([cachedCA2, cachedCA1])
-  ) {
+  if (cachedCA1 && cachedCA2) {
     return [cachedCA2, cachedCA1];
   }
 
@@ -80,7 +76,9 @@ export async function loadWalletProviderCertificate(
 
   // ── Generate intermediate key pair (KY1) ──────────────────────────────
   const intermediateKeyPair = await createKeys();
-  const intermediateJwksPath = `${caCertPath}/${CA_INTERMEDIATE_JWKS}`;
+  const intermediateJwksPath = path.resolve(
+    path.join(caCertPath, CA_INTERMEDIATE_JWKS),
+  );
 
   writeFileSync(intermediateJwksPath, JSON.stringify(intermediateKeyPair));
 
@@ -123,30 +121,18 @@ export async function loadWalletProviderCertificate(
 function loadCachedCert(filePath: string): string | undefined {
   if (!existsSync(filePath)) return undefined;
 
+  let certPem: string;
   try {
-    const certPem = readFileSync(filePath, "utf-8");
-    const certDerBase64 = pemToBase64Der(certPem);
+    certPem = readFileSync(filePath, "utf-8");
+  } catch (e) {
+    const err = e as { code?: string };
+    if (err.code === "ENOENT") return undefined;
 
-    if (hasX509CertificateExpired(certDerBase64)) {
-      throw new CertificateExpiredError(
-        "Certificate has expired and has to be regenerated",
-      );
-    }
-
-    return certDerBase64;
-  } catch {
-    return undefined;
+    throw e;
   }
-}
 
-/**
- * Strips PEM headers/footers and whitespace, returning the raw base64-DER
- * string suitable for an x5c array entry.
- */
-function pemToBase64Der(pem: string): string {
-  return pem
-    .replace("-----BEGIN CERTIFICATE-----", "")
-    .replace("-----END CERTIFICATE-----", "")
-    .replace(/\s+/g, "")
-    .trim();
+  const certDerBase64 = pemToBase64Der(certPem);
+  if (hasX509CertificateExpired(certDerBase64)) return undefined;
+
+  return certDerBase64;
 }
