@@ -94,7 +94,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
-        const createParOptions: CreatePushedAuthorizationRequestOptions = {
+        const createParOptions = {
           audience: options.baseUrl,
           authorization_details: options.credentialConfigurationIds.map(
             (id) => ({
@@ -111,6 +111,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             callbacks as CreatePushedAuthorizationRequestOptions["callbacks"],
           clientId: unitKey.publicKey.kid,
           codeChallengeMethodsSupported: ["S256"],
+          config: this.ioWalletSdkConfig,
           dpop: {
             signer: {
               alg: "ES256",
@@ -126,7 +127,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         const finalParOptions = {
           ...createParOptions,
           ...options.createParOverrides,
-        };
+        } as CreatePushedAuthorizationRequestOptions;
 
         log.debug(
           "Final PAR options:",
