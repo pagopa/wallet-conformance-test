@@ -28,9 +28,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const result = await orchestrator.presentation();
       assertPresentationFlowSuccess(result);
 
-      authorizationRequestResult = result.authorizationRequestResult;
-      fetchMetadataResult = result.fetchMetadataResult;
-      redirectUriResult = result.redirectUriResult;
+      authorizationRequestResult = result.authorizationRequestResponse;
+      fetchMetadataResult = result.fetchMetadataResponse;
+      redirectUriResult = result.redirectUriResponse;
 
       baseLog.info("Presentation flow completed successfully");
     } catch (e) {
@@ -60,6 +60,10 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       const entityClaims = fetchMetadataResult.response?.entityStatementClaims;
       const issuer = entityClaims?.sub;
+      expect(issuer).toBeDefined();
+      if (!issuer) {
+        throw new Error("Entity statement issuer is required");
+      }
 
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
@@ -69,13 +73,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(parsedQrCode?.clientId).toBeDefined();
 
       // The client_id should match the issuer from the entity statement
-      if (issuer) {
-        log.debug(`  Expected: ${issuer}`);
-        log.debug(`  Actual: ${parsedQrCode?.clientId}`);
-        const rawClientId = parsedQrCode?.clientId ?? "";
-        expect(normalizeClientId(rawClientId)).toBe(issuer);
-        log.debug("  ✅ client_id matches entity statement issuer");
-      }
+      log.debug(`  Expected: ${issuer}`);
+      log.debug(`  Actual: ${parsedQrCode?.clientId}`);
+      const rawClientId = parsedQrCode?.clientId ?? "";
+      expect(normalizeClientId(rawClientId)).toBe(issuer);
+      log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
       expect(parsedQrCode?.requestUri).toBeDefined();
@@ -111,13 +113,13 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response?.requestObject).toBeDefined();
 
+      const requestObjectEndpointMethods =
+        verifierMetadata?.request_object_endpoint_methods ?? ["GET"];
+
       // If request_object_endpoint_methods is not specified or includes GET
       if (verifierMetadata?.request_object_endpoint_methods) {
         log.debug(
           `  Supported methods: ${verifierMetadata.request_object_endpoint_methods.join(", ")}`,
-        );
-        expect(verifierMetadata.request_object_endpoint_methods).toContain(
-          "GET",
         );
         log.debug("  ✅ GET method is supported");
       } else {
@@ -125,6 +127,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
           "  ℹ request_object_endpoint_methods not specified (GET is default)",
         );
       }
+      expect(requestObjectEndpointMethods).toContain("GET");
 
       testSuccess = true;
     } finally {
@@ -275,33 +278,39 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(dcqlQuery?.credentials).toBeDefined();
 
-      // Check each credential in DCQL
-      let walletAttestationFound = false;
-      dcqlQuery?.credentials.forEach((credential: unknown, index: number) => {
-        if (
-          credential &&
-          typeof credential === "object" &&
-          "meta" in credential
-        ) {
+      const walletAttestationCredentials = (dcqlQuery?.credentials ?? [])
+        .map((credential: unknown, index: number) => ({
+          credential,
+          index,
+        }))
+        .filter(({ credential }: { credential: unknown; index: number }) => {
+          if (
+            !credential ||
+            typeof credential !== "object" ||
+            !("meta" in credential)
+          ) {
+            return false;
+          }
           const cred = credential as {
-            claims?: unknown[];
             meta?: { vct_values?: string[] };
           };
+          return cred.meta?.vct_values?.includes(
+            "urn:eu.europa.ec.eudi:wallet_attestation:1",
+          );
+        });
 
-          // Wallet Attestation credentials should not have claims parameter
-          if (
-            cred.meta?.vct_values?.includes(
-              "urn:eu.europa.ec.eudi:wallet_attestation:1",
-            )
-          ) {
-            walletAttestationFound = true;
-            log.debug(`  Credential ${index + 1}: Wallet Attestation detected`);
-            log.debug(`    vct: ${cred.meta?.vct_values?.join(", ")}`);
-            expect(cred.claims).toBeUndefined();
-            log.debug("    ✅ claims parameter is not present (as required)");
-          }
-        }
-      });
+      for (const { credential, index } of walletAttestationCredentials) {
+        const cred = credential as {
+          claims?: unknown[];
+          meta?: { vct_values?: string[] };
+        };
+        log.debug(`  Credential ${index + 1}: Wallet Attestation detected`);
+        log.debug(`    vct: ${cred.meta?.vct_values?.join(", ")}`);
+        expect(cred.claims).toBeUndefined();
+        log.debug("    ✅ claims parameter is not present (as required)");
+      }
+
+      const walletAttestationFound = walletAttestationCredentials.length > 0;
 
       if (walletAttestationFound) {
         log.debug("  ✅ Wallet Attestation validated successfully");
@@ -335,31 +344,39 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(dcqlQuery?.credentials).toBeDefined();
 
-      // Check that all credentials have meta.vct_values
-      let hasVctValues = false;
-      let credentialIndex = 0;
-      dcqlQuery?.credentials.forEach((credential: unknown) => {
-        credentialIndex++;
-        if (
-          credential &&
-          typeof credential === "object" &&
-          "meta" in credential
-        ) {
+      const credentialsWithVctValues = (dcqlQuery?.credentials ?? [])
+        .map((credential: unknown, index: number) => ({
+          credential,
+          index,
+        }))
+        .filter(({ credential }: { credential: unknown; index: number }) => {
+          if (
+            !credential ||
+            typeof credential !== "object" ||
+            !("meta" in credential)
+          ) {
+            return false;
+          }
           const cred = credential as {
             meta?: { vct_values?: string[] };
           };
-          if (cred.meta?.vct_values) {
-            hasVctValues = true;
-            log.debug(`  Credential ${credentialIndex}:`);
-            expect(Array.isArray(cred.meta.vct_values)).toBe(true);
-            log.debug(`    vct_values: ${cred.meta.vct_values.join(", ")}`);
-            expect(cred.meta.vct_values.length).toBeGreaterThan(0);
-            log.debug(
-              `    ✅ vct_values is valid (${cred.meta.vct_values.length} type(s))`,
-            );
-          }
-        }
-      });
+          return Boolean(cred.meta?.vct_values);
+        });
+
+      for (const { credential, index } of credentialsWithVctValues) {
+        const cred = credential as {
+          meta: { vct_values: string[] };
+        };
+        log.debug(`  Credential ${index + 1}:`);
+        expect(Array.isArray(cred.meta.vct_values)).toBe(true);
+        log.debug(`    vct_values: ${cred.meta.vct_values.join(", ")}`);
+        expect(cred.meta.vct_values.length).toBeGreaterThan(0);
+        log.debug(
+          `    ✅ vct_values is valid (${cred.meta.vct_values.length} type(s))`,
+        );
+      }
+
+      const hasVctValues = credentialsWithVctValues.length > 0;
 
       expect(hasVctValues).toBe(true);
       log.debug("  ✅ All credentials have valid vct_values");

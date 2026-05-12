@@ -257,6 +257,10 @@ export async function loadOrCreateCertificateWithKey(
 async function privateKeyToPem(key: CryptoKey): Promise<string> {
   const exported = await crypto.subtle.exportKey("pkcs8", key);
   const b64 = Buffer.from(exported).toString("base64");
-  const lines = b64.match(/.{1,64}/g)!.join("\n");
+  const chunks = b64.match(/.{1,64}/g);
+  if (!chunks) {
+    throw new Error("Unable to export empty private key");
+  }
+  const lines = chunks.join("\n");
   return `-----BEGIN PRIVATE KEY-----\n${lines}\n-----END PRIVATE KEY-----\n`;
 }

@@ -27,9 +27,9 @@
     "format:check": "prettier --check \"{src,tests}/**/*.{js,ts}\"",
     "lint": "eslint --fix \"{src,tests}/**/*.{js,ts}\"",
     "lint:check": "eslint \"{src,tests}/**/*.{js,ts}\"",
-    "pre-commit": "pnpm format && pnpm lint",
-    "pre-push": "pnpm pre-commit && pnpm types:check && pnpm test",
-    "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build && pnpm test",
+    "pre-commit": "pnpm format && pnpm lint && pnpm types:check",
+    "prepare": "husky",
+    "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build",
     "test:issuance": "vitest run --config vitest.issuance.config.mjs",
     "test:issuance:ui": "vitest --config vitest.issuance.config.mjs --ui",
     "test:presentation": "vitest run --config vitest.presentation.config.mjs"

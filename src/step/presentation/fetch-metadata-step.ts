@@ -7,7 +7,8 @@ import { fetchWithRetries } from "@/logic/utils";
 import { StepFlow, StepResponse } from "../step-flow";
 
 export interface FetchMetadataVpExecuteResponse {
-  entityStatementClaims?: any;
+  // Entity statement metadata is version-dependent and consumed structurally by orchestrators/tests.
+  entityStatementClaims?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   headers?: Headers;
   status: number;
 }

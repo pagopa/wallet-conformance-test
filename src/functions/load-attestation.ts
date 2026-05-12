@@ -1,7 +1,5 @@
 import {
   WalletAttestationOptions,
-  WalletAttestationOptionsV1_0,
-  WalletAttestationOptionsV1_3,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
 import {
@@ -118,7 +116,7 @@ const buildAttestationOptions = async (
 
   switch (wallet.wallet_version) {
     case ItWalletSpecsVersion.V1_0: {
-      const attestationOptions: WalletAttestationOptionsV1_0 = {
+      const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
         authenticatorAssuranceLevel: "substantial",
         signer: { ...signerBase, method: "federation", trustChain },
@@ -127,7 +125,7 @@ const buildAttestationOptions = async (
     }
     case ItWalletSpecsVersion.V1_3: {
       const x5c = await loadWalletProviderCertificate(wallet, providerKeyPair);
-      const attestationOptions: WalletAttestationOptionsV1_3 = {
+      const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
         signer: { ...signerBase, method: "x5c", trustChain, x5c },
       };
