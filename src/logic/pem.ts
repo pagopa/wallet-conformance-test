@@ -194,7 +194,7 @@ export async function createSignedCertificate(
     new x509.BasicConstraintsExtension(isCA, undefined, true),
     new x509.KeyUsagesExtension(
       isCA
-        ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.digitalSignature
+        ? x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.digitalSignature // eslint-disable-line no-bitwise
         : x509.KeyUsageFlags.digitalSignature,
       true,
     ),
