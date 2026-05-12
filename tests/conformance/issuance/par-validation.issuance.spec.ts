@@ -17,9 +17,11 @@ import {
 import { useTestSummary } from "#/helpers/use-test-summary";
 import {
   createPushedAuthorizationRequest,
+  CreatePushedAuthorizationRequestOptions,
   fetchPushedAuthorizationResponse,
   type PushedAuthorizationRequest,
 } from "@pagopa/io-wallet-oauth2";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
@@ -53,6 +55,7 @@ testConfigs.forEach((testConfig) => {
     let pushedAuthorizationRequestEndpoint: string;
     let authorizationServer: string;
     let credentialIssuer: string;
+    let ioWalletSdkConfig: IoWalletSdkConfig;
 
     // -----------------------------------------------------------------------
     // Shared setup – run once per credential type
@@ -67,6 +70,10 @@ testConfigs.forEach((testConfig) => {
       pushedAuthorizationRequestEndpoint =
         ctx.pushedAuthorizationRequestEndpoint;
       credentialIssuer = ctx.credentialIssuer;
+
+      ioWalletSdkConfig = new IoWalletSdkConfig({
+        itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
+      });
     });
 
     useTestSummary(baseLog, testConfig.name);
@@ -87,6 +94,7 @@ testConfigs.forEach((testConfig) => {
       const config = loadConfigWithHierarchy();
       const freshPop = await createFreshPop({
         authorizationServer,
+        ioWalletSdkConfig,
         walletAttestationResponse,
       });
       const step = new StepClass(config, createQuietLogger());
@@ -461,6 +469,7 @@ testConfigs.forEach((testConfig) => {
           },
           clientId: walletAttestationResponse.unitKey.publicKey.kid,
           codeChallengeMethodsSupported: ["S256"],
+          config: ioWalletSdkConfig,
           dpop: {
             signer: {
               alg: "ES256" as const,
@@ -471,7 +480,7 @@ testConfigs.forEach((testConfig) => {
           pkceCodeVerifier: "example_code_verifier",
           redirectUri: "https://client.example.org/cb",
           responseMode: "query",
-        };
+        } as CreatePushedAuthorizationRequestOptions;
 
         const signed: PushedAuthorizationRequest =
           await createPushedAuthorizationRequest(parOptions);
@@ -503,6 +512,7 @@ testConfigs.forEach((testConfig) => {
             callbacks: { fetch: customFetch },
             clientAttestationDPoP: await createFreshPop({
               authorizationServer,
+              ioWalletSdkConfig,
               walletAttestationResponse,
             }),
             pushedAuthorizationRequest: signed,
@@ -756,6 +766,7 @@ testConfigs.forEach((testConfig) => {
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
+          ioWalletSdkConfig,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           useWrongKey: true,
         });
@@ -790,6 +801,7 @@ testConfigs.forEach((testConfig) => {
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
+          ioWalletSdkConfig,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           wrongAud: "https://attacker.example.com",
         });
@@ -823,6 +835,7 @@ testConfigs.forEach((testConfig) => {
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
           expiresAt: pastExpiresAt,
+          ioWalletSdkConfig,
           issuedAt: pastIssuedAt,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
         });

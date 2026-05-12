@@ -8,6 +8,7 @@ import {
   createTokenDPoP,
   Jwk,
 } from "@pagopa/io-wallet-oauth2";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import {
@@ -75,8 +76,12 @@ testConfigs.forEach((testConfig) => {
       fakedPop?: { jwt: string; signerJwk: Jwk },
     ): Promise<TokenRequestResponse> {
       const config = loadConfigWithHierarchy();
+      const ioWalletSdkConfig = new IoWalletSdkConfig({
+        itWalletSpecsVersion: config.wallet.wallet_version,
+      });
       const freshPop = await createFreshPop({
         authorizationServer,
+        ioWalletSdkConfig,
         walletAttestationResponse,
       });
       const entityStatementClaims =
