@@ -12,20 +12,20 @@ importers:
         specifier: ^3.0.0
         version: 3.0.1
       '@pagopa/io-wallet-oauth2':
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 1.4.1-alpha-20260512105135
+        version: 1.4.1-alpha-20260512105135
       '@pagopa/io-wallet-oid-federation':
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 1.4.1-alpha-20260512105135
+        version: 1.4.1-alpha-20260512105135
       '@pagopa/io-wallet-oid4vci':
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 1.4.1-alpha-20260512105135
+        version: 1.4.1-alpha-20260512105135
       '@pagopa/io-wallet-oid4vp':
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 1.4.1-alpha-20260512105135
+        version: 1.4.1-alpha-20260512105135
       '@pagopa/io-wallet-utils':
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 1.4.1-alpha-20260512105135
+        version: 1.4.1-alpha-20260512105135
       '@peculiar/x509':
         specifier: ^1.14.3
         version: 1.14.3
@@ -404,20 +404,20 @@ packages:
     peerDependencies:
       eslint: ^9.39.2
 
-  '@pagopa/io-wallet-oauth2@1.3.0':
-    resolution: {integrity: sha512-4rroPfsAQji2IW1bm5ab2bn7npm2O9JZxnQNBHSMkY1yUyWIu+W4tahHcI5b01gie6hFdHq1Xa15FAPsWV3gGA==}
+  '@pagopa/io-wallet-oauth2@1.4.1-alpha-20260512105135':
+    resolution: {integrity: sha512-5pOZ2fvUHpERDjOs0rrYBMUP9Rb32oPSUuAEKioevPPW32t4hqqjx6xsmop+eu6yfVbJvTGu82QGXNUYihyKxQ==}
 
-  '@pagopa/io-wallet-oid-federation@1.3.0':
-    resolution: {integrity: sha512-XD82GtGkMfThouYR84bRmFofDz17p05q4b7q20ZvSrPX8ADKeYXuyR7yRDkg9VXmDPU8VnvvzL8owE0N14cDcA==}
+  '@pagopa/io-wallet-oid-federation@1.4.1-alpha-20260512105135':
+    resolution: {integrity: sha512-1zgouTLQCmOr30D27r1o5NMUG+0w5XKGZFICM/bWwU3d2ZyF2+h+tekNjo9QFssPxjnpo744ng2mZoUjzrbGfA==}
 
-  '@pagopa/io-wallet-oid4vci@1.3.0':
-    resolution: {integrity: sha512-J1Ad6x9HQCcZibpnSzAu43Dgep7O4Sxe0a2C/gyS54ANNd/1YMUdeMEQV+OoRvao4gt2dbV2ya5NB5rts/dwiA==}
+  '@pagopa/io-wallet-oid4vci@1.4.1-alpha-20260512105135':
+    resolution: {integrity: sha512-EUBmrbMW8BGpFnbMSPr/XvKzMLqDI40WCU91qHOIjXx3nMlobhr26ryTIhdUfRbFLdrmFXgzrdGyNHzRKIydLw==}
 
-  '@pagopa/io-wallet-oid4vp@1.3.0':
-    resolution: {integrity: sha512-S95pV24SCvQwJcqoRgfaOERmsaMnGdV8ObjSAC/CEIyoFDs315G8rJWsIkHpfpazcwJP8EdoECX527SNUpuz+A==}
+  '@pagopa/io-wallet-oid4vp@1.4.1-alpha-20260512105135':
+    resolution: {integrity: sha512-8Bch0dw6WBXM1dcuzVnxp5ZZ2WM2DX5ANluDUgaSGMzNFZvnCsixdyaUxnzIzzzbbwHEuoSUyQjwMnOezXz6uA==}
 
-  '@pagopa/io-wallet-utils@1.3.0':
-    resolution: {integrity: sha512-LMZ+SzDfcsli5NfRahuUVFKETDMbChJuoa9QNNiVN4LtAdb4R5QYZyzZwNG18qXJ3+/fW9T+T6QXRSzsRsyj3g==}
+  '@pagopa/io-wallet-utils@1.4.1-alpha-20260512105135':
+    resolution: {integrity: sha512-J6gb7mnQFP2IVhyflEGCAfy9l+xV4R8rCcOOefYPWxKnYgj7alK6yQlzSoVPnhTRYgLJVfIq/fwI3j7rFyB8XA==}
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
@@ -2125,43 +2125,43 @@ snapshots:
       - supports-color
       - vitest
 
-  '@pagopa/io-wallet-oauth2@1.3.0':
+  '@pagopa/io-wallet-oauth2@1.4.1-alpha-20260512105135':
     dependencies:
       '@openid4vc/oauth2': 0.4.3
       '@openid4vc/utils': 0.4.3
-      '@pagopa/io-wallet-oid-federation': 1.3.0
-      '@pagopa/io-wallet-utils': 1.3.0
+      '@pagopa/io-wallet-oid-federation': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-utils': 1.4.1-alpha-20260512105135
       js-base64: 3.7.8
       zod: 4.3.6
 
-  '@pagopa/io-wallet-oid-federation@1.3.0':
+  '@pagopa/io-wallet-oid-federation@1.4.1-alpha-20260512105135':
     dependencies:
-      '@pagopa/io-wallet-utils': 1.3.0
+      '@pagopa/io-wallet-utils': 1.4.1-alpha-20260512105135
       buffer: 6.0.3
       zod: 4.3.6
 
-  '@pagopa/io-wallet-oid4vci@1.3.0':
+  '@pagopa/io-wallet-oid4vci@1.4.1-alpha-20260512105135':
     dependencies:
       '@openid4vc/oauth2': 0.4.3
       '@openid4vc/openid4vci': 0.4.3
       '@openid4vc/utils': 0.4.3
-      '@pagopa/io-wallet-oauth2': 1.3.0
-      '@pagopa/io-wallet-oid-federation': 1.3.0
-      '@pagopa/io-wallet-oid4vp': 1.3.0
-      '@pagopa/io-wallet-utils': 1.3.0
+      '@pagopa/io-wallet-oauth2': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-oid-federation': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-oid4vp': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-utils': 1.4.1-alpha-20260512105135
       zod: 4.3.6
 
-  '@pagopa/io-wallet-oid4vp@1.3.0':
+  '@pagopa/io-wallet-oid4vp@1.4.1-alpha-20260512105135':
     dependencies:
       '@openid4vc/oauth2': 0.4.3
       '@openid4vc/openid4vp': 0.4.3
       '@openid4vc/utils': 0.4.3
-      '@pagopa/io-wallet-oauth2': 1.3.0
-      '@pagopa/io-wallet-oid-federation': 1.3.0
-      '@pagopa/io-wallet-utils': 1.3.0
+      '@pagopa/io-wallet-oauth2': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-oid-federation': 1.4.1-alpha-20260512105135
+      '@pagopa/io-wallet-utils': 1.4.1-alpha-20260512105135
       zod: 4.3.6
 
-  '@pagopa/io-wallet-utils@1.3.0':
+  '@pagopa/io-wallet-utils@1.4.1-alpha-20260512105135':
     dependencies:
       '@openid4vc/oauth2': 0.4.3
       '@openid4vc/utils': 0.4.3
@@ -2518,16 +2518,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.58.0(typescript@5.9.3)':
-    dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.0(typescript@5.9.3)
-      '@typescript-eslint/types': 8.58.0
-      debug: 4.4.3
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-    optional: true
-
   '@typescript-eslint/scope-manager@8.58.0':
     dependencies:
       '@typescript-eslint/types': 8.58.0
@@ -2536,11 +2526,6 @@ snapshots:
   '@typescript-eslint/tsconfig-utils@8.58.0(typescript@5.8.3)':
     dependencies:
       typescript: 5.8.3
-
-  '@typescript-eslint/tsconfig-utils@8.58.0(typescript@5.9.3)':
-    dependencies:
-      typescript: 5.9.3
-    optional: true
 
   '@typescript-eslint/type-utils@8.58.0(eslint@9.39.4)(typescript@5.8.3)':
     dependencies:
@@ -2586,15 +2571,15 @@ snapshots:
 
   '@typescript-eslint/typescript-estree@8.58.0(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/project-service': 8.58.0(typescript@5.9.3)
-      '@typescript-eslint/tsconfig-utils': 8.58.0(typescript@5.9.3)
+      '@typescript-eslint/project-service': 8.58.0(typescript@5.8.3)
+      '@typescript-eslint/tsconfig-utils': 8.58.0(typescript@5.8.3)
       '@typescript-eslint/types': 8.58.0
       '@typescript-eslint/visitor-keys': 8.58.0
       debug: 4.4.3
       minimatch: 10.2.5
       semver: 7.7.4
       tinyglobby: 0.2.15
-      ts-api-utils: 2.5.0(typescript@5.9.3)
+      ts-api-utils: 2.5.0(typescript@5.8.3)
       typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
