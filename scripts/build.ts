@@ -1,6 +1,5 @@
 import * as esbuild from "esbuild";
-import { glob } from "glob";
-import { rm } from "node:fs/promises";
+import { glob, rm } from "node:fs/promises";
 
 const production = process.argv.includes("--production");
 
@@ -23,13 +22,12 @@ await esbuild.build({
   packages: "external",
 });
 
-const testEntryPoints = await glob(
-  [
+const testEntryPoints = await Array.fromAsync(
+  glob([
     "tests/conformance/**/*.spec.ts",
     "tests/global-setup.ts",
     "tests/setup-tls.ts",
-  ],
-  { windowsPathsNoEscape: true },
+  ]),
 );
 
 await esbuild.build({

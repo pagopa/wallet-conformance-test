@@ -1,10 +1,10 @@
 {
-  "version": "1.1.5",
   "name": "@pagopa/wallet-conformance-tool",
-  "type": "module",
   "description": "Automated conformance testing for IT Wallet ecosystem services",
-  "main": "./dist/cli.js",
   "packageManager": "pnpm@10.23.0",
+  "version": "1.1.5",
+  "type": "module",
+  "main": "./dist/cli.js",
   "engines": {
     "node": ">=22.19.0"
   },
@@ -39,10 +39,17 @@
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build",
     "test:issuance": "vitest run --config vitest.issuance.config.js",
     "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
-    "test:presentation": "vitest run --config vitest.presentation.config.js"
+    "test:presentation": "vitest run --config vitest.presentation.config.js",
+    "prepublish": "pnpm build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "wallet",
+    "conformance",
+    "testing",
+    "tool",
+    "cli"
+  ],
+  "author": "PagoPa S.p.A.",
   "license": "ISC",
   "devDependencies": {
     "@pagopa/eslint-config": "^5.0.1",
@@ -78,7 +85,6 @@
     "consola": "^3.4.2",
     "dcql": "^3.0.0",
     "express": "^5.2.1",
-    "glob": "^13.0.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "zod": "^4.3.6",
