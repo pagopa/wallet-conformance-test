@@ -151,7 +151,7 @@ export async function parseCredentialStatus(
     );
 
   switch (credential.typ) {
-    case "dc+sd-jwt":
+    case "dc+sd-jwt": {
       const sdJwtPayload = credential.parsed.jwt.payload;
       if (!sdJwtPayload || typeof sdJwtPayload !== "object")
         throw new Error("parsed sd-jwt has empty or malformed payload");
@@ -159,7 +159,8 @@ export async function parseCredentialStatus(
       if (!sdJwtPayload.status) return null;
 
       return sdJwtPayload.status as StatusClaim;
-    case "mso_mdoc":
+    }
+    case "mso_mdoc": {
       const mdocPayloadTag = decode(
         credential.parsed.issuerSigned.issuerAuth.payload,
       );
@@ -177,6 +178,7 @@ export async function parseCredentialStatus(
       if (!mdocPayload.status) return null;
 
       return mdocPayload.status as StatusClaim;
+    }
     default:
       return null;
   }

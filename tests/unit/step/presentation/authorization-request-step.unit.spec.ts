@@ -52,6 +52,14 @@ vi.mock("@/logic/jwt", async (importOriginal) => {
   };
 });
 
+function getCreateAuthorizationResponseOptions() {
+  const [firstCall] = vi.mocked(createAuthorizationResponse).mock.calls;
+  if (!firstCall) {
+    throw new Error("createAuthorizationResponse was not called");
+  }
+  return firstCall[0];
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -196,7 +204,7 @@ describe("AuthorizationRequestDefaultStep", () => {
       });
 
       expect(createAuthorizationResponse).toHaveBeenCalledOnce();
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
 
       // The array must be forwarded to rpJwks so the SDK can pick the first value
       expect(callArgs.rpJwks.encrypted_response_enc_values_supported).toEqual([
@@ -223,7 +231,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
 
       expect(callArgs.authorization_encrypted_response_enc).toBe(
         "A128CBC-HS256",
@@ -246,7 +254,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
 
       expect(callArgs.authorization_encrypted_response_enc).toBeUndefined();
     });
@@ -266,7 +274,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
 
       expect(callArgs.rpJwks.encrypted_response_enc_values_supported).toEqual([
         "A256GCM",
@@ -296,7 +304,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
       expect(callArgs.authorization_encrypted_response_alg).toBe(
         "ECDH-ES+A256KW",
       );
@@ -317,7 +325,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
       expect(callArgs.authorization_encrypted_response_alg).toBeUndefined();
     });
   });
@@ -468,7 +476,7 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      const callArgs = vi.mocked(createAuthorizationResponse).mock.calls[0]![0];
+      const callArgs = getCreateAuthorizationResponseOptions();
       expect(callArgs.rpJwks.jwks).toEqual(
         (baseVerifierMetadata as unknown as { jwks: unknown }).jwks,
       );

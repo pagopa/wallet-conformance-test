@@ -81,8 +81,9 @@ export async function buildMockMdlMdoc_V1_0(
     ),
   );
   issuerSigned.issuerAuth[2] = payloadWithStatus;
-  const parsed = document as any;
-  parsed.issuerSigned.issuerAuth.payload = payloadWithStatus;
+  Object.assign(document.issuerSigned.issuerAuth, {
+    payload: payloadWithStatus,
+  });
 
   const nameSpaces = new Map<string, Tagged[]>();
   for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
@@ -103,7 +104,7 @@ export async function buildMockMdlMdoc_V1_0(
 
   return {
     compact,
-    parsed,
+    parsed: document,
     typ: "mso_mdoc",
   };
 }

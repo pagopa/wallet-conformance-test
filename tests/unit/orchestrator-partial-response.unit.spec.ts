@@ -526,8 +526,8 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       baseUrl: "https://verifier.example.com/",
     });
     expect(result.success).toBe(false);
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
-    expect(result.authorizationRequestResult).toEqual(
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResponse).toEqual(
       authorizationRequestFailure,
     );
     expect(result.error?.message).toBe(
@@ -554,12 +554,12 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       'Unsupported client_id format: "custom-client-id". Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). ',
     );
     expect(fetchMetadataRun).not.toHaveBeenCalled();
-    expect(result.fetchMetadataResult).toBeUndefined();
-    expect(result.authorizationRequestResult).toBeUndefined();
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.fetchMetadataResponse).toBeUndefined();
+    expect(result.authorizationRequestResponse).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 1 failure — returns partial response with only fetchMetadataResult", async () => {
+  test("step 1 failure — returns partial response with only fetchMetadataResponse", async () => {
     const fetchMetadataFailure = makeStepFailure(
       "verifier metadata unreachable",
     );
@@ -575,12 +575,12 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.success).toBe(false);
     // assertStepSuccess now throws the step's own error immediately
     expect(result.error?.message).toContain("verifier metadata unreachable");
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataFailure);
-    expect(result.authorizationRequestResult).toBeUndefined();
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataFailure);
+    expect(result.authorizationRequestResponse).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 2 (authorizationRequest) failure — fetchMetadataResult populated, authorizationRequestResult carries error", async () => {
+  test("step 2 (authorizationRequest) failure — fetchMetadataResponse populated, authorizationRequestResponse carries error", async () => {
     const fetchMetadataSuccess = makeStepSuccess({
       discoveredVia: "federation" as const,
       entityStatementClaims: {
@@ -619,15 +619,15 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     expect(result.error?.message).toBe(
       "verifier rejected the authorization request",
     );
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
     expect(
-      result.authorizationRequestResult,
-      "authorizationRequestResult must be populated even on failure",
+      result.authorizationRequestResponse,
+      "authorizationRequestResponse must be populated even on failure",
     ).toEqual(authorizationRequestFailure);
-    expect(result.redirectUriResult).toBeUndefined();
+    expect(result.redirectUriResponse).toBeUndefined();
   });
 
-  test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResult carries error", async () => {
+  test("step 3 (redirectUri) failure — authorizationRequestResult populated, redirectUriResponse carries error", async () => {
     const fetchMetadataSuccess = makeStepSuccess({
       discoveredVia: "federation" as const,
       entityStatementClaims: {
@@ -674,13 +674,13 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       "presentation() must return success: false on redirectUri step failure",
     ).toBe(false);
     expect(result.error?.message).toBe("redirect URI endpoint returned 400");
-    expect(result.fetchMetadataResult).toEqual(fetchMetadataSuccess);
-    expect(result.authorizationRequestResult).toEqual(
+    expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
+    expect(result.authorizationRequestResponse).toEqual(
       authorizationRequestSuccess,
     );
     expect(
-      result.redirectUriResult,
-      "redirectUriResult must be populated even on failure",
+      result.redirectUriResponse,
+      "redirectUriResponse must be populated even on failure",
     ).toEqual(redirectUriFailure);
   });
 
