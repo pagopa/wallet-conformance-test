@@ -24,6 +24,14 @@ const exclude = useBuiltTests
   ? configDefaults.exclude.filter((pattern) => pattern !== "**/dist/**")
   : configDefaults.exclude;
 
+export function buildIncludePattern(testType, testsDir, userConfigured) {
+  const normalizedTestsDir = testsDir.replace(/\\/g, "/");
+
+  return userConfigured
+    ? `${normalizedTestsDir}/**/*.${testType}.spec.{js,ts}`
+    : `${normalizedTestsDir}/**/*.${testType}.spec.${useBuiltTests ? "js" : "ts"}`;
+}
+
 /**
  * Create Vitest configuration for a specific test type
  *
@@ -32,9 +40,11 @@ const exclude = useBuiltTests
  */
 export function createTestConfig(testType) {
   const { testsDir, userConfigured } = getTestsDir(testType);
-  const includePattern = userConfigured
-    ? `${testsDir}/**/*.${testType}.spec.{js,ts}`
-    : `${testsDir}/**/*.${testType}.spec.${useBuiltTests ? "js" : "ts"}`;
+  const includePattern = buildIncludePattern(
+    testType,
+    testsDir,
+    userConfigured,
+  );
 
   log.debug(`[${testType}] Tests directory: ${testsDir}`);
   log.debug(`[${testType}] Include pattern: ${includePattern}`);
