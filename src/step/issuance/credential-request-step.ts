@@ -117,6 +117,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     const x5c = await loadWalletProviderCertificate(
       this.config.wallet,
+      this.config.trust,
       providerKey,
     );
 
