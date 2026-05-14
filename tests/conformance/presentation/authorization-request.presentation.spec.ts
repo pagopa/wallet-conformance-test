@@ -243,13 +243,11 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       // A JWE compact serialization has 5 base64url-encoded parts: header.ek.iv.ciphertext.tag
       const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
+
       // Tamper with the authentication tag to invalidate integrity
-      const tag = parts.at(4);
-      if (!tag) {
-        throw new Error(
-          "Malformed JWE compact serialization: authentication tag is missing",
-        );
-      }
+      const tag = parts[4];
+      if (!tag) throw new Error("received malformed jarm jwe");
+
       const tamperedTag =
         tag.slice(0, -4) + (tag.endsWith("AAAA") ? "BBBB" : "AAAA");
       parts[4] = tamperedTag;
@@ -290,8 +288,10 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
       hasObjectProperties(authResult, ["response"]);
 
-      const { authorizationResponse, requestObject, responseUri } =
-        authResult.response;
+      if (!authResult.response)
+        throw new Error("auth request was not successful");
+
+      const { requestObject, responseUri } = authResult.response;
 
       log.info(
         "→ Building JARM with a wrong nonce via createAuthorizationResponse...",
@@ -323,7 +323,9 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         },
         requestObject: tamperedRequestObject,
         rpJwks: { jwks: metadata.jwks },
-        vp_token: authorizationResponse.authorizationResponsePayload.vp_token,
+        vp_token:
+          authResult.response.authorizationResponse.authorizationResponsePayload
+            .vp_token,
       });
 
       log.info("→ Posting JARM with wrong nonce to response_uri...");
@@ -449,12 +451,9 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       const parts = validJarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Corrupt the ciphertext (4th part, index 3)
-      const ciphertext = parts.at(3);
-      if (!ciphertext) {
-        throw new Error(
-          "Malformed JWE compact serialization: ciphertext is missing",
-        );
-      }
+      const ciphertext = parts[3];
+      if (!ciphertext) throw new Error("received malformed jarm jwe");
+
       parts[3] = ciphertext.slice(0, 4) + "TAMPERED" + ciphertext.slice(12);
       const corruptedJwe = parts.join(".");
 
