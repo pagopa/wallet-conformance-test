@@ -93,6 +93,7 @@ export const buildWpEntityConfiguration = async (
 
 const buildAttestationOptions = async (
   wallet: Config["wallet"],
+  trust: Config["trust"],
   providerKeyPair: KeyPair,
   unitPublicKey: KeyPair["publicKey"],
   trustChain: [string, string],
@@ -124,7 +125,11 @@ const buildAttestationOptions = async (
       return attestationOptions;
     }
     case ItWalletSpecsVersion.V1_3: {
-      const x5c = await loadWalletProviderCertificate(wallet, providerKeyPair);
+      const x5c = await loadWalletProviderCertificate(
+        wallet,
+        trust,
+        providerKeyPair,
+      );
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
         signer: { ...signerBase, method: "x5c", trustChain, x5c },
@@ -171,6 +176,7 @@ const createAttestation = async (
 
   const attestationOptions = await buildAttestationOptions(
     wallet,
+    trust,
     providerKeyPair,
     unitKeyPair.publicKey,
     [wpEntityConfiguration, taEntityConfiguration],
