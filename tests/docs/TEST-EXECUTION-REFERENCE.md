@@ -182,6 +182,44 @@ These are negative tests that verify the token endpoint enforces all required va
 
 - **CI_083**: Sends a credential request where the DPoP proof is signed by a different key than the one bound to the access token (the `cnf.jkt` in the token does not match the DPoP proof's `jwk` thumbprint). Verifies that the issuer checks the DPoP key consistency between the access token binding and the current DPoP proof.
 
+#### SD-JWT VC Data Model Tests
+
+These tests verify the structural and cryptographic properties of issued SD-JWT VC credentials. Each test decodes the credential returned by a successful issuance flow and asserts conformance with the SD-JWT VC specification. Tests are silently skipped if the issuance response contains no SD-JWT VC credentials (e.g. the issuer only returned mdoc-CBOR).
+
+- **CI_120**: Extracts the `x5c` certificate chain from the JOSE header of each issued SD-JWT credential, reconstructs the issuer public key from the leaf certificate, and calls `jwtVerify` on the issuer-signed JWT portion. Verifies that the credential is cryptographically signed with the issuer's private key and that the signature can be validated against the key embedded in the certificate chain.
+
+- **CI_121**: Extracts the `vct` claim from each SD-JWT VC payload and fetches the type metadata document from `/.well-known/type-metadata?vct=<vct>`. Verifies that the endpoint returns HTTP 200 and that the returned document's `vct` field matches the credential's `vct`. Confirms that the credential references a reachable and consistent type metadata document.
+
+- **CI_122**: Parses the JWT payload of each SD-JWT VC credential using a Zod schema and verifies the presence and correct types of all mandatory claims: `_sd` (non-empty array of digests), `_sd_alg` (string), `exp` (number), `iss` (URL string), `issuing_authority` (string), `issuing_country` (2-character string), and `vct` (string).
+
+- **CI_123**: Reads the `_sd_alg` claim from each SD-JWT VC payload and asserts that it is one of the three supported hash algorithms: `sha-256`, `sha-384`, or `sha-512`. Verifies the issuer uses a recognized algorithm identifier for the selective disclosure digest function.
+
+- **CI_124**: Iterates over all disclosures attached to each SD-JWT credential. For every disclosure that has a named key (i.e. a key–value disclosure, not an array-element disclosure), asserts that the key does not appear as a plain top-level field in the JWT payload. This verifies the correct SD separation between non-disclosed claims (kept in the payload) and selectively-disclosed claims (protected by digest only).
+
+- **CI_125**: For each disclosure attached to an SD-JWT credential, re-computes its hash using the `_sd_alg` algorithm declared in the payload and the `@sd-jwt/core` `digest` function. Asserts that every recomputed hash appears in the `_sd` array of the JWT payload, verifying end-to-end digest integrity for all disclosures.
+
+- **CI_126**: Recursively walks the entire JWT payload and collects every `_sd` array found at any nesting level. Asserts that at least one `_sd` array is present and that every `_sd` array found — whether at the top level or inside a nested object — is non-empty and contains only non-empty string digests. This verifies §4.2.4 of the SD-JWT specification: every claim at each level of the JSON structure is explicitly marked as either selectively disclosable or not, and as a consequence, the `_sd` claim can legitimately appear multiple times at different levels within the SD-JWT.
+
+- **CI_127**: Verifies structural integrity of array-element digest positioning as required by Section 4.2.4.2 of the SD-JWT specification. For every `{"...": "<digest>"}` placeholder found in any payload array (Pattern B), asserts: (1) the placeholder object has exactly one key (`...`) with no additional keys; (2) the value is a non-empty base64url string; (3) no digest value appears more than once across all placeholders; (4) every array-element disclosure's recomputed digest (2-element `[salt, value]` disclosures, identified by the absence of a claim name) is present as a placeholder at its exact array position. Decoy digests — placeholders with no matching disclosure, permitted by §4.2.5 — are accepted and logged. The test is silently skipped for credentials that use only Pattern A (whole-array disclosures) or contain no array disclosures.
+
+- **CI_128**: Collects all `{"...": "<digest>"}` placeholder entries from payload arrays (Pattern B). For each array-element disclosure (a disclosure without a named key), re-computes its hash and asserts the result matches one of the collected placeholder digests. Vacuously passes when Pattern B is not used in the credential.
+
+- **CI_129**: Verifies that array-valued disclosures are accessible and well-formed after decoding. For Pattern A (whole-array disclosures), asserts each disclosure's value is a non-empty array. For Pattern B (element-level disclosures), confirms at least one keyless disclosure is present. The test is skipped if the credential contains no array disclosures at all.
+
+- **CI_130**: Splits the raw credential string by `~` and validates the Combined Format for Issuance structure. Asserts: the string contains at least 3 parts (issuer-signed JWT + one or more disclosures + trailing empty segment from the final `~`); the issuer-signed JWT is a valid compact JWS (three base64url parts separated by `.`); each disclosure segment is a non-empty base64url string; and the last segment is empty (confirming the mandatory trailing tilde).
+
+- **CI_131**: Reads the JOSE header of each SD-JWT VC's issuer-signed JWT and checks all mandatory parameters: `typ` must equal `"dc+sd-jwt"`; `alg` must be one of `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, or `PS512`; `kid` must be a non-empty string; and `x5c` must be a non-empty array. Verifies the header is compliant with the SD-JWT VC specification.
+
+- **CI_132**: Reads the JWT payload and verifies all mandatory claims with type constraints: `iss` (non-empty string), `exp` (integer greater than the current Unix timestamp), `vct` (non-empty string), `issuing_authority` (string), `issuing_country` (exactly 2-character string, ISO 3166-1 Alpha-2), `_sd` (non-empty array), `_sd_alg` (string), and `status` (non-null object). More comprehensive than CI_122, this test also validates `exp` is in the future and `issuing_country` length.
+
+- **CI_133**: Reads the `status.status_list` object from each SD-JWT VC payload and asserts that it contains `idx` (a finite integer) and `uri` (a non-empty string). This is a V1.3-only check; the test is skipped when the wallet is configured for spec version V1.0, which uses `status.status_assertion` instead.
+
+- **CI_134**: Fetches the type metadata document at `/.well-known/type-metadata?vct=<vct>` for each issued SD-JWT credential. If the endpoint returns 404 or 400, the test passes (the endpoint is optional). If reachable, verifies HTTP 200 and that the `vct` field in the response matches the credential's `vct`. Similar to CI_121 but with an explicit skip path for implementations that do not expose the endpoint.
+
+- **CI_134a**: For each SD-JWT credential, uppercases the `vct` value and queries the type metadata endpoint with the modified URI. Verifies that the endpoint either returns a non-200 status (rejecting the unknown type) or returns a document whose `vct` differs from the original. This confirms the endpoint performs case-sensitive matching of `vct` URIs, as required by the SD-JWT VC specification. Skipped when the `vct` is already all-uppercase or when the endpoint is unreachable.
+
+- **CI_135**: Fetches the type metadata document and validates its structure against the SD-JWT-VC §6.2 schema using Zod. Asserts that `vct` is present (required), and that all optional fields — `name`, `description`, `display`, `claims`, `schema`, `schema_uri` — have the correct types when present. Skipped when the endpoint returns a non-200 status.
+
 ---
 
 ### Presentation Flow Tests
