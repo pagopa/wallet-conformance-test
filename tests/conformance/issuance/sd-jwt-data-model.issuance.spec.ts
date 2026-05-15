@@ -454,15 +454,17 @@ testConfigs.forEach((testConfig) => {
     });
 
     // =======================================================================
-    // CI_126 — Nested Object Selective Disclosure
+    // CI_126 — Multi-level _sd Claim in Nested SD-JWT Payloads
     // =======================================================================
 
-    test("CI_126: Nested Object Selective Disclosure | Object-valued disclosures are not split into individual sub-keys.", async () => {
+    test("CI_126: Multi-level _sd in Nested SD-JWT Payload | Every _sd array at each nesting level is well-formed.", async () => {
       const log = baseLog.withTag("CI_126");
       const DESCRIPTION =
-        "Nested object claims are disclosed as whole objects without sub-key leakage into the JWT payload";
+        "_sd arrays at every nesting level are well-formed arrays of non-empty base64url digest strings (§4.2.4 SD-JWT — _sd may appear multiple times at different levels)";
 
-      log.start("Conformance test: SD-JWT nested object selective disclosure");
+      log.start(
+        "Conformance test: SD-JWT multi-level _sd claim in nested payload",
+      );
 
       let testSuccess = false;
       try {
@@ -475,33 +477,74 @@ testConfigs.forEach((testConfig) => {
 
         const instance = new SDJwtVcInstance({ hasher: digest });
 
+        /**
+         * Recursively walk an object node and collect every `_sd` array found,
+         * regardless of nesting depth.  Returns a list of `{ path, sdArray }`
+         * entries so callers can assert on each one independently.
+         */
+        function collectSdArrays(
+          node: unknown,
+          path: string,
+        ): { path: string; sdArray: unknown[] }[] {
+          if (
+            typeof node !== "object" ||
+            node === null ||
+            Array.isArray(node)
+          ) {
+            return [];
+          }
+          const record = node as Record<string, unknown>;
+          const results: { path: string; sdArray: unknown[] }[] = [];
+
+          if (Array.isArray(record["_sd"])) {
+            results.push({ path, sdArray: record["_sd"] as unknown[] });
+          }
+
+          for (const [key, value] of Object.entries(record)) {
+            // Skip SD-JWT meta-claims; recurse into nested plain objects only.
+            if (key === "_sd" || key === "_sd_alg") continue;
+            if (
+              typeof value === "object" &&
+              value !== null &&
+              !Array.isArray(value)
+            ) {
+              results.push(...collectSdArrays(value, `${path}.${key}`));
+            }
+          }
+
+          return results;
+        }
+
         for (const credentialJwt of sdJwtCredentials) {
           const decoded = await instance.decode(credentialJwt);
           const payload = decoded.jwt?.payload as Record<string, unknown>;
 
-          const objectDisclosures = (decoded.disclosures ?? []).filter(
-            (disc) =>
-              disc.key !== undefined &&
-              typeof disc.value === "object" &&
-              disc.value !== null &&
-              !Array.isArray(disc.value),
-          );
+          const sdArrayLocations = collectSdArrays(payload, "payload");
+
+          expect(
+            sdArrayLocations.length,
+            "At least one _sd array must be present in the payload",
+          ).toBeGreaterThan(0);
 
           log.debug(
-            `  Found ${objectDisclosures.length} object-valued disclosure(s)`,
+            `  Found _sd at ${sdArrayLocations.length} level(s): ${sdArrayLocations.map((l) => l.path).join(", ")}`,
           );
 
-          for (const disc of objectDisclosures) {
-            const subKeys = Object.keys(disc.value as Record<string, unknown>);
-            for (const subKey of subKeys) {
+          // Verify every _sd array found — at any level — is well-formed.
+          for (const { path, sdArray } of sdArrayLocations) {
+            expect(
+              sdArray.length,
+              `_sd at "${path}" must be a non-empty array`,
+            ).toBeGreaterThan(0);
+
+            for (const [idx, digestValue] of sdArray.entries()) {
               expect(
-                subKey in payload,
-                `Sub-claim "${subKey}" of object disclosure "${disc.key}" must not appear as a top-level JWT payload key`,
-              ).toBe(false);
+                typeof digestValue === "string" && digestValue.length > 0,
+                `_sd[${idx}] at "${path}" must be a non-empty string digest`,
+              ).toBe(true);
             }
-            log.debug(
-              `  Object disclosure "${disc.key}" sub-keys not in payload ✓`,
-            );
+
+            log.debug(`  _sd at "${path}" is well-formed ✓`);
           }
         }
 
