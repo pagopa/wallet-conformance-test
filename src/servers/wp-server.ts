@@ -4,6 +4,7 @@ import * as https from "node:https";
 import { buildWpEntityConfiguration } from "@/functions/load-attestation";
 import {
   buildJwksPath,
+  isMainModule,
   loadConfigWithHierarchy,
   loadJwks,
   loadOrCreateServerCertificate,
@@ -65,7 +66,7 @@ export const createServer = (config: Config): express.Express => {
   return app;
 };
 
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   const config = loadConfigWithHierarchy();
   const app = createServer(config);
   loadOrCreateServerCertificate(config)

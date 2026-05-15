@@ -1,6 +1,7 @@
 import express from "express";
 import * as https from "node:https";
 
+import { isMainModule } from "@/logic/entrypoint";
 import {
   createSubordinateCredentialIssuerMetadata,
   createSubordinateWalletUnitMetadata,
@@ -77,7 +78,7 @@ export const createServer = (config: Config): express.Express => {
   return app;
 };
 
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   const config = loadConfigWithHierarchy();
   const app = createServer(config);
   loadOrCreateServerCertificate(config)
