@@ -637,7 +637,7 @@ testConfigs.forEach((testConfig) => {
               "→ CI_128 skipped: Pattern B not used (no array element placeholders found)",
             );
             testSuccess = true;
-            return;
+            continue;
           }
 
           log.debug(
@@ -711,7 +711,7 @@ testConfigs.forEach((testConfig) => {
               "→ CI_129 skipped: no array disclosures found in this credential",
             );
             testSuccess = true;
-            return;
+            continue;
           }
 
           for (const disc of arrayDisclosures) {
@@ -1054,9 +1054,9 @@ testConfigs.forEach((testConfig) => {
           const vct = payload["vct"] as string | undefined;
 
           if (!vct) {
-            log.debug("→ CI_134 skipped: vct claim not found in payload");
-            testSuccess = true;
-            return;
+            throw new Error(
+              "CI_134 failed: vct claim not found in credential payload",
+            );
           }
 
           const metadataUrl = `${credentialIssuer}/.well-known/type-metadata?vct=${encodeURIComponent(vct)}`;
@@ -1124,9 +1124,9 @@ testConfigs.forEach((testConfig) => {
           const vct = payload["vct"] as string | undefined;
 
           if (!vct) {
-            log.debug("→ CI_134a skipped: vct claim not found");
-            testSuccess = true;
-            return;
+            throw new Error(
+              "CI_134a failed: vct claim not found in credential payload",
+            );
           }
 
           const upperVct = vct.toUpperCase();
@@ -1213,7 +1213,7 @@ testConfigs.forEach((testConfig) => {
             schema_uri: z.string().optional(),
             vct: z.string(),
           })
-          .passthrough();
+          .loose();
 
         const fetcher = fetchWithConfig(orchestrator.getConfig().network);
 
@@ -1222,9 +1222,9 @@ testConfigs.forEach((testConfig) => {
           const vct = payload["vct"] as string | undefined;
 
           if (!vct) {
-            log.debug("→ CI_135 skipped: vct claim not found");
-            testSuccess = true;
-            return;
+            throw new Error(
+              "→ CI_135 failed: vct claim not found in credential payload",
+            );
           }
 
           const metadataUrl = `${credentialIssuer}/.well-known/type-metadata?vct=${encodeURIComponent(vct)}`;
