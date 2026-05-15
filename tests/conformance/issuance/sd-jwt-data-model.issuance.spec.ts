@@ -1032,11 +1032,9 @@ testConfigs.forEach((testConfig) => {
           try {
             response = await fetcher(metadataUrl);
           } catch (e) {
-            log.debug(
-              `→ CI_134 skipped: network error — ${e instanceof Error ? e.message : String(e)}`,
+            throw new Error(
+              `CI_134 failed: unable to fetch type metadata from ${metadataUrl} — ${e instanceof Error ? e.message : String(e)}`,
             );
-            testSuccess = true;
-            return;
           }
 
           if (response.status === 404 || response.status === 400) {
