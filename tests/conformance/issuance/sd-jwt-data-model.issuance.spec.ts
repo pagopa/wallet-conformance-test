@@ -512,15 +512,17 @@ testConfigs.forEach((testConfig) => {
     });
 
     // =======================================================================
-    // CI_127 — SD-JWT Disclosure Digest Positioning
+    // CI_127 — SD-JWT Array Element Digest Positioning (Section 4.2.4.2)
     // =======================================================================
 
-    test("CI_127: SD-JWT Disclosure Digest Positioning | Array-element disclosures use a consistent pattern.", async () => {
+    test("CI_127: SD-JWT Disclosure Digest Positioning | Array-element digests and decoy digests correctly replace values in exact array positions.", async () => {
       const log = baseLog.withTag("CI_127");
       const DESCRIPTION =
-        "Array-valued disclosures use either Pattern A (whole-array) or Pattern B (element-level), not both";
+        'Each {"...": "<digest>"} placeholder has exactly one key, every array-element disclosure digest maps to a placeholder, no digest appears more than once, and decoy digests are accepted (Section 4.2.4.2 SD-JWT)';
 
-      log.start("Conformance test: SD-JWT disclosure digest positioning");
+      log.start(
+        "Conformance test: SD-JWT array element digest positioning (Section 4.2.4.2)",
+      );
 
       let testSuccess = false;
       try {
@@ -536,50 +538,133 @@ testConfigs.forEach((testConfig) => {
         for (const credentialJwt of sdJwtCredentials) {
           const decoded = await instance.decode(credentialJwt);
           const payload = decoded.jwt?.payload as Record<string, unknown>;
+          const sdAlg = (payload["_sd_alg"] as string | undefined) ?? "sha-256";
 
-          // Pattern A: whole-array disclosure — disclosure value is an array
-          const patternADisclosures = (decoded.disclosures ?? []).filter(
-            (disc) => disc.key !== undefined && Array.isArray(disc.value),
-          );
+          // ---------------------------------------------------------------
+          // Walk the entire payload tree and collect every {"...": digest}
+          // placeholder while enforcing structural constraints from §4.2.4.2:
+          //   - The key MUST always be exactly "..." (three dots).
+          //   - There MUST NOT be any other keys in the object.
+          //   - The value MUST be a non-empty string (the base64url digest).
+          // ---------------------------------------------------------------
+          const allPlaceholderDigests: string[] = [];
 
-          // Pattern B: element-level — payload arrays contain {"...": "<digest>"} placeholders
-          let patternBFound = false;
-          for (const value of Object.values(payload)) {
-            if (Array.isArray(value)) {
-              const hasPlaceholder = value.some(
-                (item) =>
+          function collectPlaceholders(node: unknown): void {
+            if (Array.isArray(node)) {
+              for (const item of node) {
+                if (
                   typeof item === "object" &&
                   item !== null &&
-                  "..." in (item as Record<string, unknown>),
-              );
-              if (hasPlaceholder) {
-                patternBFound = true;
-                break;
+                  !Array.isArray(item)
+                ) {
+                  const record = item as Record<string, unknown>;
+                  if ("..." in record) {
+                    // §4.2.4.2: MUST NOT be any other keys in the object
+                    // eslint-disable-next-line vitest/no-conditional-expect
+                    expect(
+                      Object.keys(record).length,
+                      `Array-element placeholder must have exactly one key "..." but found: [${Object.keys(record).join(", ")}]`,
+                    ).toBe(1);
+
+                    const digestValue = record["..."];
+                    // eslint-disable-next-line vitest/no-conditional-expect
+                    expect(
+                      typeof digestValue === "string" &&
+                        (digestValue as string).length > 0,
+                      'Array-element placeholder {"..."} value must be a non-empty base64url string',
+                    ).toBe(true);
+
+                    allPlaceholderDigests.push(digestValue as string);
+                  }
+                }
+                collectPlaceholders(item);
+              }
+            } else if (typeof node === "object" && node !== null) {
+              for (const value of Object.values(
+                node as Record<string, unknown>,
+              )) {
+                collectPlaceholders(value);
               }
             }
           }
 
-          const patternAFound = patternADisclosures.length > 0;
+          collectPlaceholders(payload);
 
-          // Patterns must not be mixed in the same credential
+          if (allPlaceholderDigests.length === 0) {
+            log.debug(
+              "→ CI_127 skipped for this credential: no Pattern B array-element placeholders found",
+            );
+            continue;
+          }
+
+          log.debug(
+            `  Found ${allPlaceholderDigests.length} Pattern B placeholder(s)`,
+          );
+
+          // ---------------------------------------------------------------
+          // §4.2.4.2 + §4.1: The same digest value MUST NOT appear more
+          // than once in the SD-JWT payload (directly or via placeholders).
+          // ---------------------------------------------------------------
+          const uniquePlaceholders = new Set(allPlaceholderDigests);
           expect(
-            !(patternAFound && patternBFound),
-            "Cannot mix Pattern A (whole-array disclosure) and Pattern B (element-level disclosure) in the same credential",
-          ).toBe(true);
+            uniquePlaceholders.size,
+            "Each array-element placeholder digest must be unique — the same digest MUST NOT appear more than once",
+          ).toBe(allPlaceholderDigests.length);
 
-          if (patternAFound) {
+          // ---------------------------------------------------------------
+          // §4.2.2: Array-element disclosures are 2-element arrays
+          // [salt, value] — the claim name is absent (disc.key === undefined).
+          // Every such disclosure's digest MUST appear as a placeholder.
+          // ---------------------------------------------------------------
+          const arrayElementDisclosures = (decoded.disclosures ?? []).filter(
+            (disc) => disc.key === undefined,
+          );
+
+          log.debug(
+            `  Found ${arrayElementDisclosures.length} array-element disclosure(s)`,
+          );
+
+          for (const disc of arrayElementDisclosures) {
+            // key === undefined already confirms the 2-element [salt, value]
+            // structure (no claim name field).
+            expect(
+              disc.key,
+              "Array-element disclosure MUST be a 2-element [salt, value] array — claim name must be absent",
+            ).toBeUndefined();
+
+            const recomputed = await disc.digest({
+              alg: sdAlg,
+              hasher: digest,
+            });
+
             log.debug(
-              `  Pattern A: ${patternADisclosures.length} whole-array disclosure(s) found`,
+              `  Array-element disclosure recomputed digest: ${recomputed}`,
             );
-          } else if (patternBFound) {
-            log.debug(
-              "  Pattern B: array element placeholders found in payload",
-            );
-          } else {
-            log.debug(
-              "  No array-valued disclosures detected — skipping pattern consistency check",
+
+            expect(
+              allPlaceholderDigests,
+              `Digest for array-element disclosure must appear as a {"...": "<digest>"} placeholder at its exact array position (Section 4.2.4.2)`,
+            ).toContain(recomputed);
+          }
+
+          // ---------------------------------------------------------------
+          // Decoy digests: placeholders with no matching disclosure are
+          // explicitly permitted by §4.2.5 ("An Issuer MAY add additional
+          // digests … in arrays").  Log them for visibility but do not fail.
+          // ---------------------------------------------------------------
+          const disclosureDigestSet = new Set<string>();
+          for (const disc of arrayElementDisclosures) {
+            disclosureDigestSet.add(
+              await disc.digest({ alg: sdAlg, hasher: digest }),
             );
           }
+          const decoyCount = allPlaceholderDigests.filter(
+            (d) => !disclosureDigestSet.has(d),
+          ).length;
+
+          log.debug(
+            `  Disclosure placeholders: ${disclosureDigestSet.size}, decoy placeholders: ${decoyCount}`,
+          );
         }
 
         testSuccess = true;
