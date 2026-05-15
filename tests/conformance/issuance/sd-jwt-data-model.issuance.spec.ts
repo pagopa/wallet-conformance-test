@@ -47,9 +47,26 @@ testConfigs.forEach((testConfig) => {
       assertIssuanceFlowSuccess(result);
 
       credentialResponse = result.credentialResponse;
-      credentialIssuer =
+
+      const resolvedCredentialIssuer =
         result.fetchMetadataResponse.response?.entityStatementClaims?.metadata
-          ?.openid_credential_issuer?.credential_issuer ?? "";
+          ?.openid_credential_issuer?.credential_issuer;
+
+      expect(
+        resolvedCredentialIssuer,
+        "Unable to resolve credential_issuer from issuer metadata. These tests require an absolute credential issuer base URL.",
+      ).toBeTruthy();
+
+      const credentialIssuerParseResult = z.string().url().safeParse(
+        resolvedCredentialIssuer,
+      );
+
+      expect(
+        credentialIssuerParseResult.success,
+        "Resolved credential_issuer must be a valid absolute URL.",
+      ).toBe(true);
+
+      credentialIssuer = credentialIssuerParseResult.data;
 
       ioWalletSdkConfig = new IoWalletSdkConfig({
         itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
