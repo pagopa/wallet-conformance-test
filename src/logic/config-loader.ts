@@ -232,41 +232,55 @@ function normalizeRuntimePaths<TConfig extends Partial<Config>>(
   const normalized = structuredClone(config) as TConfig;
 
   if (normalized.wallet) {
-    normalized.wallet.wallet_attestations_storage_path =
-      resolveConfigRelativePath(
-        normalized.wallet.wallet_attestations_storage_path,
+    if (
+      typeof normalized.wallet.wallet_attestations_storage_path === "string"
+    ) {
+      normalized.wallet.wallet_attestations_storage_path =
+        resolveConfigRelativePath(
+          normalized.wallet.wallet_attestations_storage_path,
+          baseDir,
+        );
+    }
+    if (typeof normalized.wallet.credentials_storage_path === "string") {
+      normalized.wallet.credentials_storage_path = resolveConfigRelativePath(
+        normalized.wallet.credentials_storage_path,
         baseDir,
       );
-    normalized.wallet.credentials_storage_path = resolveConfigRelativePath(
-      normalized.wallet.credentials_storage_path,
-      baseDir,
-    );
-    normalized.wallet.backup_storage_path = resolveConfigRelativePath(
-      normalized.wallet.backup_storage_path,
-      baseDir,
-    );
+    }
+    if (typeof normalized.wallet.backup_storage_path === "string") {
+      normalized.wallet.backup_storage_path = resolveConfigRelativePath(
+        normalized.wallet.backup_storage_path,
+        baseDir,
+      );
+    }
   }
 
   if (normalized.trust) {
-    normalized.trust.ca_cert_path = resolveConfigRelativePath(
-      normalized.trust.ca_cert_path,
-      baseDir,
-    );
-    normalized.trust.federation_trust_anchors_jwks_path =
-      resolveConfigRelativePath(
-        normalized.trust.federation_trust_anchors_jwks_path,
+    if (typeof normalized.trust.ca_cert_path === "string") {
+      normalized.trust.ca_cert_path = resolveConfigRelativePath(
+        normalized.trust.ca_cert_path,
         baseDir,
       );
+    }
+    if (
+      typeof normalized.trust.federation_trust_anchors_jwks_path === "string"
+    ) {
+      normalized.trust.federation_trust_anchors_jwks_path =
+        resolveConfigRelativePath(
+          normalized.trust.federation_trust_anchors_jwks_path,
+          baseDir,
+        );
+    }
   }
 
-  if (normalized.trust_anchor?.tls_cert_dir) {
+  if (typeof normalized.trust_anchor?.tls_cert_dir === "string") {
     normalized.trust_anchor.tls_cert_dir = resolveConfigRelativePath(
       normalized.trust_anchor.tls_cert_dir,
       baseDir,
     );
   }
 
-  if (normalized.logging) {
+  if (normalized.logging && typeof normalized.logging.log_file === "string") {
     normalized.logging.log_file = resolveConfigRelativePath(
       normalized.logging.log_file,
       baseDir,

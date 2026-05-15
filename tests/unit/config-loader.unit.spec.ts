@@ -150,6 +150,37 @@ describe("loadConfigWithHierarchy – path resolution", () => {
     expect(config.issuance.url).toBe("https://local-issuer.example");
   });
 
+  it("should merge partial runtime sections without requiring path fields", () => {
+    writeFileSync(
+      path.join(process.cwd(), "config.ini"),
+      [
+        "[wallet]",
+        "wallet_name = Local Wallet",
+        "",
+        "[trust]",
+        "certificate_subject = CN=local-trust",
+        "",
+        "[logging]",
+        "log_level = debug",
+      ].join("\n"),
+    );
+
+    const config = loadConfigWithHierarchy({}, DEFAULT_INI);
+
+    expect(config.wallet.wallet_name).toBe("Local Wallet");
+    expect(config.trust.certificate_subject).toBe("CN=local-trust");
+    expect(config.logging.log_level).toBe("debug");
+    expect(config.wallet.backup_storage_path).toBe(
+      path.join(packageRoot, "data/backup"),
+    );
+    expect(config.trust.ca_cert_path).toBe(
+      path.join(packageRoot, "data/trust_anchor/localhost"),
+    );
+    expect(config.logging.log_file).toBe(
+      path.join(packageRoot, "data/logs/test_run.log"),
+    );
+  });
+
   it("should resolve user INI relative paths from the INI directory", () => {
     const configDir = path.join(process.cwd(), "custom");
     const configPath = path.join(configDir, "config.ini");
