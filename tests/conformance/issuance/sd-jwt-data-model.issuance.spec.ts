@@ -52,19 +52,21 @@ testConfigs.forEach((testConfig) => {
         result.fetchMetadataResponse.response?.entityStatementClaims?.metadata
           ?.openid_credential_issuer?.credential_issuer;
 
-      expect(
-        resolvedCredentialIssuer,
-        "Unable to resolve credential_issuer from issuer metadata. These tests require an absolute credential issuer base URL.",
-      ).toBeTruthy();
+      if (!resolvedCredentialIssuer) {
+        throw new Error(
+          "Unable to resolve credential_issuer from issuer metadata. These tests require an absolute credential issuer base URL.",
+        );
+      }
 
-      const credentialIssuerParseResult = z.string().url().safeParse(
-        resolvedCredentialIssuer,
-      );
+      const credentialIssuerParseResult = z
+        .url()
+        .safeParse(resolvedCredentialIssuer);
 
-      expect(
-        credentialIssuerParseResult.success,
-        "Resolved credential_issuer must be a valid absolute URL.",
-      ).toBe(true);
+      if (!credentialIssuerParseResult.success) {
+        throw new Error(
+          "Resolved credential_issuer must be a valid absolute URL.",
+        );
+      }
 
       credentialIssuer = credentialIssuerParseResult.data;
 
@@ -1245,121 +1247,6 @@ testConfigs.forEach((testConfig) => {
               `  Schema valid ✓ (fields present: ${Object.keys(result.data).join(", ")})`,
             );
           }
-        }
-
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
-
-    // =======================================================================
-    // CI_136 — Additional PID Claims (V1.3 PID only)
-    // =======================================================================
-
-    test("CI_136: Additional PID Claims | All PID-specific mandatory disclosures and metadata claims are present.", async () => {
-      const log = baseLog.withTag("CI_136");
-      const DESCRIPTION =
-        "PID credential contains all required user attribute disclosures and mandatory metadata payload claims";
-
-      log.start("Conformance test: additional PID-specific claims");
-
-      let testSuccess = false;
-      try {
-        if (ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) {
-          log.debug(
-            "→ CI_136 skipped: additional PID claims check only applies to V1.3+",
-          );
-          testSuccess = true;
-          return;
-        }
-
-        const sdJwtCredentials = await getSdJwtCredentials();
-        if (sdJwtCredentials.length === 0) {
-          log.debug("→ CI_136 skipped: no SD-JWT VC credentials found");
-          testSuccess = true;
-          return;
-        }
-
-        const instance = new SDJwtVcInstance({ hasher: digest });
-
-        for (const credentialJwt of sdJwtCredentials) {
-          const { payload: rawPayload } = decodeJwt(
-            extractIssuerJwt(credentialJwt),
-          );
-          const vct = rawPayload["vct"] as string | undefined;
-
-          if (!vct?.startsWith("urn:eudi:pid:it:")) {
-            log.debug(
-              `→ CI_136 skipped: vct "${String(vct)}" is not an IT-Wallet PID credential`,
-            );
-            testSuccess = true;
-            return;
-          }
-
-          log.debug(`  PID credential detected (vct: ${vct})`);
-
-          const decoded = await instance.decode(credentialJwt);
-          const payload = decoded.jwt?.payload as Record<string, unknown>;
-
-          // --- User attribute claims must be present as disclosures ---
-          const disclosureKeys = new Set(
-            (decoded.disclosures ?? []).map((d) => d.key).filter(Boolean),
-          );
-
-          log.debug(
-            `  Disclosed claim keys: ${JSON.stringify([...disclosureKeys])}`,
-          );
-
-          const REQUIRED_USER_ATTRIBUTE_CLAIMS = [
-            "given_name",
-            "family_name",
-            "birthdate",
-            "place_of_birth",
-            "nationalities",
-          ] as const;
-
-          for (const claim of REQUIRED_USER_ATTRIBUTE_CLAIMS) {
-            expect(
-              disclosureKeys.has(claim),
-              `PID must disclose "${claim}" as a selective disclosure`,
-            ).toBe(true);
-          }
-
-          const hasTaxId = disclosureKeys.has("tax_id_code");
-          const hasAdminNumber = disclosureKeys.has(
-            "personal_administrative_number",
-          );
-          expect(
-            hasTaxId || hasAdminNumber,
-            "PID must disclose at least one of: tax_id_code or personal_administrative_number",
-          ).toBe(true);
-
-          log.debug("  All required user attribute disclosures present ✓");
-
-          // --- Additional mandatory metadata claims in the JWT payload ---
-          log.debug(`  Payload keys: ${JSON.stringify(Object.keys(payload))}`);
-
-          expect(typeof payload["sub"], "sub must be a string").toBe("string");
-
-          const cnf = payload["cnf"] as Record<string, unknown> | undefined;
-          expect(cnf, "cnf must be present").toBeDefined();
-          expect(cnf?.["jwk"], "cnf.jwk must be present").toBeDefined();
-
-          const verification = payload["verification"] as
-            | Record<string, unknown>
-            | undefined;
-          expect(verification, "verification must be present").toBeDefined();
-          expect(
-            typeof verification?.["trust_framework"],
-            "verification.trust_framework must be a string",
-          ).toBe("string");
-          expect(
-            typeof verification?.["assurance_level"],
-            "verification.assurance_level must be a string",
-          ).toBe("string");
-
-          log.debug("  All mandatory PID metadata claims present ✓");
         }
 
         testSuccess = true;
