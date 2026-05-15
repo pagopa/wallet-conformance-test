@@ -11,6 +11,7 @@ import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import { importX509, jwtVerify } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
@@ -106,12 +107,13 @@ testConfigs.forEach((testConfig) => {
     // CI_120 — SD-JWT Signature Verification
     // =======================================================================
 
-    test("CI_120: Signature of the SD-JWT credential | JOSE header contains alg, kid, and x5c.", async () => {
+    test("CI_120: Signature of the SD-JWT credential | Credential is signed using the Issuer's private key.", async () => {
       const log = baseLog.withTag("CI_120");
-      const DESCRIPTION = "SD-JWT JOSE header contains alg, kid, and x5c";
+      const DESCRIPTION =
+        "SD-JWT credential is signed using the Issuer's private key";
 
       log.start(
-        "Conformance test: SD-JWT signature and JOSE header structural validation",
+        "Conformance test: SD-JWT signature verification against Issuer key",
       );
 
       let testSuccess = false;
@@ -126,26 +128,39 @@ testConfigs.forEach((testConfig) => {
         const instance = new SDJwtVcInstance({ hasher: digest });
 
         for (const credentialJwt of sdJwtCredentials) {
+          const issuerJwt = extractIssuerJwt(credentialJwt);
+
           const decoded = await instance.decode(credentialJwt);
           const header = decoded.jwt?.header as Record<string, unknown>;
 
-          log.debug(
-            `  JOSE header keys: ${JSON.stringify(Object.keys(header ?? {}))}`,
-          );
-
           expect(header, "JWT header must be present").toBeDefined();
-          expect(header["alg"], "JOSE header must contain alg").toBeDefined();
-          expect(typeof header["alg"], "alg must be a string").toBe("string");
-          expect(header["kid"], "JOSE header must contain kid").toBeDefined();
-          expect(typeof header["kid"], "kid must be a string").toBe("string");
-          expect(header["x5c"], "JOSE header must contain x5c").toBeDefined();
-          expect(Array.isArray(header["x5c"]), "x5c must be an array").toBe(
-            true,
-          );
+
+          const x5c = header["x5c"] as string[] | undefined;
           expect(
-            (header["x5c"] as unknown[]).length,
-            "x5c must contain at least one certificate",
-          ).toBeGreaterThan(0);
+            x5c,
+            "JOSE header must contain x5c to extract Issuer public key",
+          ).toBeDefined();
+          expect(
+            Array.isArray(x5c) && x5c.length > 0,
+            "x5c must be a non-empty array",
+          ).toBe(true);
+
+          const alg = header["alg"] as string;
+          expect(alg, "JOSE header must contain alg").toBeDefined();
+
+          if (!x5c || x5c.length === 0) {
+            throw new Error("x5c must be a non-empty array");
+          }
+
+          const pem = `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
+          const issuerPublicKey = await importX509(pem, alg);
+
+          // Throws if the signature does not verify against the Issuer's key
+          await jwtVerify(issuerJwt, issuerPublicKey);
+
+          log.debug(
+            "  ✓ Signature successfully verified against Issuer certificate",
+          );
         }
 
         testSuccess = true;
