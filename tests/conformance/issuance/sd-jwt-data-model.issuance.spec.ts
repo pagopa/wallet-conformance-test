@@ -1205,7 +1205,7 @@ testConfigs.forEach((testConfig) => {
 
         const typeMetadataSchema = z
           .object({
-            claims: z.record(z.string(), z.unknown()).optional(),
+            claims: z.array(z.record(z.string(), z.unknown())).optional(),
             description: z.string().optional(),
             display: z.array(z.record(z.string(), z.unknown())).optional(),
             name: z.string().optional(),
