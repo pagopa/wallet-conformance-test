@@ -119,6 +119,7 @@ export class WalletPresentationOrchestratorFlow {
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
 
+    // If the clientId is a base URL, fetch the metadata to obtain information about the verifier and its supported features.
     if (baseUrl !== undefined) {
       fetchMetadataResponse = await this.fetchMetadataStep.run({ baseUrl });
       this._fetchMetadataResponse = fetchMetadataResponse;
