@@ -240,6 +240,9 @@ export class WalletPresentationOrchestratorFlow {
       const normalizedClientId = extractClientIdPrefix(clientId);
 
       if (!normalizedClientId.clientId.startsWith("https://")) {
+        this.log.warn(
+          `Skipping verifier metadata fetch: unsupported client_id format "${clientId}" (normalized: "${normalizedClientId.clientId}"). Expected a plain HTTPS URL or a single-colon prefixed scheme resolving to an HTTPS URL. Configure presentation.verifier explicitly to bypass client_id-derived metadata lookup.`,
+        );
         return undefined;
       }
 
