@@ -4,13 +4,14 @@ import * as https from "node:https";
 
 import { buildIssuerEntityConfiguration_V1_0 } from "@/functions/V1_0/mock-credentials";
 import { buildIssuerEntityConfiguration_V1_3 } from "@/functions/V1_3/mock-credentials";
+import { isMainModule } from "@/logic/entrypoint";
+import { createStatusListToken } from "@/logic/status-list";
 import {
   buildJwksPath,
-  createStatusListToken,
   loadConfigWithHierarchy,
   loadJwks,
   loadOrCreateServerCertificate,
-} from "@/logic";
+} from "@/logic/utils";
 import { Config } from "@/types";
 
 export const LOCAL_CI_HOST = "credential-issuer.wct.example.org";
@@ -75,7 +76,7 @@ export const createServer = (config: Config): express.Express => {
   return app;
 };
 
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   const config = loadConfigWithHierarchy();
   const app = createServer(config);
   loadOrCreateServerCertificate(config)

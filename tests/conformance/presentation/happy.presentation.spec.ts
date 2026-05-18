@@ -11,7 +11,6 @@ import { AuthorizationRequestStepResponse } from "@/step/presentation/authorizat
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
 // Define and auto-register test configuration
-// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfig = await definePresentationTest("HappyFlowPresentation");
 
 describe(`[${testConfig.name}] Credential Presentation Tests`, () => {

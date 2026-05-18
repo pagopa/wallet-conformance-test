@@ -101,7 +101,7 @@ Factory helpers live in `tests/helpers/`. Add a new `withX()` helper there whene
 ### Formatting
 
 - Prettier handles all formatting; do not manually align or wrap. Run `pnpm format` before committing.
-- ESLint config extends `@pagopa/eslint-config` (flat config via `eslint.config.mjs`). Avoid `// eslint-disable` comments; if unavoidable, add a brief justification on the same line.
+- ESLint config extends `@pagopa/eslint-config` (flat config via `eslint.config.js`). Avoid `// eslint-disable` comments; if unavoidable, add a brief justification on the same line.
 - The `/* eslint-disable max-lines-per-function */` directive is acceptable at the top of long test specs.
 
 ### Naming Conventions
@@ -168,7 +168,7 @@ Rules:
 - Track pass/fail with a local `let testSuccess = false` and always update it inside `try`, call `log.testCompleted` in `finally`.
 - Prefer `expect(x).toBe(y)` with a descriptive second argument for failures: `expect(result, "reason").toBe(true)`.
 - Use `vi.useFakeTimers` / `vi.useRealTimers` for time-sensitive tests; restore in both `afterEach` and the `finally` block.
-- Unit tests live in `tests/unit/`; they use `vitest.unit.config.mjs` and do not require the Trust Anchor.
+- Unit tests live in `tests/unit/`; they use `vitest.unit.config.js` and do not require the Trust Anchor.
 
 ### Zod Usage
 

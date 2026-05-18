@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
     // --- Project Settings ---
-    "target": "ES2022", // Compile to a modern ECMAScript version
-    "module": "NodeNext", // Use the modern Node.js module system
-    "moduleResolution": "NodeNext", // How modules get resolved
+    "target": "ESNext", // Compile to a modern ECMAScript version
+    "module": "ESNext", // Emit native ESM for packaged runtime
+    "moduleResolution": "Bundler", // Keep source imports extensionless; post-build rewrites dist for Node
     "outDir": "./dist", // Where to output compiled JavaScript
     "rootDir": ".", // The root directory of your source files
     "paths": {
       "@/*": ["./src/*"],
-      "#/*": ["./tests/*"],
+      "#/*": ["./tests/*"]
     },
 
     // --- Type Checking ---
@@ -17,6 +17,7 @@
 
     // --- Interoperability ---
     "esModuleInterop": true, // Allows default imports from CommonJS modules
+    "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file.
 
     // --- Completeness ---

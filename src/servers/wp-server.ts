@@ -2,13 +2,14 @@ import express from "express";
 import * as https from "node:https";
 
 import { buildWpEntityConfiguration } from "@/functions/load-attestation";
+import { isMainModule } from "@/logic/entrypoint";
+import { createStatusListToken } from "@/logic/status-list";
 import {
   buildJwksPath,
   loadConfigWithHierarchy,
   loadJwks,
   loadOrCreateServerCertificate,
-} from "@/logic";
-import { createStatusListToken } from "@/logic/status-list";
+} from "@/logic/utils";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config } from "@/types";
 
@@ -65,7 +66,7 @@ export const createServer = (config: Config): express.Express => {
   return app;
 };
 
-if (require.main === module) {
+if (isMainModule(import.meta.url)) {
   const config = loadConfigWithHierarchy();
   const app = createServer(config);
   loadOrCreateServerCertificate(config)

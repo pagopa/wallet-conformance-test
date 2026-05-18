@@ -1,6 +1,3 @@
 #!/usr/bin/env node
 
-// Use ts-node to run the TypeScript CLI file
-require('ts-node/register/transpile-only');
-require('tsconfig-paths/register');
-require('../src/cli.ts');
+import "../dist/cli.js";
