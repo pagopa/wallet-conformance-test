@@ -2,9 +2,9 @@
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import { normalizeClientId } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -76,7 +76,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  Expected: ${issuer}`);
       log.debug(`  Actual: ${parsedQrCode?.clientId}`);
       const rawClientId = parsedQrCode?.clientId ?? "";
-      expect(normalizeClientId(rawClientId)).toBe(issuer);
+      expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
@@ -153,7 +153,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.state).toBeDefined();
       log.debug(
-        `  state: ${requestObject?.state} (length: ${requestObject?.state.length})`,
+        `  state: ${requestObject?.state} (length: ${requestObject?.state?.length})`,
       );
       expect(requestObject?.state).toMatch(/^[a-zA-Z0-9_-]+$/);
       log.debug("  ✅ state parameter is present and valid");

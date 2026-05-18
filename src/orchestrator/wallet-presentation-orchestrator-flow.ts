@@ -1,12 +1,9 @@
 import { PresentationTestConfiguration } from "#/config";
+import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
-import {
-  createLogger,
-  loadConfigWithHierarchy,
-  normalizeClientId,
-} from "@/logic";
+import { createLogger, loadConfigWithHierarchy } from "@/logic";
 import {
   FetchMetadataVpDefaultStep,
   FetchMetadataVpStepResponse,
@@ -117,22 +114,25 @@ export class WalletPresentationOrchestratorFlow {
   async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
     this.printTestSuiteOnce();
 
-    const fetchMetadataResponse = await this.fetchMetadataStep.run({
-      baseUrl: this.prepareBaseUrl(),
-    });
-    this._fetchMetadataResponse = fetchMetadataResponse;
-    this.log.flowStep(
-      1,
-      this.TOTAL_STEPS,
-      "Fetch Metadata",
-      fetchMetadataResponse.success,
-      fetchMetadataResponse.durationMs ?? 0,
-    );
-    assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
+    const baseUrl = this.prepareBaseUrl();
 
-    const verifierMetadata = this.extractVerifierMetadata(
-      fetchMetadataResponse,
-    );
+    let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
+    let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
+
+    if (baseUrl !== undefined) {
+      fetchMetadataResponse = await this.fetchMetadataStep.run({ baseUrl });
+      this._fetchMetadataResponse = fetchMetadataResponse;
+      this.log.flowStep(
+        1,
+        this.TOTAL_STEPS,
+        "Fetch Metadata",
+        fetchMetadataResponse.success,
+        fetchMetadataResponse.durationMs ?? 0,
+      );
+      assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
+
+      verifierMetadata = this.extractVerifierMetadata(fetchMetadataResponse);
+    }
 
     const walletAttestationResponse = await this.loadWalletAttestation();
 
@@ -166,7 +166,7 @@ export class WalletPresentationOrchestratorFlow {
 
   private async executeAuthorizationRequest(
     credentials: CredentialWithKey[],
-    verifierMetadata: ItWalletCredentialVerifierMetadata,
+    verifierMetadata: ItWalletCredentialVerifierMetadata | undefined,
     walletAttestation: AttestationResponse,
   ) {
     const authorizationRequestResponse =
@@ -205,20 +205,7 @@ export class WalletPresentationOrchestratorFlow {
     const entityStatementClaims =
       fetchMetadataResponse.response?.entityStatementClaims;
 
-    if (!entityStatementClaims) {
-      throw new Error("Entity Statement Claims not found in response");
-    }
-
-    const rpMetadata =
-      entityStatementClaims.metadata.openid_credential_verifier;
-
-    if (!rpMetadata) {
-      throw new Error(
-        "Verifier metadata (openid_credential_verifier) not found",
-      );
-    }
-
-    return rpMetadata;
+    return entityStatementClaims?.metadata.openid_credential_verifier;
   }
 
   private async loadWalletAttestation() {
@@ -235,7 +222,7 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
-  private prepareBaseUrl(): string {
+  private prepareBaseUrl(): string | undefined {
     if (!this.config.presentation.verifier) {
       const authorizeUrl = new URL(
         this.config.presentation.authorize_request_url,
@@ -249,16 +236,13 @@ export class WalletPresentationOrchestratorFlow {
       }
 
       // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
-      const normalizedClientId = normalizeClientId(clientId);
+      const normalizedClientId = extractClientIdPrefix(clientId);
 
-      if (!normalizedClientId.startsWith("https://")) {
-        throw new Error(
-          `Unsupported client_id format: "${clientId}". ` +
-            `Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). `,
-        );
+      if (!normalizedClientId.clientId.startsWith("https://")) {
+        return undefined;
       }
 
-      const baseUrl = new URL(normalizedClientId);
+      const baseUrl = new URL(normalizedClientId.clientId);
       this.log.debug(
         `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
       );
