@@ -4,7 +4,7 @@ import {
 } from "@pagopa/io-wallet-oid4vci";
 import {
   createAuthorizationResponse,
-  CreateAuthorizationResponseOptions,
+  type CreateAuthorizationResponseVersionedOptions,
   parseAuthorizeRequest,
   ParsedAuthorizeRequestResult,
 } from "@pagopa/io-wallet-oid4vp";
@@ -154,22 +154,22 @@ export class AuthorizeDefaultStep extends StepFlow {
       log.debug(
         `Authorization response nonce: ${JSON.stringify({ nonce: requestObject.nonce })}`,
       );
-      const createAuthorizationResponseOptions: CreateAuthorizationResponseOptions =
-        {
-          authorization_encrypted_response_alg:
-            options.rpMetadata.authorization_encrypted_response_alg,
-          authorization_encrypted_response_enc:
-            options.rpMetadata.authorization_encrypted_response_enc,
-          callbacks: {
-            ...partialCallbacks,
-            encryptJwe: getEncryptJweCallback(rpEncKey),
-          },
-          requestObject,
-          rpJwks: {
-            jwks: options.rpMetadata.jwks,
-          },
-          vp_token,
-        };
+      const createAuthorizationResponseOptions = {
+        authorization_encrypted_response_alg:
+          options.rpMetadata.authorization_encrypted_response_alg,
+        authorization_encrypted_response_enc:
+          options.rpMetadata.authorization_encrypted_response_enc,
+        callbacks: {
+          ...partialCallbacks,
+          encryptJwe: getEncryptJweCallback(),
+        },
+        config: this.ioWalletSdkConfig,
+        requestObject,
+        rpJwks: {
+          jwks: options.rpMetadata.jwks,
+        },
+        vp_token,
+      } as CreateAuthorizationResponseVersionedOptions;
 
       const authorizationResponse = await createAuthorizationResponse(
         createAuthorizationResponseOptions,
@@ -181,6 +181,10 @@ export class AuthorizeDefaultStep extends StepFlow {
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
+      }
+
+      if (!requestObject.state) {
+        throw new Error("state is missing in the authorization request object");
       }
 
       log.info(`Sending authorization response to: ${responseUri}`);
