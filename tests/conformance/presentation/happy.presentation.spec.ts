@@ -70,11 +70,17 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug("→ Checking client_id matches entity statement issuer...");
       const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
       expect(parsedQrCode?.clientId).toBeDefined();
+      if (!parsedQrCode?.clientId) {
+        throw new Error(
+          "RPR006 precondition failed: parsedQrCode.clientId is undefined. " +
+            "The authorization request QR code did not contain a client_id.",
+        );
+      }
 
       // The client_id should match the issuer from the entity statement
       log.debug(`  Expected: ${issuer}`);
-      log.debug(`  Actual: ${parsedQrCode?.clientId}`);
-      const rawClientId = parsedQrCode?.clientId ?? "";
+      log.debug(`  Actual: ${parsedQrCode.clientId}`);
+      const rawClientId = parsedQrCode.clientId;
       expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
