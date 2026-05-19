@@ -7,3 +7,5 @@ export function buildIncludePattern(
 export function createTestConfig(
   testType: string,
 ): import("vitest/config").UserConfig;
+
+export function resolveConfigPath(launchDir?: string, rootDir?: string): string;

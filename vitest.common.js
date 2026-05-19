@@ -17,6 +17,8 @@ const sourceTestsRoot = path.join(packageRoot, "tests");
 const builtTestsRoot = path.join(packageRoot, "dist/tests");
 const useBuiltTests =
   !fs.existsSync(sourceTestsRoot) && fs.existsSync(builtTestsRoot);
+const testsRoot = useBuiltTests ? builtTestsRoot : sourceTestsRoot;
+const testFileExtension = useBuiltTests ? "js" : "ts";
 
 const log = createConsola({ level: 3 });
 
@@ -60,22 +62,40 @@ export function createTestConfig(testType) {
           : path.join(packageRoot, "src"),
       },
     },
+    root: packageRoot,
     test: {
       exclude,
       fileParallelism: false,
-      globalSetup: useBuiltTests
-        ? path.join(packageRoot, "dist/tests/global-setup.js")
-        : "./tests/global-setup.ts",
+      globalSetup: path.join(testsRoot, `global-setup.${testFileExtension}`),
       hookTimeout: 120000,
       include: [includePattern],
       reporters: ["dot"],
-      setupFiles: [
-        useBuiltTests
-          ? path.join(packageRoot, "dist/tests/setup-tls.js")
-          : "./tests/setup-tls.ts",
-      ],
+      setupFiles: [path.join(testsRoot, `setup-tls.${testFileExtension}`)],
     },
   });
+}
+
+export function resolveConfigPath(
+  launchDir = process.cwd(),
+  rootDir = packageRoot,
+) {
+  if (process.env.CONFIG_FILE_INI) {
+    return path.isAbsolute(process.env.CONFIG_FILE_INI)
+      ? process.env.CONFIG_FILE_INI
+      : path.resolve(launchDir, process.env.CONFIG_FILE_INI);
+  }
+
+  const localConfigPath = path.resolve(launchDir, "config.ini");
+  if (fs.existsSync(localConfigPath)) {
+    return localConfigPath;
+  }
+
+  const packageConfigPath = path.join(rootDir, "config.ini");
+  if (fs.existsSync(packageConfigPath)) {
+    return packageConfigPath;
+  }
+
+  return path.join(rootDir, "config.example.ini");
 }
 
 /**
@@ -132,19 +152,4 @@ function getTestsDir(testType) {
     );
     return { testsDir: defaultDirMap[testType], userConfigured: false };
   }
-}
-
-function resolveConfigPath() {
-  if (process.env.CONFIG_FILE_INI) {
-    return path.isAbsolute(process.env.CONFIG_FILE_INI)
-      ? process.env.CONFIG_FILE_INI
-      : path.resolve(process.cwd(), process.env.CONFIG_FILE_INI);
-  }
-
-  const localConfigPath = path.resolve(process.cwd(), "config.ini");
-  if (fs.existsSync(localConfigPath)) {
-    return localConfigPath;
-  }
-
-  return path.join(packageRoot, "config.example.ini");
 }

@@ -7,7 +7,7 @@ import {
   loadConfigWithHierarchy,
   readPackageVersion,
 } from "@/logic/config-loader";
-import { packageRoot } from "@/logic/runtime-paths";
+import { packageRoot, resolveLocalConfigPath } from "@/logic/runtime-paths";
 
 const DEFAULT_INI = path.join(packageRoot, "config.example.ini");
 const envKeys = [
@@ -148,6 +148,37 @@ describe("loadConfigWithHierarchy – path resolution", () => {
       path.join(process.cwd(), "local/logs/test.log"),
     );
     expect(config.issuance.url).toBe("https://local-issuer.example");
+  });
+
+  it("should resolve package config.ini when launch directory has none", () => {
+    const launchDir = mkdtempSync(path.join(tmpdir(), "wct-launch-"));
+    const packageDir = mkdtempSync(path.join(tmpdir(), "wct-package-"));
+    tempDirs.push(launchDir, packageDir);
+    const packageConfigPath = path.join(packageDir, "config.ini");
+    writeFileSync(
+      packageConfigPath,
+      "[issuance]\nurl = https://issuer.example",
+    );
+
+    expect(resolveLocalConfigPath(launchDir, packageDir)).toBe(
+      packageConfigPath,
+    );
+  });
+
+  it("should prefer launch directory config.ini over package config.ini", () => {
+    const launchDir = mkdtempSync(path.join(tmpdir(), "wct-launch-"));
+    const packageDir = mkdtempSync(path.join(tmpdir(), "wct-package-"));
+    tempDirs.push(launchDir, packageDir);
+    const launchConfigPath = path.join(launchDir, "config.ini");
+    writeFileSync(launchConfigPath, "[issuance]\nurl = https://launch.example");
+    writeFileSync(
+      path.join(packageDir, "config.ini"),
+      "[issuance]\nurl = https://package.example",
+    );
+
+    expect(resolveLocalConfigPath(launchDir, packageDir)).toBe(
+      launchConfigPath,
+    );
   });
 
   it("should merge partial runtime sections without requiring path fields", () => {
