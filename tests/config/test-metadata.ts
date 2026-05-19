@@ -9,10 +9,9 @@
  * or definePresentationTest is called at module load time.
  */
 
-import path from "path";
-
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createLogger } from "@/logic/logs";
+import { resolveWorkspacePath } from "@/logic/runtime-paths";
 import {
   FetchMetadataDefaultStep,
   PushedAuthorizationRequestDefaultStep,
@@ -212,7 +211,7 @@ function resolveStepDirectory(
     );
     return undefined;
   }
-  const resolved = path.resolve(process.cwd(), mappedPath);
+  const resolved = resolveWorkspacePath(mappedPath);
   log.info(`steps_mapping: resolved '${flowName}' -> ${resolved}`);
   return resolved;
 }
