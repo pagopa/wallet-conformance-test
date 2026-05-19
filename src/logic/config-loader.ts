@@ -5,6 +5,14 @@ import path from "path";
 
 import { Config, configSchema } from "@/types";
 
+import {
+  packageRoot,
+  readPackageVersion as readRuntimePackageVersion,
+  resolveConfigRelativePath,
+  resolveDefaultConfigPath,
+  resolvePathFrom,
+  resolveWorkspacePath,
+} from "./runtime-paths";
 import { deepMerge } from "./utils";
 
 /**
@@ -33,6 +41,10 @@ export interface CliOptions {
   unsafeTls?: boolean;
 }
 
+interface ConfigLayer {
+  config: Partial<Config>;
+}
+
 type ConfigSectionBuilder<TSection> = (
   options: CliOptions,
 ) => Partial<TSection>;
@@ -59,51 +71,65 @@ export function loadConfig(fileName: string): Config {
 /**
  * Loads configuration with hierarchical priority:
  * 1. Command-Line Options (Highest priority)
- * 2. Custom .ini File (--file-ini)
- * 3. Default .ini File (Lowest priority)
+ * 2. Custom .ini File (--file-ini or ./config.ini)
+ * 3. Package config.example.ini (Lowest priority)
  *
  * @param options CLI options including optional custom INI file path (if not provided, reads from environment)
- * @param defaultIniPath Path to the default INI file (defaults to ./config.ini)
+ * @param defaultIniPath Path to the default INI file (defaults to package config.example.ini)
  * @returns The merged and validated configuration object
  */
 export function loadConfigWithHierarchy(
   options: CliOptions | null = null,
-  defaultIniPath = "./config.ini",
+  defaultIniPath = resolveDefaultConfigPath(),
 ): Config {
   // If no options provided, read from environment variables
   const cliOptions = options ?? readCliOptionsFromEnv();
 
-  // Step 1: Load default config.ini (lowest priority)
-  const defaultIniAbsPath = path.resolve(process.cwd(), defaultIniPath);
-  const defaultConfig = loadIniFile(defaultIniAbsPath);
+  // Step 1: Load package config.example.ini (lowest priority)
+  const defaultIniAbsPath = path.isAbsolute(defaultIniPath)
+    ? defaultIniPath
+    : resolveWorkspacePath(defaultIniPath);
+  const defaultBaseDir =
+    defaultIniAbsPath === resolveDefaultConfigPath()
+      ? packageRoot
+      : path.dirname(defaultIniAbsPath);
+  const defaultLayer = loadConfigLayer(defaultIniAbsPath, defaultBaseDir);
 
-  if (!defaultConfig) {
+  if (!defaultLayer) {
     throw new Error(
-      `Default configuration file not found at ${defaultIniAbsPath}. Please ensure config.ini exists.`,
+      `Default configuration file not found at ${defaultIniAbsPath}. Please ensure config.example.ini exists.`,
     );
   }
 
   // Step 2: Load custom ini file if specified (medium priority)
-  let customConfig: null | Partial<Config> = null;
+  let customLayer: ConfigLayer | null = null;
   if (cliOptions.fileIni) {
-    const customIniPath = path.resolve(process.cwd(), cliOptions.fileIni);
-    customConfig = loadIniFile(customIniPath);
+    const customIniPath = resolveWorkspacePath(cliOptions.fileIni);
+    customLayer = loadConfigLayer(customIniPath);
 
-    if (!customConfig) {
+    if (!customLayer) {
       throw new Error(
         `Custom configuration file not found at ${customIniPath}`,
       );
     }
+  } else {
+    customLayer = loadConfigLayer(resolveWorkspacePath("config.ini"));
   }
 
   // Step 3: Convert CLI options to config format (highest priority)
-  const cliConfig = cliOptionsToConfig(cliOptions);
+  const cliConfig = normalizeRuntimePaths(
+    normalizeTestPaths(
+      cliOptionsToConfig(cliOptions),
+      resolveWorkspacePath(""),
+    ),
+    resolveWorkspacePath(""),
+  );
 
   // Step 4: Merge configurations in priority order
-  let mergedConfig = defaultConfig;
+  let mergedConfig = defaultLayer.config;
 
-  if (customConfig) {
-    mergedConfig = deepMerge(mergedConfig, customConfig);
+  if (customLayer) {
+    mergedConfig = deepMerge(mergedConfig, customLayer.config);
   }
 
   if (Object.keys(cliConfig).length > 0) {
@@ -130,7 +156,7 @@ export function loadConfigWithHierarchy(
     throw new Error(
       `Configuration validation failed: ${err.message}\n\n` +
         `Please ensure all mandatory fields are defined in either:\n` +
-        `- Default INI file (${defaultIniPath})\n` +
+        `- Default INI file (${defaultIniAbsPath})\n` +
         `- Custom INI file (${cliOptions.fileIni || "not specified"})\n` +
         `- Command-line options\n\n` +
         `Configuration hierarchy:\n` +
@@ -149,14 +175,7 @@ export function loadConfigWithHierarchy(
 // repository root. All project scripts (pnpm test, pnpm build, etc.) satisfy
 // this assumption, so no directory-walking is needed here.
 export function readPackageVersion(): string {
-  try {
-    const pkgPath = path.resolve(process.cwd(), "package.json");
-    const content = readFileSync(pkgPath, "utf-8");
-    const pkg = JSON.parse(content) as { version?: string };
-    return pkg.version ?? "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
+  return readRuntimePackageVersion();
 }
 
 /**
@@ -204,6 +223,106 @@ function hasConfigValues<TSection extends object>(
   section: Partial<TSection>,
 ): section is Partial<TSection> {
   return Object.keys(section).length > 0;
+}
+
+function normalizeRuntimePaths<TConfig extends Partial<Config>>(
+  config: TConfig,
+  baseDir: string,
+): TConfig {
+  const normalized = structuredClone(config) as TConfig;
+
+  if (normalized.wallet) {
+    if (
+      typeof normalized.wallet.wallet_attestations_storage_path === "string"
+    ) {
+      normalized.wallet.wallet_attestations_storage_path =
+        resolveConfigRelativePath(
+          normalized.wallet.wallet_attestations_storage_path,
+          baseDir,
+        );
+    }
+    if (typeof normalized.wallet.credentials_storage_path === "string") {
+      normalized.wallet.credentials_storage_path = resolveConfigRelativePath(
+        normalized.wallet.credentials_storage_path,
+        baseDir,
+      );
+    }
+    if (typeof normalized.wallet.backup_storage_path === "string") {
+      normalized.wallet.backup_storage_path = resolveConfigRelativePath(
+        normalized.wallet.backup_storage_path,
+        baseDir,
+      );
+    }
+  }
+
+  if (normalized.trust) {
+    if (typeof normalized.trust.ca_cert_path === "string") {
+      normalized.trust.ca_cert_path = resolveConfigRelativePath(
+        normalized.trust.ca_cert_path,
+        baseDir,
+      );
+    }
+    if (
+      typeof normalized.trust.federation_trust_anchors_jwks_path === "string"
+    ) {
+      normalized.trust.federation_trust_anchors_jwks_path =
+        resolveConfigRelativePath(
+          normalized.trust.federation_trust_anchors_jwks_path,
+          baseDir,
+        );
+    }
+  }
+
+  if (typeof normalized.trust_anchor?.tls_cert_dir === "string") {
+    normalized.trust_anchor.tls_cert_dir = resolveConfigRelativePath(
+      normalized.trust_anchor.tls_cert_dir,
+      baseDir,
+    );
+  }
+
+  if (normalized.logging && typeof normalized.logging.log_file === "string") {
+    normalized.logging.log_file = resolveConfigRelativePath(
+      normalized.logging.log_file,
+      baseDir,
+    );
+  }
+
+  return normalized;
+}
+
+function normalizeTestPaths<TConfig extends Partial<Config>>(
+  config: TConfig,
+  baseDir: string,
+): TConfig {
+  const normalized = structuredClone(config) as TConfig;
+
+  if (normalized.issuance?.tests_dir) {
+    normalized.issuance.tests_dir = resolvePathFrom(
+      baseDir,
+      normalized.issuance.tests_dir,
+    );
+  }
+
+  if (normalized.presentation?.tests_dir) {
+    normalized.presentation.tests_dir = resolvePathFrom(
+      baseDir,
+      normalized.presentation.tests_dir,
+    );
+  }
+
+  const mapping = normalized.steps_mapping?.mapping;
+  if (mapping) {
+    normalized.steps_mapping = {
+      mapping: Object.fromEntries(
+        Object.entries(mapping).map(([key, value]) => [
+          key,
+          resolvePathFrom(baseDir, value),
+        ]),
+      ),
+    };
+  }
+
+  return normalized;
 }
 
 const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
@@ -294,6 +413,17 @@ function buildStepsMappingConfig(
  * @returns A partial configuration object if the file exists and is parsed successfully, otherwise null.
  * @throws An error if the INI file cannot be parsed.
  */
+function loadConfigLayer(filePath: string, baseDir = path.dirname(filePath)) {
+  const config = loadIniFile(filePath);
+  if (!config) {
+    return null;
+  }
+
+  return {
+    config: normalizeRuntimePaths(normalizeTestPaths(config, baseDir), baseDir),
+  } satisfies ConfigLayer;
+}
+
 function loadIniFile(filePath: string): null | Partial<Config> {
   if (!existsSync(filePath)) {
     return null;

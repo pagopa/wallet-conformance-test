@@ -21,7 +21,6 @@ import {
 import { AttestationResponse } from "@/types";
 
 // Define and auto-register test configuration
-// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfigs = await defineIssuanceTest("HappyFlowIssuance");
 
 testConfigs.forEach((testConfig) => {

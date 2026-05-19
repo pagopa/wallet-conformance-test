@@ -22,6 +22,7 @@ import {
   loadOrCreateCertificateWithKey,
   verifyJwt,
 } from ".";
+import { resolvePackageAssetPath } from "./runtime-paths";
 
 export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
 export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
@@ -105,7 +106,7 @@ export const loadJsonDumps = (
   placeholders: Record<string, object | string>,
   version: ItWalletSpecsVersion,
 ) => {
-  const dumpsDir = path.resolve(process.cwd(), "./dumps");
+  const dumpsDir = resolvePackageAssetPath("./dumps");
 
   const filePath = path.join(dumpsDir, version, fileName);
   if (!existsSync(filePath)) {
@@ -313,11 +314,7 @@ export function saveCredentialToDisk(
   version: ItWalletSpecsVersion,
 ): null | string {
   try {
-    const credentialsPath = path.resolve(
-      process.cwd(),
-      credentialsStoragePath,
-      version,
-    );
+    const credentialsPath = path.resolve(credentialsStoragePath, version);
 
     // Ensure the directory exists
     if (!existsSync(credentialsPath)) {

@@ -1,20 +1,27 @@
 {
-  "version": "1.1.5",
-  "name": "wct",
-  "description": "",
-  "main": "index.js",
+  "name": "@pagopa/wallet-conformance-tool",
+  "description": "Automated conformance testing for IT Wallet ecosystem services",
   "packageManager": "pnpm@10.23.0",
+  "version": "1.1.5",
+  "type": "module",
+  "main": "./dist/cli.js",
   "engines": {
     "node": ">=22.19.0"
   },
   "files": [
-    "config.ini"
+    "bin",
+    "config.example.ini",
+    "dist",
+    "dumps",
+    "vitest.common.js",
+    "vitest.issuance.config.js",
+    "vitest.presentation.config.js"
   ],
   "bin": {
     "wct": "./bin/wct"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build.ts --production",
     "ta:server": "ts-node -r tsconfig-paths/register src/servers/ta-server.ts",
     "wp:server": "ts-node -r tsconfig-paths/register src/servers/wp-server.ts",
     "ci:server": "ts-node -r tsconfig-paths/register src/servers/ci-server.ts",
@@ -22,7 +29,7 @@
     "types:check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest --watch",
-    "test:unit": "vitest --config vitest.unit.config.mjs",
+    "test:unit": "vitest --config vitest.unit.config.js",
     "format": "prettier --write \"{src,tests}/**/*.{js,ts}\"",
     "format:check": "prettier --check \"{src,tests}/**/*.{js,ts}\"",
     "lint": "eslint --fix \"{src,tests}/**/*.{js,ts}\"",
@@ -30,12 +37,19 @@
     "pre-commit": "pnpm format && pnpm lint && pnpm types:check",
     "prepare": "husky",
     "code-review": "pnpm types:check && pnpm lint:check && pnpm format:check && pnpm -r build",
-    "test:issuance": "vitest run --config vitest.issuance.config.mjs",
-    "test:issuance:ui": "vitest --config vitest.issuance.config.mjs --ui",
-    "test:presentation": "vitest run --config vitest.presentation.config.mjs"
+    "test:issuance": "vitest run --config vitest.issuance.config.js",
+    "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
+    "test:presentation": "vitest run --config vitest.presentation.config.js",
+    "prepublish": "pnpm build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "wallet",
+    "conformance",
+    "testing",
+    "tool",
+    "cli"
+  ],
+  "author": "PagoPa S.p.A.",
   "license": "ISC",
   "devDependencies": {
     "@pagopa/eslint-config": "^5.0.1",
@@ -45,12 +59,12 @@
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.1",
     "eslint": "^9.38.0",
+    "esbuild": "^0.27.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "@auth0/mdl": "^3.0.0",
@@ -71,9 +85,9 @@
     "consola": "^3.4.2",
     "dcql": "^3.0.0",
     "express": "^5.2.1",
-    "glob": "^13.0.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "vitest": "^3.2.4"
   }
 }

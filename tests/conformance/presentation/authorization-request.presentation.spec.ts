@@ -17,14 +17,14 @@ import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { createQuietLogger, loadConfigWithHierarchy } from "@/logic";
 import { getEncryptJweCallback } from "@/logic/jwt";
-import { partialCallbacks } from "@/logic/utils";
+import { hasObjectProperties, partialCallbacks } from "@/logic/utils";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import {
   AuthorizationRequestDefaultStep,
   AuthorizationRequestStepResponse,
 } from "@/step/presentation/authorization-request-step";
+import { assertStepSuccess } from "@/step/step-flow";
 
-// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfig = await definePresentationTest(
   "AuthorizationRequestValidation",
 );
@@ -298,6 +298,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         testConfig.authorizeStepClass,
       );
       expect(authResult.success).toBe(true);
+      assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+      hasObjectProperties(authResult, ["response"]);
 
       if (!authResult.response)
         throw new Error("auth request was not successful");

@@ -11,7 +11,7 @@
  * - Type-safe detection of step classes
  */
 
-import { glob } from "glob";
+import { glob } from "node:fs/promises";
 import path from "path";
 import { pathToFileURL } from "url";
 
@@ -118,9 +118,11 @@ export class TestLoader {
     const searchPattern = `${normalizedDirectory}/${customStepPattern}`;
     this.log.debug(`Searching for custom steps in: ${searchPattern}`);
 
-    const tsFiles = await glob(searchPattern, {
-      ignore: ["**/*.spec.ts", "**/step-options.ts"],
-    });
+    const tsFiles = await Array.fromAsync(
+      glob(searchPattern, {
+        exclude: ["**/*.spec.ts", "**/step-options.ts"],
+      }),
+    );
 
     this.log.debug(`Found ${tsFiles.length} TypeScript files to scan`);
     if (tsFiles.length > 0) {
