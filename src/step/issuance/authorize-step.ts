@@ -136,6 +136,11 @@ export class AuthorizeDefaultStep extends StepFlow {
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
+
+      if (!requestObject.state) {
+        throw new Error("state is missing in the authorization request object");
+      }
+
       const vp_token = await buildVpToken(
         options.credentials,
         dcqlQuery,
@@ -181,10 +186,6 @@ export class AuthorizeDefaultStep extends StepFlow {
       if (!authorizationResponse.jarm) {
         log.error("Failed to create authorization response JARM");
         throw new Error("Failed to create authorization response JARM");
-      }
-
-      if (!requestObject.state) {
-        throw new Error("state is missing in the authorization request object");
       }
 
       log.info(`Sending authorization response to: ${responseUri}`);
