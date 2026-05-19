@@ -2,7 +2,7 @@ import { DataItem, Document } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { decode, encode, Tagged } from "cbor";
+import cbor from "cbor";
 import { decodeJwt } from "jose";
 
 import {
@@ -14,6 +14,8 @@ import {
 import { generateSRIHash } from "@/logic/sd-jwt";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
+
+const { decode, encode, Tagged } = cbor;
 
 export async function buildIssuerEntityConfiguration_V1_3(
   metadata: {
@@ -94,7 +96,7 @@ export async function buildMockMdlMdoc_V1_3(
     payload: payloadWithStatus,
   });
 
-  const nameSpaces = new Map<string, Tagged[]>();
+  const nameSpaces = new Map<string, InstanceType<typeof Tagged>[]>();
   for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
     string,
     DataItem[]

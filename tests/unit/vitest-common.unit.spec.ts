@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildExcludePatterns,
   buildIncludePattern,
   createTestConfig,
   resolveConfigPath,
@@ -54,6 +55,20 @@ describe("buildIncludePattern", () => {
 
     expect(includePattern).toBe(
       "D:/custom/presentation-tests/**/*.presentation.spec.{js,ts}",
+    );
+  });
+});
+
+describe("buildExcludePatterns", () => {
+  it("allows bundled package tests to run from an installed node_modules path", () => {
+    expect(buildExcludePatterns(true)).not.toEqual(
+      expect.arrayContaining(["**/dist/**", "**/node_modules/**"]),
+    );
+  });
+
+  it("keeps default Vitest exclusions when running source tests", () => {
+    expect(buildExcludePatterns(false)).toEqual(
+      expect.arrayContaining(["**/dist/**", "**/node_modules/**"]),
     );
   });
 });

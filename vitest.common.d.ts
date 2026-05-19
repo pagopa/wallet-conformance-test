@@ -4,6 +4,8 @@ export function buildIncludePattern(
   userConfigured: boolean,
 ): string;
 
+export function buildExcludePatterns(runsBuiltTests: boolean): string[];
+
 export function createTestConfig(
   testType: string,
 ): import("vitest/config").UserConfig;

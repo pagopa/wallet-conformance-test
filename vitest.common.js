@@ -22,9 +22,15 @@ const testFileExtension = useBuiltTests ? "js" : "ts";
 
 const log = createConsola({ level: 3 });
 
-const exclude = useBuiltTests
-  ? configDefaults.exclude.filter((pattern) => pattern !== "**/dist/**")
-  : configDefaults.exclude;
+const exclude = buildExcludePatterns(useBuiltTests);
+
+export function buildExcludePatterns(runsBuiltTests) {
+  return runsBuiltTests
+    ? configDefaults.exclude.filter(
+        (pattern) => !["**/dist/**", "**/node_modules/**"].includes(pattern),
+      )
+    : configDefaults.exclude;
+}
 
 export function buildIncludePattern(testType, testsDir, userConfigured) {
   const normalizedTestsDir = testsDir.replace(/\\/g, "/");

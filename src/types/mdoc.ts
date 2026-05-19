@@ -1,5 +1,7 @@
-import { Tagged } from "cbor";
+import cbor from "cbor";
 import z from "zod";
+
+const { Tagged } = cbor;
 
 /**
  * Defines the Zod schema for validating the structure of an issuer-signed document within an mdoc.

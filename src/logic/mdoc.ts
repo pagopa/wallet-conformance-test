@@ -4,16 +4,18 @@ import {
   MDLParseError,
   MDoc,
 } from "@auth0/mdl";
-import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth";
-import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition";
+import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
+import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition.js";
 import {
   parseWithErrorHandling,
   ValidationError,
 } from "@pagopa/io-wallet-utils";
-import { decode } from "cbor";
+import cbor from "cbor";
 import { DcqlQuery } from "dcql";
 
 import { issuerSignedSchema, VpTokenOptions } from "@/types";
+
+const { decode } = cbor;
 
 interface DcqlMdocClaim {
   claim_name?: string;
