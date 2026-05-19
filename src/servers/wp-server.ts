@@ -2,11 +2,11 @@ import express from "express";
 import * as https from "node:https";
 
 import { buildWpEntityConfiguration } from "@/functions/load-attestation";
+import { createLogger } from "@/logic";
 import { isMainModule } from "@/logic/entrypoint";
 import { createStatusListToken } from "@/logic/status-list";
 import {
   buildJwksPath,
-  createLogger,
   loadConfigWithHierarchy,
   loadJwks,
   loadOrCreateServerCertificate,
