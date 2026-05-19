@@ -1,10 +1,12 @@
+import type IssuerAuthClass from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
+
 import {
   DeviceResponse,
   IssuerSignedDocument,
   MDLParseError,
   MDoc,
 } from "@auth0/mdl";
-import IssuerAuth from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
+import * as issuerAuthModule from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
 import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition.js";
 import {
   parseWithErrorHandling,
@@ -16,6 +18,15 @@ import { DcqlQuery } from "dcql";
 import { issuerSignedSchema, VpTokenOptions } from "@/types";
 
 const { decode } = cbor;
+
+type IssuerAuthConstructor = typeof IssuerAuthClass;
+interface IssuerAuthModule {
+  default: IssuerAuthConstructor | { default: IssuerAuthConstructor };
+}
+
+const IssuerAuth = resolveIssuerAuthConstructor(
+  issuerAuthModule as unknown as IssuerAuthModule,
+);
 
 interface DcqlMdocClaim {
   claim_name?: string;
@@ -176,4 +187,23 @@ function convertDcqlToPresentationDefinition(
       },
     ],
   };
+}
+
+function resolveIssuerAuthConstructor(
+  module: IssuerAuthModule,
+): IssuerAuthConstructor {
+  if (typeof module.default === "function") {
+    return module.default;
+  }
+
+  if (
+    typeof module.default === "object" &&
+    module.default !== null &&
+    "default" in module.default &&
+    typeof module.default.default === "function"
+  ) {
+    return module.default.default;
+  }
+
+  throw new TypeError("Unable to load IssuerAuth constructor");
 }
