@@ -3,6 +3,6 @@
  * Uses common configuration factory to avoid duplication
  */
 
-import { createTestConfig } from "./vitest.common.mjs";
+import { createTestConfig } from "./vitest.common.js";
 
 export default createTestConfig("issuance");

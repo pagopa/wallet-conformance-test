@@ -97,7 +97,7 @@ function levelCode(level: string): number {
  * @returns A new `Logger` instance.
  */
 function newLogger(options?: Partial<ConsolaOptions>): Logger {
-  return Object.assign(createConsola({ ...options, fancy: true }), {
+  return Object.assign(createConsola(options), {
     flowStep,
     nl,
     setLogOptions,

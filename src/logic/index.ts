@@ -1,4 +1,5 @@
 export * from "./config-loader";
+export * from "./entrypoint";
 export * from "./federation-metadata";
 export * from "./jwk";
 export * from "./jwt";

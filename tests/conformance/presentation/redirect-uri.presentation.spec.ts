@@ -17,7 +17,6 @@ import {
   RedirectUriStepResponse,
 } from "@/step/presentation/redirect-uri-step";
 
-// @ts-expect-error TS1309: top-level await is valid in Vitest (ESM context)
 const testConfig = await definePresentationTest("RedirectUriValidation");
 
 describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () => {
