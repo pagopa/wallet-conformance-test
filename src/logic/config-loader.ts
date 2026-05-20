@@ -10,6 +10,7 @@ import {
   readPackageVersion as readRuntimePackageVersion,
   resolveConfigRelativePath,
   resolveDefaultConfigPath,
+  resolveLocalConfigPath,
   resolvePathFrom,
   resolveWorkspacePath,
 } from "./runtime-paths";
@@ -113,7 +114,8 @@ export function loadConfigWithHierarchy(
       );
     }
   } else {
-    customLayer = loadConfigLayer(resolveWorkspacePath("config.ini"));
+    const localConfigPath = resolveLocalConfigPath();
+    customLayer = localConfigPath ? loadConfigLayer(localConfigPath) : null;
   }
 
   // Step 3: Convert CLI options to config format (highest priority)
