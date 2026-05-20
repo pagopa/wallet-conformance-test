@@ -936,7 +936,7 @@ testConfigs.forEach((testConfig) => {
           }
 
           try {
-            parseMdoc(Buffer.from(credential.credential));
+            parseMdoc(Buffer.from(credential.credential, "base64url"));
             log.debug("  Format: mdoc-CBOR");
             hasValidFormat = true;
             break;

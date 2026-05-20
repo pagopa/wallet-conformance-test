@@ -10,7 +10,7 @@ import { X509Certificate } from "@peculiar/x509";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import { decode } from "cbor";
+import cbor from "cbor";
 import { DcqlQuery } from "dcql";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -43,6 +43,7 @@ import { KeyPairJwk, zTrustChain, zX5c } from "@/types";
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
 const iss = "https://issuer.example.com";
+const { decode } = cbor;
 
 describe("Load Mocked Credentials", async () => {
   const config = loadConfig("./config.ini");
