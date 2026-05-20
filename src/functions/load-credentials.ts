@@ -1,7 +1,7 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
-import { decode } from "cbor";
+import cbor from "cbor";
 import { readdirSync, readFileSync } from "node:fs";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
@@ -20,6 +20,8 @@ import {
   isCredentialMdocExpired,
   isCredentialSdJwtExpired,
 } from "./mock-credentials";
+
+const { decode } = cbor;
 
 /**
  * Loads credentials from a specified directory, verifies them, and returns the valid ones.

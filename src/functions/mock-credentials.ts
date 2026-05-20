@@ -1,7 +1,7 @@
 import { IssuerSignedDocument } from "@auth0/mdl";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
-import { Tagged } from "cbor";
+import cbor from "cbor";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import z from "zod";
 
@@ -33,6 +33,8 @@ import {
   buildMockMdlMdoc_V1_3,
   buildMockSdJwt_V1_3,
 } from "./V1_3/mock-credentials";
+
+const { Tagged } = cbor;
 
 export async function createMockMdlMdoc(
   subject: string,

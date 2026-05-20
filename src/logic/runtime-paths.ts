@@ -54,6 +54,23 @@ export function resolveDefaultConfigPath(): string {
   return path.join(packageRoot, "config.example.ini");
 }
 
+export function resolveLocalConfigPath(
+  workspaceDir = process.cwd(),
+  rootDir = packageRoot,
+): null | string {
+  const workspaceConfigPath = path.resolve(workspaceDir, "config.ini");
+  if (existsSync(workspaceConfigPath)) {
+    return workspaceConfigPath;
+  }
+
+  const packageConfigPath = path.join(rootDir, "config.ini");
+  if (existsSync(packageConfigPath)) {
+    return packageConfigPath;
+  }
+
+  return null;
+}
+
 export function resolvePackageAssetPath(relativePath: string): string {
   if (path.isAbsolute(relativePath)) {
     return relativePath;
