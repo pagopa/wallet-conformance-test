@@ -62,6 +62,8 @@ These are negative tests: each sends a deliberately malformed PAR request and ve
 
 These are positive checks run against the response of a successful PAR request.
 
+- **CI_016**: Verifies that the Credential Issuer correctly handles a well-formed PAR request whose HTTP POST body is encoded as `application/x-www-form-urlencoded`. The test asserts that a successful PAR response was returned, which implicitly confirms the issuer parsed the form-encoded parameters correctly and did not reject the request due to encoding.
+
 - **CI_040**: Reads the `expires_in` field in the successful PAR response and asserts that its value is at most 60 seconds. This enforces the requirement that the `request_uri` has a short validity window to limit replay exposure.
 
 - **CI_041**: Reads the `request_uri` value from the PAR response, extracts the random token portion (the segment after the last `:` in the URN), and estimates its bit length (6 bits per character for base64, 4 bits for hex). Asserts that the estimated bit length is at least 128 bits, which is the minimum for cryptographic randomness.
@@ -73,6 +75,8 @@ These are positive checks run against the response of a successful PAR request.
 - **CI_044a**: Reads the `request_uri` field from the PAR response and asserts that it is a defined, non-empty string. This is the one-time URI the wallet will reference in the subsequent authorization request.
 
 - **CI_044b**: Reads the `expires_in` field from the PAR response and asserts that it is a positive number. This value tells the wallet how many seconds the `request_uri` remains valid before it must start a new PAR.
+
+- **CI_029**: Verifies that the Credential Issuer successfully resolves the Wallet Instance's trust chain and accepts a PAR request from a trusted wallet. The test checks that the PAR step returned a defined response with no error. It also decodes the wallet attestation JWT header: if a `trust_chain` array is embedded directly, the issuer resolved trust from there; otherwise, trust is resolved through the federation API endpoints (`.well-known/openid-federation`). Either path is accepted; what matters is that the issuer validated the attestation end-to-end and returned a successful PAR response.
 
 #### Authorization Request Validation Tests
 

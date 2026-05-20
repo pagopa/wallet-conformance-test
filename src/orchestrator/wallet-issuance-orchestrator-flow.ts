@@ -4,6 +4,7 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { randomUUID } from "node:crypto";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
@@ -432,6 +433,9 @@ export class WalletIssuanceOrchestratorFlow {
       authorizationServer: credentialIssuer,
       callbacks,
       clientAttestation: walletAttestationResponse.attestation,
+      config: new IoWalletSdkConfig({
+        itWalletSpecsVersion: this.config.wallet.wallet_version,
+      }),
       jti: randomUUID(),
     });
 

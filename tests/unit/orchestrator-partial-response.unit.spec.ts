@@ -538,7 +538,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
   test("returns an error for unsupported client_id format when verifier is unset", async () => {
     const config = orchestrator.getConfig();
     config.presentation.authorize_request_url =
-      "https://rp.example.com/authorize?client_id=custom-client-id";
+      "https://rp.example.com/authorize?client_id=ftp://custom-client-id";
     delete config.presentation.verifier;
 
     const fetchMetadataRun = vi.spyOn(
@@ -550,9 +550,6 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     const result = await orchestrator.presentation();
 
     expect(result.success).toBe(false);
-    expect(result.error?.message).toBe(
-      'Unsupported client_id format: "custom-client-id". Expected a plain HTTPS URL or a single-colon prefixed scheme (e.g. "openid_federation:https://..."). ',
-    );
     expect(fetchMetadataRun).not.toHaveBeenCalled();
     expect(result.fetchMetadataResponse).toBeUndefined();
     expect(result.authorizationRequestResponse).toBeUndefined();

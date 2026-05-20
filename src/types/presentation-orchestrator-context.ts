@@ -20,7 +20,7 @@ export interface PresentationFlowResponse {
 export interface RunThroughAuthorizeVpContext {
   authorizationRequestResponse: AuthorizationRequestStepResponse;
   credentials: CredentialWithKey[];
-  fetchMetadataResponse: FetchMetadataVpStepResponse;
-  verifierMetadata: ItWalletCredentialVerifierMetadata;
+  fetchMetadataResponse?: FetchMetadataVpStepResponse;
+  verifierMetadata?: ItWalletCredentialVerifierMetadata;
   walletAttestationResponse: AttestationResponse;
 }

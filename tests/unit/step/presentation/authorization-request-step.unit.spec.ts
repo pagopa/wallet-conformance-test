@@ -335,7 +335,7 @@ describe("AuthorizationRequestDefaultStep", () => {
   // -------------------------------------------------------------------------
 
   describe("guard clauses", () => {
-    it("returns success: false when no enc key is found in verifier jwks", async () => {
+    it("proceeds and calls createAuthorizationResponse even when no enc key is found in verifier jwks", async () => {
       setupHappyPathMocks();
 
       const verifierMetadata = {
@@ -352,11 +352,8 @@ describe("AuthorizationRequestDefaultStep", () => {
         walletAttestation: {} as never,
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error?.message).toContain(
-        "no encryption key found in verifier metadata",
-      );
-      expect(createAuthorizationResponse).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(createAuthorizationResponse).toHaveBeenCalledOnce();
     });
 
     it("returns success: false when response_uri is missing from the request object", async () => {
