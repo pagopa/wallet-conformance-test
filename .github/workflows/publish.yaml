@@ -52,7 +52,7 @@ jobs:
           expected_tag="v${package_version}"
 
           if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
-            echo "::error::Git tag ${GITHUB_REF_NAME} does not match package.json version ${expected_tag}." >&2
+            echo "::error::Git tag ${GITHUB_REF_NAME} does not match expected tag ${expected_tag} for package.json version ${package_version}." >&2
             exit 1
           fi
 
