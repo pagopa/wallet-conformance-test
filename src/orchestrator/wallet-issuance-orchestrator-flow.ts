@@ -454,7 +454,6 @@ export class WalletIssuanceOrchestratorFlow {
     const pushedAuthorizationRequestResponse =
       await this.pushedAuthorizationRequestStep.run({
         baseUrl: credentialIssuer,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds,
         popAttestation,
         pushedAuthorizationRequestEndpoint,

@@ -4,7 +4,9 @@ import { defineIssuanceTest } from "#/config/test-metadata";
 import { createFreshPop } from "#/helpers";
 import {
   buildTamperedPopJwt,
+  createExpiredAttestationResponse,
   createFakeAttestationResponse,
+  createTamperedAttestationResponse,
   signThenTamperPayload,
   signWithCustomIss,
   signWithHS256,
@@ -99,7 +101,6 @@ testConfigs.forEach((testConfig) => {
       const step = new StepClass(config, createQuietLogger());
       return step.run({
         baseUrl: config.issuance.url,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: freshPop,
         pushedAuthorizationRequestEndpoint,
@@ -693,7 +694,6 @@ testConfigs.forEach((testConfig) => {
       );
       return step.run({
         baseUrl: credentialIssuer,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: customPopAttestation,
         pushedAuthorizationRequestEndpoint,
@@ -765,7 +765,7 @@ testConfigs.forEach((testConfig) => {
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
-          ioWalletSdkConfig,
+          config: ioWalletSdkConfig,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           useWrongKey: true,
         });
@@ -800,7 +800,7 @@ testConfigs.forEach((testConfig) => {
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
-          ioWalletSdkConfig,
+          config: ioWalletSdkConfig,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
           wrongAud: "https://attacker.example.com",
         });
@@ -833,8 +833,8 @@ testConfigs.forEach((testConfig) => {
         const tamperedPop = await buildTamperedPopJwt({
           authorizationServer,
           clientAttestation: walletAttestationResponse.attestation,
+          config: ioWalletSdkConfig,
           expiresAt: pastExpiresAt,
-          ioWalletSdkConfig,
           issuedAt: pastIssuedAt,
           realUnitKey: walletAttestationResponse.unitKey.privateKey,
         });
@@ -845,6 +845,109 @@ testConfigs.forEach((testConfig) => {
         log.debug("  Request completed");
 
         log.debug("→ Validating issuer rejected the expired PoP...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_031 — Wallet Attestation Cryptographic Signature Validation
+    // -----------------------------------------------------------------------
+
+    test("CI_031: Wallet Attestation Signature | Issuer rejects a PAR when the wallet attestation signature is invalid", async () => {
+      const log = baseLog.withTag("CI_031");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with tampered wallet attestation";
+
+      log.start(
+        "Conformance test: Verifying wallet attestation signature validation",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Creating tampered wallet attestation...");
+        const tamperedAttestation = await createTamperedAttestationResponse(
+          "sub",
+          "tampered-subject",
+        );
+
+        log.debug("→ Sending PAR request with tampered attestation...");
+        const result = await runParStep(
+          testConfig.pushedAuthorizationRequestStepClass,
+          tamperedAttestation,
+        );
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_032 — Wallet Attestation Expiration Check
+    // -----------------------------------------------------------------------
+
+    test("CI_032: Wallet Attestation Expiration | Issuer rejects a PAR when the wallet attestation is expired", async () => {
+      const log = baseLog.withTag("CI_032");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR with expired wallet attestation";
+
+      log.start(
+        "Conformance test: Verifying wallet attestation expiration check",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Creating expired wallet attestation...");
+        const expiredAttestation = await createExpiredAttestationResponse();
+
+        log.debug("→ Sending PAR request with expired attestation...");
+        const result = await runParStep(
+          testConfig.pushedAuthorizationRequestStepClass,
+          expiredAttestation,
+        );
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_033 — Wallet Attestation Attested Cryptographic Key Acceptance
+    // -----------------------------------------------------------------------
+
+    test("CI_033: Attested Key Acceptance | Issuer accepts and uses only cryptographic keys that are properly derived from the attested Wallet Instance", async () => {
+      const log = baseLog.withTag("CI_033");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR signed with a key not present in wallet attestation";
+
+      log.start("Conformance test: Verifying attested key acceptance");
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Building PoP signed with a key NOT in the attestation...");
+        const tamperedPop = await buildTamperedPopJwt({
+          authorizationServer,
+          clientAttestation: walletAttestationResponse.attestation,
+          config: ioWalletSdkConfig,
+          realUnitKey: walletAttestationResponse.unitKey.privateKey,
+          useWrongKey: true, // This signs the PoP with a fresh random key
+        });
+
+        log.debug("→ Sending PAR request with mismatched PoP key...");
+        const result = await runParStepWithCustomPop(tamperedPop);
+
+        log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
 
         testSuccess = true;
