@@ -2,9 +2,9 @@
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import { normalizeClientId } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -70,12 +70,18 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug("→ Checking client_id matches entity statement issuer...");
       const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
       expect(parsedQrCode?.clientId).toBeDefined();
+      if (!parsedQrCode?.clientId) {
+        throw new Error(
+          "RPR006 precondition failed: parsedQrCode.clientId is undefined. " +
+            "The authorization request QR code did not contain a client_id.",
+        );
+      }
 
       // The client_id should match the issuer from the entity statement
       log.debug(`  Expected: ${issuer}`);
-      log.debug(`  Actual: ${parsedQrCode?.clientId}`);
-      const rawClientId = parsedQrCode?.clientId ?? "";
-      expect(normalizeClientId(rawClientId)).toBe(issuer);
+      log.debug(`  Actual: ${parsedQrCode.clientId}`);
+      const rawClientId = parsedQrCode.clientId;
+      expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
@@ -152,7 +158,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const requestObject = authorizationRequestResult.response?.requestObject;
       expect(requestObject?.state).toBeDefined();
       log.debug(
-        `  state: ${requestObject?.state} (length: ${requestObject?.state.length})`,
+        `  state: ${requestObject?.state} (length: ${requestObject?.state?.length})`,
       );
       expect(requestObject?.state).toMatch(/^[a-zA-Z0-9_-]+$/);
       log.debug("  ✅ state parameter is present and valid");

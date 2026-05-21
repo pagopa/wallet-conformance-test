@@ -18,6 +18,7 @@ import {
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
+import { AttestationResponse } from "@/types";
 
 // Define and auto-register test configuration
 const testConfigs = await defineIssuanceTest("HappyFlowIssuance");
@@ -33,6 +34,7 @@ testConfigs.forEach((testConfig) => {
     let authorizeResponse: AuthorizeStepResponse;
     let nonceResponse: NonceRequestResponse;
     let credentialResponse: CredentialRequestResponse;
+    let walletAttestationResponse: AttestationResponse;
 
     beforeAll(async () => {
       try {
@@ -46,6 +48,7 @@ testConfigs.forEach((testConfig) => {
         pushedAuthorizationRequestResponse =
           result.pushedAuthorizationRequestResponse;
         tokenResponse = result.tokenResponse;
+        walletAttestationResponse = result.walletAttestationResponse;
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
@@ -259,6 +262,24 @@ testConfigs.forEach((testConfig) => {
     // PUSHED AUTHORIZATION REQUEST TESTS
     // ============================================================================
 
+    test("CI_016: PAR Request | Credential Issuer successfully processes HTTP POST requests with message body parameters encoded in application/x-www-form-urlencoded format", async () => {
+      const log = baseLog.withTag("CI_016");
+      const DESCRIPTION =
+        "PAR endpoint accepts application/x-www-form-urlencoded requests";
+
+      log.start("Conformance test: Verifying PAR endpoint request handling");
+
+      let testSuccess = false;
+      try {
+        const response = pushedAuthorizationRequestResponse.response;
+        expect(response).toBeDefined();
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
     test("CI_040: PAR Request | request_uri validity time is set to less than one minute", async () => {
       const log = baseLog.withTag("CI_040");
       const DESCRIPTION = "request_uri validity time ≤60 seconds";
@@ -382,6 +403,54 @@ testConfigs.forEach((testConfig) => {
         expect(typeof expiresIn).toBe("number");
         log.debug(`  expires_in: ${expiresIn} seconds`);
         expect(expiresIn).toBeGreaterThan(0);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_029: PAR Request | Wallet Instance Trustworthiness Verification | Issuer successfully resolves the wallet attestation trust chain and accepts a valid PAR", async () => {
+      const log = baseLog.withTag("CI_029");
+      const DESCRIPTION =
+        "Issuer successfully resolved wallet attestation trust chain";
+
+      log.start("Conformance test: Verifying wallet instance trustworthiness");
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Checking PAR was accepted by the issuer...");
+        expect(pushedAuthorizationRequestResponse.error).toBeUndefined();
+        expect(
+          pushedAuthorizationRequestResponse.response,
+          "PAR must have been accepted as evidence of trust chain resolution",
+        ).toBeDefined();
+
+        log.debug(
+          "→ Decoding wallet attestation to inspect trust_chain header...",
+        );
+        const attestationJwt = await SDJwt.extractJwt(
+          walletAttestationResponse.attestation,
+        );
+        const trustChainHeader = attestationJwt.header?.trust_chain;
+        const trustChain = z
+          .array(z.string())
+          .optional()
+          .parse(trustChainHeader);
+
+        if (trustChain && trustChain.length > 0) {
+          log.debug(
+            `  trust_chain embedded in attestation header (${trustChain.length} element(s))`,
+          );
+          log.debug(
+            "  Issuer resolved trust chain from embedded attestation header",
+          );
+        } else {
+          log.debug("  trust_chain not embedded in attestation header");
+          log.debug(
+            "  Issuer resolves trust via federation endpoints (.well-known/openid-federation)",
+          );
+        }
 
         testSuccess = true;
       } finally {

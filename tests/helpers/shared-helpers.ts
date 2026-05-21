@@ -3,12 +3,14 @@
 // -----------------------------------------------------------------------
 
 import { createClientAttestationPopJwt } from "@pagopa/io-wallet-oauth2";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import { AttestationResponse } from "@/types";
 
 export async function createFreshPop(options: {
   authorizationServer: string;
+  ioWalletSdkConfig: IoWalletSdkConfig;
   walletAttestationResponse: AttestationResponse;
 }): Promise<string> {
   return createClientAttestationPopJwt({
@@ -20,5 +22,6 @@ export async function createFreshPop(options: {
       ]),
     },
     clientAttestation: options.walletAttestationResponse.attestation,
+    config: options.ioWalletSdkConfig,
   });
 }

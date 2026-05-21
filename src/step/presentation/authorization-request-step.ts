@@ -3,6 +3,7 @@ import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-f
 import {
   createAuthorizationResponse,
   type CreateAuthorizationResponseResult,
+  type CreateAuthorizationResponseVersionedOptions,
   fetchAuthorizationRequest,
   type Openid4vpAuthorizationRequestHeader,
   parseAuthorizeRequest,
@@ -35,7 +36,7 @@ export interface AuthorizationRequestOptions {
   /**
    * Metadata about the verifier from the wallet's perspective.
    */
-  verifierMetadata: ItWalletCredentialVerifierMetadata;
+  verifierMetadata?: ItWalletCredentialVerifierMetadata;
 
   /**
    * Attestation response from the wallet.
@@ -106,34 +107,26 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       );
       log.info("VP Token built successfully from DCQL query.");
 
-      const verifierMetadata = options.verifierMetadata;
-
-      const encryptionKey = verifierMetadata.jwks.keys.find(
-        (k) => k.use === "enc",
-      );
-      if (!encryptionKey) {
-        throw new Error("no encryption key found in verifier metadata");
-      }
-
       const authorizationResponse = await createAuthorizationResponse({
         authorization_encrypted_response_alg:
-          verifierMetadata.authorization_encrypted_response_alg || undefined,
+          options.verifierMetadata?.authorization_encrypted_response_alg ||
+          undefined,
         authorization_encrypted_response_enc:
-          verifierMetadata.authorization_encrypted_response_enc || undefined,
+          options.verifierMetadata?.authorization_encrypted_response_enc ||
+          undefined,
         callbacks: {
           ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(encryptionKey),
+          encryptJwe: getEncryptJweCallback(),
         },
+        config: this.ioWalletSdkConfig,
         requestObject,
         rpJwks: {
-          encrypted_response_enc_values_supported:
-            verifierMetadata.encrypted_response_enc_values_supported as
-              | string[]
-              | undefined,
-          jwks: verifierMetadata.jwks,
+          encrypted_response_enc_values_supported: options.verifierMetadata
+            ?.encrypted_response_enc_values_supported as string[] | undefined,
+          jwks: options.verifierMetadata?.jwks ?? { keys: [] },
         },
         vp_token,
-      });
+      } as CreateAuthorizationResponseVersionedOptions);
       log.debug(
         "Authorization Response created:",
         JSON.stringify(authorizationResponse, null, 2),

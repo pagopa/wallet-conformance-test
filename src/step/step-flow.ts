@@ -12,9 +12,11 @@ export interface StepResponse {
   success: boolean;
 }
 
-export abstract class StepFlow {
+export abstract class StepFlow<
+  V extends ItWalletSpecsVersion = ItWalletSpecsVersion,
+> {
   protected config: Config;
-  protected ioWalletSdkConfig: IoWalletSdkConfig<ItWalletSpecsVersion>;
+  protected ioWalletSdkConfig: IoWalletSdkConfig<V>;
 
   protected log: ReturnType<typeof createLogger>;
 
@@ -23,7 +25,7 @@ export abstract class StepFlow {
     this.log = logger.withTag(this.tag());
     this.ioWalletSdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: this.config.wallet.wallet_version,
-    });
+    }) as IoWalletSdkConfig<V>;
   }
 
   abstract run(...args: unknown[]): Promise<StepResponse>;

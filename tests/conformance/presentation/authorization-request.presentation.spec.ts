@@ -5,7 +5,11 @@ import { definePresentationTest } from "#/config/test-metadata";
 import { postToResponseUri } from "#/helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { Jwk } from "@pagopa/io-wallet-oauth2";
-import { createAuthorizationResponse } from "@pagopa/io-wallet-oid4vp";
+import {
+  createAuthorizationResponse,
+  type CreateAuthorizationResponseVersionedOptions,
+} from "@pagopa/io-wallet-oid4vp";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { CompactEncrypt, generateKeyPair } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -35,6 +39,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   let credentials: CredentialWithKey[];
   let validResponseUri: string;
   let validJarmJwe: string;
+  let ioWalletSdkConfig: IoWalletSdkConfig;
 
   // -----------------------------------------------------------------------
   // Shared setup – run once
@@ -43,6 +48,11 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   beforeAll(async () => {
     const ctx = await orchestrator.runThroughAuthorize();
 
+    if (!ctx.verifierMetadata) {
+      throw new Error(
+        "Setup failed: verifierMetadata is undefined — RP did not return valid metadata",
+      );
+    }
     verifierMetadata = ctx.verifierMetadata;
     walletAttestationResponse = ctx.walletAttestationResponse;
     credentials = ctx.credentials;
@@ -65,6 +75,9 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       );
     }
     verifierEncryptionKey = key;
+    ioWalletSdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: loadConfigWithHierarchy().wallet.wallet_version,
+    });
   });
 
   useTestSummary(baseLog, testConfig.name);
@@ -104,7 +117,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         vp_token: { invalid_credential_id: 12345 },
       });
 
-      const encryptJwe = getEncryptJweCallback(verifierEncryptionKey);
+      const encryptJwe = getEncryptJweCallback();
       const { jwe: tamperedJwe } = await encryptJwe(
         {
           alg:
@@ -155,7 +168,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         },
       });
 
-      const encryptJwe = getEncryptJweCallback(verifierEncryptionKey);
+      const encryptJwe = getEncryptJweCallback();
       const { jwe: tamperedJwe } = await encryptJwe(
         {
           alg:
@@ -319,14 +332,15 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
           metadata.authorization_encrypted_response_enc,
         callbacks: {
           ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(verifierEncryptionKey),
+          encryptJwe: getEncryptJweCallback(),
         },
+        config: ioWalletSdkConfig,
         requestObject: tamperedRequestObject,
         rpJwks: { jwks: metadata.jwks },
         vp_token:
           authResult.response.authorizationResponse.authorizationResponsePayload
             .vp_token,
-      });
+      } as CreateAuthorizationResponseVersionedOptions);
 
       log.info("→ Posting JARM with wrong nonce to response_uri...");
       const formBody = new URLSearchParams({
@@ -525,7 +539,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         unexpected_field: true,
       });
 
-      const encryptJwe = getEncryptJweCallback(verifierEncryptionKey);
+      const encryptJwe = getEncryptJweCallback();
       const { jwe: tamperedJwe } = await encryptJwe(
         {
           alg:

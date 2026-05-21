@@ -5,6 +5,7 @@ import {
   JwtSignerJwk,
   SignJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
@@ -25,6 +26,8 @@ export interface TamperedPopOptions {
   clientAttestation: string;
   /** Override: use a specific expiry (e.g. Date in the past for an expired PoP) */
   expiresAt?: Date;
+  /** The IoWalletSdkConfig to use for signing (allows version overrides) */
+  ioWalletSdkConfig: IoWalletSdkConfig;
   /** Override: use a specific `issuedAt` */
   issuedAt?: Date;
   /** Override: use a fixed jti (for replay tests) */
@@ -59,6 +62,7 @@ export async function buildTamperedPopJwt(
     authorizationServer,
     clientAttestation,
     expiresAt,
+    ioWalletSdkConfig,
     issuedAt,
     jti,
     realUnitKey,
@@ -91,6 +95,7 @@ export async function buildTamperedPopJwt(
       authorizationServer: wrongAud ?? authorizationServer,
       callbacks: customCallbacks,
       clientAttestation,
+      config: ioWalletSdkConfig,
       expiresAt,
       issuedAt,
       jti,
@@ -126,6 +131,7 @@ export async function buildTamperedPopJwt(
     authorizationServer: wrongAud ?? authorizationServer,
     callbacks: realCallbacks,
     clientAttestation,
+    config: ioWalletSdkConfig,
     expiresAt,
     issuedAt,
     jti,
