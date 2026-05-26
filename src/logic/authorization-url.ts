@@ -30,7 +30,7 @@ async function fetchQrCode(url: string, containerId: string) {
   const page = cheerio.load(html);
 
   // find image inside target div
-  const imgSrc = page(`.${containerId} img`).attr("src");
+  const imgSrc = page(`${containerId} img`).attr("src");
 
   if (!imgSrc) throw new Error("QR image not found");
 
@@ -47,14 +47,13 @@ async function parseQrCode(image: string): Promise<string> {
 
     buffer = Buffer.from(base64, "base64");
   } else {
-    // fetch image from browser context (keeps cookies/session)
     const response = await fetch(image, { method: "GET" });
 
     if (!response.ok) {
       throw new Error(`failed to fetch QRCode from: ${image}`);
     }
 
-    buffer = Buffer.from(await response.text());
+    buffer = Buffer.from(await response.arrayBuffer());
   }
 
   // parse PNG image
@@ -78,13 +77,6 @@ function validateUrl(rawUrl: string): string {
   // allow only http/https
   if (!["http:", "https:"].includes(url.protocol)) {
     throw new Error("Unsupported protocol");
-  }
-
-  // block localhost / private networks
-  const blockedHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
-
-  if (blockedHosts.includes(url.hostname)) {
-    throw new Error("Blocked hostname");
   }
 
   return url.toString();

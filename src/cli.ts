@@ -139,7 +139,7 @@ function addCommonOptions(command: Command): Command {
     )
     .option(
       "--presentation-qr-container-id <names>",
-      "Calss name of the html container encapsulating the QR Code (env: CONFIG_PRESENTATION_QR_CONTAINER_ID)",
+      "ID or Class of the HTML container encapsulating the QR Code (env: CONFIG_PRESENTATION_QR_CONTAINER_ID)",
     )
     .option(
       "--credential-types <types>",
