@@ -40,6 +40,11 @@ jobs:
           cache: "pnpm"
           registry-url: "https://registry.npmjs.org/"
 
+      - name: Setup npm 11
+        run: |
+          npm install --global npm@^11.5.1
+          npm --version
+
       - name: Validate release tag
         shell: bash
         run: |
@@ -63,4 +68,4 @@ jobs:
         run: pnpm build
 
       - name: Publish package
-        run: pnpm publish --no-git-checks --access public --provenance
+        run: npm publish --access public --provenance
