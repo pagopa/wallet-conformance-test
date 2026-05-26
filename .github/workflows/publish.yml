@@ -42,7 +42,7 @@ jobs:
 
       - name: Setup npm 11
         run: |
-          npm install --global npm@^11.5.1
+          npm install --global npm@^11.15.0
           npm --version
 
       - name: Validate release tag
