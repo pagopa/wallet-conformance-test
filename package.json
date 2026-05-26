@@ -56,10 +56,11 @@
     "@types/express": "^5.0.3",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
+    "@types/pngjs": "^6.0.5",
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.1",
-    "eslint": "^9.38.0",
     "esbuild": "^0.27.0",
+    "eslint": "^9.38.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
@@ -81,13 +82,16 @@
     "@sd-jwt/sd-jwt-vc": "^0.17.1",
     "@sd-jwt/types": "^0.17.0",
     "cbor": "^10.0.11",
+    "cheerio": "^1.2.0",
     "commander": "^14.0.2",
     "consola": "^3.4.2",
     "dcql": "^3.0.0",
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
-    "zod": "^4.3.6",
-    "vitest": "^3.2.4"
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
+    "vitest": "^3.2.4",
+    "zod": "^4.3.6"
   }
 }

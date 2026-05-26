@@ -64,6 +64,9 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.presentationAuthorizeUri) {
     env.CONFIG_PRESENTATION_AUTHORIZE_URI = options.presentationAuthorizeUri;
   }
+  if (options.presentationQRContainerId) {
+    env.CONFIG_PRESENTATION_QR_CONTAINER_ID = options.presentationQRContainerId;
+  }
   if (options.credentialTypes) {
     env.CONFIG_CREDENTIAL_TYPES = options.credentialTypes;
   }
@@ -133,6 +136,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--presentation-authorize-uri <uri>",
       "Override the presentation authorize URL (env: CONFIG_PRESENTATION_AUTHORIZE_URI)",
+    )
+    .option(
+      "--presentation-qr-container-id <names>",
+      "ID or Class of the HTML container encapsulating the QR Code (env: CONFIG_PRESENTATION_QR_CONTAINER_ID)",
     )
     .option(
       "--credential-types <types>",

@@ -33,6 +33,7 @@ export interface CliOptions {
   maxRetries?: number;
   port?: number;
   presentationAuthorizeUri?: string;
+  presentationQRContainerId?: string;
   presentationTestsDir?: string;
   saveCredential?: boolean;
   stepsMapping?: string;

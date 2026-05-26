@@ -37,8 +37,6 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   let verifierEncryptionKey: Jwk;
   let walletAttestationResponse: AttestationResponse;
   let credentials: CredentialWithKey[];
-  let validResponseUri: string;
-  let validJarmJwe: string;
   let ioWalletSdkConfig: IoWalletSdkConfig;
 
   // -----------------------------------------------------------------------
@@ -56,16 +54,6 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     verifierMetadata = ctx.verifierMetadata;
     walletAttestationResponse = ctx.walletAttestationResponse;
     credentials = ctx.credentials;
-
-    // Run a fresh authorization step to capture a valid JARM + responseUri
-    const authResponse = ctx.authorizationRequestResponse.response;
-    if (!authResponse) {
-      throw new Error(
-        "Setup failed: authorizationRequestResponse.response is undefined — RP did not return a valid authorization response",
-      );
-    }
-    validResponseUri = authResponse.responseUri;
-    validJarmJwe = authResponse.authorizationResponse.jarm.responseJwe;
 
     const key = verifierMetadata.jwks.keys.find((k) => k.use === "enc");
     if (!key) {
@@ -110,6 +98,14 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Building JARM with malformed vp_token claims...");
 
       const malformedPayload = JSON.stringify({
@@ -133,7 +129,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -159,6 +155,14 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Building JARM with malformed credential-level claims...");
       // Send garbage credential data inside vp_token
       const malformedPayload = JSON.stringify({
@@ -184,7 +188,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -210,6 +214,14 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Generating a random EC key for wrong encryption...");
       const { publicKey } = await generateKeyPair("ECDH-ES");
 
@@ -226,7 +238,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting wrongly-encrypted JARM to response_uri...");
       const formBody = new URLSearchParams({ response: wrongJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -252,9 +264,18 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse, responseUri } = authResult.response;
+      const jarmJwe = authorizationResponse.jarm.responseJwe;
+
       log.info("→ Tampering with the JARM JWE ciphertext...");
       // A JWE compact serialization has 5 base64url-encoded parts: header.ek.iv.ciphertext.tag
-      const parts = validJarmJwe.split(".");
+      const parts = jarmJwe.split(".");
       expect(parts.length).toBe(5);
 
       // Tamper with the authentication tag to invalidate integrity
@@ -268,7 +289,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting tampered JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -376,11 +397,20 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse, responseUri } = authResult.response;
+      const jarmJwe = authorizationResponse.jarm.responseJwe;
+
       log.info(
         "→ Posting JARM to response_uri with Content-Type: text/plain...",
       );
-      const formBody = new URLSearchParams({ response: validJarmJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const formBody = new URLSearchParams({ response: jarmJwe });
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
         contentType: "text/plain",
       });
@@ -406,10 +436,18 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Posting completely malformed JWE to response_uri...");
       const malformedJwe = "eyJhbGciOiJFQ0RILUVTLN0.bad.bad.bad.bad";
       const formBody = new URLSearchParams({ response: malformedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -434,8 +472,16 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Sending GET request to response_uri...");
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         method: "GET",
       });
 
@@ -461,8 +507,17 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse, responseUri } = authResult.response;
+      const jarmJwe = authorizationResponse.jarm.responseJwe;
+
       log.info("→ Corrupting the JARM JWE ciphertext segment...");
-      const parts = validJarmJwe.split(".");
+      const parts = jarmJwe.split(".");
       expect(parts.length).toBe(5);
       // Corrupt the ciphertext (4th part, index 3)
       const ciphertext = parts[3];
@@ -473,7 +528,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting corrupted JARM to response_uri...");
       const formBody = new URLSearchParams({ response: corruptedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -499,12 +554,21 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse, responseUri } = authResult.response;
+      const jarmJwe = authorizationResponse.jarm.responseJwe;
+
       log.info("→ Appending garbage to the JARM JWE to break integrity...");
-      const tamperedJwe = validJarmJwe + "BROKEN";
+      const tamperedJwe = jarmJwe + "BROKEN";
 
       log.info("→ Posting broken JARM to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -530,6 +594,14 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Building JARM with completely invalid claims...");
 
       // Encrypt an invalid claim set (missing required fields, wrong types)
@@ -555,7 +627,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       log.info("→ Posting JARM with invalid claims to response_uri...");
       const formBody = new URLSearchParams({ response: tamperedJwe });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -582,9 +654,18 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
       let testSuccess = false;
       try {
+        const authResult = await runAuthorizationStep(
+          testConfig.authorizeStepClass,
+        );
+        expect(authResult.success).toBe(true);
+        if (!authResult.response)
+          throw new Error("could not resolve authorization response");
+        const { authorizationResponse, responseUri } = authResult.response;
+        const jarmJwe = authorizationResponse.jarm.responseJwe;
+
         log.info(`→ Sending ${method} request to response_uri...`);
-        const formBody = new URLSearchParams({ response: validJarmJwe });
-        const response = await postToResponseUri(validResponseUri, {
+        const formBody = new URLSearchParams({ response: jarmJwe });
+        const response = await postToResponseUri(responseUri, {
           body: formBody.toString(),
           method,
         });

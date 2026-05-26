@@ -1,10 +1,14 @@
 /* eslint-disable max-lines-per-function */
 import type { CreateAuthorizationResponseResult } from "@pagopa/io-wallet-oid4vp";
+import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { definePresentationTest } from "#/config/test-metadata";
 import { postToResponseUri } from "#/helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
+
+import type { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
+import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import {
   createQuietLogger,
@@ -23,8 +27,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
   const baseLog = orchestrator.getLog();
 
-  let validResponseUri: string;
-  let validAuthResponse: CreateAuthorizationResponseResult;
+  let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
+  let walletAttestationResponse: AttestationResponse;
+  let credentials: CredentialWithKey[];
 
   // -----------------------------------------------------------------------
   // Shared setup – run once
@@ -33,14 +38,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   beforeAll(async () => {
     const ctx = await orchestrator.runThroughAuthorize();
 
-    const authResponse = ctx.authorizationRequestResponse.response;
-    if (!authResponse) {
-      throw new Error(
-        "Setup failed: authorizationRequestResponse.response is undefined — RP did not return a valid authorization response",
-      );
-    }
-    validResponseUri = authResponse.responseUri;
-    validAuthResponse = authResponse.authorizationResponse;
+    if (!ctx.verifierMetadata) verifierMetadata = ctx.verifierMetadata;
+    walletAttestationResponse = ctx.walletAttestationResponse;
+    credentials = ctx.credentials;
   });
 
   useTestSummary(baseLog, testConfig.name);
@@ -61,6 +61,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     });
   }
 
+  async function runAuthorizationStep(): Promise<AuthorizationRequestStepResponse> {
+    const config = loadConfigWithHierarchy();
+    const step = new testConfig.authorizeStepClass(config, createQuietLogger());
+    return step.run({
+      credentials,
+      verifierMetadata,
+      walletAttestation: walletAttestationResponse,
+    });
+  }
+
   // -----------------------------------------------------------------------
   // RPR-20 — Invalid redirect_uri handling
   // -----------------------------------------------------------------------
@@ -75,10 +85,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse } = authResult.response;
+
       log.info("→ Running redirect step with a tampered response_uri...");
 
       const result = await runRedirectStep(
-        validAuthResponse,
+        authorizationResponse,
         "invalid_response_uri",
       );
 
@@ -105,8 +121,14 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { authorizationResponse, responseUri } = authResult.response;
+
       log.info("→ Running redirect step to get a valid redirect_uri...");
-      const result = await runRedirectStep(validAuthResponse, validResponseUri);
+      const result = await runRedirectStep(authorizationResponse, responseUri);
       expect(result.success).toBe(true);
 
       expect(result.response).toBeDefined();
@@ -152,10 +174,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Posting to response_uri without the 'response' parameter...");
       // Send an empty form body (missing required 'response' parameter)
       const emptyBody = new URLSearchParams();
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: emptyBody.toString(),
       });
 
@@ -180,10 +208,16 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info(
         "→ Posting raw garbage data to response_uri as form-urlencoded...",
       );
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: "this-is-not-valid-form-data=!@#$%^&*()",
       });
 
@@ -208,11 +242,17 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Sending invalid request to response_uri to trigger error...");
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -246,11 +286,17 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Sending invalid request to response_uri to trigger error...");
       const formBody = new URLSearchParams({
         response: "deliberately-invalid-jwe-for-error-trigger",
       });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
@@ -290,6 +336,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Posting an explicit authorization error to response_uri...");
 
       // Send an OAuth 2.0 error response per OpenID4VP spec instead of a success JARM
@@ -297,7 +349,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         error: "access_denied",
         error_description: "User denied the presentation request",
       });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: errorBody.toString(),
       });
 
@@ -342,13 +394,19 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info("→ Posting authorization error as x-www-form-urlencoded...");
       const errorBody = new URLSearchParams({
         error: "invalid_request",
         error_description: "Wallet could not satisfy the requested credentials",
         state: "conformance-test-state-rpr-109",
       });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: errorBody.toString(),
         contentType: "application/x-www-form-urlencoded",
       });
@@ -393,6 +451,12 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
     let testSuccess = false;
     try {
+      const authResult = await runAuthorizationStep();
+      expect(authResult.success).toBe(true);
+      if (!authResult.response)
+        throw new Error("could not resolve authorization response");
+      const { responseUri } = authResult.response;
+
       log.info(
         "→ Posting a structurally valid but semantically wrong JARM to trigger validation error...",
       );
@@ -401,7 +465,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         response:
           "eyJhbGciOiJFQ0RILUVTLN0.ZW5jcnlwdGVk.aXY.Y2lwaGVydGV4dA.dGFn",
       });
-      const response = await postToResponseUri(validResponseUri, {
+      const response = await postToResponseUri(responseUri, {
         body: formBody.toString(),
       });
 
