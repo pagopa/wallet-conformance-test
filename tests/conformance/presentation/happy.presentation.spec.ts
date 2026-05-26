@@ -1,5 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import { definePresentationTest } from "#/config/test-metadata";
+import { postToResponseUri } from "#/helpers";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
@@ -218,6 +219,36 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(redirectUriResult.response?.responseCode).toBeDefined();
       log.debug(`  response_code: ${redirectUriResult.response?.responseCode}`);
       log.debug("  ✅ response_code is present");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR028: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
+    const log = baseLog.withTag("RPR028");
+
+    log.start("Conformance test: Verifying response_code entropy requirements");
+
+    const DESCRIPTION =
+      "Relying Party correctly provides response_code with sufficient entropy (≥32 characters, URL-safe charset)";
+    let testSuccess = false;
+    try {
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
+
+      const responseCode = redirectUriResult.response?.responseCode ?? "";
+      log.debug(`  response_code: ${responseCode}`);
+      log.debug(`  Length: ${responseCode.length} characters`);
+
+      expect(responseCode.length).toBeGreaterThanOrEqual(32);
+      log.debug(
+        "  ✅ response_code length meets minimum entropy requirement (≥32)",
+      );
+
+      expect(responseCode).toMatch(/^[a-zA-Z0-9_-]+$/);
+      log.debug("  ✅ response_code uses URL-safe characters only");
 
       testSuccess = true;
     } finally {
@@ -616,6 +647,52 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(requestObject?.exp).toBeGreaterThan(currentTime);
       log.debug("  ✅ JWT is not expired");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR_110: HTTP 200 on valid response_uri submission | RP returns HTTP 200 for a well-formed authorization response", async () => {
+    const log = baseLog.withTag("RPR_110");
+    const DESCRIPTION =
+      "RP correctly returns HTTP 200 for a valid authorization response";
+    log.start(
+      "Conformance test: HTTP 200 on valid response_uri submission (success path)",
+    );
+
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Running a fresh authorization step to obtain a valid JARM and response_uri...",
+      );
+      const ctx = await orchestrator.runThroughAuthorize();
+
+      const authResponse = ctx.authorizationRequestResponse.response;
+      if (!authResponse) {
+        throw new Error(
+          "Fresh authorization step failed: response is undefined",
+        );
+      }
+
+      const freshResponseUri = authResponse.responseUri;
+      const freshJarm = authResponse.authorizationResponse.jarm.responseJwe;
+
+      log.info("→ Posting valid JARM to response_uri...");
+      log.debug(`  response_uri: ${freshResponseUri}`);
+      const formBody = new URLSearchParams({ response: freshJarm });
+      const response = await postToResponseUri(freshResponseUri, {
+        body: formBody.toString(),
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned HTTP 200...");
+      expect(
+        response.status,
+        "RP must return HTTP 200 for a valid authorization response per OID4VP spec",
+      ).toBe(200);
+      log.debug("  ✅ response_uri returned HTTP 200");
 
       testSuccess = true;
     } finally {
