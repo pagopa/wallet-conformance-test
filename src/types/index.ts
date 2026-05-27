@@ -7,4 +7,5 @@ export * from "./issuance-orchestrator-context";
 export * from "./key-pair";
 export * from "./logger";
 export * from "./mdoc";
+export * from "./pid-issuance";
 export * from "./presentation-orchestrator-context";
