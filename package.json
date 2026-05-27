@@ -22,9 +22,9 @@
   },
   "scripts": {
     "build": "node scripts/build.ts --production",
-    "ta:server": "ts-node -r tsconfig-paths/register src/servers/ta-server.ts",
-    "wp:server": "ts-node -r tsconfig-paths/register src/servers/wp-server.ts",
-    "ci:server": "ts-node -r tsconfig-paths/register src/servers/ci-server.ts",
+    "ta:server": "tsx src/servers/ta-server.ts",
+    "wp:server": "tsx src/servers/wp-server.ts",
+    "ci:server": "tsx src/servers/ci-server.ts",
     "servers": "concurrently \"pnpm ta:server\" \"pnpm wp:server\" \"pnpm ci:server\"",
     "types:check": "tsc --noEmit",
     "test": "vitest run",
@@ -58,12 +58,11 @@
     "@types/node": "^24.1.0",
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.1",
-    "eslint": "^9.38.0",
     "esbuild": "^0.27.0",
+    "eslint": "^9.38.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   },
   "dependencies": {
@@ -87,7 +86,7 @@
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
-    "zod": "^4.3.6",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "^4.3.6"
   }
 }
