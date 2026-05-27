@@ -1,6 +1,7 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { z } from "zod";
 
+import { pidIssuanceSchema } from "./pid-issuance";
 import { parseItWalletSpecVersion } from "./version";
 
 /**
@@ -29,6 +30,7 @@ export const configSchema = z.object({
     tests_dir: z.string().default("./tests/issuance"),
     url: z.string().url(),
   }),
+  issuance_pid: pidIssuanceSchema.optional().default({ mode: "none" }),
   issuer: z.object({
     port: z.coerce.number(),
   }),
