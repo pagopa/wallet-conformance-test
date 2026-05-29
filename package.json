@@ -40,7 +40,8 @@
     "test:issuance": "vitest run --config vitest.issuance.config.js",
     "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
     "test:presentation": "vitest run --config vitest.presentation.config.js",
-    "prepublish": "pnpm build"
+    "prepublish": "pnpm build",
+    "fixtures:pid-mrtd": "tsx scripts/generate-pid-mrtd-fixtures.ts"
   },
   "keywords": [
     "wallet",
@@ -58,12 +59,13 @@
     "@types/node": "^24.1.0",
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.1",
-    "eslint": "^9.38.0",
     "esbuild": "^0.27.0",
+    "eslint": "^9.38.0",
     "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   },
   "dependencies": {
@@ -80,6 +82,7 @@
     "@sd-jwt/jwt-status-list": "^0.19.0",
     "@sd-jwt/sd-jwt-vc": "^0.17.1",
     "@sd-jwt/types": "^0.17.0",
+    "asn1js": "^3.0.10",
     "cbor": "^10.0.11",
     "commander": "^14.0.2",
     "consola": "^3.4.2",
@@ -87,7 +90,8 @@
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
-    "zod": "^4.3.6",
-    "vitest": "^3.2.4"
+    "pkijs": "^3.4.0",
+    "vitest": "^3.2.4",
+    "zod": "^4.3.6"
   }
 }
