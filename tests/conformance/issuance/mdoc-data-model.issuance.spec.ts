@@ -67,7 +67,7 @@ testConfigs.forEach((testConfig) => {
     test("CI_137: Mdoc Credential Format | Data elements are CBOR-encoded per RFC 8949 / ISO 18013-5", async () => {
       const log = baseLog.withTag("CI_137");
       const DESCRIPTION =
-        "Mdoc credential bytes are well-formed CBOR: mandatory top-level keys present, nameSpaces entries are Tag 24 byte strings that re-decode to valid IssuerSignedItem maps, and issuerAuth protected header is a CBOR-encoded alg map";
+        "Mdoc credential bytes are well-formed CBOR: top-level item is a CBOR map, nameSpaces entries are Tag 24 byte strings that re-decode to valid IssuerSignedItem maps, and issuerAuth protected header is a CBOR-encoded alg map";
 
       log.start(
         "Conformance test: mdoc CBOR encoding per RFC 8949 / ISO 18013-5",
@@ -97,43 +97,23 @@ testConfigs.forEach((testConfig) => {
           ).toBeDefined();
 
           // -----------------------------------------------------------------
-          // 2. Top-level structure is a CBOR map with mandatory keys
-          //    (ISO 18013-5 §8.3.2.1)
+          // 2. Top-level structure is a CBOR map (ISO 18013-5 §8.3.2.1)
           // -----------------------------------------------------------------
           expect(
             typeof decoded === "object" && decoded !== null,
             "Top-level CBOR item must be a map",
           ).toBe(true);
 
-          expect(
-            "issuerAuth" in decoded,
-            "CBOR map must contain issuerAuth key",
-          ).toBe(true);
-
-          expect(
-            "nameSpaces" in decoded,
-            "CBOR map must contain nameSpaces key",
-          ).toBe(true);
-
           // -----------------------------------------------------------------
-          // 3. nameSpaces is a CBOR map with at least one namespace
-          //    (ISO 18013-5 §8.3.2.1.2)
+          // 3. nameSpaces entries are CBOR Tag 24 items that re-decode to
+          //    valid IssuerSignedItem maps
+          //    (ISO 18013-5 §9.1.2, RFC 8949 §3.4, ISO 18013-5 Table 2)
           // -----------------------------------------------------------------
           const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
 
           const nsKeys = Object.keys(nameSpaces);
-          expect(
-            nsKeys.length,
-            "nameSpaces must contain at least one namespace entry",
-          ).toBeGreaterThan(0);
-
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
-          // -----------------------------------------------------------------
-          // 4 & 5. Each namespace entry is an array of CBOR Tag 24 items,
-          //        and each Tag 24 payload re-decodes to a valid IssuerSignedItem
-          //        (ISO 18013-5 §9.1.2, RFC 8949 §3.4, ISO 18013-5 Table 2)
-          // -----------------------------------------------------------------
           for (const [namespaceName, items] of Object.entries(nameSpaces)) {
             expect(
               Array.isArray(items),
@@ -159,7 +139,7 @@ testConfigs.forEach((testConfig) => {
                 "Tag 24 content must be a byte string",
               ).toBe(true);
 
-              // 5. Tag 24 payload re-decodes to a valid IssuerSignedItem map
+              // Tag 24 payload re-decodes to a valid IssuerSignedItem map
               const itemBytes = Buffer.isBuffer(tagged.value)
                 ? tagged.value
                 : Buffer.from(tagged.value as Uint8Array);
@@ -209,20 +189,10 @@ testConfigs.forEach((testConfig) => {
           }
 
           // -----------------------------------------------------------------
-          // 6. issuerAuth protected header is a CBOR-encoded byte string
+          // 4. issuerAuth protected header is a CBOR-encoded byte string
           //    containing the alg parameter (ISO 18013-5 §9.1.2.4, RFC 9052)
           // -----------------------------------------------------------------
           const issuerAuth = decoded["issuerAuth"] as unknown[];
-
-          expect(
-            Array.isArray(issuerAuth),
-            "issuerAuth must be a CBOR array (COSE_Sign1)",
-          ).toBe(true);
-
-          expect(
-            issuerAuth.length,
-            "COSE_Sign1 array must have exactly 4 elements",
-          ).toBe(4);
 
           const protectedHeader = issuerAuth[0];
 
@@ -254,6 +224,273 @@ testConfigs.forEach((testConfig) => {
           log.debug(
             `  ✓ issuerAuth COSE_Sign1 protected header valid, alg label present`,
           );
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // =======================================================================
+    // CI_138 — Mdoc Component Structure Organisation
+    // =======================================================================
+
+    test("CI_138: Mdoc Component Structure | Digital Credential is structured into distinct nameSpaces and issuerAuth components per IT-Wallet spec", async () => {
+      const log = baseLog.withTag("CI_138");
+      const DESCRIPTION =
+        "Mdoc Digital Credential is properly structured into its two distinct components — nameSpaces (attribute data) and issuerAuth (cryptographic proof/MSO) — with correct types, internal completeness, and MSO valueDigests cross-referencing nameSpaces";
+
+      log.start(
+        "Conformance test: mdoc component structure per IT-Wallet spec / ISO 18013-5 §9.1.2.4",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_138 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+
+          // -----------------------------------------------------------------
+          // Layer A — Top-level distinct components
+          // (IT-Wallet spec: "struttura gli Attestati Elettronici in
+          //  componenti distinti: namespaces e prova crittografica")
+          // -----------------------------------------------------------------
+
+          expect(
+            "nameSpaces" in decoded,
+            "CBOR map must contain nameSpaces key",
+          ).toBe(true);
+
+          expect(
+            "issuerAuth" in decoded,
+            "CBOR map must contain issuerAuth key",
+          ).toBe(true);
+
+          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces value must be a CBOR map",
+          ).toBe(true);
+
+          const nsKeys = Object.keys(nameSpaces);
+          expect(
+            nsKeys.length,
+            "nameSpaces must contain at least one namespace entry",
+          ).toBeGreaterThan(0);
+
+          log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
+
+          const issuerAuth = decoded["issuerAuth"] as unknown[];
+
+          expect(
+            Array.isArray(issuerAuth),
+            "issuerAuth must be a CBOR array (COSE_Sign1)",
+          ).toBe(true);
+
+          expect(
+            issuerAuth.length,
+            "COSE_Sign1 array must have exactly 4 elements",
+          ).toBe(4);
+
+          // -----------------------------------------------------------------
+          // Layer B — issuerAuth component completeness
+          // (ISO 18013-5 §9.1.2.4, RFC 9052, RFC 9360)
+          // -----------------------------------------------------------------
+
+          // issuerAuth[1]: unprotected header — must be a CBOR map containing
+          // label 33 (x5chain) per RFC 9360 for X.509-based issuance
+          const unprotectedHeader = issuerAuth[1];
+
+          expect(
+            unprotectedHeader !== null && typeof unprotectedHeader === "object",
+            "issuerAuth[1] (unprotected header) must be a CBOR map",
+          ).toBe(true);
+
+          const x5chainLabel = 33;
+          const unprotectedHas33 =
+            unprotectedHeader instanceof Map
+              ? unprotectedHeader.has(x5chainLabel)
+              : x5chainLabel in
+                (unprotectedHeader as Record<number | string, unknown>);
+
+          expect(
+            unprotectedHas33,
+            "issuerAuth[1] unprotected header must contain x5chain (label 33) per RFC 9360",
+          ).toBe(true);
+
+          log.debug(
+            `  ✓ issuerAuth[1] unprotected header contains x5chain (label 33)`,
+          );
+
+          // issuerAuth[2]: payload — must be a byte string (COSE payload bstr)
+          const payloadBytes = issuerAuth[2];
+
+          expect(
+            payloadBytes instanceof Uint8Array || Buffer.isBuffer(payloadBytes),
+            "issuerAuth[2] (payload) must be a byte string (Uint8Array / Buffer)",
+          ).toBe(true);
+
+          // Payload bstr wraps CBOR Tag 24 containing the MobileSecurityObject
+          // (ISO 18013-5 §9.1.2.4, RFC 8949 §3.4)
+          const payloadTagged = decode(
+            Buffer.isBuffer(payloadBytes)
+              ? payloadBytes
+              : Buffer.from(payloadBytes as Uint8Array),
+          ) as cbor.Tagged;
+
+          expect(
+            payloadTagged.tag,
+            "issuerAuth payload must be wrapped in CBOR Tag 24 (embedded CBOR per RFC 8949 §3.4)",
+          ).toBe(24);
+
+          // Inner bytes decode to the MobileSecurityObject CBOR map
+          const msoBytes = Buffer.isBuffer(payloadTagged.value)
+            ? payloadTagged.value
+            : Buffer.from(payloadTagged.value as Uint8Array);
+
+          const mso = decode(msoBytes) as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          expect(
+            mso !== null && typeof mso === "object",
+            "Tag 24 inner bytes must decode to a CBOR map (MobileSecurityObject)",
+          ).toBe(true);
+
+          // Helper to check MSO field presence regardless of Map vs plain object
+          const msoHas = (key: string): boolean =>
+            mso instanceof Map ? mso.has(key) : key in mso;
+
+          const msoGet = (key: string): unknown =>
+            mso instanceof Map
+              ? mso.get(key)
+              : (mso as Record<string, unknown>)[key];
+
+          // ISO 18013-5 §9.1.2.4: mandatory MSO fields
+          expect(
+            msoHas("docType"),
+            "MSO must contain mandatory field docType",
+          ).toBe(true);
+          expect(
+            msoHas("version"),
+            "MSO must contain mandatory field version",
+          ).toBe(true);
+          expect(
+            msoHas("validityInfo"),
+            "MSO must contain mandatory field validityInfo",
+          ).toBe(true);
+          expect(
+            msoHas("digestAlgorithm"),
+            "MSO must contain mandatory field digestAlgorithm",
+          ).toBe(true);
+          expect(
+            msoHas("valueDigests"),
+            "MSO must contain mandatory field valueDigests",
+          ).toBe(true);
+          expect(
+            msoHas("deviceKeyInfo"),
+            "MSO must contain mandatory field deviceKeyInfo",
+          ).toBe(true);
+
+          // validityInfo must contain validUntil (ISO 18013-5 §9.1.2.4)
+          const validityInfo = msoGet("validityInfo") as
+            | Map<string, unknown>
+            | null
+            | Record<string, unknown>
+            | undefined;
+
+          expect(
+            validityInfo !== null && typeof validityInfo === "object",
+            "MSO validityInfo must be a map",
+          ).toBe(true);
+
+          const validityInfoHas = (key: string): boolean =>
+            validityInfo instanceof Map
+              ? validityInfo.has(key)
+              : key in (validityInfo as Record<string, unknown>);
+
+          expect(
+            validityInfoHas("validUntil"),
+            "MSO validityInfo must contain validUntil",
+          ).toBe(true);
+
+          log.debug(`  ✓ MSO validityInfo.validUntil present`);
+
+          // deviceKeyInfo must contain deviceKey
+          const deviceKeyInfo = msoGet("deviceKeyInfo") as
+            | Map<string, unknown>
+            | null
+            | Record<string, unknown>
+            | undefined;
+
+          expect(
+            deviceKeyInfo !== null && typeof deviceKeyInfo === "object",
+            "MSO deviceKeyInfo must be a map",
+          ).toBe(true);
+
+          const deviceKeyInfoHas = (key: string): boolean =>
+            deviceKeyInfo instanceof Map
+              ? deviceKeyInfo.has(key)
+              : key in (deviceKeyInfo as Record<string, unknown>);
+
+          expect(
+            deviceKeyInfoHas("deviceKey"),
+            "MSO deviceKeyInfo must contain deviceKey",
+          ).toBe(true);
+
+          log.debug(`  ✓ MSO deviceKeyInfo.deviceKey present`);
+
+          // issuerAuth[3]: signature — must be a byte string
+          const signatureBytes = issuerAuth[3];
+
+          expect(
+            signatureBytes instanceof Uint8Array ||
+              Buffer.isBuffer(signatureBytes),
+            "issuerAuth[3] (signature) must be a byte string",
+          ).toBe(true);
+
+          log.debug(`  ✓ issuerAuth[3] signature bytes present`);
+
+          // -----------------------------------------------------------------
+          // Layer C — Cross-link: nameSpaces ↔ valueDigests
+          // (IT-Wallet spec: "Il MSO memorizza in modo sicuro i digest
+          //  crittografici degli attributi all'interno dei nameSpaces")
+          // -----------------------------------------------------------------
+          const valueDigests = msoGet("valueDigests") as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          expect(
+            valueDigests !== null && typeof valueDigests === "object",
+            "MSO valueDigests must be a map",
+          ).toBe(true);
+
+          for (const nsKey of nsKeys) {
+            const vdHas =
+              valueDigests instanceof Map
+                ? valueDigests.has(nsKey)
+                : nsKey in (valueDigests as Record<string, unknown>);
+
+            expect(
+              vdHas,
+              `MSO valueDigests must contain an entry for namespace "${nsKey}" (cross-link with nameSpaces)`,
+            ).toBe(true);
+
+            log.debug(
+              `  ✓ valueDigests contains cross-link for namespace "${nsKey}"`,
+            );
+          }
         }
 
         testSuccess = true;
