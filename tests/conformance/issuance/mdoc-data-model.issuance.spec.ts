@@ -4,6 +4,7 @@ import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import cbor from "cbor";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { parseMdoc } from "@/logic/mdoc";
@@ -490,6 +491,183 @@ testConfigs.forEach((testConfig) => {
             log.debug(
               `  ✓ valueDigests contains cross-link for namespace "${nsKey}"`,
             );
+          }
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // =======================================================================
+    // CI_139 — Mdoc Credential MSO Digest Integrity Validation
+    // =======================================================================
+
+    test("CI_139: Mdoc Credential MSO Digest Integrity | The MSO correctly stores cryptographic digests of attributes within nameSpaces, enabling Relying Parties to validate disclosed attributes against corresponding digestID values while maintaining privacy of undisclosed information", async () => {
+      const log = baseLog.withTag("CI_139");
+      const DESCRIPTION =
+        "Mdoc Credential MSO Digest Integrity | The MSO correctly stores cryptographic digests of attributes within nameSpaces, enabling Relying Parties to validate disclosed attributes against corresponding digestID values while maintaining privacy of undisclosed information";
+
+      log.start(
+        "Conformance test: MSO digest integrity per ISO 18013-5 §9.1.2.4, §9.1.2.5, §9.3.1",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_139 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+
+          // ---------------------------------------------------------------
+          // Decode MSO (same path as CI_138)
+          // ---------------------------------------------------------------
+          const issuerAuth = decoded["issuerAuth"] as unknown[];
+          const payloadBytes = issuerAuth[2];
+
+          const payloadTagged = decode(
+            Buffer.isBuffer(payloadBytes)
+              ? payloadBytes
+              : Buffer.from(payloadBytes as Uint8Array),
+          ) as cbor.Tagged;
+
+          const msoBytes = Buffer.isBuffer(payloadTagged.value)
+            ? payloadTagged.value
+            : Buffer.from(payloadTagged.value as Uint8Array);
+
+          const mso = decode(msoBytes) as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          const msoGet = (key: string): unknown =>
+            mso instanceof Map
+              ? mso.get(key)
+              : (mso as Record<string, unknown>)[key];
+
+          const digestAlgorithmRaw = msoGet("digestAlgorithm") as string;
+
+          // Normalise "SHA-256" → "sha256" for Node crypto
+          const digestAlgorithm = digestAlgorithmRaw
+            .toLowerCase()
+            .replace("-", "");
+
+          log.debug(
+            `  digestAlgorithm: ${digestAlgorithmRaw} → ${digestAlgorithm}`,
+          );
+
+          const valueDigests = msoGet("valueDigests") as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          // Helper for Map-or-plain-object access on valueDigests entries
+          const vdGet = (
+            container: Map<unknown, unknown> | Record<number | string, unknown>,
+            key: unknown,
+          ): unknown =>
+            container instanceof Map
+              ? container.get(key)
+              : (container as Record<number | string, unknown>)[
+                  key as number | string
+                ];
+
+          const vdHasKey = (
+            container: Map<unknown, unknown> | Record<number | string, unknown>,
+            key: unknown,
+          ): boolean =>
+            container instanceof Map
+              ? container.has(key)
+              : (key as number | string) in
+                (container as Record<number | string, unknown>);
+
+          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+          for (const [ns, items] of Object.entries(nameSpaces)) {
+            const nsDigests = (
+              valueDigests instanceof Map
+                ? valueDigests.get(ns)
+                : (valueDigests as Record<string, unknown>)[ns]
+            ) as Map<unknown, unknown> | Record<number | string, unknown>;
+
+            const seenDigestIDs = new Set<number>();
+
+            for (const taggedItem of items as cbor.Tagged[]) {
+              // The raw bytes of the Tag 24 bstr content — this is the
+              // IssuerSignedItemBytes as defined in ISO 18013-5 §9.1.2.5
+              const itemRawBytes = Buffer.isBuffer(taggedItem.value)
+                ? taggedItem.value
+                : Buffer.from(taggedItem.value as Uint8Array);
+
+              const itemMap = decode(itemRawBytes) as Record<string, unknown>;
+
+              // -----------------------------------------------------------
+              // A. random field is ≥ 16 bytes (ISO 18013-5 §9.1.2.5)
+              // -----------------------------------------------------------
+              const random = itemMap["random"] as Buffer | Uint8Array;
+              const randomBuf = Buffer.isBuffer(random)
+                ? random
+                : Buffer.from(random);
+
+              expect(
+                randomBuf.length >= 16,
+                `IssuerSignedItem.random in namespace "${ns}" must be at least 16 bytes (ISO 18013-5 §9.1.2.5), got ${randomBuf.length}`,
+              ).toBe(true);
+
+              // -----------------------------------------------------------
+              // B. digestID values are unique per namespace (ISO 18013-5 §9.1.2.5)
+              // -----------------------------------------------------------
+              const digestID = itemMap["digestID"] as number;
+
+              expect(
+                !seenDigestIDs.has(digestID),
+                `digestID ${digestID} in namespace "${ns}" must be unique per namespace (ISO 18013-5 §9.1.2.5)`,
+              ).toBe(true);
+
+              seenDigestIDs.add(digestID);
+
+              // -----------------------------------------------------------
+              // C. digestID exists in valueDigests[ns] (ISO 18013-5 §9.1.2.5 + §9.3.1)
+              // -----------------------------------------------------------
+              expect(
+                vdHasKey(nsDigests, digestID) ||
+                  vdHasKey(nsDigests, String(digestID)),
+                `valueDigests["${ns}"] must contain an entry for digestID ${digestID} (ISO 18013-5 §9.1.2.5 + §9.3.1)`,
+              ).toBe(true);
+
+              // -----------------------------------------------------------
+              // D. Hash(IssuerSignedItemBytes) === valueDigests[ns][digestID]
+              //    (ISO 18013-5 §9.1.2.4 + §9.3.1)
+              //    IMPORTANT: hash taggedItem.value (the raw Tag 24 bstr content),
+              //    NOT a re-encoding of the decoded map.
+              // -----------------------------------------------------------
+              const computed = createHash(digestAlgorithm)
+                .update(itemRawBytes)
+                .digest();
+
+              const expectedRaw =
+                vdGet(nsDigests, digestID) ??
+                vdGet(nsDigests, String(digestID));
+
+              const expected = Buffer.isBuffer(expectedRaw)
+                ? expectedRaw
+                : Buffer.from(expectedRaw as Uint8Array);
+
+              expect(
+                computed.length === expected.length &&
+                  timingSafeEqual(computed, expected),
+                `${digestAlgorithm}(IssuerSignedItemBytes) must match valueDigests["${ns}"][${digestID}] (ISO 18013-5 §9.1.2.4 + §9.3.1)`,
+              ).toBe(true);
+
+              log.debug(
+                `  ✓ ${ns}[digestID=${digestID}] digest integrity verified`,
+              );
+            }
           }
         }
 
