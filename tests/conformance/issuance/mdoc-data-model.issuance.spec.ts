@@ -868,5 +868,108 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    // =======================================================================
+    // CI_142 — Mdoc IssuerSignedItemBytes are CBOR Tag 24 byte strings
+    //         (#6.24(bstr .cbor))
+    // =======================================================================
+
+    test("CI_142: Mdoc Credential Format | Within each nameSpace, one or more IssuerSignedItemBytes are correctly encoded as CBOR byte strings with Tag 24 (#6.24(bstr .cbor))", async () => {
+      const log = baseLog.withTag("CI_142");
+      const DESCRIPTION =
+        "Within each nameSpace, one or more IssuerSignedItemBytes are correctly encoded as CBOR byte strings with Tag 24 (#6.24(bstr .cbor)), appearing as 24(<<...>>) in diagnostic notation";
+
+      log.start(
+        "Conformance test: mdoc IssuerSignedItemBytes Tag 24 encoding per RFC 8949 §3.4.5.1 / ISO 18013-5 §9.1.2.5 / §8.3.2.1.2.2",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_142 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+          const nsKeys = Object.keys(nameSpaces);
+          log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
+
+          for (const [ns, items] of Object.entries(nameSpaces)) {
+            // 1. Array of IssuerSignedItemBytes
+            expect(
+              Array.isArray(items),
+              `nameSpaces["${ns}"] must be a CBOR array of IssuerSignedItemBytes`,
+            ).toBe(true);
+
+            // 2. "one or more"
+            const arr = items as unknown[];
+            expect(
+              arr.length,
+              `nameSpaces["${ns}"] must contain at least one IssuerSignedItemBytes`,
+            ).toBeGreaterThan(0);
+
+            // 3. Tag 24 byte-string wrapping valid CBOR — per element
+            arr.forEach((item, idx) => {
+              expect(
+                item instanceof Tagged,
+                `nameSpaces["${ns}"][${idx}] must be a CBOR Tagged item (RFC 8949 §3.4)`,
+              ).toBe(true);
+
+              const tagged = item as cbor.Tagged;
+
+              expect(
+                tagged.tag,
+                `nameSpaces["${ns}"][${idx}] tag must be 24 (#6.24(bstr .cbor)) per RFC 8949 §3.4.5.1`,
+              ).toBe(24);
+
+              expect(
+                tagged.value instanceof Uint8Array ||
+                  Buffer.isBuffer(tagged.value),
+                `Tag 24 content for nameSpaces["${ns}"][${idx}] must be a CBOR byte string (bstr)`,
+              ).toBe(true);
+
+              // The `.cbor` constraint: embedded bytes are themselves
+              // well-formed CBOR.
+              const inner = Buffer.isBuffer(tagged.value)
+                ? tagged.value
+                : Buffer.from(tagged.value as Uint8Array);
+
+              let innerDecoded: unknown;
+              let innerDecodeError: Error | undefined;
+              try {
+                innerDecoded = decode(inner);
+              } catch (error) {
+                innerDecodeError =
+                  error instanceof Error ? error : new Error(String(error));
+              }
+
+              expect(
+                innerDecodeError,
+                `Tag 24 inner bytes for nameSpaces["${ns}"][${idx}] must decode as valid CBOR (RFC 8949 §3.4.5.1): ${innerDecodeError?.message ?? ""}`,
+              ).toBeUndefined();
+
+              expect(
+                innerDecoded !== null && typeof innerDecoded === "object",
+                `Tag 24 inner CBOR for nameSpaces["${ns}"][${idx}] must decode to a CBOR data item (the embedded IssuerSignedItem)`,
+              ).toBe(true);
+
+              log.debug(
+                `  ✓ ${ns}[${idx}] = 24(<<…${inner.length} bytes…>>) — valid Tag 24 bstr .cbor`,
+              );
+            });
+          }
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
