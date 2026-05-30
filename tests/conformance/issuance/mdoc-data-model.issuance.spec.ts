@@ -676,5 +676,177 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    // =======================================================================
+    // CI_140 — Mdoc-CBOR Digital Credential Required Structure
+    // =======================================================================
+
+    test("CI_140: Mdoc Credential Format | The mdoc-CBOR Digital Credential successfully conforms to the required structure (nameSpaces map per ISO 18013-5 §8.3.2.1.2 and issuerAuth COSE_Sign1 per ISO 18013-5 §9.1.2.4)", async () => {
+      const log = baseLog.withTag("CI_140");
+      const DESCRIPTION =
+        "The mdoc-CBOR Digital Credential successfully conforms to the required structure as specified in the compliance table: nameSpaces is a CBOR map of namespaces containing the defined data elements (ISO 18013-5 §8.3.2.1.2), and issuerAuth is a COSE_Sign1 structure carrying the Mobile Security Object (MSO) issued by the Credential Issuer (ISO 18013-5 §9.1.2.4)";
+
+      log.start(
+        "Conformance test: mdoc-CBOR required structure per ISO 18013-5 §8.3.2.1.2 / §9.1.2.4",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_140 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+
+          // -----------------------------------------------------------------
+          // Top-level IssuerSigned must be a CBOR map containing the two
+          // required compliance-table parameters: nameSpaces and issuerAuth.
+          // -----------------------------------------------------------------
+          expect(
+            typeof decoded === "object" && decoded !== null,
+            "IssuerSigned top-level CBOR item must be a map",
+          ).toBe(true);
+
+          // -----------------------------------------------------------------
+          // Compliance row 1 — nameSpaces (ISO 18013-5 §8.3.2.1.2)
+          // "(map). The namespaces within which the data elements are defined.
+          //  A Digital Credential MAY include multiple namespaces."
+          // -----------------------------------------------------------------
+          expect(
+            "nameSpaces" in decoded,
+            "IssuerSigned must contain the required parameter `nameSpaces` (ISO 18013-5 §8.3.2.1.2)",
+          ).toBe(true);
+
+          const nameSpacesRaw = decoded["nameSpaces"];
+
+          expect(
+            nameSpacesRaw !== null &&
+              typeof nameSpacesRaw === "object" &&
+              !Array.isArray(nameSpacesRaw),
+            "`nameSpaces` must be a CBOR map (ISO 18013-5 §8.3.2.1.2)",
+          ).toBe(true);
+
+          const nameSpaces = nameSpacesRaw as Record<string, unknown>;
+          const nsKeys = Object.keys(nameSpaces);
+
+          expect(
+            nsKeys.length,
+            "`nameSpaces` map must contain at least one namespace entry defining data elements (ISO 18013-5 §8.3.2.1.2)",
+          ).toBeGreaterThan(0);
+
+          log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
+
+          for (const [namespaceName, items] of Object.entries(nameSpaces)) {
+            expect(
+              Array.isArray(items),
+              `nameSpaces["${namespaceName}"] must be a CBOR array of data elements (IssuerSignedItemBytes)`,
+            ).toBe(true);
+
+            expect(
+              (items as unknown[]).length,
+              `nameSpaces["${namespaceName}"] must declare at least one data element`,
+            ).toBeGreaterThan(0);
+          }
+
+          // -----------------------------------------------------------------
+          // Compliance row 2 — issuerAuth (ISO 18013-5 §9.1.2.4)
+          // "(COSE_Sign1). Contains Mobile Security Object (MSO),
+          //  a COSE Sign1 Document, issued by the Credential Issuer."
+          // -----------------------------------------------------------------
+          expect(
+            "issuerAuth" in decoded,
+            "IssuerSigned must contain the required parameter `issuerAuth` (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+
+          const issuerAuth = decoded["issuerAuth"];
+
+          // COSE_Sign1 is encoded as an untagged 4-tuple CBOR array
+          // [protected, unprotected, payload, signature] per RFC 9052 §4.2.
+          expect(
+            Array.isArray(issuerAuth),
+            "`issuerAuth` must be a CBOR array encoding a COSE_Sign1 structure (RFC 9052 §4.2 / ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+
+          const issuerAuthArr = issuerAuth as unknown[];
+
+          expect(
+            issuerAuthArr.length,
+            "COSE_Sign1 must be a 4-tuple: [protected, unprotected, payload, signature] (RFC 9052 §4.2)",
+          ).toBe(4);
+
+          const [protectedHeader, unprotectedHeader, payload, signature] =
+            issuerAuthArr;
+
+          expect(
+            protectedHeader instanceof Uint8Array ||
+              Buffer.isBuffer(protectedHeader),
+            "COSE_Sign1[0] (protected header) must be a CBOR byte string (RFC 9052 §3)",
+          ).toBe(true);
+
+          expect(
+            unprotectedHeader !== null && typeof unprotectedHeader === "object",
+            "COSE_Sign1[1] (unprotected header) must be a CBOR map (RFC 9052 §3)",
+          ).toBe(true);
+
+          expect(
+            payload instanceof Uint8Array || Buffer.isBuffer(payload),
+            "COSE_Sign1[2] (payload) must be a CBOR byte string carrying the MSO (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+
+          expect(
+            signature instanceof Uint8Array || Buffer.isBuffer(signature),
+            "COSE_Sign1[3] (signature) must be a CBOR byte string (RFC 9052 §4.2)",
+          ).toBe(true);
+
+          // The payload byte string MUST carry the MSO. Per ISO 18013-5
+          // §9.1.2.4 the MSO is wrapped in CBOR Tag 24 (embedded CBOR,
+          // RFC 8949 §3.4) and decodes to a CBOR map (MobileSecurityObject).
+          const payloadBytes = Buffer.isBuffer(payload)
+            ? payload
+            : Buffer.from(payload as Uint8Array);
+
+          const payloadTagged = decode(payloadBytes) as cbor.Tagged;
+
+          expect(
+            payloadTagged instanceof Tagged && payloadTagged.tag === 24,
+            "issuerAuth payload must wrap the MSO in CBOR Tag 24 (ISO 18013-5 §9.1.2.4 / RFC 8949 §3.4)",
+          ).toBe(true);
+
+          const msoBytes = Buffer.isBuffer(payloadTagged.value)
+            ? payloadTagged.value
+            : Buffer.from(payloadTagged.value as Uint8Array);
+
+          const mso = decode(msoBytes) as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          expect(
+            mso !== null && typeof mso === "object",
+            "issuerAuth payload (Tag 24 inner bytes) must decode to a CBOR map (MobileSecurityObject) issued by the Credential Issuer (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+
+          const msoSize =
+            mso instanceof Map ? mso.size : Object.keys(mso).length;
+
+          expect(
+            msoSize,
+            "MobileSecurityObject map must be non-empty (ISO 18013-5 §9.1.2.4)",
+          ).toBeGreaterThan(0);
+
+          log.debug(
+            `  ✓ IssuerSigned conforms: nameSpaces map with ${nsKeys.length} namespace(s) and issuerAuth COSE_Sign1 carrying MSO`,
+          );
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
