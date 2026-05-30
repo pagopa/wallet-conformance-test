@@ -971,5 +971,131 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    // =======================================================================
+    // CI_143 — Mdoc IssuerSignedItem required attributes
+    //         (digestID, random, elementIdentifier, elementValue)
+    // =======================================================================
+
+    test("CI_143: Mdoc Credential Format | Each IssuerSignedItemBytes contains all required attributes (digestID, random, elementIdentifier, elementValue) per ISO 18013-5 §9.1.2.5 / §8.3.2.1.2.3", async () => {
+      const log = baseLog.withTag("CI_143");
+      const DESCRIPTION =
+        "Each IssuerSignedItemBytes successfully represents the disclosure information for the corresponding digests within the MSO and contains all the attributes specified in the compliance table: digestID (uint), random (bstr), elementIdentifier (tstr), elementValue (any)";
+
+      log.start(
+        "Conformance test: mdoc IssuerSignedItem required attributes per ISO 18013-5 §9.1.2.5 / §8.3.2.1.2.3",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_143 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+          for (const [ns, items] of Object.entries(nameSpaces)) {
+            (items as cbor.Tagged[]).forEach((tagged, idx) => {
+              // CI_142 already proves: tag === 24 and value is bstr.
+              const inner = Buffer.isBuffer(tagged.value)
+                ? tagged.value
+                : Buffer.from(tagged.value as Uint8Array);
+
+              const item = decode(inner) as
+                | Map<string, unknown>
+                | Record<string, unknown>;
+
+              // Helpers — match the Map-or-plain-object pattern used by
+              // CI_138 / CI_139 (cbor returns Map when keys are non-string).
+              const has = (key: string): boolean =>
+                item instanceof Map
+                  ? item.has(key)
+                  : key in (item as Record<string, unknown>);
+              const get = (key: string): unknown =>
+                item instanceof Map
+                  ? item.get(key)
+                  : (item as Record<string, unknown>)[key];
+
+              // ---------------------------------------------------------
+              // 1. digestID: CBOR unsigned integer (uint)
+              //    ISO 18013-5 §9.1.2.5
+              // ---------------------------------------------------------
+              expect(
+                has("digestID"),
+                `IssuerSignedItem in nameSpaces["${ns}"][${idx}] must contain attribute "digestID" (ISO 18013-5 §9.1.2.5)`,
+              ).toBe(true);
+
+              const digestID = get("digestID");
+
+              expect(
+                typeof digestID === "number" &&
+                  Number.isInteger(digestID) &&
+                  (digestID as number) >= 0,
+                `digestID in nameSpaces["${ns}"][${idx}] must be a CBOR unsigned integer (uint) per ISO 18013-5 §9.1.2.5, got ${typeof digestID} ${String(digestID)}`,
+              ).toBe(true);
+
+              // ---------------------------------------------------------
+              // 2. random: CBOR byte string (bstr)
+              //    ISO 18013-5 §9.1.2.5
+              //    Note: minimum-length (≥16) and per-item uniqueness are
+              //    covered by CI_139; this test asserts the CBOR type only.
+              // ---------------------------------------------------------
+              expect(
+                has("random"),
+                `IssuerSignedItem in nameSpaces["${ns}"][${idx}] must contain attribute "random" (ISO 18013-5 §9.1.2.5)`,
+              ).toBe(true);
+
+              const random = get("random");
+
+              expect(
+                Buffer.isBuffer(random) || random instanceof Uint8Array,
+                `random in nameSpaces["${ns}"][${idx}] must be a CBOR byte string (bstr) per ISO 18013-5 §9.1.2.5`,
+              ).toBe(true);
+
+              // ---------------------------------------------------------
+              // 3. elementIdentifier: CBOR text string (tstr), non-empty
+              //    ISO 18013-5 §8.3.2.1.2.3
+              // ---------------------------------------------------------
+              expect(
+                has("elementIdentifier"),
+                `IssuerSignedItem in nameSpaces["${ns}"][${idx}] must contain attribute "elementIdentifier" (ISO 18013-5 §8.3.2.1.2.3)`,
+              ).toBe(true);
+
+              const elementIdentifier = get("elementIdentifier");
+
+              expect(
+                typeof elementIdentifier === "string" &&
+                  (elementIdentifier as string).length > 0,
+                `elementIdentifier in nameSpaces["${ns}"][${idx}] must be a non-empty CBOR text string (tstr) per ISO 18013-5 §8.3.2.1.2.3`,
+              ).toBe(true);
+
+              // ---------------------------------------------------------
+              // 4. elementValue: CDDL `any` — key presence only.
+              //    ISO 18013-5 §8.3.2.1.2.3
+              //    CBOR `null` is allowed; no type assertion.
+              // ---------------------------------------------------------
+              expect(
+                has("elementValue"),
+                `IssuerSignedItem in nameSpaces["${ns}"][${idx}] must contain attribute "elementValue" (ISO 18013-5 §8.3.2.1.2.3)`,
+              ).toBe(true);
+
+              log.debug(
+                `  ✓ ${ns}[${idx}] IssuerSignedItem attrs OK (digestID=${String(digestID)}, elementIdentifier="${String(elementIdentifier)}")`,
+              );
+            });
+          }
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
