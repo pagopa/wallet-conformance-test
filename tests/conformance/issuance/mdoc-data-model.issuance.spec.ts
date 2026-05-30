@@ -775,5 +775,98 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    // =======================================================================
+    // CI_141 — Mdoc nameSpaces entries uniquely identified by name
+    // =======================================================================
+
+    test("CI_141: Mdoc Credential Format | nameSpaces contains one or more entries, each identified by a unique name (ISO 18013-5 §8.3.2.1.2 / §7.1)", async () => {
+      const log = baseLog.withTag("CI_141");
+      const DESCRIPTION =
+        "The nameSpaces map correctly contains one or more nameSpace entries, each properly identified by a unique, non-empty text-string name for organized data categorization";
+
+      log.start(
+        "Conformance test: mdoc nameSpaces unique naming per ISO 18013-5 §8.3.2.1.2 / §7.1",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_141 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          // -----------------------------------------------------------------
+          // 1. Duplicate-key detection at the raw CBOR level.
+          //    Default decode collapses duplicate map keys silently, so we
+          //    rely on the `cbor` package's built-in `preventDuplicateKeys`
+          //    option (throws on any duplicate map key anywhere in the
+          //    decoded tree — including inside `nameSpaces`).
+          //    RFC 8949 §3.1: CBOR maps should not contain duplicate keys.
+          // -----------------------------------------------------------------
+          let duplicateKeyError: Error | undefined;
+          try {
+            decode(raw, { preventDuplicateKeys: true });
+          } catch (error) {
+            duplicateKeyError =
+              error instanceof Error ? error : new Error(String(error));
+          }
+
+          expect(
+            duplicateKeyError,
+            `Duplicate CBOR map keys detected in mdoc credential (RFC 8949 §3.1 / ISO 18013-5 §8.3.2.1.2): ${duplicateKeyError?.message ?? ""}`,
+          ).toBeUndefined();
+
+          // -----------------------------------------------------------------
+          // 2. Standard decode to inspect the nameSpaces key set.
+          // -----------------------------------------------------------------
+          const decoded = decode(raw) as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+          // ≥ 1 entry (overlaps with CI_140 by design — matches the
+          // compliance-table wording for row CI_141 verbatim)
+          const nsKeys = Object.keys(nameSpaces);
+
+          expect(
+            nsKeys.length,
+            "nameSpaces must declare at least one nameSpace entry (ISO 18013-5 §8.3.2.1.2)",
+          ).toBeGreaterThan(0);
+
+          // 3. Each key is a non-empty text string. JS object keys are
+          //    always strings, but the empty string `""` is a legal CBOR
+          //    map key that carries no organisational meaning.
+          for (const key of nsKeys) {
+            expect(
+              typeof key === "string" && key.length > 0,
+              `nameSpace name "${key}" must be a non-empty text string (ISO 18013-5 §7.1)`,
+            ).toBe(true);
+          }
+
+          // 4. Advisory only: ISO 18013-5 §7.1 recommends reverse-domain
+          //    form (e.g. `org.iso.18013.5.1`, `eu.europa.ec.eudi.pid.1`).
+          //    Logged as a warning to avoid false negatives on legacy issuers.
+          for (const key of nsKeys) {
+            const isReverseDomain = /^[a-z0-9]+(\.[a-z0-9_-]+)+$/i.test(key);
+            if (!isReverseDomain) {
+              log.debug(
+                `  ⚠ nameSpace "${key}" does not match ISO 18013-5 §7.1 reverse-domain form`,
+              );
+            }
+          }
+
+          log.debug(
+            `  ✓ ${nsKeys.length} unique nameSpace(s): ${nsKeys.join(", ")}`,
+          );
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
