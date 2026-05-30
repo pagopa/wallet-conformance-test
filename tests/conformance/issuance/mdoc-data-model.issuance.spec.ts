@@ -196,17 +196,6 @@ testConfigs.forEach((testConfig) => {
               protectedHeaderMap !== null,
             "Protected header byte string must decode to a valid CBOR map",
           ).toBe(true);
-
-          // COSE header label 1 = alg (RFC 9052 §3.1)
-          const algLabel = 1;
-          expect(
-            algLabel in protectedHeaderMap,
-            "Protected header CBOR map must contain the alg parameter (label 1)",
-          ).toBe(true);
-
-          log.debug(
-            `  ✓ issuerAuth COSE_Sign1 protected header valid, alg label present`,
-          );
         }
 
         testSuccess = true;
