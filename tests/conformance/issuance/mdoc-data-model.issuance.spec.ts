@@ -85,28 +85,15 @@ testConfigs.forEach((testConfig) => {
         }
 
         for (const { raw } of mdocCredentials) {
-          // -----------------------------------------------------------------
-          // 1. Raw bytes are valid CBOR (RFC 8949 §3)
-          // -----------------------------------------------------------------
           // Decode directly — before parseMdoc — so raw cbor.Tagged instances
           // are still present in nameSpaces.
+          // Note: top-level CBOR map shape and nameSpaces map/array shape are
+          // covered by CI_140; this test focuses on Tag 24 IssuerSignedItem
+          // payload structure and the issuerAuth protected header.
           const decoded = decode(raw) as Record<string, unknown>;
 
-          expect(
-            decoded,
-            "CBOR decode must succeed on raw credential bytes",
-          ).toBeDefined();
-
           // -----------------------------------------------------------------
-          // 2. Top-level structure is a CBOR map (ISO 18013-5 §8.3.2.1)
-          // -----------------------------------------------------------------
-          expect(
-            typeof decoded === "object" && decoded !== null,
-            "Top-level CBOR item must be a map",
-          ).toBe(true);
-
-          // -----------------------------------------------------------------
-          // 3. nameSpaces entries are CBOR Tag 24 items that re-decode to
+          // 1. nameSpaces entries are CBOR Tag 24 items that re-decode to
           //    valid IssuerSignedItem maps
           //    (ISO 18013-5 §9.1.2, RFC 8949 §3.4, ISO 18013-5 Table 2)
           // -----------------------------------------------------------------
@@ -116,11 +103,6 @@ testConfigs.forEach((testConfig) => {
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
           for (const [namespaceName, items] of Object.entries(nameSpaces)) {
-            expect(
-              Array.isArray(items),
-              `nameSpaces["${namespaceName}"] must be an array`,
-            ).toBe(true);
-
             for (const item of items as unknown[]) {
               expect(
                 item instanceof Tagged,
@@ -190,7 +172,7 @@ testConfigs.forEach((testConfig) => {
           }
 
           // -----------------------------------------------------------------
-          // 4. issuerAuth protected header is a CBOR-encoded byte string
+          // 2. issuerAuth protected header is a CBOR-encoded byte string
           //    containing the alg parameter (ISO 18013-5 §9.1.2.4, RFC 9052)
           // -----------------------------------------------------------------
           const issuerAuth = decoded["issuerAuth"] as unknown[];
@@ -263,46 +245,22 @@ testConfigs.forEach((testConfig) => {
           // Layer A — Top-level distinct components
           // (IT-Wallet spec: "struttura gli Attestati Elettronici in
           //  componenti distinti: namespaces e prova crittografica")
+          //
+          // Note: presence of `nameSpaces`/`issuerAuth` keys, nameSpaces map
+          // shape and ≥1 entries, issuerAuth as 4-tuple COSE_Sign1 array,
+          // payload byte string + Tag 24 wrapper + MSO map, and the
+          // signature byte string are all covered by CI_140. This test
+          // focuses on the additional component-level requirements:
+          // x5chain in unprotected header, MSO mandatory field set,
+          // validityInfo.validUntil, deviceKeyInfo.deviceKey, and the
+          // nameSpaces ↔ valueDigests cross-link.
           // -----------------------------------------------------------------
 
-          expect(
-            "nameSpaces" in decoded,
-            "CBOR map must contain nameSpaces key",
-          ).toBe(true);
-
-          expect(
-            "issuerAuth" in decoded,
-            "CBOR map must contain issuerAuth key",
-          ).toBe(true);
-
           const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
-
-          expect(
-            typeof nameSpaces === "object" &&
-              nameSpaces !== null &&
-              !Array.isArray(nameSpaces),
-            "nameSpaces value must be a CBOR map",
-          ).toBe(true);
-
           const nsKeys = Object.keys(nameSpaces);
-          expect(
-            nsKeys.length,
-            "nameSpaces must contain at least one namespace entry",
-          ).toBeGreaterThan(0);
-
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
           const issuerAuth = decoded["issuerAuth"] as unknown[];
-
-          expect(
-            Array.isArray(issuerAuth),
-            "issuerAuth must be a CBOR array (COSE_Sign1)",
-          ).toBe(true);
-
-          expect(
-            issuerAuth.length,
-            "COSE_Sign1 array must have exactly 4 elements",
-          ).toBe(4);
 
           // -----------------------------------------------------------------
           // Layer B — issuerAuth component completeness
@@ -312,11 +270,6 @@ testConfigs.forEach((testConfig) => {
           // issuerAuth[1]: unprotected header — must be a CBOR map containing
           // label 33 (x5chain) per RFC 9360 for X.509-based issuance
           const unprotectedHeader = issuerAuth[1];
-
-          expect(
-            unprotectedHeader !== null && typeof unprotectedHeader === "object",
-            "issuerAuth[1] (unprotected header) must be a CBOR map",
-          ).toBe(true);
 
           const x5chainLabel = 33;
           const unprotectedHas33 =
@@ -334,28 +287,16 @@ testConfigs.forEach((testConfig) => {
             `  ✓ issuerAuth[1] unprotected header contains x5chain (label 33)`,
           );
 
-          // issuerAuth[2]: payload — must be a byte string (COSE payload bstr)
+          // issuerAuth[2]: payload — decode MSO (byte string + Tag 24 wrapper
+          // shape are validated by CI_140)
           const payloadBytes = issuerAuth[2];
 
-          expect(
-            payloadBytes instanceof Uint8Array || Buffer.isBuffer(payloadBytes),
-            "issuerAuth[2] (payload) must be a byte string (Uint8Array / Buffer)",
-          ).toBe(true);
-
-          // Payload bstr wraps CBOR Tag 24 containing the MobileSecurityObject
-          // (ISO 18013-5 §9.1.2.4, RFC 8949 §3.4)
           const payloadTagged = decode(
             Buffer.isBuffer(payloadBytes)
               ? payloadBytes
               : Buffer.from(payloadBytes as Uint8Array),
           ) as cbor.Tagged;
 
-          expect(
-            payloadTagged.tag,
-            "issuerAuth payload must be wrapped in CBOR Tag 24 (embedded CBOR per RFC 8949 §3.4)",
-          ).toBe(24);
-
-          // Inner bytes decode to the MobileSecurityObject CBOR map
           const msoBytes = Buffer.isBuffer(payloadTagged.value)
             ? payloadTagged.value
             : Buffer.from(payloadTagged.value as Uint8Array);
@@ -363,11 +304,6 @@ testConfigs.forEach((testConfig) => {
           const mso = decode(msoBytes) as
             | Map<string, unknown>
             | Record<string, unknown>;
-
-          expect(
-            mso !== null && typeof mso === "object",
-            "Tag 24 inner bytes must decode to a CBOR map (MobileSecurityObject)",
-          ).toBe(true);
 
           // Helper to check MSO field presence regardless of Map vs plain object
           const msoHas = (key: string): boolean =>
@@ -452,16 +388,7 @@ testConfigs.forEach((testConfig) => {
 
           log.debug(`  ✓ MSO deviceKeyInfo.deviceKey present`);
 
-          // issuerAuth[3]: signature — must be a byte string
-          const signatureBytes = issuerAuth[3];
-
-          expect(
-            signatureBytes instanceof Uint8Array ||
-              Buffer.isBuffer(signatureBytes),
-            "issuerAuth[3] (signature) must be a byte string",
-          ).toBe(true);
-
-          log.debug(`  ✓ issuerAuth[3] signature bytes present`);
+          // issuerAuth[3] signature byte-string check is covered by CI_140.
 
           // -----------------------------------------------------------------
           // Layer C — Cross-link: nameSpaces ↔ valueDigests
