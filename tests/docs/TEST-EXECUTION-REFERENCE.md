@@ -12,11 +12,23 @@ The issuance flow validates credential issuance conformance according to [Creden
 
 - **CI_003**: Verifies that the Entity Configuration JWT is signed and was discovered through the OpenID Federation path. Checks that the HTTP response status is 200 and that the metadata was obtained via federation (not a fallback), confirming the issuer participates in the trust chain.
 
+- **CI_004**: Verifies that the public key used for signature verification is included in both the Credential Issuer's Entity Configuration and the Subordinate Statement fetched from the Trust Anchor. This ensures consistency and proper key distribution within the federation.
+
+- **CI_005**: Inspects the Entity Configuration JWT and verifies the presence of at least one Trust Mark. Trust Marks are used to certify specific characteristics or compliance of the entity within the federation. This test is skipped for implementations using spec version 1.0.
+
 - **CI_006**: Parses the Entity Configuration JWT payload and validates the presence and correct type of all six mandatory top-level claims: `iss` (issuer URL), `sub` (subject URL), `iat` (issued-at Unix timestamp), `exp` (expiration Unix timestamp), `jwks` (JSON Web Key Set), and `metadata` (federation metadata object). Uses Zod schema validation.
 
 - **CI_008**: Inspects the `metadata` object inside the Entity Configuration and verifies that it contains three required sub-objects: `federation_entity` (OpenID Federation entity metadata), `oauth_authorization_server` (OAuth 2.0 authorization server metadata including token and PAR endpoints), and `openid_credential_issuer` (credential-specific metadata including credential endpoint and supported types). Fails if any section is absent.
 
 - **CI_009**: Inspects the `metadata` object inside the Entity Configuration and verifies that the `openid_credential_verifier` key is present. This sub-object is required when the Credential Issuer acts as a verifier during user authentication (i.e., when it requests a PID presentation from the Wallet Instance via OpenID4VP). Fails if the key is absent.
+
+#### Credential Offer Tests
+
+- **CI_010**: Verifies that the `credential_offer_uri` (or the embedded `credential_offer`) has a valid structure. It checks that the URI starts with a recognized scheme (`openid-credential-offer://`, `haip-vci://`, or `https://`) and that the JSON offer can be successfully retrieved and parsed.
+
+- **CI_012**: Resolves the Credential Offer and verifies the presence of mandatory top-level parameters: `credential_issuer`, `credential_configuration_ids` (as a non-empty array), and `grants`. These parameters are essential for the wallet to initiate the issuance process.
+
+- **CI_013**: Inspects the `grants` object within the Credential Offer and verifies that it contains the `authorization_code` grant. This confirms the issuer supports the authorization code flow for credential issuance.
 
 #### PAR Request Object Validation Tests
 
@@ -57,6 +69,12 @@ These are negative tests: each sends a deliberately malformed PAR request and ve
 - **CI_028b**: Builds a PoP JWT where the `aud` claim is set to `"https://attacker.example.com"` instead of the issuer's own URL. Verifies that the issuer checks the PoP `aud` claim and rejects a PoP addressed to the wrong audience.
 
 - **CI_028c**: Builds a PoP JWT with `iat` 11 minutes in the past and `exp` 10 minutes in the past, making it already expired at request time. Verifies that the issuer validates the PoP expiration time and rejects an expired PoP.
+
+- **CI_031**: Sends a PAR request with a wallet attestation that has been tampered with (e.g., modified `sub` claim). Verifies that the issuer detects the invalid cryptographic signature of the attestation and rejects the request.
+
+- **CI_032**: Sends a PAR request with a wallet attestation that has already expired. Verifies that the issuer validates the attestation's expiration time (`exp` claim) and rejects the expired token.
+
+- **CI_033**: Sends a PAR request where the PoP (Proof-of-Possession) is signed with a fresh random key instead of the key attested in the Wallet Attestation. Verifies that the issuer rejects the request, confirming it only accepts keys properly bound to a trusted Wallet Instance.
 
 #### Pushed Authorization Request (PAR) Response Tests
 
@@ -135,6 +153,8 @@ These are negative tests that verify the token endpoint enforces all required va
 - **CI_069**: Validates two properties of the `c_nonce` value: (1) its length must be at least 32 characters, and (2) its Shannon entropy (computed over the character-frequency distribution of the string) must exceed 5 bits. Low entropy would indicate a predictable value that an attacker could guess before it is used.
 
 #### Credential Request Tests
+
+- **CI_014**: Verifies that the issued credential (SD-JWT VC or mdoc) is properly compiled and contains the expected claims. It uses a DCQL query to validate that the credential satisfies the requirements defined in the issuer's metadata for the requested credential type.
 
 - **CI_071**: Sends a credential request whose JWT proof is missing the `nonce` claim. Verifies that the issuer detects the missing mandatory claim and rejects the request, rather than proceeding with an unauthenticated proof.
 

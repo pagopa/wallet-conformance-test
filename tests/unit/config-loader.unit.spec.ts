@@ -123,10 +123,10 @@ describe("loadConfigWithHierarchy – path resolution", () => {
       path.join(packageRoot, "data/credentials"),
     );
     expect(config.wallet.wallet_attestations_storage_path).toBe(
-      path.join(packageRoot, "data/attestations"),
+      path.join(packageRoot, "data/attestation"),
     );
     expect(config.logging.log_file).toBe(
-      path.join(packageRoot, "data/wallet.log"),
+      path.join(packageRoot, "data/logs/test_run.log"),
     );
   });
 

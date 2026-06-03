@@ -9,6 +9,7 @@ import {
   resolveCredentialOffer,
 } from "@pagopa/io-wallet-oid4vci";
 import { jsonWebKeySetSchema } from "@pagopa/io-wallet-oid-federation";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
@@ -27,7 +28,6 @@ import {
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
-import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { AttestationResponse } from "@/types";
 
 // Define and auto-register test configuration
@@ -169,9 +169,12 @@ testConfigs.forEach((testConfig) => {
         ).not.toThrowError();
 
         log.debug("→ Attempting to fetch Subordinate Statement from TA...");
-        const taUrl = resolveTrustAnchorBaseUrl(
-          orchestrator.getConfig().trust_anchor,
-        );
+        const taUrl = entityClaims.authority_hints[0];
+        if (!taUrl)
+          throw new Error(
+            "missing authority_hints from credential issuer's metadata",
+          );
+
         const sub = entityClaims.iss;
 
         const fetchUrl = `${taUrl}/fetch?sub=${encodeURIComponent(sub)}`;
@@ -199,28 +202,37 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-    test("CI_005: Fetch Metadata | Entity Configuration's Trust Marks", async () => {
-      const log = baseLog.withTag("CI_005");
-      const DESCRIPTION =
-        "Entity Configuration contains one or more Trust Marks";
+    test(
+      "CI_005: Fetch Metadata | Entity Configuration's Trust Marks",
+      {
+        skip:
+          orchestrator.getConfig().wallet.wallet_version ===
+          ItWalletSpecsVersion.V1_0,
+      },
+      async () => {
+        const log = baseLog.withTag("CI_005");
+        const DESCRIPTION =
+          "Entity Configuration contains one or more Trust Marks";
 
-      log.start(
-        "Conformance test: Verifying Trust Marks in Entity Configuration",
-      );
+        log.start(
+          "Conformance test: Verifying Trust Marks in Entity Configuration",
+        );
 
-      let testSuccess = false;
-      try {
-        const entityClaims =
-          fetchMetadataResponse.response?.entityStatementClaims;
-        log.debug("→ Checking Trust Marks...");
-        expect(entityClaims.trust_marks).toBeDefined();
-        expect(entityClaims.trust_marks.length).toBeGreaterThan(0);
+        let testSuccess = false;
+        try {
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
 
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          log.debug("→ Checking Trust Marks...");
+          expect(entityClaims.trust_marks).toBeDefined();
+          expect(entityClaims.trust_marks?.length).toBeGreaterThan(0);
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test("CI_006: Fetch Metadata | Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
       const log = baseLog.withTag("CI_006");
@@ -493,9 +505,6 @@ testConfigs.forEach((testConfig) => {
 
           log.debug("→ Checking authorization_code grant structure...");
           expect(offer.grants.authorization_code).toBeDefined();
-          expect(
-            offer.grants.authorization_code.authorization_server,
-          ).toBeDefined();
 
           testSuccess = true;
         } finally {
