@@ -32,6 +32,7 @@ import {
   type AttestationResponse,
   type Config,
   type KeyPair,
+  Logger,
   zTrustChain,
 } from "@/types";
 
@@ -61,6 +62,7 @@ export const buildWpEntityConfiguration = async (
   wallet: Config["wallet"],
   providerKeyPair: KeyPair,
   trustAnchorBaseUrl: string,
+  log: Logger,
 ): Promise<string> => {
   const trust_marks = await getTrustMarks(
     trustAnchorBaseUrl,
@@ -78,6 +80,9 @@ export const buildWpEntityConfiguration = async (
     "wallet_provider_metadata.json",
     placeholders,
     wallet.wallet_version,
+  );
+  log.debug(
+    `[buildWpEntityConfiguration] Signing WP entity configuration with key kid=${providerKeyPair.publicKey.kid} x5c_present=${!!providerKeyPair.publicKey.x5c}`,
   );
   return createFederationMetadata({
     claims: wpClaims,
@@ -143,8 +148,12 @@ const createAttestation = async (
   providerKeyPair: KeyPair,
   unitKeyPair: KeyPair,
   attestationPath: string,
+  log: Logger,
 ): Promise<string> => {
   validateProviderKeyPair(providerKeyPair);
+  log.debug(
+    `[createAttestation] wallet_version=${wallet.wallet_version} provider_kid=${providerKeyPair.publicKey.kid}`,
+  );
 
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(trustAnchor);
 
@@ -161,6 +170,7 @@ const createAttestation = async (
       wallet,
       providerKeyPair,
       trustAnchorBaseUrl,
+      log,
     ),
   ]);
 
@@ -194,6 +204,7 @@ const createAttestation = async (
  */
 export const loadAttestation = async (
   options: LoadAttestationOptions,
+  log: Logger,
 ): Promise<AttestationResponse> => {
   const { wallet } = options;
 
@@ -245,6 +256,7 @@ export const loadAttestation = async (
     providerKeyPair,
     unitKeyPair,
     attestationPath,
+    log,
   );
 
   return {

@@ -10,12 +10,17 @@ import { describe, expect, test, vi } from "vitest";
 import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import {
+  buildAttestationPath,
+  createQuietLogger,
+  loadConfigWithHierarchy,
+} from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
   const config = loadConfigWithHierarchy();
+  const attestationLogger = createQuietLogger().withTag("ATTESTATION");
 
   test("Generate New Wallet Attestation with Trust Chain", async () => {
     const attestationPath = buildAttestationPath(config.wallet);
@@ -23,11 +28,14 @@ describe("Wallet Attestation Unit Test", () => {
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
 
-    const response = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: config.wallet,
-    });
+    const response = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: config.wallet,
+      },
+      attestationLogger,
+    );
 
     // Verify attestation was created
     expect(response.attestation).toBeDefined();
@@ -87,11 +95,14 @@ describe("Wallet Attestation Unit Test", () => {
   });
 
   test("Load Existing Wallet Attestation", async () => {
-    const response = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: config.wallet,
-    });
+    const response = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: config.wallet,
+      },
+      attestationLogger,
+    );
 
     const attestation = readFileSync(
       buildAttestationPath(config.wallet),
@@ -136,29 +147,38 @@ describe("Wallet Attestation Unit Test", () => {
     rmSync(attestationPath, { force: true });
 
     // Generate first attestation
-    const firstAttestationResponse = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: config.wallet,
-    });
+    const firstAttestationResponse = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: config.wallet,
+      },
+      attestationLogger,
+    );
 
     vi.setSystemTime(thirtyMinutesLater);
 
     // In this case the attestation should not be generated
-    const secondAttestationResponse = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: config.wallet,
-    });
+    const secondAttestationResponse = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: config.wallet,
+      },
+      attestationLogger,
+    );
 
     vi.setSystemTime(oneYearLater);
 
     // In this case the attestation should be generated
-    const thirdAttestationResponse = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: config.wallet,
-    });
+    const thirdAttestationResponse = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: config.wallet,
+      },
+      attestationLogger,
+    );
 
     expect(firstAttestationResponse.created).toEqual(true);
     expect(secondAttestationResponse.created).toEqual(false);
@@ -170,6 +190,7 @@ describe("Wallet Attestation Unit Test", () => {
 
 describe("Wallet Attestation V1_3 Unit Test", () => {
   const config = loadConfigWithHierarchy();
+  const attestationLogger = createQuietLogger().withTag("ATTESTATION");
   const walletV1_3 = {
     ...config.wallet,
     wallet_version: ItWalletSpecsVersion.V1_3,
@@ -181,11 +202,14 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     // Remove existing attestation to force new generation
     rmSync(attestationPath, { force: true });
 
-    const response = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: walletV1_3,
-    });
+    const response = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: walletV1_3,
+      },
+      attestationLogger,
+    );
 
     expect(response.attestation).toBeDefined();
     expect(response.created).toBe(true);
@@ -234,11 +258,14 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
   });
 
   test("Load Existing Wallet Attestation V1_3", async () => {
-    const response = await loadAttestation({
-      trust: config.trust,
-      trustAnchor: config.trust_anchor,
-      wallet: walletV1_3,
-    });
+    const response = await loadAttestation(
+      {
+        trust: config.trust,
+        trustAnchor: config.trust_anchor,
+        wallet: walletV1_3,
+      },
+      attestationLogger,
+    );
 
     // Should load from disk (not create a new one)
     expect(response.created).toBe(false);

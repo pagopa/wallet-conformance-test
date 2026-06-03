@@ -372,11 +372,14 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
 
-    const walletAttestationResponse = await loadAttestation({
-      trust: this.config.trust,
-      trustAnchor: this.config.trust_anchor,
-      wallet: this.config.wallet,
-    });
+    const walletAttestationResponse = await loadAttestation(
+      {
+        trust: this.config.trust,
+        trustAnchor: this.config.trust_anchor,
+        wallet: this.config.wallet,
+      },
+      this.log.withTag("ATTESTATION"),
+    );
     this._walletAttestationResponse = walletAttestationResponse;
 
     const callbacks = {

@@ -212,11 +212,14 @@ export class WalletPresentationOrchestratorFlow {
   private async loadWalletAttestation() {
     this.log.debug("Loading Wallet Attestation...");
 
-    const walletAttestation = await loadAttestation({
-      trust: this.config.trust,
-      trustAnchor: this.config.trust_anchor,
-      wallet: this.config.wallet,
-    });
+    const walletAttestation = await loadAttestation(
+      {
+        trust: this.config.trust,
+        trustAnchor: this.config.trust_anchor,
+        wallet: this.config.wallet,
+      },
+      this.log.withTag("ATTESTATION"),
+    );
 
     this.log.debug("Wallet Attestation Loaded.");
 

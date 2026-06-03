@@ -2,6 +2,7 @@ import express from "express";
 import * as https from "node:https";
 
 import { buildWpEntityConfiguration } from "@/functions/load-attestation";
+import { createLogger } from "@/logic";
 import { isMainModule } from "@/logic/entrypoint";
 import { createStatusListToken } from "@/logic/status-list";
 import {
@@ -35,6 +36,7 @@ export const createServer = (config: Config): express.Express => {
         config.wallet,
         providerKeyPair,
         trustAnchorBaseUrl,
+        createLogger().withTag("ATTESTATION"),
       );
       res.type("application/entity-statement+jwt").send(jwt);
     } catch (err) {
