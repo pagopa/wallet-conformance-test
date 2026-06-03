@@ -36,4 +36,4 @@ For end-to-end L2+ tests against a real PID Provider, either:
 - load `csca.pem` into the SUT ICAO trust store, or
 - run the SUT in test mode with ICAO trust validation disabled.
 
-See `B_1-wct-pid-provider-eid-substantial-mrtd-issuance-simulation.md` for operational notes.
+See the PID Provider MRTD issuance test documentation for operational notes.
