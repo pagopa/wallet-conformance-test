@@ -68,11 +68,22 @@ describe("PID MRTD PKI fixtures (REQ-02)", () => {
     expect(secondCsca, "fixture bytes unchanged on second run").toBe(firstCsca);
   });
 
-  it("verifies CSCA → DSC chain with PKIjs", async () => {
+  it("verifies CSCA → DSC chain with PKIjs path validation", async () => {
     tempDir = mkdtempSync(path.join(tmpdir(), "wct-pid-mrtd-"));
     const paths = await generatePidMrtdFixtures(tempDir, { force: true });
 
     const valid = await verifyCscaDscChain(paths);
-    expect(valid, "PKIjs chain verification").toBe(true);
+    expect(valid, "PKIjs path + anchor constraints").toBe(true);
+  });
+
+  it("rejects chain when DSC is used as the trust anchor", async () => {
+    tempDir = mkdtempSync(path.join(tmpdir(), "wct-pid-mrtd-"));
+    const paths = await generatePidMrtdFixtures(tempDir, { force: true });
+
+    const valid = await verifyCscaDscChain({
+      cscaCertPath: paths.dscCertPath,
+      dscCertPath: paths.dscCertPath,
+    });
+    expect(valid, "non-CA cert must not pass as CSCA anchor").toBe(false);
   });
 });
