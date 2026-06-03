@@ -12,6 +12,7 @@ import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { CredentialRequestResponse } from "@/step/issuance";
 
 const { decode, Tagged } = cbor;
+type CborTagged = InstanceType<typeof Tagged>;
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
@@ -1079,6 +1080,265 @@ testConfigs.forEach((testConfig) => {
               );
             });
           }
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // =======================================================================
+    // CI_144 — Mdoc Element Identifiers Presence Validation
+    // =======================================================================
+
+    function validateMdocRawCredential(
+      raw: Buffer,
+      log: { debug: (msg: string) => void },
+    ): void {
+      const decoded = decode(raw) as Record<string, unknown>;
+      const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+
+      // Build flat index: elementsByNs[namespace][elementIdentifier] = elementValue
+      const elementsByNs: Record<string, Record<string, unknown>> = {};
+
+      for (const [ns, items] of Object.entries(nameSpaces)) {
+        const nsRecord: Record<string, unknown> = {};
+        elementsByNs[ns] = nsRecord;
+        for (const tagged of items as cbor.Tagged[]) {
+          const inner = Buffer.isBuffer(tagged.value)
+            ? tagged.value
+            : Buffer.from(tagged.value as Uint8Array);
+          const item = decode(inner) as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          const has = (key: string): boolean =>
+            item instanceof Map
+              ? item.has(key)
+              : key in (item as Record<string, unknown>);
+          const get = (key: string): unknown =>
+            item instanceof Map
+              ? item.get(key)
+              : (item as Record<string, unknown>)[key];
+
+          if (has("elementIdentifier") && has("elementValue")) {
+            const id = get("elementIdentifier") as string;
+            nsRecord[id] = get("elementValue");
+          }
+        }
+      }
+
+      const nsEudi = elementsByNs["eu.europa.ec.eudi.pid.1"] ?? {};
+      const nsIt = elementsByNs["eu.europa.ec.eudi.pid.it.1"] ?? {};
+
+      validateMdocNameSpaces(nsEudi, nsIt, log);
+    }
+
+    function validateMdocNameSpaces(
+      nsEudi: Record<string, unknown>,
+      nsIt: Record<string, unknown>,
+      log: { debug: (msg: string) => void },
+    ): void {
+      // -----------------------------------------------------------------
+      // eu.europa.ec.eudi.pid.1 — REQUIRED elements
+      // -----------------------------------------------------------------
+
+      // issuing_country — tstr, REQUIRED, ISO 3166-1 Alpha-2 (ISO 18013-5 §7.2)
+      expect(
+        "issuing_country" in nsEudi,
+        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED element "issuing_country" (ISO 18013-5 §7.2)',
+      ).toBe(true);
+
+      expect(
+        typeof nsEudi["issuing_country"],
+        '"issuing_country" elementValue must be a tstr (CBOR text string) per ISO 18013-5 §7.2',
+      ).toBe("string");
+
+      expect(
+        /^[A-Z]{2}$/.test(nsEudi["issuing_country"] as string),
+        `"issuing_country" must be an ISO 3166-1 Alpha-2 country code (2 uppercase letters), got "${String(nsEudi["issuing_country"])}"`,
+      ).toBe(true);
+
+      log.debug(`  ✓ issuing_country="${String(nsEudi["issuing_country"])}"`);
+
+      // issuing_authority — tstr, REQUIRED, Latin1b ≤150 chars (ISO 18013-5 §7.2)
+      expect(
+        "issuing_authority" in nsEudi,
+        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED element "issuing_authority" (ISO 18013-5 §7.2)',
+      ).toBe(true);
+
+      const issuingAuthority = nsEudi["issuing_authority"] as string;
+
+      expect(
+        typeof issuingAuthority,
+        '"issuing_authority" elementValue must be a tstr (CBOR text string) per ISO 18013-5 §7.2',
+      ).toBe("string");
+
+      expect(
+        issuingAuthority.length <= 150,
+        `"issuing_authority" must have a maximum length of 150 characters (ISO 18013-5 §7.2), got ${issuingAuthority.length}`,
+      ).toBe(true);
+
+      // Latin1b = ISO 8859-1 code points 0x20–0xFF
+      expect(
+        /^[\u0020-\u00FF]*$/.test(issuingAuthority),
+        '"issuing_authority" must contain only Latin1b characters (ISO 8859-1 code points 0x20–0xFF, ISO 18013-5 §7.2)',
+      ).toBe(true);
+
+      log.debug(`  ✓ issuing_authority="${issuingAuthority}"`);
+
+      // -----------------------------------------------------------------
+      // eu.europa.ec.eudi.pid.1 — OPTIONAL elements
+      // -----------------------------------------------------------------
+
+      // issuance_date — tdate (CBOR tag 0) or full-date (CBOR tag 1004), OPTIONAL (ARF PID Rulebook v1.3 §2.6)
+      const issuanceDateInNs = "issuance_date" in nsEudi;
+      const issuanceDateIsValid =
+        !issuanceDateInNs ||
+        nsEudi["issuance_date"] instanceof Date ||
+        (nsEudi["issuance_date"] instanceof Tagged &&
+          (nsEudi["issuance_date"] as CborTagged).tag === 1004 &&
+          typeof (nsEudi["issuance_date"] as CborTagged).value === "string");
+      expect(
+        issuanceDateIsValid,
+        '"issuance_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) per ARF PID Rulebook v1.3 §2.6',
+      ).toBe(true);
+      if (issuanceDateInNs) {
+        log.debug(`  ✓ issuance_date present and valid type`);
+      }
+
+      // expiry_date — tdate or full-date, REQUIRED for PID (ARF PID Rulebook v1.3 §3)
+      expect(
+        "expiry_date" in nsEudi,
+        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED (for PID) element "expiry_date" (ARF PID Rulebook v1.3 §3)',
+      ).toBe(true);
+
+      const expiryDate = nsEudi["expiry_date"];
+      const expiryDateIsValid =
+        expiryDate instanceof Date ||
+        (expiryDate instanceof Tagged &&
+          expiryDate.tag === 1004 &&
+          typeof expiryDate.value === "string");
+
+      expect(
+        expiryDateIsValid,
+        '"expiry_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) per ARF PID Rulebook v1.3 §3',
+      ).toBe(true);
+
+      // ISO 8601-1 YYYY-MM-DD format check (applies to full-date; tdate is already a Date)
+      const expiryDateIsFullDate =
+        expiryDate instanceof Tagged && expiryDate.tag === 1004;
+      const expiryDateFormatIsValid =
+        !expiryDateIsFullDate ||
+        /^\d{4}-\d{2}-\d{2}$/.test((expiryDate as CborTagged).value as string);
+      expect(
+        expiryDateFormatIsValid,
+        `"expiry_date" full-date value must conform to ISO 8601-1 YYYY-MM-DD format, got "${String(expiryDateIsFullDate ? (expiryDate as CborTagged).value : "")}"`,
+      ).toBe(true);
+
+      log.debug(`  ✓ expiry_date present and valid type`);
+
+      // -----------------------------------------------------------------
+      // eu.europa.ec.eudi.pid.it.1 — REQUIRED elements (PID domestic extension)
+      // -----------------------------------------------------------------
+
+      // sub — uuid tstr, REQUIRED for PID (IT-Wallet domestic extension)
+      expect(
+        "sub" in nsIt,
+        'namespace "eu.europa.ec.eudi.pid.it.1" must contain REQUIRED (for PID) element "sub" (IT-Wallet domestic extension)',
+      ).toBe(true);
+
+      const sub = nsIt["sub"] as string;
+
+      expect(
+        typeof sub,
+        '"sub" elementValue must be a tstr (CBOR text string / UUID)',
+      ).toBe("string");
+
+      // UUID format: 8-4-4-4-12 hex groups
+      expect(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          sub,
+        ),
+        `"sub" must be a valid UUID string, got "${sub}"`,
+      ).toBe(true);
+
+      log.debug(`  ✓ sub="${sub}"`);
+
+      // verification — CBOR map, REQUIRED for PID (IT-Wallet domestic extension)
+      expect(
+        "verification" in nsIt,
+        'namespace "eu.europa.ec.eudi.pid.it.1" must contain REQUIRED (for PID) element "verification" (IT-Wallet domestic extension)',
+      ).toBe(true);
+
+      const verification = nsIt["verification"];
+
+      expect(
+        verification !== null && typeof verification === "object",
+        '"verification" elementValue must be a CBOR map',
+      ).toBe(true);
+
+      const vHas = (key: string): boolean =>
+        verification instanceof Map
+          ? verification.has(key)
+          : key in (verification as Record<string, unknown>);
+      const vGet = (key: string): unknown =>
+        verification instanceof Map
+          ? verification.get(key)
+          : (verification as Record<string, unknown>)[key];
+
+      // trust_framework — tstr, REQUIRED within verification map
+      expect(
+        vHas("trust_framework"),
+        '"verification" map must contain REQUIRED sub-field "trust_framework" (IT-Wallet domestic extension)',
+      ).toBe(true);
+
+      expect(
+        typeof vGet("trust_framework") === "string" &&
+          (vGet("trust_framework") as string).length > 0,
+        '"verification.trust_framework" must be a non-empty tstr',
+      ).toBe(true);
+
+      // assurance_level — tstr, REQUIRED within verification map
+      expect(
+        vHas("assurance_level"),
+        '"verification" map must contain REQUIRED sub-field "assurance_level" (IT-Wallet domestic extension)',
+      ).toBe(true);
+
+      expect(
+        typeof vGet("assurance_level") === "string" &&
+          (vGet("assurance_level") as string).length > 0,
+        '"verification.assurance_level" must be a non-empty tstr',
+      ).toBe(true);
+
+      log.debug(
+        `  ✓ verification map valid: trust_framework="${String(vGet("trust_framework"))}", assurance_level="${String(vGet("assurance_level"))}"`,
+      );
+    }
+
+    test("CI_144: Mdoc Element Identifiers | All elementIdentifiers defined in the attribute table are properly included in the mdoc-CBOR Digital Credential within their respective nameSpaces", async () => {
+      const log = baseLog.withTag("CI_144");
+      const DESCRIPTION =
+        "All elementIdentifiers in the elementIdentifiers attribute table are properly included in the Digital Credential encoded in mdoc-CBOR within their respective nameSpaces, unless otherwise specified";
+
+      log.start(
+        "Conformance test: mdoc element identifiers per IT-Wallet table_element_identifiers_mdoc / ISO 18013-5 §7.2 / ARF PID Rulebook v1.3",
+      );
+
+      let testSuccess = false;
+      expect.hasAssertions();
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_144 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          validateMdocRawCredential(raw, log);
         }
 
         testSuccess = true;
