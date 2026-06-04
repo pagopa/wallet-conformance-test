@@ -10,6 +10,7 @@ import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import {
+  AuthorizationDetail,
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
   PushedAuthorizationRequestStepOptions,
@@ -418,6 +419,39 @@ export function withParOverrides(
       options: PushedAuthorizationRequestStepOptions,
     ): Promise<PushedAuthorizationRequestResponse> {
       return super.run({ ...options, createParOverrides: overrides });
+    }
+  } as typeof PushedAuthorizationRequestDefaultStep;
+}
+
+/**
+ * Returns a PAR step class that overrides the `pidCredentialAuthorizationDetails()`
+ * hook (B1-6.2 / FR-11) so negative tests can control the PID portion of
+ * `authorization_details` independently of `[issuance_pid].mode`.
+ *
+ * Pass an array to replace the PID details outright, or a function to derive
+ * them from the step's defaults (e.g. to drop the `credential_configuration_id`,
+ * inject a malformed entry, or append an `it_l2+document_proof` detail).
+ *
+ * @example
+ * // Force a PID detail even when mode = none
+ * withPidPar(PushedAuthorizationRequestDefaultStep, [
+ *   { credential_configuration_id: PID_CREDENTIAL_CONFIGURATION_ID, type: "openid_credential" },
+ * ]);
+ *
+ * @example
+ * // Strip the PID detail to simulate a non-conformant wallet
+ * withPidPar(PushedAuthorizationRequestDefaultStep, () => []);
+ */
+export function withPidPar(
+  StepClass: typeof PushedAuthorizationRequestDefaultStep,
+  details:
+    | ((defaults: AuthorizationDetail[]) => AuthorizationDetail[])
+    | AuthorizationDetail[],
+): typeof PushedAuthorizationRequestDefaultStep {
+  return class extends StepClass {
+    protected pidCredentialAuthorizationDetails(): AuthorizationDetail[] {
+      const defaults = super.pidCredentialAuthorizationDetails();
+      return typeof details === "function" ? details(defaults) : details;
     }
   } as typeof PushedAuthorizationRequestDefaultStep;
 }
