@@ -50,4 +50,8 @@ config.ini
 *.cert.pem
 *.key.pem
 
+# PID MRTD mock ICAO PKI (generated locally; never commit private keys)
+**/pid-mrtd/*.pem
+**/pid-mrtd/*.key
+
 .pnpm-store
