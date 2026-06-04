@@ -46,12 +46,8 @@ export class PidIssuanceModeNotConfiguredError extends Error {
   }
 }
 
-/**
- * Thrown when `issuance.credential_types[]` requests PID issuance but
- * `[issuance_pid].mode` is `none` (FR-3).
- */
 /** CSCA/DSC fixtures missing or chain verification failed (REQ-03 / FR-21). */
-export class PidMrtdPkiLoadError extends Error {
+export class PidMrtdPkiLoadError extends Error { 
   readonly code = "PID_MRTD_PKI_LOAD_FAILED";
   readonly fixtureDir: string;
 
