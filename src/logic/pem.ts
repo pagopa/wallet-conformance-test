@@ -166,6 +166,7 @@ export async function createSignedCertificate(
   subjectKeyPair: KeyPair,
   subjectName: string,
   isCA: boolean,
+  extraExtensions: x509.Extension[] = [],
 ): Promise<x509.X509Certificate> {
   const signingKey = await crypto.subtle.importKey(
     "jwk",
@@ -195,6 +196,7 @@ export async function createSignedCertificate(
       true,
     ),
     await x509.SubjectKeyIdentifierExtension.create(publicKey),
+    ...extraExtensions,
   ];
 
   const cert = await x509.X509CertificateGenerator.create({
@@ -210,6 +212,15 @@ export async function createSignedCertificate(
   });
 
   return cert;
+}
+
+/**
+ * Returns `true` when the certificate (base64-DER) carries a
+ * SubjectAlternativeName extension (OID 2.5.29.17).
+ */
+export function hasSanExtension(certDerBase64: string): boolean {
+  const cert = new x509.X509Certificate(certDerBase64);
+  return !!cert.getExtension("2.5.29.17");
 }
 
 export function hasX509CertificateExpired(

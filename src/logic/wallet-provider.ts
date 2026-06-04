@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -7,6 +8,7 @@ import { Config, KeyPair } from "@/types";
 import { createKeys } from "./jwk";
 import {
   createSignedCertificate,
+  hasSanExtension,
   hasX509CertificateExpired,
   pemToBase64Der,
 } from "./pem";
@@ -59,7 +61,7 @@ export async function loadWalletProviderCertificate(
   const cachedCA1 = loadCachedCert(ca1Path);
   const cachedCA2 = loadCachedCert(ca2Path);
 
-  if (cachedCA1 && cachedCA2) {
+  if (cachedCA1 && cachedCA2 && hasSanExtension(cachedCA2)) {
     return [cachedCA2, cachedCA1];
   }
 
@@ -106,6 +108,12 @@ export async function loadWalletProviderCertificate(
     providerKeyPair,
     `CN=${providerDomain}`,
     false,
+    [
+      new x509.SubjectAlternativeNameExtension(
+        [{ type: "dns", value: providerDomain }],
+        false,
+      ),
+    ],
   );
 
   writeFileSync(ca2Path, ca2Cert.toString("pem"));
