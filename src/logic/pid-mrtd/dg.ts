@@ -13,7 +13,7 @@ const DG11_TAG = 0x6b;
  */
 export function buildDg1(mrz: string): Uint8Array {
   const normalized = mrz.replace(/\s+/g, "").toUpperCase();
-  const bytes = new Uint8Array(TD1_MRZ_BYTE_LENGTH);
+  const bytes = new Uint8Array(TD1_MRZ_BYTE_LENGTH).fill(0x3c);
   const encoded = new TextEncoder().encode(normalized);
   bytes.set(encoded.subarray(0, TD1_MRZ_BYTE_LENGTH));
   return bytes;
