@@ -11,10 +11,9 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 
-import { loadConfigWithHierarchy, type CliOptions } from "@/logic";
-
-import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 import { runInit } from "@/functions";
+import { type CliOptions, loadConfigWithHierarchy } from "@/logic";
+import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
 
