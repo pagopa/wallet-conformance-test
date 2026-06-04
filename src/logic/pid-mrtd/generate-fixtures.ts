@@ -48,7 +48,7 @@ export interface GeneratePidMrtdFixturesOptions {
  */
 export async function ensurePidMrtdFixtures(
   fixtureDir?: string,
-  config?: Pick<Config, "issuance_pid" | "wallet">,
+  config?: Partial<Pick<Config, "issuance_pid" | "wallet">>,
 ): Promise<PidMrtdFixturePaths> {
   const dir = fixtureDir ?? resolvePidMrtdFixtureDir(config);
   return generatePidMrtdFixtures(dir);
