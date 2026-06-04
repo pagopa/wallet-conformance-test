@@ -2,6 +2,7 @@ import * as https from "node:https";
 import * as tls from "node:tls";
 
 import { createLogger } from "@/logic/logs";
+import { resolvePidMrtdFixtureDir } from "@/logic/pid-mrtd/fixture-paths";
 import { ensurePidMrtdFixtures } from "@/logic/pid-mrtd/generate-fixtures";
 import {
   loadConfigWithHierarchy,
@@ -19,7 +20,9 @@ export default async function setup() {
   const config = loadConfigWithHierarchy();
   const baseLog = createLogger().withTag("globalSetup");
 
-  const pidMrtdPaths = await ensurePidMrtdFixtures();
+  const pidMrtdPaths = await ensurePidMrtdFixtures(
+    resolvePidMrtdFixtureDir(config),
+  );
   baseLog.debug(`PID MRTD fixtures: ${pidMrtdPaths.dir}`);
 
   const trustAnchorApp = createServer(config);

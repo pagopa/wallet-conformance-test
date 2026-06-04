@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 
+import type { Config } from "@/types";
 import type { KeyPair } from "@/types";
 
 import { createKeys } from "@/logic/jwk";
@@ -17,9 +18,9 @@ import {
 } from "@/logic/pem";
 import {
   CSCA_CERT_BASENAME,
-  defaultPidMrtdFixtureDir,
   DSC_CERT_BASENAME,
   type PidMrtdFixturePaths,
+  resolvePidMrtdFixtureDir,
   resolvePidMrtdFixturePaths,
 } from "@/logic/pid-mrtd/fixture-paths";
 
@@ -46,17 +47,19 @@ export interface GeneratePidMrtdFixturesOptions {
  * Creates CSCA/DSC fixtures when missing or expired; no-op when valid files exist.
  */
 export async function ensurePidMrtdFixtures(
-  fixtureDir = defaultPidMrtdFixtureDir(),
+  fixtureDir?: string,
+  config?: Pick<Config, "issuance_pid" | "wallet">,
 ): Promise<PidMrtdFixturePaths> {
-  return generatePidMrtdFixtures(fixtureDir);
+  const dir = fixtureDir ?? resolvePidMrtdFixtureDir(config);
+  return generatePidMrtdFixtures(dir);
 }
 
 /**
  * Generates persisted CSCA/DSC mock certificates for the L2+ MRTD path (FR-15/FR-16).
- * Uses `@peculiar/x509` for generation; chain verification uses PKIjs (REQ-02.5).
+ * Uses `@peculiar/x509` for generation and chain verification (REQ-02.5).
  */
 export async function generatePidMrtdFixtures(
-  fixtureDir = defaultPidMrtdFixtureDir(),
+  fixtureDir = resolvePidMrtdFixtureDir(),
   options: GeneratePidMrtdFixturesOptions = {},
 ): Promise<PidMrtdFixturePaths> {
   const paths = resolvePidMrtdFixturePaths(fixtureDir);

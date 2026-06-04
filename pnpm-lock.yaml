@@ -47,9 +47,6 @@ importers:
       '@sd-jwt/types':
         specifier: ^0.17.0
         version: 0.17.0
-      asn1js:
-        specifier: ^3.0.10
-        version: 3.0.10
       cbor:
         specifier: ^10.0.11
         version: 10.0.12
@@ -71,9 +68,6 @@ importers:
       jose:
         specifier: ^6.1.0
         version: 6.2.2
-      pkijs:
-        specifier: ^3.4.0
-        version: 3.4.0
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@24.12.0)(@vitest/ui@3.2.4)(tsx@4.22.3)

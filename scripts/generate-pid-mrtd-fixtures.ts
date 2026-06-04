@@ -5,11 +5,18 @@
  *   pnpm fixtures:pid-mrtd
  *   pnpm fixtures:pid-mrtd -- --force
  */
-import { defaultPidMrtdFixtureDir } from "@/logic/pid-mrtd/fixture-paths";
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { generatePidMrtdFixtures } from "@/logic/pid-mrtd/generate-fixtures";
+import { resolvePidMrtdFixtureDir } from "@/logic/pid-mrtd/fixture-paths";
 
 const force = process.argv.includes("--force");
-const fixtureDir = defaultPidMrtdFixtureDir();
+
+let fixtureDir: string;
+try {
+  fixtureDir = resolvePidMrtdFixtureDir(loadConfigWithHierarchy());
+} catch {
+  fixtureDir = resolvePidMrtdFixtureDir();
+}
 
 const paths = await generatePidMrtdFixtures(fixtureDir, { force });
 
