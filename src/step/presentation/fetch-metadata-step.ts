@@ -1,6 +1,12 @@
 import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
-import { decodeJwt } from "jose";
+import {
+  compactVerify,
+  decodeJwt,
+  decodeProtectedHeader,
+  importJWK,
+  type JWK,
+} from "jose";
 
 import { fetchWithRetries } from "@/logic/utils";
 
@@ -51,6 +57,35 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
         );
       } catch (e) {
         log.info("Failed to decode entity statement JWT:", e);
+      }
+
+      // Verify the entity statement self-signature (entity configs are self-signed)
+      if (entityStatementJwtDecoded) {
+        try {
+          const header = decodeProtectedHeader(entityStatementJwt);
+          const jwksRaw = entityStatementJwtDecoded.jwks as
+            | undefined
+            | { keys?: unknown[] };
+          if (header.kid && header.alg && jwksRaw?.keys) {
+            const signingKey = (
+              jwksRaw.keys as (Record<string, unknown> & { kid?: string })[]
+            ).find((k) => k.kid === header.kid);
+            if (signingKey) {
+              const cryptoKey = await importJWK(
+                signingKey as JWK,
+                header.alg as string,
+              );
+              await compactVerify(entityStatementJwt, cryptoKey);
+              log.info("Entity statement JWT signature verified successfully.");
+            } else {
+              log.info(
+                "Signing key not found in entity configuration JWKS; skipping signature verification.",
+              );
+            }
+          }
+        } catch (e) {
+          log.info("Entity statement JWT signature verification failed:", e);
+        }
       }
 
       let entityStatementClaims;

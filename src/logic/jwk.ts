@@ -4,12 +4,17 @@ import {
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import * as x509 from "@peculiar/x509";
 import {
   calculateJwkThumbprint,
+  compactVerify,
   decodeJwt,
+  decodeProtectedHeader,
   exportJWK,
   generateKeyPair,
+  importJWK,
   importX509,
+  type JWK,
 } from "jose";
 import { writeFileSync } from "node:fs";
 
@@ -120,7 +125,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
       if (!trustChain || !trustChain.length) {
         throw new Error("missing signer's trust chain");
       }
-      return jwkFromTrustChain(trustChain, kid);
+      return await jwkFromTrustChain(trustChain, kid);
     case "jwk":
       return parseWithErrorHandling(
         jsonWebKeySchema,
@@ -162,6 +167,26 @@ async function jwkFromCertificateChain(
     throw new Error("missing x5c certificate");
   }
 
+  if (x5c.length > 1) {
+    const certs = x5c.map(
+      (certB64) => new x509.X509Certificate(Buffer.from(certB64, "base64")),
+    );
+    for (let i = 0; i < certs.length - 1; i++) {
+      const cert = certs[i];
+      const issuerCert = certs[i + 1];
+      if (!cert || !issuerCert) break;
+      const valid = await cert.verify({
+        publicKey: issuerCert,
+        signatureOnly: true,
+      });
+      if (!valid) {
+        throw new Error(
+          `x5c certificate chain signature invalid at index ${i}`,
+        );
+      }
+    }
+  }
+
   const pem = convertBase64DerToPem(x5c[0] as string);
   const key = await importX509(pem, alg, { extractable: true });
   const jwk = await exportJWK(key);
@@ -177,39 +202,61 @@ async function jwkFromCertificateChain(
 
 /**
  * Extracts a JWK from a trust chain array based on the signer's KID.
+ * Also cryptographically verifies the entity configuration self-signature.
  *
  * @param trustChain An array of JWTs representing the trust chain.
  * @param signerKid The KID of the signer to look for in the trust chain.
  * @returns The JWK found in the trust chain.
- * @throws An error if the trust chain is empty or the key is not found.
+ * @throws An error if the trust chain is empty, the entity config signature is invalid,
+ *         or the key is not found.
  */
-function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
-  const entityConfigurationJwt = trustChain[0];
-  if (!entityConfigurationJwt) throw new Error("empty trust chain");
+async function jwkFromTrustChain(
+  trustChain: string[],
+  signerKid: string,
+): Promise<Jwk> {
+  if (!trustChain[0]) throw new Error("empty trust chain");
 
-  const keys: Jwk[] = [];
-  const decodedEntityConfig = decodeJwt(entityConfigurationJwt);
+  const allKeys: Jwk[] = [];
 
-  // Get top-level jwks
-  if (decodedEntityConfig.jwks) {
-    keys.push(
-      ...parseWithErrorHandling(jsonWebKeySetSchema, decodedEntityConfig.jwks)
-        .keys,
-    );
-  }
+  for (const jwt of trustChain) {
+    const header = decodeProtectedHeader(jwt);
+    const decoded = decodeJwt(jwt);
+    const keys: Jwk[] = [];
 
-  // Check also in metadata entries for additional jwks like openid_credential_verifier
-  if (decodedEntityConfig.metadata) {
-    for (const entry of Object.values(decodedEntityConfig.metadata)) {
-      if (entry.jwks && Array.isArray(entry.jwks.keys)) {
-        keys.push(
-          ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
-        );
+    // Get top-level jwks
+    if (decoded.jwks) {
+      keys.push(
+        ...parseWithErrorHandling(jsonWebKeySetSchema, decoded.jwks).keys,
+      );
+    }
+
+    // Check also in metadata entries for additional jwks like openid_credential_verifier
+    if (decoded.metadata) {
+      for (const entry of Object.values(decoded.metadata)) {
+        if (entry.jwks && Array.isArray(entry.jwks.keys)) {
+          keys.push(
+            ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
+          );
+        }
       }
     }
+
+    // Verify self-signature using the key identified by the header kid (applies to
+    // self-signed JWTs such as entity configurations; entity statements are skipped
+    // when their issuer key is not present in their own payload)
+    const signingKey = keys.find((k) => k.kid === header.kid);
+    if (signingKey) {
+      const cryptoKey = await importJWK(
+        signingKey as JWK,
+        (header.alg ?? "ES256") as string,
+      );
+      await compactVerify(jwt, cryptoKey);
+    }
+
+    allKeys.push(...keys);
   }
 
-  const federationJwk = keys.find((key) => key.kid === signerKid);
+  const federationJwk = allKeys.find((key) => key.kid === signerKid);
   if (!federationJwk) throw new Error("key not found in trust chain");
 
   return federationJwk;
