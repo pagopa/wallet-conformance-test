@@ -28,6 +28,9 @@ export function buildDg11(identity: PidIdentityConfig): Uint8Array {
 
   const appendUtf8 = (tag: number, value: string): void => {
     const content = Buffer.from(value, "utf8");
+    if (content.length > 0xff) {
+      throw new RangeError(`DG11 field too long for 1-byte TLV length: ${content.length}`);
+    }
     chunks.push(Buffer.from([tag, content.length]));
     chunks.push(content);
   };
