@@ -47,7 +47,7 @@ export class PidIssuanceModeNotConfiguredError extends Error {
 }
 
 /** CSCA/DSC fixtures missing or chain verification failed (REQ-03 / FR-21). */
-export class PidMrtdPkiLoadError extends Error { 
+export class PidMrtdPkiLoadError extends Error {
   readonly code = "PID_MRTD_PKI_LOAD_FAILED";
   readonly fixtureDir: string;
 

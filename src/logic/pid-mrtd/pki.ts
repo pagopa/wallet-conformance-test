@@ -97,7 +97,9 @@ function readPkijsCertificate(cert: x509.X509Certificate): Certificate {
   const der = new Uint8Array(cert.rawData);
   const asn1 = fromBER(der);
   if (asn1.offset === -1) {
-    throw new Error("Failed to parse X.509 certificate DER (fromBER offset = -1)");
+    throw new Error(
+      "Failed to parse X.509 certificate DER (fromBER offset = -1)",
+    );
   }
   return new Certificate({ schema: asn1.result });
 }
