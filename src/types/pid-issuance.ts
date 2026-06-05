@@ -241,10 +241,6 @@ const PID_CORE_IDENTITY_FIELDS = [
 ] as const satisfies readonly (keyof PidIssuanceConfig)[];
 
 /**
- * Projects validated `[issuance_pid]` config into {@link PidIdentityConfig}.
- * Returns `undefined` when `mode = none` (no PID identity simulation active).
- */
-/**
  * Whether mock eID / MRTD simulation is active for this run.
  *
  * - Explicit `[issuance_pid].mock_mrtd_enabled` wins when present.
