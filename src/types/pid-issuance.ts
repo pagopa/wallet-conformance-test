@@ -69,6 +69,11 @@ export const pidIssuanceSchema = z
 
     email: z.email().optional(),
     family_name: z.string().min(1).optional(),
+    /**
+     * Optional directory for persisted CSCA/DSC fixtures. When omitted, defaults to
+     * `{wallet.backup_storage_path}/pid-mrtd` (typically `./data/backup/pid-mrtd`).
+     */
+    fixture_storage_path: z.string().min(1).optional(),
     given_name: z.string().min(1).optional(),
     /**
      * When set, overrides the derived flag `mode !== "none"` used by REQ-05

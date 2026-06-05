@@ -300,6 +300,13 @@ function normalizeRuntimePaths<TConfig extends Partial<Config>>(
     );
   }
 
+  if (typeof normalized.issuance_pid?.fixture_storage_path === "string") {
+    normalized.issuance_pid.fixture_storage_path = resolveConfigRelativePath(
+      normalized.issuance_pid.fixture_storage_path,
+      baseDir,
+    );
+  }
+
   if (normalized.logging && typeof normalized.logging.log_file === "string") {
     normalized.logging.log_file = resolveConfigRelativePath(
       normalized.logging.log_file,
