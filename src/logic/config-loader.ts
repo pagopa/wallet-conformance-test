@@ -345,23 +345,14 @@ function normalizeTestPaths<TConfig extends Partial<Config>>(
   return normalized;
 }
 
-const PID_ISSUANCE_MODES = ["none", "l2plus", "l3"] as const;
-
-function parsePidIssuanceMode(value: string): PidIssuanceMode | undefined {
-  return PID_ISSUANCE_MODES.includes(value as PidIssuanceMode)
-    ? (value as PidIssuanceMode)
-    : undefined;
-}
-
 const buildIssuancePidConfig: ConfigSectionBuilder<Config["issuance_pid"]> = (
   options,
 ) => {
-  const mode = options.issuancePidMode
-    ? parsePidIssuanceMode(options.issuancePidMode)
-    : undefined;
-
   return {
-    ...(mode !== undefined && { mode }),
+    // Let Zod validate the enum so invalid values fail fast.
+    ...(options.issuancePidMode !== undefined && {
+      mode: options.issuancePidMode as PidIssuanceMode,
+    }),
     ...(options.mockMrtdEnabled !== undefined && {
       mock_mrtd_enabled: options.mockMrtdEnabled,
     }),
