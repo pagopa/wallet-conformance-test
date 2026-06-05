@@ -33,6 +33,7 @@ import {
 import { initPkijsCryptoEngine } from "@/logic/pid-mrtd/pkijs-engine";
 import {
   MRTD_PROOF_JWT_TYP,
+  MRTD_VALIDATION_JWT_TYP,
   mrtdProofJwtPayloadSchema,
   parseMrtdValidationJwtClaims,
 } from "@/logic/pid-mrtd/schemas";
@@ -186,7 +187,7 @@ describe("PID MRTD domain layer (REQ-03)", () => {
     expect(signedData.signerInfos.length).toBe(1);
   });
 
-  it("assembles and signs mrtd_validation_jwt claims", async () => {
+  it("assembles and signs normative mrtd_validation_jwt", async () => {
     await generatePidMrtdFixtures(fixtureDir, { force: true });
     const pki = await loadPersistedPidMrtdPki({
       issuance_pid: { fixture_storage_path: fixtureDir, mode: "l2plus" },
@@ -202,21 +203,30 @@ describe("PID MRTD domain layer (REQ-03)", () => {
       pki,
     });
 
-    const claims = assembleMrtdValidationJwtClaims(
-      artifacts,
-      SAMPLE_IDENTITY.mrz,
-    );
+    const claims = assembleMrtdValidationJwtClaims(artifacts, {
+      aud: "https://issuer.example.com",
+      iss: "https://wallet.example",
+    });
     parseMrtdValidationJwtClaims(claims);
+
+    expect(claims.document_type).toBe("cie");
+    expect(claims.mrtd.dg1.length).toBeGreaterThan(0);
+    expect(claims.ias.ias_pk.kty).toBe("EC");
 
     const jwt = await signMrtdValidationJwt({
       claims,
       walletPrivateJwk: walletKeys.privateKey,
     });
 
+    const header = decodeProtectedHeader(jwt);
+    expect(header.typ).toBe(MRTD_VALIDATION_JWT_TYP);
+    expect(header.kid).toBe(walletKeys.privateKey.kid);
+
     const key = await importJWK(walletKeys.publicKey, "ES256");
     const verified = await jwtVerify(jwt, key);
-    expect(verified.payload.challenge_signed).toBe(claims.challenge_signed);
-    expect(verified.payload.sod_mrtd).toBe(claims.sod_mrtd);
+    const payload = parseMrtdValidationJwtClaims(verified.payload);
+    expect(payload.ias.challenge_signed).toBe(claims.ias.challenge_signed);
+    expect(payload.mrtd.sod_mrtd).toBe(claims.mrtd.sod_mrtd);
   });
 
   it("simulates consent state for CI_052", () => {

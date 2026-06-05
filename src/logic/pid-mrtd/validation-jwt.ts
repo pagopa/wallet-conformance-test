@@ -1,4 +1,4 @@
-import { type JWK, SignJWT } from "jose";
+import { exportJWK, importJWK, type JWK, SignJWT } from "jose";
 
 import type { EphemeralIasPki, LoadedPidMrtdPki } from "@/logic/pid-mrtd/pki";
 import type { PidIdentityConfig } from "@/types/pid-issuance";
@@ -15,6 +15,7 @@ import {
 } from "@/logic/pid-mrtd/dg";
 import { bytesToBase64Url } from "@/logic/pid-mrtd/encoding";
 import {
+  MRTD_VALIDATION_JWT_TYP,
   type MrtdValidationJwtClaims,
   mrtdValidationJwtClaimsSchema,
 } from "@/logic/pid-mrtd/schemas";
@@ -31,8 +32,14 @@ export interface MrtdDocumentArtifacts {
   challengeSigned: string;
   dg1: Uint8Array;
   dg11: Uint8Array;
+  iasPublicJwk: JWK;
   sodIas: Uint8Array;
   sodMrtd: Uint8Array;
+}
+
+export interface AssembleMrtdValidationJwtParams {
+  aud: string;
+  iss: string;
 }
 
 export interface SignMrtdValidationJwtParams {
@@ -40,23 +47,30 @@ export interface SignMrtdValidationJwtParams {
   walletPrivateJwk: JWK;
 }
 
-/** Maps binary artifacts to base64url JWT claim strings (pre-signing). */
+/** Maps binary artifacts to the normative nested JWT payload (pre-signing). */
 export function assembleMrtdValidationJwtClaims(
   artifacts: MrtdDocumentArtifacts,
-  mrz?: string,
+  params: AssembleMrtdValidationJwtParams,
 ): MrtdValidationJwtClaims {
   return mrtdValidationJwtClaimsSchema.parse({
-    challenge_signed: artifacts.challengeSigned,
-    dg1: bytesToBase64Url(artifacts.dg1),
-    dg11: bytesToBase64Url(artifacts.dg11),
-    mrz,
-    sod_ias: bytesToBase64Url(artifacts.sodIas),
-    sod_mrtd: bytesToBase64Url(artifacts.sodMrtd),
+    aud: params.aud,
+    document_type: "cie",
+    ias: {
+      challenge_signed: artifacts.challengeSigned,
+      ias_pk: artifacts.iasPublicJwk,
+      sod_ias: bytesToBase64Url(artifacts.sodIas),
+    },
+    iss: params.iss,
+    mrtd: {
+      dg1: bytesToBase64Url(artifacts.dg1),
+      dg11: bytesToBase64Url(artifacts.dg11),
+      sod_mrtd: bytesToBase64Url(artifacts.sodMrtd),
+    },
   });
 }
 
 /**
- * Builds DG1/DG11, SOD_MRTD, SOD_IAS, and `challenge_signed` for the L2+ validation JWT.
+ * Builds DG1/DG11, SOD_MRTD, SOD_IAS, `challenge_signed`, and IAS public JWK.
  */
 export async function buildMrtdDocumentArtifacts(
   params: BuildMrtdDocumentArtifactsParams,
@@ -96,19 +110,26 @@ export async function buildMrtdDocumentArtifacts(
     params.ias.privateKey,
   );
 
-  return { challengeSigned, dg1, dg11, sodIas, sodMrtd };
+  const iasPublicJwk = await exportJWK(params.ias.publicKey);
+
+  return { challengeSigned, dg1, dg11, iasPublicJwk, sodIas, sodMrtd };
 }
 
-/** Signs the assembled claims as `mrtd_validation_jwt` with the wallet key (FR-18). */
+/** Signs the normative payload as `mrtd_validation_jwt` with the wallet key (FR-18). */
 export async function signMrtdValidationJwt(
   params: SignMrtdValidationJwtParams,
 ): Promise<string> {
-  const { importJWK } = await import("jose");
   const alg = params.walletPrivateJwk.alg ?? "ES256";
   const key = await importJWK(params.walletPrivateJwk, alg);
+  const kid = params.walletPrivateJwk.kid;
+  if (!kid) {
+    throw new Error("walletPrivateJwk.kid is required to sign mrtd_validation_jwt");
+  }
 
   return new SignJWT(params.claims)
-    .setProtectedHeader({ alg, typ: "JWT" })
+    .setProtectedHeader({ alg, kid, typ: MRTD_VALIDATION_JWT_TYP })
+    .setIssuer(params.claims.iss)
+    .setAudience(params.claims.aud)
     .setIssuedAt()
     .setExpirationTime("1h")
     .sign(key);

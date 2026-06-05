@@ -61,6 +61,7 @@ export {
   mockIdTokenPayloadSchema,
   MRTD_IAS_POP_JWT_TYP,
   MRTD_PROOF_JWT_TYP,
+  MRTD_VALIDATION_JWT_TYP,
   type MrtdIasPopJwtPayload,
   mrtdIasPopJwtPayloadSchema,
   type MrtdPopVerifyResponse,
@@ -68,6 +69,10 @@ export {
   type MrtdProofJwtPayload,
   mrtdProofJwtPayloadSchema,
   type MrtdValidationJwtClaims,
+  type MrtdValidationJwtIasBlock,
+  mrtdValidationJwtIasBlockSchema,
+  type MrtdValidationJwtMrtdBlock,
+  mrtdValidationJwtMrtdBlockSchema,
   mrtdValidationJwtClaimsSchema,
   parseMrtdIasPopJwtPayload,
   parseMrtdPopVerifyResponse,
@@ -76,6 +81,7 @@ export {
 } from "@/logic/pid-mrtd/schemas";
 export {
   assembleMrtdValidationJwtClaims,
+  type AssembleMrtdValidationJwtParams,
   buildMrtdDocumentArtifacts,
   type BuildMrtdDocumentArtifactsParams,
   type MrtdDocumentArtifacts,
