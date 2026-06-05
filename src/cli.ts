@@ -181,8 +181,9 @@ function addCommonOptions(command: Command): Command {
       "PID issuance mode: none | l2plus | l3 (env: CONFIG_ISSUANCE_PID_MODE)",
     )
     .option(
-      "--mock-mrtd-enabled",
-      "Enable mock eID/MRTD simulation (env: CONFIG_MOCK_MRTD_ENABLED=true). When omitted, derived from issuance_pid.mode.",
+      "--mock-mrtd-enabled <boolean>",
+      "Enable/disable mock eID/MRTD simulation (env: CONFIG_MOCK_MRTD_ENABLED). When omitted, derived from issuance_pid.mode.",
+      (val) => val === "true" || val === "1",
     )
     .option(
       "--presentation-tests-dir <path>",
