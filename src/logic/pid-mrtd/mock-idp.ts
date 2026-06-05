@@ -5,6 +5,7 @@ import type { PidIdentityConfig } from "@/types/pid-issuance";
 import {
   type MockIdTokenPayload,
   mockIdTokenPayloadSchema,
+  MRTD_PROOF_JWT_TYP,
   type MrtdProofJwtPayload,
   mrtdProofJwtPayloadSchema,
 } from "@/logic/pid-mrtd/schemas";
@@ -19,6 +20,8 @@ export const ACR_SPID_SUBSTANTIAL = "https://www.spid.gov.it/SpidL2";
 export const ACR_CIE_HIGH = "https://www.spid.gov.it/SpidL3";
 
 export interface MintMrtdProofJwtParams {
+  /** Wallet audience (`aud` claim, typically OAuth client_id). */
+  aud?: string;
   issuerUrl: string;
   mrtdAuthSession?: string;
   mrtdPopJwtNonce?: string;
@@ -78,19 +81,29 @@ export async function mintMrtdProofJwt(
 ): Promise<string> {
   const issuer = options?.issuer ?? MOCK_IDP_ISSUER;
   const key = await resolveIdpSigningKey(options);
+  const publicJwk = await getMockIdpPublicJwk();
   const initUrl = buildMrtdPopInitUrl(params.issuerUrl);
 
   const payload: MrtdProofJwtPayload = mrtdProofJwtPayloadSchema.parse({
+    aud: params.aud ?? params.issuerUrl.replace(/\/+$/u, ""),
+    htm: "POST",
     htu: initUrl,
     iss: issuer,
     mrtd_auth_session: params.mrtdAuthSession ?? crypto.randomUUID(),
     mrtd_pop_jwt_nonce: params.mrtdPopJwtNonce ?? crypto.randomUUID(),
     state: params.state,
+    status: "require_interaction",
+    type: "mrtd+ias",
   });
 
   return new SignJWT(payload)
-    .setProtectedHeader({ alg: "ES256", typ: "JWT" })
+    .setProtectedHeader({
+      alg: "ES256",
+      kid: publicJwk.kid,
+      typ: MRTD_PROOF_JWT_TYP,
+    })
     .setIssuer(issuer)
+    .setAudience(payload.aud)
     .setIssuedAt()
     .setExpirationTime("2h")
     .sign(key);
@@ -153,6 +166,7 @@ async function resolveIdpSigningKey(
     const { privateKey, publicKey } = await generateKeyPair("ES256");
     cachedIdpKey = privateKey;
     cachedIdpJwk = await exportJWK(publicKey);
+    cachedIdpJwk.kid ??= crypto.randomUUID();
   }
 
   return cachedIdpKey;

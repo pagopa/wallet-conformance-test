@@ -1,5 +1,5 @@
 import { fromBER } from "asn1js";
-import { decodeJwt, importJWK, jwtVerify } from "jose";
+import { decodeJwt, decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -32,6 +32,7 @@ import {
 } from "@/logic/pid-mrtd/pki";
 import { initPkijsCryptoEngine } from "@/logic/pid-mrtd/pkijs-engine";
 import {
+  MRTD_PROOF_JWT_TYP,
   mrtdProofJwtPayloadSchema,
   parseMrtdValidationJwtClaims,
 } from "@/logic/pid-mrtd/schemas";
@@ -137,18 +138,27 @@ describe("PID MRTD domain layer (REQ-03)", () => {
     expect(decodeJwt(high).acr).toBe(ACR_CIE_HIGH);
   });
 
-  it("mints MRTD proof JWT with init URL and session claims", async () => {
+  it("mints MRTD proof JWT aligned with L2+ spec (tables 12.1/12.2)", async () => {
     const jwt = await mintMrtdProofJwt({
+      aud: "https://wallet.example/client-1",
       issuerUrl: "https://issuer.example.com/",
       mrtdAuthSession: "sess-1",
       mrtdPopJwtNonce: "nonce-1",
       state: "state-xyz",
     });
 
+    const header = decodeProtectedHeader(jwt);
+    expect(header.typ, "JOSE typ").toBe(MRTD_PROOF_JWT_TYP);
+    expect(header.kid, "signing kid").toBeTruthy();
+
     const payload = mrtdProofJwtPayloadSchema.parse(decodeJwt(jwt));
     expect(payload.htu).toBe(
       buildMrtdPopInitUrl("https://issuer.example.com/"),
     );
+    expect(payload.aud).toBe("https://wallet.example/client-1");
+    expect(payload.htm).toBe("POST");
+    expect(payload.status).toBe("require_interaction");
+    expect(payload.type).toBe("mrtd+ias");
     expect(payload.mrtd_auth_session).toBe("sess-1");
     expect(payload.state).toBe("state-xyz");
   });

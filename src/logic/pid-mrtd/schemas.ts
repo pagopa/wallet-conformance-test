@@ -1,14 +1,21 @@
 import { z } from "zod";
 
+/** JOSE `typ` for the MRTD Proof JWT in `challenge_info` (L2+ spec §12.1/12.2). */
+export const MRTD_PROOF_JWT_TYP = "mrtd-ias+jwt";
+
 /** JOSE `typ` for the MRTD PoP init response JWT (FR / annex §5.1 L2+). */
 export const MRTD_IAS_POP_JWT_TYP = "mrtd-ias-pop+jwt";
 
 export const mrtdProofJwtPayloadSchema = z.object({
-  htu: z.string().url(),
+  aud: z.string().min(1),
+  htm: z.literal("POST"),
+  htu: z.url(),
   iss: z.string().min(1).optional(),
   mrtd_auth_session: z.string().min(1),
   mrtd_pop_jwt_nonce: z.string().min(1),
   state: z.string().min(1),
+  status: z.literal("require_interaction"),
+  type: z.literal("mrtd+ias"),
 });
 
 export type MrtdProofJwtPayload = z.infer<typeof mrtdProofJwtPayloadSchema>;

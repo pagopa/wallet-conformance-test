@@ -60,6 +60,7 @@ export {
   type MockIdTokenPayload,
   mockIdTokenPayloadSchema,
   MRTD_IAS_POP_JWT_TYP,
+  MRTD_PROOF_JWT_TYP,
   type MrtdIasPopJwtPayload,
   mrtdIasPopJwtPayloadSchema,
   type MrtdPopVerifyResponse,
