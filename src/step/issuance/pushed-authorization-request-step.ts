@@ -197,28 +197,69 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   }
 
   /**
+   * B1-6.4: optional `it_l2+document_proof` authorization detail for the L2+
+   * MRTD flow, gated behind `[issuance_pid].document_proof_enabled` (default
+   * off, post REQ-00). Returns `undefined` unless `mode = l2plus` and the flag
+   * with its required fields are set.
+   *
+   * Uses the SDK (`io-wallet-oauth2@1.4.1`) field names `challenge_method` /
+   * `challenge_redirect_uri`. The current online spec names these
+   * `multi_step_method` / `multi_step_redirect_uri`; reconcile via an SDK
+   * upgrade once the target PID Provider's spec version is confirmed (B1-6.1).
+   */
+  protected documentProofAuthorizationDetail():
+    | AuthorizationDetail
+    | undefined {
+    const issuancePid = this.config.issuance_pid;
+    if (
+      issuancePid?.mode !== "l2plus" ||
+      !issuancePid.document_proof_enabled ||
+      !issuancePid.document_proof_redirect_uri ||
+      !issuancePid.document_proof_idphinting
+    ) {
+      return undefined;
+    }
+
+    return {
+      challenge_method: "mrtd+ias",
+      challenge_redirect_uri: issuancePid.document_proof_redirect_uri,
+      idphinting: issuancePid.document_proof_idphinting,
+      type: "it_l2+document_proof",
+    };
+  }
+
+  /**
    * B1-6.2 (FR-10): overridable hook returning the extra `authorization_details`
    * entries required by the PID issuance flow.
    *
    * - `mode = none` (or `[issuance_pid]` absent) → `[]`, so the standard
    *   (Q)EAA flow is unaffected.
-   * - `mode = l2plus | l3` → a single PID detail for
+   * - `mode = l2plus | l3` → a PID detail for
    *   `dc_sd_jwt_PersonIdentificationData`.
+   * - `mode = l2plus` with `document_proof_enabled` → additionally an
+   *   `it_l2+document_proof` detail (B1-6.4).
    *
-   * Override via `withPidPar()` (B1-6.5) for negative tests, or extend it to
-   * enrich the detail (e.g. `it_l2+document_proof`, B1-6.4).
+   * Override via `withPidPar()` (B1-6.5) for negative tests.
    */
   protected pidCredentialAuthorizationDetails(): AuthorizationDetail[] {
-    const mode = this.config.issuance_pid?.mode ?? "none";
+    const issuancePid = this.config.issuance_pid;
+    const mode = issuancePid?.mode ?? "none";
     if (mode === "none") {
       return [];
     }
 
-    return [
+    const details: AuthorizationDetail[] = [
       {
         credential_configuration_id: PID_CREDENTIAL_CONFIGURATION_ID,
         type: "openid_credential",
       },
     ];
+
+    const documentProof = this.documentProofAuthorizationDetail();
+    if (documentProof) {
+      details.push(documentProof);
+    }
+
+    return details;
   }
 }

@@ -49,9 +49,12 @@ vi.mock("@pagopa/io-wallet-oauth2", async (importOriginal) => {
 type PidMode = "l2plus" | "l3" | "none";
 
 /** Minimal Config that satisfies the StepFlow constructor and the PAR step. */
-const makeConfig = (mode?: PidMode): Config =>
+const makeConfig = (
+  mode?: PidMode,
+  issuancePidExtra?: Record<string, unknown>,
+): Config =>
   ({
-    issuance_pid: mode ? { mode } : undefined,
+    issuance_pid: mode ? { mode, ...issuancePidExtra } : undefined,
     logging: {
       log_file: "",
       log_file_format: "json",
@@ -244,6 +247,57 @@ describe("PushedAuthorizationRequestDefaultStep — PID authorization_details", 
       );
 
       expect(capturedAuthorizationDetails()).toEqual([]);
+    });
+  });
+
+  describe("it_l2+document_proof (B1-6.4)", () => {
+    const docProofConfig = {
+      document_proof_enabled: true,
+      document_proof_idphinting: "https://idp.example.org",
+      document_proof_redirect_uri: "https://wallet.example.org/challenge",
+    };
+
+    it("mode = l2plus with the flag off: no document_proof detail", async () => {
+      await runStep(
+        PushedAuthorizationRequestDefaultStep,
+        makeConfig("l2plus"),
+        makeOptions([PID_CREDENTIAL_CONFIGURATION_ID]),
+      );
+
+      const types = capturedAuthorizationDetails().map((d) => d.type);
+      expect(types).toEqual(["openid_credential"]);
+    });
+
+    it("mode = l2plus with the flag on: appends it_l2+document_proof", async () => {
+      await runStep(
+        PushedAuthorizationRequestDefaultStep,
+        makeConfig("l2plus", docProofConfig),
+        makeOptions([PID_CREDENTIAL_CONFIGURATION_ID]),
+      );
+
+      const details = capturedAuthorizationDetails();
+      expect(details).toHaveLength(2);
+      expect(details).toContainEqual({
+        credential_configuration_id: PID_CREDENTIAL_CONFIGURATION_ID,
+        type: "openid_credential",
+      });
+      expect(details).toContainEqual({
+        challenge_method: "mrtd+ias",
+        challenge_redirect_uri: "https://wallet.example.org/challenge",
+        idphinting: "https://idp.example.org",
+        type: "it_l2+document_proof",
+      });
+    });
+
+    it("mode = l3 with the flag on: never adds document_proof (L3 has no MRTD)", async () => {
+      await runStep(
+        PushedAuthorizationRequestDefaultStep,
+        makeConfig("l3", docProofConfig),
+        makeOptions([PID_CREDENTIAL_CONFIGURATION_ID]),
+      );
+
+      const types = capturedAuthorizationDetails().map((d) => d.type);
+      expect(types).toEqual(["openid_credential"]);
     });
   });
 });

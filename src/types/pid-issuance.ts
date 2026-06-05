@@ -47,6 +47,26 @@ export const pidIssuanceSchema = z
   .object({
     birthdate: z.iso.date().optional(),
 
+    /**
+     * B1-6.4: opt-in flag that adds an `it_l2+document_proof` entry to the PAR
+     * for `mode = l2plus` (post REQ-00). Default off — when unset the PAR is
+     * unchanged, so existing L2+ tests keep passing. No effect for `l3`.
+     */
+    document_proof_enabled: zBooleanFromString.optional(),
+    /**
+     * B1-6.4: maps to the `it_l2+document_proof` `idphinting` field — the IdP the
+     * wallet intends to authenticate against. Required when
+     * `document_proof_enabled` is set for `l2plus`.
+     */
+    document_proof_idphinting: z.url().optional(),
+    /**
+     * B1-6.4: maps to the `it_l2+document_proof` `challenge_redirect_uri` field
+     * (named `multi_step_redirect_uri` in the current online spec) — the
+     * wallet's challenge endpoint. Required when `document_proof_enabled` is set
+     * for `l2plus`.
+     */
+    document_proof_redirect_uri: z.url().optional(),
+
     email: z.email().optional(),
     family_name: z.string().min(1).optional(),
     given_name: z.string().min(1).optional(),
@@ -104,6 +124,34 @@ export const pidIssuanceSchema = z
           path: ["personal_administrative_number"],
         });
       }
+
+      // B1-6.4: when the document-proof flag is on, its two fields are required.
+      if (data.document_proof_enabled) {
+        if (!data.document_proof_redirect_uri) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "[issuance_pid] 'document_proof_redirect_uri' is required when 'document_proof_enabled' is set for mode = 'l2plus'",
+            path: ["document_proof_redirect_uri"],
+          });
+        }
+        if (!data.document_proof_idphinting) {
+          ctx.addIssue({
+            code: "custom",
+            message:
+              "[issuance_pid] 'document_proof_idphinting' is required when 'document_proof_enabled' is set for mode = 'l2plus'",
+            path: ["document_proof_idphinting"],
+          });
+        }
+      }
+    } else if (data.document_proof_enabled) {
+      // Flag only applies to l2plus; flag it as a misconfiguration otherwise.
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "[issuance_pid] 'document_proof_enabled' is only valid when mode = 'l2plus'",
+        path: ["document_proof_enabled"],
+      });
     }
   });
 
