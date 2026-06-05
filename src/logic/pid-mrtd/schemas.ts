@@ -76,12 +76,12 @@ export type MrtdValidationJwtClaims = z.infer<
   typeof mrtdValidationJwtClaimsSchema
 >;
 
-export type MrtdValidationJwtMrtdBlock = z.infer<
-  typeof mrtdValidationJwtMrtdBlockSchema
->;
-
 export type MrtdValidationJwtIasBlock = z.infer<
   typeof mrtdValidationJwtIasBlockSchema
+>;
+
+export type MrtdValidationJwtMrtdBlock = z.infer<
+  typeof mrtdValidationJwtMrtdBlockSchema
 >;
 
 export const mockIdTokenPayloadSchema = z

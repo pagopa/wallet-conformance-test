@@ -20,6 +20,11 @@ import {
   mrtdValidationJwtClaimsSchema,
 } from "@/logic/pid-mrtd/schemas";
 
+export interface AssembleMrtdValidationJwtParams {
+  aud: string;
+  iss: string;
+}
+
 export interface BuildMrtdDocumentArtifactsParams {
   challenge: string;
   ias: EphemeralIasPki;
@@ -35,11 +40,6 @@ export interface MrtdDocumentArtifacts {
   iasPublicJwk: JWK;
   sodIas: Uint8Array;
   sodMrtd: Uint8Array;
-}
-
-export interface AssembleMrtdValidationJwtParams {
-  aud: string;
-  iss: string;
 }
 
 export interface SignMrtdValidationJwtParams {
@@ -123,7 +123,9 @@ export async function signMrtdValidationJwt(
   const key = await importJWK(params.walletPrivateJwk, alg);
   const kid = params.walletPrivateJwk.kid;
   if (!kid) {
-    throw new Error("walletPrivateJwk.kid is required to sign mrtd_validation_jwt");
+    throw new Error(
+      "walletPrivateJwk.kid is required to sign mrtd_validation_jwt",
+    );
   }
 
   return new SignJWT(params.claims)
