@@ -19,12 +19,6 @@ import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
 
-if (!process.env.NODE_OPTIONS?.includes("--experimental-sqlite")) {
-  process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, "--experimental-sqlite"]
-    .filter((value) => value && value.length > 0)
-    .join(" ");
-}
-
 function runTestCommand(
   script: "test:issuance" | "test:presentation",
   options: CliOptions,

@@ -14,12 +14,6 @@ let trustAnchorServer: https.Server;
 let walletProviderServer: https.Server;
 let mockIssuerServer: https.Server;
 
-if (!process.env.NODE_OPTIONS?.includes("--experimental-sqlite")) {
-  process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, "--experimental-sqlite"]
-    .filter((value) => value && value.length > 0)
-    .join(" ");
-}
-
 export default async function setup() {
   const config = loadConfigWithHierarchy();
   const baseLog = createLogger().withTag("globalSetup");
