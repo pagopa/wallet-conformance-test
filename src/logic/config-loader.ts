@@ -354,17 +354,15 @@ function normalizeTestPaths<TConfig extends Partial<Config>>(
 
 const buildIssuancePidConfig: ConfigSectionBuilder<Config["issuance_pid"]> = (
   options,
-) => {
-  return {
-    // Let Zod validate the enum so invalid values fail fast.
-    ...(options.issuancePidMode !== undefined && {
-      mode: options.issuancePidMode as PidIssuanceMode,
-    }),
-    ...(options.mockMrtdEnabled !== undefined && {
-      mock_mrtd_enabled: options.mockMrtdEnabled,
-    }),
-  };
-};
+) => ({
+  // Let Zod validate the enum so invalid values fail fast.
+  ...(options.issuancePidMode !== undefined && {
+    mode: options.issuancePidMode as PidIssuanceMode,
+  }),
+  ...(options.mockMrtdEnabled !== undefined && {
+    mock_mrtd_enabled: options.mockMrtdEnabled,
+  }),
+});
 
 const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
   options,
