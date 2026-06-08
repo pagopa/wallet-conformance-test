@@ -3,12 +3,22 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { JwkSet } from "@pagopa/io-wallet-oauth2";
+import {
+  CredentialOffer,
+  resolveCredentialOffer,
+} from "@pagopa/io-wallet-oid4vci";
+import { jsonWebKeySetSchema } from "@pagopa/io-wallet-oid-federation";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
+import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
+import { parseCredential } from "@/functions";
 import { parseMdoc } from "@/logic";
+import { validateDcqlQuery } from "@/logic/dcql";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
   AuthorizeStepResponse,
@@ -138,6 +148,98 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    test(
+      "CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement",
+      { skip: process.env.CI_CD === "true" },
+      async () => {
+        const log = baseLog.withTag("CI_004");
+        const DESCRIPTION =
+          "Public key is included in both Entity Configuration and Subordinate Statement";
+
+        log.start(
+          "Conformance test: Verifying public key in metadata and subordinate statement",
+        );
+
+        let testSuccess = false;
+        try {
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
+          log.debug("→ Checking public key in Entity Configuration...");
+          expect(entityClaims.jwks.keys).toBeDefined();
+          expect(entityClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(() =>
+            jsonWebKeySetSchema.parse(entityClaims.jwks),
+          ).not.toThrowError();
+
+          log.debug("→ Attempting to fetch Subordinate Statement from TA...");
+          const taUrl = entityClaims.authority_hints[0];
+          if (!taUrl)
+            throw new Error(
+              "missing authority_hints from credential issuer's metadata",
+            );
+
+          const sub = entityClaims.iss;
+
+          const fetchUrl = `${taUrl}/fetch?sub=${encodeURIComponent(sub)}`;
+          log.debug(`  Fetching from: ${fetchUrl}`);
+          const response = await fetch(fetchUrl);
+          expect(response.ok).toBe(true);
+          if (!response.ok)
+            throw new Error(
+              `Failed to fetch subordinate statement from TA: ${response.status}`,
+            );
+
+          const subordinateJwt = await response.text();
+          const subordinateClaims = decodeJwt(subordinateJwt) as {
+            jwks: JwkSet;
+          };
+
+          log.debug("→ Checking public key in Subordinate Statement...");
+          expect(subordinateClaims.jwks.keys).toBeDefined();
+          expect(subordinateClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(() =>
+            jsonWebKeySetSchema.parse(subordinateClaims.jwks),
+          ).not.toThrowError();
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
+    test(
+      "CI_005: Fetch Metadata | Entity Configuration's Trust Marks",
+      {
+        skip:
+          orchestrator.getConfig().wallet.wallet_version ===
+          ItWalletSpecsVersion.V1_0,
+      },
+      async () => {
+        const log = baseLog.withTag("CI_005");
+        const DESCRIPTION =
+          "Entity Configuration contains one or more Trust Marks";
+
+        log.start(
+          "Conformance test: Verifying Trust Marks in Entity Configuration",
+        );
+
+        let testSuccess = false;
+        try {
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
+
+          log.debug("→ Checking Trust Marks...");
+          expect(entityClaims.trust_marks).toBeDefined();
+          expect(entityClaims.trust_marks?.length).toBeGreaterThan(0);
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
     test("CI_006: Fetch Metadata | Entity Configurations have in common these parameters: iss, sub, iat, exp, jwks, metadata.", async () => {
       const log = baseLog.withTag("CI_006");
       const DESCRIPTION =
@@ -251,6 +353,236 @@ testConfigs.forEach((testConfig) => {
           result.success,
           `Error validating schema: ${result.success ? "" : result.error.message}`,
         ).toBe(true);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // ============================================================================
+    // CREDENTIAL OFFER TESTS
+    // ============================================================================
+
+    test(
+      "CI_010: Issuance | Credential Offer URI Structure",
+      {
+        skip: !orchestrator.getConfig().issuance.credential_offer_uri,
+      },
+      async ({ skip }) => {
+        const log = baseLog.withTag("CI_010");
+        const DESCRIPTION = "Credential Offer URI has correct structure";
+
+        log.start("Conformance test: Verifying Credential Offer URI structure");
+
+        let testSuccess = false;
+        try {
+          const credentialOffer =
+            orchestrator.getConfig().issuance.credential_offer_uri;
+          if (!credentialOffer) {
+            log.warn("  Credential Offer URI missing in config, skipping test");
+            skip();
+            return;
+          }
+
+          try {
+            const jsonOffer = JSON.parse(credentialOffer);
+
+            log.warn(
+              `  Credential Offer can be parsed as JSON, skipping test; ${jsonOffer}`,
+            );
+            skip();
+            return;
+          } catch {
+            log.info(
+              "  Credential Offer cannot be parsed as JSON, continuing test",
+            );
+          }
+
+          log.debug(`→ Checking Credential Offer URI: ${credentialOffer}`);
+          expect(
+            credentialOffer.startsWith("openid-credential-offer://") ||
+              credentialOffer.startsWith("haip-vci://") ||
+              credentialOffer.startsWith("https://"),
+          ).toBe(true);
+
+          const url = new URL(credentialOffer);
+          let offer: CredentialOffer;
+          const credentialOfferEmbedded =
+            url.searchParams.get("credential_offer");
+          if (credentialOfferEmbedded)
+            offer = JSON.parse(decodeURIComponent(credentialOfferEmbedded));
+          else {
+            const credentialOfferFetched = await fetch(url, {
+              headers: {
+                Accept: "application/json",
+              },
+              method: "GET",
+            });
+
+            if (!credentialOfferFetched.ok)
+              throw new Error("could not fetch credential offer");
+
+            offer = await credentialOfferFetched.json();
+          }
+          expect(offer).toBeDefined();
+          expect(offer).toBeTypeOf("object");
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
+    test(
+      "CI_012: Issuance | Credential Offer Mandatory Parameters",
+      {
+        skip: !orchestrator.getConfig().issuance.credential_offer_uri,
+      },
+      async () => {
+        const log = baseLog.withTag("CI_012");
+        const DESCRIPTION = "Credential Offer contains mandatory parameters";
+
+        log.start(
+          "Conformance test: Verifying Credential Offer mandatory parameters",
+        );
+
+        let testSuccess = false;
+        try {
+          const credentialOffer =
+            orchestrator.getConfig().issuance.credential_offer_uri;
+          if (!credentialOffer) {
+            log.warn("  Credential Offer URI missing in config, skipping test");
+            testSuccess = true;
+            return;
+          }
+
+          const offer = await resolveCredentialOffer({
+            callbacks: { fetch },
+            credentialOffer,
+          });
+          log.debug(
+            "→ Checking mandatory parameters: credential_issuer, credential_configuration_ids, grants",
+          );
+          expect(offer.credential_issuer).toBeDefined();
+          expect(offer.credential_configuration_ids).toBeDefined();
+          expect(Array.isArray(offer.credential_configuration_ids)).toBe(true);
+          expect(offer.grants).toBeDefined();
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
+    test(
+      "CI_013: Issuance | Credential Offer Grants Parameter Structure",
+      {
+        skip: !orchestrator.getConfig().issuance.credential_offer_uri,
+      },
+      async () => {
+        const log = baseLog.withTag("CI_013");
+        const DESCRIPTION =
+          "Credential Offer grants parameter has correct structure";
+
+        log.start(
+          "Conformance test: Verifying Credential Offer grants structure",
+        );
+
+        let testSuccess = false;
+        try {
+          const credentialOffer =
+            orchestrator.getConfig().issuance.credential_offer_uri;
+          if (!credentialOffer) {
+            log.warn("  Credential Offer URI missing in config, skipping test");
+            testSuccess = true;
+            return;
+          }
+
+          const offer = await resolveCredentialOffer({
+            callbacks: { fetch },
+            credentialOffer,
+          });
+          log.debug(
+            "→ Checking mandatory parameter: grants.authorization_code",
+          );
+
+          log.debug("→ Checking authorization_code grant structure...");
+          expect(offer.grants.authorization_code).toBeDefined();
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
+    test("CI_014: Credential | Credential Object Compilation", async () => {
+      const log = baseLog.withTag("CI_014");
+      const DESCRIPTION = "Credential Object is properly compiled";
+
+      log.start("Conformance test: Verifying Credential Object compilation");
+
+      let testSuccess = false;
+      try {
+        expect(credentialResponse.response).toBeDefined();
+        if (!credentialResponse.response)
+          throw new Error(
+            `credential request failed: ${credentialResponse.error}`,
+          );
+
+        const key = credentialResponse.response.credentialKeyPair.publicKey;
+        const credential = credentialResponse.response.credentials[0];
+        if (!credential) throw new Error("credential response was empty");
+
+        expect(credential.credential).toBeDefined();
+
+        const parsed = await parseCredential(credential.credential);
+        expect(parsed.credential).toBeDefined();
+        if (!parsed.credential) throw new Error("credential parsing failed");
+
+        log.info("  Successfully extracted credential");
+
+        const credentialSchema:
+          | undefined
+          | {
+              claims: { path: string[] }[];
+              format: "dc+sd-jwt" | "mso_doc";
+              vct?: string;
+            } =
+          fetchMetadataResponse.response?.entityStatementClaims.metadata
+            ?.openid_credential_issuer?.credential_configurations_supported[
+            testConfig.credentialConfigurationId
+          ];
+        if (!credentialSchema)
+          throw new Error(
+            "missing credential type from issuer's supported credentials list",
+          );
+
+        const queryResult = await validateDcqlQuery(
+          [
+            {
+              credential: credential.credential,
+              dpopJwk: key,
+              id: "0",
+              typ: parsed.credential.typ,
+            },
+          ],
+          {
+            credentials: [
+              {
+                ...credentialSchema,
+                claims: credentialSchema.claims.map((claim) => ({
+                  path: claim.path,
+                })),
+                id: "0",
+              },
+            ],
+          } as DcqlQuery.Input,
+        );
+        expect(queryResult.can_be_satisfied).toBe(true);
 
         testSuccess = true;
       } finally {
