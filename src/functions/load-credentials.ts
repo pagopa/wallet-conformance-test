@@ -135,6 +135,34 @@ export async function loadCredentialsForPresentation(
 }
 
 /**
+ * Attempts to parse a compact-serialized credential as either SD-JWT or MDOC.
+ *
+ * @param compact - The compact-serialized credential string.
+ * @returns A promise resolving to an object containing either the parsed `Credential` or an error message.
+ */
+export async function parseCredential(
+  compact: string,
+): Promise<{ credential?: Credential; error?: string }> {
+  let error: null | string = null;
+
+  try {
+    const parsed = await SDJwt.decodeSDJwt(compact, digest);
+    return { credential: { compact, parsed, typ: "dc+sd-jwt" } };
+  } catch (e) {
+    error = `Local credential was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`;
+  }
+
+  try {
+    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
+    return { credential: { compact, parsed, typ: "mso_mdoc" }, error };
+  } catch (e) {
+    return {
+      error: `Local credential was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
+
+/**
  * Parses a credential and extracts its status claim.
  *
  * @param compact - The compact-serialized credential string.
@@ -229,34 +257,6 @@ async function createMockCredentialsWithKeys(
       config.wallet.backup_storage_path,
     ),
   ]);
-}
-
-/**
- * Attempts to parse a compact-serialized credential as either SD-JWT or MDOC.
- *
- * @param compact - The compact-serialized credential string.
- * @returns A promise resolving to an object containing either the parsed `Credential` or an error message.
- */
-async function parseCredential(
-  compact: string,
-): Promise<{ credential?: Credential; error?: string }> {
-  let error: null | string = null;
-
-  try {
-    const parsed = await SDJwt.decodeSDJwt(compact, digest);
-    return { credential: { compact, parsed, typ: "dc+sd-jwt" } };
-  } catch (e) {
-    error = `Local credential was not a valid sd-jwt credential: ${e instanceof Error ? e.message : String(e)}`;
-  }
-
-  try {
-    const parsed = parseMdoc(Buffer.from(compact, "base64url"));
-    return { credential: { compact, parsed, typ: "mso_mdoc" }, error };
-  } catch (e) {
-    return {
-      error: `Local credential was not a valid mdoc credential: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
 }
 
 /**
