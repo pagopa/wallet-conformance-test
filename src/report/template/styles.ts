@@ -295,11 +295,23 @@ export const REPORT_CSS = `
   }
 
   /* ── Print: hide switcher, show both views stacked ── */
+  /* ── Avoid mid-card page breaks (screen + print) ── */
+  .check-card,
+  .info-card,
+  .metric-card,
+  .critical-box,
+  .detail-box {
+    break-inside: avoid;
+    page-break-inside: avoid; /* legacy Webkit/Chromium fallback */
+  }
+
+  @page { margin: 18mm; }
+
   @media print {
     body { background: #fff; }
     .view-switcher { display: none; }
     .view-panel { display: block !important; }
-    .page { width: 100%; max-width: none; min-height: 0; padding: 18mm; }
+    .page { width: 100%; max-width: none; min-height: 0; padding: 0; }
     .view-panel + .view-panel { page-break-before: always; }
   }
 `;
