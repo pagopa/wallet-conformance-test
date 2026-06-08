@@ -29,3 +29,11 @@ export interface ReportData {
   totalChecks: number;
   versionPill: string;
 }
+
+/**
+ * Which view(s) to include in the rendered report.
+ * - "both"       – screen switcher + both views (default)
+ * - "executive"  – executive view only, no switcher
+ * - "technical"  – technical view only, no switcher
+ */
+export type ReportView = "both" | "executive" | "technical";

@@ -228,8 +228,13 @@ program
 program
   .command("report:create <run_id> <format>")
   .description("Generate an HTML or PDF conformance report")
-  .action(async (runId, format) => {
-    await reportCreate(runId, format);
+  .option(
+    "--view <view>",
+    "Which view to render: both (default), executive, or technical",
+    "both",
+  )
+  .action(async (runId, format, options) => {
+    await reportCreate(runId, format, options.view);
   });
 
 // Parse command-line arguments

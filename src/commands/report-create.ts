@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
+import type { ReportView } from "@/report/template/types";
+
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { openDb, resolveDbPath } from "@/report/db";
 import { renderPdf } from "@/report/pdf";
@@ -13,8 +15,10 @@ type ReportFormat = "html" | "pdf";
 export async function reportCreate(
   runId: string,
   format: string,
+  view = "both",
 ): Promise<void> {
   assertReportFormat(format);
+  assertReportView(view);
 
   const db = openDb(resolveDbPath());
 
@@ -39,7 +43,7 @@ export async function reportCreate(
       sessionForRendering.closedAt = closedAt;
     }
 
-    const html = renderHtml(sessionForRendering, config);
+    const html = renderHtml(sessionForRendering, config, view);
     const outputPath = path.resolve(
       process.cwd(),
       `conformance-report-${runId}.${format}`,
@@ -66,5 +70,15 @@ function assertReportFormat(format: string): asserts format is ReportFormat {
 
   throw new Error(
     `Invalid report format: ${format}. Expected one of: html, pdf.`,
+  );
+}
+
+function assertReportView(view: string): asserts view is ReportView {
+  if (view === "both" || view === "executive" || view === "technical") {
+    return;
+  }
+
+  throw new Error(
+    `Invalid report view: ${view}. Expected one of: both, executive, technical.`,
   );
 }

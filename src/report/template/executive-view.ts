@@ -1,11 +1,18 @@
 import type { ReportData } from "@/report/template/types";
 
 import { escapeHtml } from "@/report/template/helpers";
-import { renderDetailsGrid, renderHeader } from "@/report/template/shared";
+import {
+  renderDetailsGrid,
+  renderHeader,
+  renderPrintTabBar,
+} from "@/report/template/shared";
 
 // ─── Executive view ───────────────────────────────────────────────────────────
 
-export function renderExecutiveView(data: ReportData): string {
+export function renderExecutiveView(
+  data: ReportData,
+  showPrintTabBar = false,
+): string {
   const {
     compliancePct,
     complianceTier,
@@ -56,6 +63,7 @@ export function renderExecutiveView(data: ReportData): string {
   <div id="view-executive" class="view-panel active" role="region" aria-label="Vista Esecutiva">
     <main class="page" aria-label="IT-Wallet Conformance Report - Vista Esecutiva">
 
+      ${showPrintTabBar ? renderPrintTabBar("executive") : ""}
       ${renderHeader(versionPill)}
 
       <section class="${statusPanelCss}" aria-label="Stato di conformità complessivo">

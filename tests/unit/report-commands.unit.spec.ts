@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -117,6 +118,153 @@ describe("report commands", () => {
     expect(content.includes("CI_001")).toBe(true);
 
     expect(logSpy).toHaveBeenCalledWith(filePath);
+  });
+
+  it("reportCreate --view both renders screen switcher and print tab bars", async () => {
+    const runId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const db = openDb(resolveDbPath());
+    createSession(db, {
+      id: runId,
+      sessionId: runId,
+      startedAt: "2026-03-11T10:00:00.000Z",
+      status: "PASSED",
+    });
+    appendCheck(db, runId, {
+      description: "CI_001: PAR",
+      phase: "ISSUANCE",
+      requirementId: "CI_001",
+      result: "PASS",
+      step: "PAR",
+      timestamp: "2026-03-11T10:00:01.000Z",
+    });
+    db.close();
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await reportCreate(runId, "html", "both");
+
+    const content = readFileSync(
+      path.resolve(process.cwd(), `conformance-report-${runId}.html`),
+      "utf8",
+    );
+
+    expect(
+      content.includes('class="view-switcher"'),
+      "screen switcher present",
+    ).toBe(true);
+    expect(
+      content.includes('class="print-tab-bar"'),
+      "print tab bars present",
+    ).toBe(true);
+    expect(
+      content.includes('id="view-executive"'),
+      "executive panel present",
+    ).toBe(true);
+    expect(
+      content.includes('id="view-technical"'),
+      "technical panel present",
+    ).toBe(true);
+    expect(
+      content.includes('href="#view-executive"'),
+      "link to executive present",
+    ).toBe(true);
+    expect(
+      content.includes('href="#view-technical"'),
+      "link to technical present",
+    ).toBe(true);
+  });
+
+  it("reportCreate --view executive renders only executive view", async () => {
+    const runId = "11111111-2222-3333-4444-555555555555";
+    const db = openDb(resolveDbPath());
+    createSession(db, {
+      id: runId,
+      sessionId: runId,
+      startedAt: "2026-03-11T10:00:00.000Z",
+      status: "FAILED",
+    });
+    appendCheck(db, runId, {
+      description: "CI_001: PAR",
+      errorMessage: "missing",
+      phase: "ISSUANCE",
+      requirementId: "CI_001",
+      result: "FAIL",
+      step: "PAR",
+      timestamp: "2026-03-11T10:00:01.000Z",
+    });
+    db.close();
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await reportCreate(runId, "html", "executive");
+
+    const content = readFileSync(
+      path.resolve(process.cwd(), `conformance-report-${runId}.html`),
+      "utf8",
+    );
+
+    expect(
+      content.includes('class="view-switcher"'),
+      "no screen switcher",
+    ).toBe(false);
+    expect(content.includes('class="print-tab-bar"'), "no print tab bar").toBe(
+      false,
+    );
+    expect(
+      content.includes("Sintesi Esecutiva"),
+      "executive content present",
+    ).toBe(true);
+    expect(
+      content.includes('class="check-card'),
+      "no technical check cards",
+    ).toBe(false);
+  });
+
+  it("reportCreate --view technical renders only technical view", async () => {
+    const runId = "66666666-7777-8888-9999-000000000000";
+    const db = openDb(resolveDbPath());
+    createSession(db, {
+      id: runId,
+      sessionId: runId,
+      startedAt: "2026-03-11T10:00:00.000Z",
+      status: "PASSED",
+    });
+    appendCheck(db, runId, {
+      description: "CI_001: PAR",
+      phase: "ISSUANCE",
+      requirementId: "CI_001",
+      result: "PASS",
+      step: "PAR",
+      timestamp: "2026-03-11T10:00:01.000Z",
+    });
+    db.close();
+
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await reportCreate(runId, "html", "technical");
+
+    const content = readFileSync(
+      path.resolve(process.cwd(), `conformance-report-${runId}.html`),
+      "utf8",
+    );
+
+    expect(
+      content.includes('class="view-switcher"'),
+      "no screen switcher",
+    ).toBe(false);
+    expect(content.includes('class="print-tab-bar"'), "no print tab bar").toBe(
+      false,
+    );
+    expect(
+      content.includes('class="check-card'),
+      "technical check cards present",
+    ).toBe(true);
+    expect(content.includes("Sintesi Esecutiva"), "no executive content").toBe(
+      false,
+    );
+  });
+
+  it("reportCreate rejects invalid view values", async () => {
+    await expect(
+      reportCreate("any-id", "html", "invalid-view"),
+    ).rejects.toThrow("Invalid report view: invalid-view");
   });
 
   it("reportCreate exits non-zero when run is not found", async () => {

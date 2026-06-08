@@ -2,7 +2,7 @@ import type { ConformanceCheck } from "@/report/types";
 
 import { escapeHtml } from "@/report/template/helpers";
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+// ─── Print tab bar ───────────────────────────────────────────────────────────
 
 interface DetailsGridData {
   entityName: string;
@@ -12,7 +12,7 @@ interface DetailsGridData {
   specVersion: string;
 }
 
-// ─── Details grid ─────────────────────────────────────────────────────────────
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 export function renderCheckCard(check: ConformanceCheck): string {
   const { description, errorMessage, httpStatus, requirementId, result } =
@@ -101,6 +101,8 @@ export function renderCheckCard(check: ConformanceCheck): string {
     </article>`;
 }
 
+// ─── Details grid ─────────────────────────────────────────────────────────────
+
 export function renderDetailsGrid(data: DetailsGridData): string {
   const { entityName, executedAt, profile, solutionName, specVersion } = data;
 
@@ -153,8 +155,6 @@ export function renderDetailsGrid(data: DetailsGridData): string {
     </section>`;
 }
 
-// ─── Check card ───────────────────────────────────────────────────────────────
-
 export function renderHeader(versionPill: string): string {
   return `
     <header class="topbar">
@@ -170,4 +170,51 @@ export function renderHeader(versionPill: string): string {
       </div>
       <div class="version-pill">${escapeHtml(versionPill)}</div>
     </header>`;
+}
+
+// ─── Check card ───────────────────────────────────────────────────────────────
+
+/**
+ * Renders a print-only tab bar with anchor links so readers can jump between
+ * the executive and technical sections within the same PDF.
+ * Hidden on screen; visible only via @media print.
+ */
+export function renderPrintTabBar(
+  activeView: "executive" | "technical",
+): string {
+  const execActive = activeView === "executive";
+
+  const execBtn = execActive
+    ? `<span class="print-tab-btn active" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M9 12h6M9 16h4M7 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2M9 4h6a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Vista Esecutiva
+      </span>`
+    : `<a class="print-tab-btn" href="#view-executive">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M9 12h6M9 16h4M7 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2M9 4h6a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Vista Esecutiva
+      </a>`;
+
+  const techBtn = !execActive
+    ? `<span class="print-tab-btn active" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M10 20l4-16M6.343 17.657l-2.829-2.828L1.172 12l2.343-2.343 2.828-2.828M17.657 6.343l2.829 2.828L22.828 12l-2.343 2.343-2.828 2.828" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Vista Tecnica
+      </span>`
+    : `<a class="print-tab-btn" href="#view-technical">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M10 20l4-16M6.343 17.657l-2.829-2.828L1.172 12l2.343-2.343 2.828-2.828M17.657 6.343l2.829 2.828L22.828 12l-2.343 2.343-2.828 2.828" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Vista Tecnica
+      </a>`;
+
+  return `
+    <nav class="print-tab-bar" aria-label="Seleziona visualizzazione rapporto">
+      ${execBtn}
+      ${techBtn}
+    </nav>`;
 }

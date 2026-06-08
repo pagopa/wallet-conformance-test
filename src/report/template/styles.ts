@@ -80,9 +80,10 @@ export const REPORT_CSS = `
     cursor: pointer;
     transition: background 0.12s, color 0.12s, border-color 0.12s;
     user-select: none;
+    position: relative;
   }
-  .view-btn:first-child { border-radius: 8px 0 0 8px; border-right-width: 0; }
-  .view-btn:last-child  { border-radius: 0 8px 8px 0; border-left-width: 1.5px; }
+  .view-btn:first-child { border-radius: 8px 0 0 8px; }
+  .view-btn:last-child  { border-radius: 0 8px 8px 0; margin-left: -1.5px; }
   .view-btn.active { background: #ffffff; color: var(--blue); border-color: var(--blue); z-index: 1; }
   .view-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
 
@@ -295,6 +296,35 @@ export const REPORT_CSS = `
   }
 
   /* ── Print: hide switcher, show both views stacked ── */
+  /* ── Print-only tab bar (anchor links, shown once per view section) ── */
+  .print-tab-bar { display: none; }
+
+  @media print {
+    .print-tab-bar {
+      display: flex;
+      margin-bottom: 18px;
+    }
+    .print-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 18px;
+      border: 1.5px solid #d7dde6;
+      background: #f9fafb;
+      color: #64748b;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+      position: relative;
+    }
+    .print-tab-btn:first-child { border-radius: 8px 0 0 8px; }
+    .print-tab-btn:last-child  { border-radius: 0 8px 8px 0; margin-left: -1.5px; }
+    .print-tab-btn.active { background: #ffffff; color: var(--blue); border-color: var(--blue); z-index: 1; }
+    .print-tab-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; }
+  }
+
   /* ── Avoid mid-card page breaks (screen + print) ── */
   .check-card,
   .info-card,
