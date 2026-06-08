@@ -75,6 +75,39 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
+  prepareBaseUrl(): string | undefined {
+    if (!this.config.presentation.verifier) {
+      const authorizeUrl = new URL(
+        this.config.presentation.authorize_request_url,
+      );
+      const clientId = authorizeUrl.searchParams.get("client_id");
+
+      if (!clientId) {
+        throw new Error(
+          "client_id parameter not found in authorize_request_url and verifier not configured",
+        );
+      }
+
+      // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
+      const normalizedClientId = extractClientIdPrefix(clientId);
+
+      if (!normalizedClientId.clientId.startsWith("https://")) {
+        this.log.warn(
+          `Skipping verifier metadata fetch: unsupported client_id format "${clientId}" (normalized: "${normalizedClientId.clientId}"). Expected a plain HTTPS URL or a single-colon prefixed scheme resolving to an HTTPS URL. Configure presentation.verifier explicitly to bypass client_id-derived metadata lookup.`,
+        );
+        return undefined;
+      }
+
+      const baseUrl = new URL(normalizedClientId.clientId);
+      this.log.debug(
+        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
+      );
+      return baseUrl.href;
+    }
+
+    return this.config.presentation.verifier;
+  }
+
   async presentation(): Promise<PresentationFlowResponse> {
     this.resetResponses();
 
@@ -221,39 +254,6 @@ export class WalletPresentationOrchestratorFlow {
     this.log.debug("Wallet Attestation Loaded.");
 
     return walletAttestation;
-  }
-
-  private prepareBaseUrl(): string | undefined {
-    if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
-      );
-      const clientId = authorizeUrl.searchParams.get("client_id");
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
-      const normalizedClientId = extractClientIdPrefix(clientId);
-
-      if (!normalizedClientId.clientId.startsWith("https://")) {
-        this.log.warn(
-          `Skipping verifier metadata fetch: unsupported client_id format "${clientId}" (normalized: "${normalizedClientId.clientId}"). Expected a plain HTTPS URL or a single-colon prefixed scheme resolving to an HTTPS URL. Configure presentation.verifier explicitly to bypass client_id-derived metadata lookup.`,
-        );
-        return undefined;
-      }
-
-      const baseUrl = new URL(normalizedClientId.clientId);
-      this.log.debug(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
-      );
-      return baseUrl.href;
-    }
-
-    return this.config.presentation.verifier;
   }
 
   private printTestSuiteOnce(): void {

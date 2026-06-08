@@ -1,6 +1,5 @@
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 
-import { verifyJwt } from "@/logic/jwt";
 import { fetchWithConfig } from "@/logic/utils";
 
 import { StepFlow, StepResponse } from "../step-flow";
@@ -44,7 +43,6 @@ export class FetchMetadataDefaultStep extends StepFlow {
       const result = await fetchMetadata({
         callbacks: {
           fetch: fetchWithConfig(this.config.network),
-          verifyJwt,
         },
         config: this.ioWalletSdkConfig,
         credentialIssuerUrl: options.baseUrl,

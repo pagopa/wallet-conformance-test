@@ -2,9 +2,12 @@
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
+import { fetchWithConfig, verifyJwt } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -139,6 +142,88 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
+
+  test(
+    "RPR010: Authorization request parameters match OpenID Credential Verifier metadata.",
+    { skip: process.env.CI_CD === "true" },
+    async ({ skip }) => {
+      const log = baseLog.withTag("RPR010");
+
+      log.start(
+        "Conformance test: Verifying authorization request parameters match RP metadata",
+      );
+
+      const DESCRIPTION =
+        "Authorization request parameters are consistent with OpenID Credential Verifier metadata declarations";
+      let testSuccess = false;
+      try {
+        const config = orchestrator.getConfig();
+        const baseUrl = orchestrator.prepareBaseUrl();
+        if (!baseUrl) {
+          log.warn(
+            `  Skipping verifier metadata fetch: unsupported client_id format`,
+          );
+          skip();
+          return;
+        }
+
+        const entityClaims = await fetchMetadata({
+          callbacks: {
+            fetch: fetchWithConfig(config.network),
+            verifyJwt,
+          },
+          config: new IoWalletSdkConfig({
+            itWalletSpecsVersion: config.wallet.wallet_version,
+          }),
+          credentialIssuerUrl: baseUrl,
+        });
+
+        const verifierMetadata =
+          entityClaims?.metadata?.openid_credential_verifier;
+        expect(verifierMetadata).toBeDefined();
+        if (!verifierMetadata) {
+          throw new Error("openid_credential_verifier metadata is missing");
+        }
+
+        expect(authorizationRequestResult.success).toBe(true);
+        expect(authorizationRequestResult.response).toBeDefined();
+
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
+        const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
+
+        log.debug("→ Checking client_id matches metadata client_id...");
+        const metadataClientId: string = verifierMetadata.client_id;
+        expect(metadataClientId).toBeDefined();
+        const { clientId: rawClientId } = extractClientIdPrefix(
+          parsedQrCode?.clientId ?? "",
+        );
+        log.debug(`  Metadata client_id: ${metadataClientId}`);
+        log.debug(`  Request client_id:  ${rawClientId}`);
+        expect(rawClientId).toBe(metadataClientId);
+        log.debug("  ✅ client_id matches metadata");
+
+        log.debug(
+          "→ Checking response_uri is declared in metadata response_uris...",
+        );
+        const responseUris: string[] = verifierMetadata.response_uris ?? [];
+        const requestResponseUri: string = requestObject?.response_uri ?? "";
+        expect(requestResponseUri).toBeTruthy();
+        log.debug(`  response_uri: ${requestResponseUri}`);
+        log.debug(`  Declared response_uris: ${responseUris.join(", ")}`);
+        expect(responseUris).toContain(requestResponseUri);
+        log.debug("  ✅ response_uri is declared in metadata response_uris");
+
+        log.debug(
+          "→ Checking request_uri is declared in metadata request_uris...",
+        );
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    },
+  );
 
   test("RPR012: Relying Party receives and validates response with state and nonce values.", () => {
     const log = baseLog.withTag("RPR012");
