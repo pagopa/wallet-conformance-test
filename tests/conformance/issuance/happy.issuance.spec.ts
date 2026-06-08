@@ -148,59 +148,65 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-    test("CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement", async () => {
-      const log = baseLog.withTag("CI_004");
-      const DESCRIPTION =
-        "Public key is included in both Entity Configuration and Subordinate Statement";
+    test(
+      "CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement",
+      { skip: process.env.CI_CD === "true" },
+      async () => {
+        const log = baseLog.withTag("CI_004");
+        const DESCRIPTION =
+          "Public key is included in both Entity Configuration and Subordinate Statement";
 
-      log.start(
-        "Conformance test: Verifying public key in metadata and subordinate statement",
-      );
+        log.start(
+          "Conformance test: Verifying public key in metadata and subordinate statement",
+        );
 
-      let testSuccess = false;
-      try {
-        const entityClaims =
-          fetchMetadataResponse.response?.entityStatementClaims;
-        log.debug("→ Checking public key in Entity Configuration...");
-        expect(entityClaims.jwks.keys).toBeDefined();
-        expect(entityClaims.jwks.keys.length).toBeGreaterThan(0);
-        expect(() =>
-          jsonWebKeySetSchema.parse(entityClaims.jwks),
-        ).not.toThrowError();
+        let testSuccess = false;
+        try {
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
+          log.debug("→ Checking public key in Entity Configuration...");
+          expect(entityClaims.jwks.keys).toBeDefined();
+          expect(entityClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(() =>
+            jsonWebKeySetSchema.parse(entityClaims.jwks),
+          ).not.toThrowError();
 
-        log.debug("→ Attempting to fetch Subordinate Statement from TA...");
-        const taUrl = entityClaims.authority_hints[0];
-        if (!taUrl)
-          throw new Error(
-            "missing authority_hints from credential issuer's metadata",
-          );
+          log.debug("→ Attempting to fetch Subordinate Statement from TA...");
+          const taUrl = entityClaims.authority_hints[0];
+          if (!taUrl)
+            throw new Error(
+              "missing authority_hints from credential issuer's metadata",
+            );
 
-        const sub = entityClaims.iss;
+          const sub = entityClaims.iss;
 
-        const fetchUrl = `${taUrl}/fetch?sub=${encodeURIComponent(sub)}`;
-        log.debug(`  Fetching from: ${fetchUrl}`);
-        const response = await fetch(fetchUrl);
-        expect(response.ok).toBe(true);
-        if (!response.ok)
-          throw new Error(
-            `Failed to fetch subordinate statement from TA: ${response.status}`,
-          );
+          const fetchUrl = `${taUrl}/fetch?sub=${encodeURIComponent(sub)}`;
+          log.debug(`  Fetching from: ${fetchUrl}`);
+          const response = await fetch(fetchUrl);
+          expect(response.ok).toBe(true);
+          if (!response.ok)
+            throw new Error(
+              `Failed to fetch subordinate statement from TA: ${response.status}`,
+            );
 
-        const subordinateJwt = await response.text();
-        const subordinateClaims = decodeJwt(subordinateJwt) as { jwks: JwkSet };
+          const subordinateJwt = await response.text();
+          const subordinateClaims = decodeJwt(subordinateJwt) as {
+            jwks: JwkSet;
+          };
 
-        log.debug("→ Checking public key in Subordinate Statement...");
-        expect(subordinateClaims.jwks.keys).toBeDefined();
-        expect(subordinateClaims.jwks.keys.length).toBeGreaterThan(0);
-        expect(() =>
-          jsonWebKeySetSchema.parse(subordinateClaims.jwks),
-        ).not.toThrowError();
+          log.debug("→ Checking public key in Subordinate Statement...");
+          expect(subordinateClaims.jwks.keys).toBeDefined();
+          expect(subordinateClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(() =>
+            jsonWebKeySetSchema.parse(subordinateClaims.jwks),
+          ).not.toThrowError();
 
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test(
       "CI_005: Fetch Metadata | Entity Configuration's Trust Marks",

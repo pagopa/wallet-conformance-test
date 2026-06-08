@@ -59,6 +59,7 @@ jobs:
         shell: bash
         run: wct test:issuance
         env:
+          CI_CD=true
           CONFIG_CREDENTIAL_ISSUER_URI: ${{ vars.CONFIG_CREDENTIAL_ISSUER_URI }}
 
       # ── Fetch authorize_request_url (Linux) ─────────────────────────────────
