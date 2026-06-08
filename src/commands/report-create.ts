@@ -1,0 +1,70 @@
+import { writeFileSync } from "node:fs";
+import path from "node:path";
+
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
+import { openDb, resolveDbPath } from "@/report/db";
+import { renderPdf } from "@/report/pdf";
+import { serializeToVitestJson } from "@/report/serializer";
+import { closeSession, getSession } from "@/report/session-store";
+import { renderHtml } from "@/report/template";
+
+type ReportFormat = "html" | "pdf";
+
+export async function reportCreate(
+  runId: string,
+  format: string,
+): Promise<void> {
+  assertReportFormat(format);
+
+  const db = openDb(resolveDbPath());
+
+  try {
+    const session = getSession(db, runId);
+    if (!session) {
+      console.error(`Conformance run not found: ${runId}`);
+      process.exit(1);
+    }
+
+    const config = loadConfigWithHierarchy();
+    const report = serializeToVitestJson(
+      session,
+      config.testing.session_ttl_hours,
+    );
+
+    const sessionForRendering = { ...session };
+    if (session.status === "OPEN" && report.status === "INCOMPLETE") {
+      const closedAt = new Date().toISOString();
+      closeSession(db, runId, "INCOMPLETE", closedAt);
+      sessionForRendering.status = "INCOMPLETE";
+      sessionForRendering.closedAt = closedAt;
+    }
+
+    const html = renderHtml(sessionForRendering, config);
+    const outputPath = path.resolve(
+      process.cwd(),
+      `conformance-report-${runId}.${format}`,
+    );
+
+    if (format === "html") {
+      writeFileSync(outputPath, html, "utf8");
+      console.log(outputPath);
+      return;
+    }
+
+    const pdf = await renderPdf(html);
+    writeFileSync(outputPath, pdf);
+    console.log(outputPath);
+  } finally {
+    db.close();
+  }
+}
+
+function assertReportFormat(format: string): asserts format is ReportFormat {
+  if (format === "html" || format === "pdf") {
+    return;
+  }
+
+  throw new Error(
+    `Invalid report format: ${format}. Expected one of: html, pdf.`,
+  );
+}

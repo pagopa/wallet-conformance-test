@@ -10,6 +10,7 @@ import { parse } from "ini";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
 
 const packageRoot = import.meta.dirname;
@@ -19,6 +20,14 @@ const useBuiltTests =
   !fs.existsSync(sourceTestsRoot) && fs.existsSync(builtTestsRoot);
 const testsRoot = useBuiltTests ? builtTestsRoot : sourceTestsRoot;
 const testFileExtension = useBuiltTests ? "js" : "ts";
+const builtReporterPath = path.join(packageRoot, "dist/src/report/reporter.js");
+const sourceReporterPath = path.join(packageRoot, "src/report/reporter.ts");
+const reporterModulePath = fs.existsSync(builtReporterPath)
+  ? builtReporterPath
+  : sourceReporterPath;
+const { ConformanceReporter } = await import(
+  pathToFileURL(reporterModulePath).href
+);
 
 const log = createConsola({ level: 3 });
 
@@ -75,7 +84,7 @@ export function createTestConfig(testType) {
       globalSetup: path.join(testsRoot, `global-setup.${testFileExtension}`),
       hookTimeout: 120000,
       include: [includePattern],
-      reporters: ["dot"],
+      reporters: ["dot", new ConformanceReporter()],
       setupFiles: [path.join(testsRoot, `setup-tls.${testFileExtension}`)],
     },
   });

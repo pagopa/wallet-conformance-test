@@ -13,9 +13,17 @@ import { join, resolve } from "node:path";
 
 import type { CliOptions } from "@/logic";
 
+import { reportCreate } from "@/commands/report-create";
+import { reportList } from "@/commands/report-list";
 import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
+
+if (!process.env.NODE_OPTIONS?.includes("--experimental-sqlite")) {
+  process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, "--experimental-sqlite"]
+    .filter((value) => value && value.length > 0)
+    .join(" ");
+}
 
 function runTestCommand(
   script: "test:issuance" | "test:presentation",
@@ -209,6 +217,20 @@ addCommonOptions(testPresentation);
 testPresentation.action((options) => {
   runTestCommand("test:presentation", options);
 });
+
+program
+  .command("report:list")
+  .description("List all conformance test runs")
+  .action(() => {
+    reportList();
+  });
+
+program
+  .command("report:create <run_id> <format>")
+  .description("Generate an HTML or PDF conformance report")
+  .action(async (runId, format) => {
+    await reportCreate(runId, format);
+  });
 
 // Parse command-line arguments
 program.parse(process.argv);

@@ -59,11 +59,13 @@ export const configSchema = z.object({
   testing: z
     .object({
       custom_step_pattern: z.string().default("**/*.ts"),
+      session_ttl_hours: z.coerce.number().optional().default(24),
       spec_pattern: z.string().default("**/*.spec.ts"),
     })
     .optional()
     .default({
       custom_step_pattern: "**/*.ts",
+      session_ttl_hours: 24,
       spec_pattern: "**/*.spec.ts",
     }),
   trust: z.object({

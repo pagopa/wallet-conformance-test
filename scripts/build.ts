@@ -33,7 +33,7 @@ const testEntryPoints = await Array.fromAsync(
 await esbuild.build({
   ...common,
   entryNames: "[dir]/[name]",
-  entryPoints: testEntryPoints,
+  entryPoints: [...testEntryPoints, "src/report/reporter.ts"],
   external: ["vitest"],
   outbase: ".",
   outdir: "dist",
