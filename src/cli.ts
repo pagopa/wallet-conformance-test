@@ -104,6 +104,12 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.tests) {
     env.TESTS = options.tests;
   }
+  if (options.issuancePidMode) {
+    env.CONFIG_ISSUANCE_PID_MODE = options.issuancePidMode;
+  }
+  if (options.mockMrtdEnabled !== undefined) {
+    env.CONFIG_MOCK_MRTD_ENABLED = options.mockMrtdEnabled.toString();
+  }
 
   return env;
 }
@@ -169,6 +175,15 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--issuance-certificate-subject <string>",
       "Override mock issuer's certificate subject (e.g. 'CN=test-issuer.com,OU=issuance,S=IT') (env: CONFIG_ISSUANCE_CERTIFICATE_SUBJECT)",
+    )
+    .option(
+      "--issuance-pid-mode <mode>",
+      "PID issuance mode: none | l2plus | l3 (env: CONFIG_ISSUANCE_PID_MODE)",
+    )
+    .option(
+      "--mock-mrtd-enabled <boolean>",
+      "Enable/disable mock eID/MRTD simulation (env: CONFIG_MOCK_MRTD_ENABLED). When omitted, derived from issuance_pid.mode.",
+      (val) => val === "true" || val === "1",
     )
     .option(
       "--presentation-tests-dir <path>",

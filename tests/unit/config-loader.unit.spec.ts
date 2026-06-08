@@ -14,6 +14,8 @@ const envKeys = [
   "CONFIG_FILE_INI",
   "CONFIG_ISSUANCE_TESTS_DIR",
   "CONFIG_ISSUANCE_CERTIFICATE_SUBJECT",
+  "CONFIG_ISSUANCE_PID_MODE",
+  "CONFIG_MOCK_MRTD_ENABLED",
   "CONFIG_LOG_FILE",
   "CONFIG_MAX_RETRIES",
   "CONFIG_PRESENTATION_TESTS_DIR",
@@ -67,6 +69,34 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
     expect(config.network.user_agent).toBe(
       `CEN-TC-Wallet-CLI/${readPackageVersion()}`,
     );
+  });
+
+  it("should map mock_mrtd_enabled from environment", () => {
+    process.env.CONFIG_MOCK_MRTD_ENABLED = "false";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.issuance_pid.mock_mrtd_enabled).toBe(false);
+  });
+
+  it("should map issuance_pid mode from environment", () => {
+    writeFileSync(
+      path.join(process.cwd(), "config.ini"),
+      [
+        "[issuance_pid]",
+        "mode = none",
+        "given_name = Mario",
+        "family_name = Rossi",
+        "tax_id_code = RSSMRA80A10H501Z",
+        "birthdate = 1980-01-10",
+        "place_of_birth = Roma",
+      ].join("\n"),
+    );
+    process.env.CONFIG_ISSUANCE_PID_MODE = "l3";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.issuance_pid.mode).toBe("l3");
   });
 
   it("should map issuance certificate subject from environment", () => {

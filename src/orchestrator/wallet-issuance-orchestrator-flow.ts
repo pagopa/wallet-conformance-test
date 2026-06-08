@@ -41,10 +41,15 @@ import {
   AttestationResponse,
   Config,
   IssuanceFlowResponse,
+  PidIdentityConfig,
   RunThroughAuthorizeContext,
   RunThroughParContext,
   RunThroughTokenContext,
 } from "@/types";
+import {
+  isMockMrtdEnabledFromConfig,
+  pidIdentityConfigFromIssuancePid,
+} from "@/types/pid-issuance";
 
 export class WalletIssuanceOrchestratorFlow {
   private _authorizeResponse?: AuthorizeStepResponse;
@@ -63,8 +68,10 @@ export class WalletIssuanceOrchestratorFlow {
   private fetchMetadataStep: FetchMetadataDefaultStep;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
-
+  private readonly mockMrtdEnabled: boolean;
   private nonceRequestStep: NonceRequestDefaultStep;
+
+  private readonly pidIdentityConfig: PidIdentityConfig | undefined;
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
   private tokenRequestStep: TokenRequestDefaultStep;
   private readonly TOTAL_STEPS = 6;
@@ -74,6 +81,10 @@ export class WalletIssuanceOrchestratorFlow {
     this.log = this.log.withTag(this.issuanceConfig.name);
 
     this.config = loadConfigWithHierarchy();
+    this.mockMrtdEnabled = isMockMrtdEnabledFromConfig(this.config);
+    this.pidIdentityConfig = pidIdentityConfigFromIssuancePid(
+      this.config.issuance_pid,
+    );
 
     this.log.setLogOptions({
       fileFormat: this.config.logging.log_file_format,
@@ -170,6 +181,14 @@ export class WalletIssuanceOrchestratorFlow {
 
   getLog(): typeof this.log {
     return this.log;
+  }
+
+  getMockMrtdEnabled(): boolean {
+    return this.mockMrtdEnabled;
+  }
+
+  getPidIdentityConfig(): PidIdentityConfig | undefined {
+    return this.pidIdentityConfig;
   }
 
   async issuance(): Promise<IssuanceFlowResponse> {
@@ -583,8 +602,10 @@ export class WalletIssuanceOrchestratorFlow {
       "Configuration Loaded:\n",
       JSON.stringify({
         credentialsDir: this.config.wallet.credentials_storage_path,
+        issuancePidMode: this.config.issuance_pid?.mode ?? "none",
         issuanceUrl: this.config.issuance.url,
         maxRetries: this.config.network.max_retries,
+        mockMrtdEnabled: this.mockMrtdEnabled,
         timeout: `${this.config.network.timeout}s`,
         userAgent: this.config.network.user_agent,
       }),

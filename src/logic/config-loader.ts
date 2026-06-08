@@ -3,7 +3,12 @@ import { parse } from "ini";
 import { existsSync, readFileSync } from "node:fs";
 import path from "path";
 
+import { PidIssuanceModeNotConfiguredError } from "@/errors";
 import { Config, configSchema } from "@/types";
+import {
+  assertPidIssuanceCredentialGuard,
+  type PidIssuanceMode,
+} from "@/types/pid-issuance";
 
 import {
   packageRoot,
@@ -27,10 +32,12 @@ export interface CliOptions {
   credentialTypes?: string;
   fileIni?: string;
   issuanceCertificateSubject?: string;
+  issuancePidMode?: string;
   issuanceTestsDir?: string;
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
+  mockMrtdEnabled?: boolean;
   port?: number;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
@@ -152,8 +159,15 @@ export function loadConfigWithHierarchy(
   // Step 5: Validate the final configuration
   try {
     const validatedConfig = parseWithErrorHandling(configSchema, mergedConfig);
+    assertPidIssuanceCredentialGuard(
+      validatedConfig.issuance.credential_types,
+      validatedConfig.issuance_pid,
+    );
     return validatedConfig;
   } catch (e) {
+    if (e instanceof PidIssuanceModeNotConfiguredError) {
+      throw e;
+    }
     const err = e as Error;
     throw new Error(
       `Configuration validation failed: ${err.message}\n\n` +
@@ -193,6 +207,7 @@ export function readPackageVersion(): string {
 function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   const partialConfig: Partial<Config> = {};
   const issuance = buildIssuanceConfig(options);
+  const issuancePid = buildIssuancePidConfig(options);
   const presentation = buildPresentationConfig(options);
   const network = buildNetworkConfig(options);
   const logging = buildLoggingConfig(options);
@@ -201,6 +216,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
 
   if (hasConfigValues<Config["issuance"]>(issuance)) {
     partialConfig.issuance = issuance as Config["issuance"];
+  }
+  if (hasConfigValues<Config["issuance_pid"]>(issuancePid)) {
+    partialConfig.issuance_pid = issuancePid as Config["issuance_pid"];
   }
   if (hasConfigValues<Config["presentation"]>(presentation)) {
     partialConfig.presentation = presentation as Config["presentation"];
@@ -282,6 +300,13 @@ function normalizeRuntimePaths<TConfig extends Partial<Config>>(
     );
   }
 
+  if (typeof normalized.issuance_pid?.fixture_storage_path === "string") {
+    normalized.issuance_pid.fixture_storage_path = resolveConfigRelativePath(
+      normalized.issuance_pid.fixture_storage_path,
+      baseDir,
+    );
+  }
+
   if (normalized.logging && typeof normalized.logging.log_file === "string") {
     normalized.logging.log_file = resolveConfigRelativePath(
       normalized.logging.log_file,
@@ -326,6 +351,18 @@ function normalizeTestPaths<TConfig extends Partial<Config>>(
 
   return normalized;
 }
+
+const buildIssuancePidConfig: ConfigSectionBuilder<Config["issuance_pid"]> = (
+  options,
+) => ({
+  // Let Zod validate the enum so invalid values fail fast.
+  ...(options.issuancePidMode !== undefined && {
+    mode: options.issuancePidMode as PidIssuanceMode,
+  }),
+  ...(options.mockMrtdEnabled !== undefined && {
+    mock_mrtd_enabled: options.mockMrtdEnabled,
+  }),
+});
 
 const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
   options,
@@ -484,6 +521,8 @@ function readCliOptionsFromEnv(): CliOptions {
     "CONFIG_PRESENTATION_AUTHORIZE_URI",
   );
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
+  readStringEnv(options, "issuancePidMode", "CONFIG_ISSUANCE_PID_MODE");
+  readBooleanEnv(options, "mockMrtdEnabled", "CONFIG_MOCK_MRTD_ENABLED");
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
   readNumberEnv(options, "maxRetries", "CONFIG_MAX_RETRIES");
   readStringEnv(options, "logLevel", "CONFIG_LOG_LEVEL");

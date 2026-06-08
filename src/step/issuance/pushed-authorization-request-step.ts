@@ -10,6 +10,16 @@ import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { REDIRECT_URI } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
+import { PID_CREDENTIAL_CONFIGURATION_ID } from "@/types/pid-issuance";
+
+/**
+ * Single `authorization_details` entry as accepted by the SDK PAR builder.
+ * Derived from {@link CreatePushedAuthorizationRequestOptions} so it stays in
+ * sync with the SDK schema without importing a non-exported type.
+ */
+export type AuthorizationDetail = NonNullable<
+  CreatePushedAuthorizationRequestOptions["authorization_details"]
+>[number];
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
@@ -89,14 +99,24 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
+        // B1-6.3: the PID detail is owned exclusively by the overridable hook
+        // (B1-6.2), so it is filtered out of the generic map and re-added from
+        // the hook. This keeps a single PID entry and makes withPidPar() (B1-6.5)
+        // fully authoritative over it. When mode = none the hook returns [],
+        // leaving the standard (Q)EAA flow byte-for-byte unchanged.
+        const authorizationDetails: AuthorizationDetail[] = [
+          ...options.credentialConfigurationIds
+            .filter((id) => id !== PID_CREDENTIAL_CONFIGURATION_ID)
+            .map((id) => ({
+              credential_configuration_id: id,
+              type: "openid_credential" as const,
+            })),
+          ...this.pidCredentialAuthorizationDetails(),
+        ];
+
         const createParOptions = {
           audience: options.baseUrl,
-          authorization_details: options.credentialConfigurationIds.map(
-            (id) => ({
-              credential_configuration_id: id,
-              type: "openid_credential",
-            }),
-          ),
+          authorization_details: authorizationDetails,
           // Hardcode require_signed_request_object to true as the wallet is expected to always sign the request object
           // We'll need to allow overriding this in case we want to test unsigned request objects in negative test cases
           authorizationServerMetadata: {
@@ -169,5 +189,72 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
   tag(): string {
     return PushedAuthorizationRequestDefaultStep.tag;
+  }
+
+  /**
+   * B1-6.4: optional `it_l2+document_proof` authorization detail for the L2+
+   * MRTD flow, gated behind `[issuance_pid].document_proof_enabled` (default
+   * off, post REQ-00). Returns `undefined` unless `mode = l2plus` and the flag
+   * with its required fields are set.
+   *
+   * Uses the SDK (`io-wallet-oauth2@1.4.1`) field names `challenge_method` /
+   * `challenge_redirect_uri`. The current online spec names these
+   * `multi_step_method` / `multi_step_redirect_uri`; reconcile via an SDK
+   * upgrade once the target PID Provider's spec version is confirmed (B1-6.1).
+   */
+  protected documentProofAuthorizationDetail():
+    | AuthorizationDetail
+    | undefined {
+    const issuancePid = this.config.issuance_pid;
+    if (
+      issuancePid?.mode !== "l2plus" ||
+      !issuancePid.document_proof_enabled ||
+      !issuancePid.document_proof_redirect_uri ||
+      !issuancePid.document_proof_idphinting
+    ) {
+      return undefined;
+    }
+
+    return {
+      challenge_method: "mrtd+ias",
+      challenge_redirect_uri: issuancePid.document_proof_redirect_uri,
+      idphinting: issuancePid.document_proof_idphinting,
+      type: "it_l2+document_proof",
+    };
+  }
+
+  /**
+   * B1-6.2 (FR-10): overridable hook returning the extra `authorization_details`
+   * entries required by the PID issuance flow.
+   *
+   * - `mode = none` (or `[issuance_pid]` absent) → `[]`, so the standard
+   *   (Q)EAA flow is unaffected.
+   * - `mode = l2plus | l3` → a PID detail for
+   *   `dc_sd_jwt_PersonIdentificationData`.
+   * - `mode = l2plus` with `document_proof_enabled` → additionally an
+   *   `it_l2+document_proof` detail (B1-6.4).
+   *
+   * Override via `withPidPar()` (B1-6.5) for negative tests.
+   */
+  protected pidCredentialAuthorizationDetails(): AuthorizationDetail[] {
+    const issuancePid = this.config.issuance_pid;
+    const mode = issuancePid?.mode ?? "none";
+    if (mode === "none") {
+      return [];
+    }
+
+    const details: AuthorizationDetail[] = [
+      {
+        credential_configuration_id: PID_CREDENTIAL_CONFIGURATION_ID,
+        type: "openid_credential",
+      },
+    ];
+
+    const documentProof = this.documentProofAuthorizationDetail();
+    if (documentProof) {
+      details.push(documentProof);
+    }
+
+    return details;
   }
 }
