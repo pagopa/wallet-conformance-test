@@ -24,7 +24,7 @@ type ReporterTestCase = Parameters<
 
 type SessionStatus = "FAILED" | "INCOMPLETE" | "PASSED";
 
-const REQUIREMENT_ID_PATTERN = /^([A-Z]+_\d+\w*)\s*:/;
+const REQUIREMENT_ID_PATTERN = /^([A-Z]+[-_]\d+\w*)\s*:/;
 
 const STEP_KEYWORDS: readonly KeywordStep[] = [
   { keyword: "authorization code", step: "AUTHORIZATION_CODE" },

@@ -103,7 +103,7 @@ export function renderCheckCard(check: ConformanceCheck): string {
             <span class="check-title">${escapeHtml(description)}</span>
           </div>
         </div>
-        <span class="badge partial-badge">NON ESEGUITO</span>
+        <span class="badge partial-badge">PARZIALE</span>
       </div>
       <div class="detail-stack">
         <div class="detail-box">
