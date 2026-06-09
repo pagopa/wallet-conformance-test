@@ -88,7 +88,7 @@ export const REPORT_CSS = `
   /* ── View panels ── */
   .page {
     width: 100%;
-    max-width: 882px;
+    max-width: 1024px;
     min-height: 1050px;
     margin: 0 auto;
     padding: 26px 23px 56px;
