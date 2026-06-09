@@ -53,7 +53,7 @@ export class ConformanceReporter implements Reporter {
     const phase = this.resolvePhase(this.readModuleId(testCase));
     const result = this.mapResult(testCase.result().state);
     const check: ConformanceCheck = {
-      description: testCase.fullName,
+      description: this.parseTestCaseName(title),
       phase,
       requirementId: this.parseRequirementId(title),
       result,
@@ -158,6 +158,10 @@ export class ConformanceReporter implements Reporter {
   private parseRequirementId(title: string): string {
     const requirement = REQUIREMENT_ID_PATTERN.exec(title)?.[1];
     return requirement ?? title;
+  }
+
+  private parseTestCaseName(name: string): string {
+    return name.replace(REQUIREMENT_ID_PATTERN, "");
   }
 
   private readHttpStatus(meta: unknown): number | undefined {
