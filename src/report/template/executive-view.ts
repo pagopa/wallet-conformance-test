@@ -2,7 +2,9 @@ import type { ReportData } from "@/report/template/types";
 
 import { escapeHtml } from "@/report/template/helpers";
 import {
+  renderComplianceBanner,
   renderDetailsGrid,
+  renderFooter,
   renderHeader,
   renderPrintTabBar,
 } from "@/report/template/shared";
@@ -32,13 +34,6 @@ export function renderExecutiveView(
     versionPill,
   } = data;
 
-  const statusPanelCss =
-    complianceTier === "passed"
-      ? "status-panel status-panel-passed"
-      : complianceTier === "failed"
-        ? "status-panel status-panel-failed"
-        : "status-panel status-panel-partial";
-
   const narrative1 = `${escapeHtml(entityName)} ha eseguito una verifica di conformità per ${escapeHtml(solutionName)} (profilo ${escapeHtml(profile)}) secondo le ${escapeHtml(specVersion)} il ${escapeHtml(executedAt)}.`;
 
   const passVerb = passCount === 1 ? "è stato superato" : "sono stati superati";
@@ -66,16 +61,7 @@ export function renderExecutiveView(
       ${showPrintTabBar ? renderPrintTabBar("executive") : ""}
       ${renderHeader(versionPill)}
 
-      <section class="${statusPanelCss}" aria-label="Stato di conformità complessivo">
-        <div>
-          <p class="status-eyebrow">Stato di Conformità Complessivo</p>
-          <p class="status-title">${escapeHtml(statusLabel)}</p>
-        </div>
-        <div class="status-score" aria-label="Tasso di conformità ${compliancePct} percento">
-          <div class="status-percent">${compliancePct}%</div>
-          <div class="status-caption">Tasso di Conformità</div>
-        </div>
-      </section>
+      ${renderComplianceBanner({ compliancePct, complianceTier, statusLabel })}
 
       <hr class="rule"/>
 
@@ -110,11 +96,7 @@ export function renderExecutiveView(
         ${criticalBox}
       </section>
 
-      <footer class="footer">
-        <p>Questo rapporto è stato generato automaticamente dallo Strumento di Conformità IT-Wallet.</p>
-        <p>ID Rapporto: ${escapeHtml(reportId)}</p>
-        <p class="generated">Generato il: ${escapeHtml(generatedAt)}</p>
-      </footer>
+      ${renderFooter({ generatedAt, reportId })}
 
     </main>
   </div>`;

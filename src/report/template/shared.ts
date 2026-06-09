@@ -1,8 +1,15 @@
+import type { ComplianceTier } from "@/report/template/types";
 import type { ConformanceCheck } from "@/report/types";
 
 import { escapeHtml } from "@/report/template/helpers";
 
-// ─── Print tab bar ───────────────────────────────────────────────────────────
+// ─── Compliance banner ───────────────────────────────────────────────────────
+
+interface ComplianceBannerData {
+  compliancePct: number;
+  complianceTier: ComplianceTier;
+  statusLabel: string;
+}
 
 interface DetailsGridData {
   entityName: string;
@@ -12,7 +19,13 @@ interface DetailsGridData {
   specVersion: string;
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
+interface FooterData {
+  generatedAt: string;
+  reportId: string;
+  sessionId?: string;
+}
 
 export function renderCheckCard(check: ConformanceCheck): string {
   const { description, errorMessage, httpStatus, requirementId, result } =
@@ -101,7 +114,27 @@ export function renderCheckCard(check: ConformanceCheck): string {
     </article>`;
 }
 
-// ─── Details grid ─────────────────────────────────────────────────────────────
+// ─── Print tab bar ───────────────────────────────────────────────────────────
+
+export function renderComplianceBanner({
+  compliancePct,
+  complianceTier,
+  statusLabel,
+}: ComplianceBannerData): string {
+  return `
+    <section class="compliance-banner compliance-banner--${complianceTier}" aria-label="Stato di conformità complessivo">
+      <div>
+        <p class="banner-eyebrow">Stato di Conformità Complessivo</p>
+        <p class="banner-status">${escapeHtml(statusLabel)}</p>
+      </div>
+      <div class="banner-score" aria-label="Tasso di conformità ${compliancePct} percento">
+        <div class="banner-percent">${compliancePct}%</div>
+        <div class="banner-caption">Tasso di Conformità</div>
+      </div>
+    </section>`;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 export function renderDetailsGrid(data: DetailsGridData): string {
   const { entityName, executedAt, profile, solutionName, specVersion } = data;
@@ -153,6 +186,26 @@ export function renderDetailsGrid(data: DetailsGridData): string {
         </article>
       </div>
     </section>`;
+}
+
+// ─── Details grid ─────────────────────────────────────────────────────────────
+
+export function renderFooter({
+  generatedAt,
+  reportId,
+  sessionId,
+}: FooterData): string {
+  const sessionLine =
+    sessionId !== undefined
+      ? `<p>ID Sessione: ${escapeHtml(sessionId)}</p>`
+      : "";
+  return `
+    <footer class="footer">
+      <p>Questo rapporto è stato generato automaticamente dallo strumento di conformità IT-Wallet.</p>
+      <p>ID Rapporto: ${escapeHtml(reportId)}</p>
+      ${sessionLine}
+      <p class="generated">Generato il: ${escapeHtml(generatedAt)}</p>
+    </footer>`;
 }
 
 export function renderHeader(versionPill: string): string {

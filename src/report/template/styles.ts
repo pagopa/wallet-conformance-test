@@ -17,8 +17,6 @@ export const REPORT_CSS = `
     --green: #1f4a26;
     --green-bg: #e4f3e2;
     --green-border: #61c46b;
-    --green-summary-border: #22c55e;
-    --green-summary-bg: #dcfce7;
     --green-exec: #2d7d3a;
     --green-exec-bg: #e5f4e5;
     --green-exec-border: #3a8d47;
@@ -159,26 +157,25 @@ export const REPORT_CSS = `
   .footer p { margin: 0 0 8px; }
   .footer .generated { margin-top: 6px; color: #64748b; font-size: 9px; }
 
-  /* ── Technical view: status banner ── */
-  .summary {
+  /* ── Shared: compliance banner ── */
+  .compliance-banner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
     min-height: 92px;
     padding: 18px 22px 17px 20px;
-    border: 1.5px solid var(--gold-border);
+    border: 1.5px solid;
     border-radius: var(--radius);
-    background: var(--gold-bg);
-    color: var(--gold);
   }
-  .summary.summary-passed { border-color: var(--green-summary-border); background: var(--green-summary-bg); color: var(--green); }
-  .summary.summary-failed { border-color: var(--red-border); background: var(--red-bg); color: var(--red); }
-  .summary-label { margin: 0 0 1px; font-size: 11px; font-weight: 500; opacity: 0.8; }
-  .summary-status { margin: 0; font-size: 29px; line-height: 1.06; font-weight: 800; letter-spacing: -0.04em; }
-  .summary-score { text-align: right; margin-left: auto; }
-  .summary-percent { font-size: 39px; line-height: 0.95; font-weight: 800; letter-spacing: -0.045em; }
-  .summary-caption { margin-top: 2px; font-size: 11px; font-weight: 500; opacity: 0.8; }
+  .compliance-banner--passed  { border-color: var(--green-exec-border); background: var(--green-exec-bg); color: var(--green-exec); }
+  .compliance-banner--failed  { border-color: var(--red-exec);          background: var(--red-exec-bg);   color: var(--red-exec); }
+  .compliance-banner--partial { border-color: var(--amber-exec-border); background: var(--amber-exec-bg); color: var(--amber-exec); }
+  .banner-eyebrow { margin: 0 0 1px; font-size: 11px; font-weight: 500; opacity: 0.8; }
+  .banner-status  { margin: 0; font-size: 29px; line-height: 1.06; font-weight: 800; letter-spacing: -0.04em; }
+  .banner-score   { text-align: right; margin-left: auto; }
+  .banner-percent { font-size: 39px; line-height: 0.95; font-weight: 800; letter-spacing: -0.045em; }
+  .banner-caption { margin-top: 2px; font-size: 11px; font-weight: 500; opacity: 0.8; }
 
   /* ── Technical view: check cards ── */
   .checks-title { margin-top: 3px; margin-bottom: 19px; }
@@ -243,27 +240,8 @@ export const REPORT_CSS = `
   .detail-label { display: block; margin-bottom: 4px; color: #334155; font-size: 10px; line-height: 1.2; font-weight: 800; }
   .detail-text { margin: 0; color: #1f2937; font-size: 11px; line-height: 1.35; font-weight: 500; word-break: break-word; }
 
-  /* ── Executive view: status banner ── */
-  .status-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    min-height: 93px;
-    padding: 18px 21px 17px 19px;
-    border: 1.5px solid;
-    border-radius: var(--radius);
-  }
-  .status-panel-failed  { border-color: var(--red-exec);          background: var(--red-exec-bg);   color: var(--red-exec); }
-  .status-panel-passed  { border-color: var(--green-exec-border); background: var(--green-exec-bg); color: var(--green-exec); }
-  .status-panel-partial { border-color: var(--amber-exec-border); background: var(--amber-exec-bg); color: var(--amber-exec); }
-  .status-eyebrow { margin: 0 0 1px; font-size: 11px; font-weight: 500; }
-  .status-title { margin: 0; font-size: 29px; line-height: 1.06; font-weight: 800; letter-spacing: -0.04em; }
-  .status-score { margin-left: auto; text-align: right; }
-  .status-percent { font-size: 40px; line-height: 0.95; font-weight: 800; letter-spacing: -0.045em; }
-  .status-caption { margin-top: 3px; font-size: 11px; font-weight: 500; }
+  /* ── Executive view: metrics grid ──
 
-  /* ── Executive view: metrics grid ── */
   .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0 17px; }
   .metric-card { min-height: 74px; border: 1.5px solid; border-radius: var(--radius); padding: 13px 16px 12px; }
   .metric-card.total   { color: var(--steel);     border-color: var(--steel-border);       background: var(--steel-bg); }
@@ -274,7 +252,7 @@ export const REPORT_CSS = `
   .metric-value { display: block; font-size: 28px; line-height: 1; font-weight: 800; letter-spacing: -0.04em; }
 
   /* ── Executive view: narrative ── */
-  .executive-title { margin: 0 0 12px; color: var(--ink); font-size: 16px; line-height: 1.3; font-weight: 800; letter-spacing: -0.02em; }
+  .executive-title { margin: 16px 0 12px; color: var(--ink); font-size: 16px; line-height: 1.3; font-weight: 800; letter-spacing: -0.02em; }
   .executive-copy { margin: 0 0 15px; color: #334155; font-size: 13px; line-height: 1.55; font-weight: 400; }
   .executive-copy + .executive-copy { margin-top: 3px; }
   .critical-box { margin-top: 14px; padding: 14px 12px 18px; border: 1px solid var(--red-line); border-radius: 7px; background: var(--red-soft); }
@@ -287,8 +265,8 @@ export const REPORT_CSS = `
     .page { min-height: 0; padding: 22px 16px 36px; }
     .brand-title { font-size: 22px; }
     .version-pill { width: 82px; min-height: 32px; }
-    .summary, .status-panel { flex-direction: column; align-items: flex-start; min-height: 0; }
-    .summary-score, .status-score { width: 100%; text-align: left; margin-left: 0; }
+    .compliance-banner { flex-direction: column; align-items: flex-start; min-height: 0; }
+    .banner-score { width: 100%; text-align: left; margin-left: 0; }
     .details-grid, .metrics { grid-template-columns: 1fr; }
     .check-main { grid-template-columns: 22px minmax(0, 1fr); }
     .badge { grid-column: 2; justify-self: start; margin-top: 4px; }
