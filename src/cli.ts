@@ -216,7 +216,7 @@ const init = program
   .description("Pre-generate cryptographic artifacts for tests")
   .option("--force", "Overwrite existing artifacts even if valid (env: FORCE)");
 
-addCommonOptions(testPresentation);
+addCommonOptions(init);
 
 init.action(async (options) => {
   try {
