@@ -15,6 +15,7 @@ describe("session-store", () => {
 
     createSession(db, {
       id: "run-1",
+      phase: "ISSUANCE",
       sessionId: "run-1",
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "OPEN",
@@ -56,6 +57,7 @@ describe("session-store", () => {
 
     createSession(db, {
       id: "run-2",
+      phase: "ISSUANCE",
       sessionId: "run-2",
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "OPEN",
@@ -73,6 +75,7 @@ describe("session-store", () => {
 
     createSession(db, {
       id: "run-older",
+      phase: "ISSUANCE",
       sessionId: "run-older",
       startedAt: "2026-03-11T09:00:00.000Z",
       status: "OPEN",
@@ -80,6 +83,7 @@ describe("session-store", () => {
 
     createSession(db, {
       id: "run-newer",
+      phase: "ISSUANCE",
       sessionId: "run-newer",
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "OPEN",

@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { Reporter } from "vitest/reporters";
 
 import { randomUUID } from "node:crypto";
+import { TestResult } from "vitest/node.js";
 
 import type { ConformanceCheck, ConformanceStep } from "@/report/types";
 
@@ -23,6 +24,7 @@ type ReporterTestCase = Parameters<
 >[0];
 
 type SessionStatus = "FAILED" | "INCOMPLETE" | "PASSED";
+type TestType = "issuance" | "presentation";
 
 const REQUIREMENT_ID_PATTERN = /^([A-Z]+[-_]\d+\w*)\s*:/;
 
@@ -43,6 +45,11 @@ export class ConformanceReporter implements Reporter {
   private checkResults: CheckResult[] = [];
   private db: DatabaseSync | undefined;
   private sessionId: string | undefined;
+  private readonly testType: TestType;
+
+  constructor(testType: TestType = "issuance") {
+    this.testType = testType;
+  }
 
   onTestCaseResult(testCase: ReporterTestCase): void {
     if (!this.db || !this.sessionId) {
@@ -50,7 +57,7 @@ export class ConformanceReporter implements Reporter {
     }
 
     const title = testCase.name;
-    const phase = this.resolvePhase(this.readModuleId(testCase));
+    const phase = this.resolvePhase();
     const result = this.mapResult(testCase.result().state);
     const check: ConformanceCheck = {
       description: this.parseTestCaseName(title),
@@ -95,6 +102,7 @@ export class ConformanceReporter implements Reporter {
 
     createSession(this.db, {
       id: this.sessionId,
+      phase: this.testType === "presentation" ? "PRESENTATION" : "ISSUANCE",
       sessionId: this.sessionId,
       startedAt: new Date().toISOString(),
       status: "OPEN",
@@ -143,7 +151,7 @@ export class ConformanceReporter implements Reporter {
     return String(firstError);
   }
 
-  private mapResult(state: string): CheckResult {
+  private mapResult(state: TestResult["state"]): CheckResult {
     if (state === "passed") {
       return "PASS";
     }
@@ -173,16 +181,6 @@ export class ConformanceReporter implements Reporter {
     return typeof value === "number" ? value : undefined;
   }
 
-  private readModuleId(testCase: ReporterTestCase): string {
-    const moduleValue = testCase.module as unknown;
-    if (!moduleValue || typeof moduleValue !== "object") {
-      return "";
-    }
-
-    const moduleId = (moduleValue as { moduleId?: unknown }).moduleId;
-    return typeof moduleId === "string" ? moduleId : "";
-  }
-
   private resolveFinalStatus(results: readonly CheckResult[]): SessionStatus {
     if (results.includes("FAIL")) {
       return "FAILED";
@@ -195,18 +193,8 @@ export class ConformanceReporter implements Reporter {
     return "PASSED";
   }
 
-  private resolvePhase(modulePath: string): "ISSUANCE" | "PRESENTATION" {
-    const normalizedPath = modulePath.toLowerCase();
-
-    if (normalizedPath.includes(".issuance.")) {
-      return "ISSUANCE";
-    }
-
-    if (normalizedPath.includes(".presentation.")) {
-      return "PRESENTATION";
-    }
-
-    return "ISSUANCE";
+  private resolvePhase(): "ISSUANCE" | "PRESENTATION" {
+    return this.testType === "presentation" ? "PRESENTATION" : "ISSUANCE";
   }
 
   private resolveStep(testCase: ReporterTestCase): ConformanceStep {

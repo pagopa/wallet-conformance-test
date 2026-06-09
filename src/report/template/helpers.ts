@@ -1,5 +1,4 @@
 import type { ComplianceTier } from "@/report/template/types";
-import type { ConformanceCheck } from "@/report/types";
 import type { Config } from "@/types";
 
 // ─── String escaping ──────────────────────────────────────────────────────────
@@ -73,19 +72,15 @@ export function resolveEntityName(config?: Config): string {
   return subject;
 }
 
-export function resolveProfile(checks: ConformanceCheck[]): string {
-  const hasIssuance = checks.some((c) => c.phase === "ISSUANCE");
-  const hasPresentation = checks.some((c) => c.phase === "PRESENTATION");
-
-  if (hasIssuance && hasPresentation) {
-    return "Credential Issuer / Relying Party";
-  }
-
-  if (hasPresentation) {
-    return "Relying Party (RP)";
-  }
-
-  return "Credential Issuer (CI)";
+/**
+ * Resolves the conformance profile label from the session phase.
+ * The phase is set authoritatively by the reporter at session creation
+ * time based on which Vitest config was used (issuance vs presentation).
+ */
+export function resolveProfile(phase: "ISSUANCE" | "PRESENTATION"): string {
+  return phase === "PRESENTATION"
+    ? "Relying Party (RP)"
+    : "Credential Issuer (CI)";
 }
 
 export function resolveTierLabel(tier: ComplianceTier): string {

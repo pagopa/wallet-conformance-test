@@ -27,6 +27,7 @@ interface CheckRow {
 interface SessionRow {
   closed_at: null | string;
   id: string;
+  phase: "ISSUANCE" | "PRESENTATION";
   session_id: string;
   started_at: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
@@ -88,14 +89,15 @@ export function createSession(
 ): void {
   db.prepare(
     `
-      INSERT INTO sessions (id, session_id, started_at, closed_at, status)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, session_id, started_at, closed_at, phase, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     `,
   ).run(
     session.id,
     session.sessionId,
     session.startedAt,
     session.closedAt ?? null,
+    session.phase,
     session.status,
   );
 }
@@ -107,7 +109,7 @@ export function getSession(
   const sessionRow = db
     .prepare(
       `
-        SELECT id, session_id, started_at, closed_at, status
+        SELECT id, session_id, started_at, closed_at, phase, status
         FROM sessions
         WHERE id = ?
       `,
@@ -150,6 +152,7 @@ export function getSession(
     })),
     closedAt: sessionRow.closed_at ?? undefined,
     id: sessionRow.id,
+    phase: sessionRow.phase,
     sessionId: sessionRow.session_id,
     startedAt: sessionRow.started_at,
     status: sessionRow.status,

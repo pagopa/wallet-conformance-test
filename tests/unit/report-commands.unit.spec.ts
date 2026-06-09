@@ -42,6 +42,7 @@ describe("report commands", () => {
     createSession(db, {
       closedAt: "2026-03-11T10:01:23.456Z",
       id: "550e8400-e29b-41d4-a716-446655440000",
+      phase: "ISSUANCE",
       sessionId: "550e8400-e29b-41d4-a716-446655440000",
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "PASSED",
@@ -58,6 +59,7 @@ describe("report commands", () => {
     createSession(db, {
       closedAt: "2026-03-11T09:30:05.123Z",
       id: "a1b2c3d4-0000-1111-2222-333344445555",
+      phase: "ISSUANCE",
       sessionId: "a1b2c3d4-0000-1111-2222-333344445555",
       startedAt: "2026-03-11T09:30:00.000Z",
       status: "FAILED",
@@ -86,6 +88,7 @@ describe("report commands", () => {
     createSession(db, {
       closedAt: "2026-03-11T10:01:23.456Z",
       id: runId,
+      phase: "ISSUANCE",
       sessionId: runId,
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "PASSED",
@@ -125,6 +128,7 @@ describe("report commands", () => {
     const db = openDb(resolveDbPath());
     createSession(db, {
       id: runId,
+      phase: "ISSUANCE",
       sessionId: runId,
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "PASSED",
@@ -178,6 +182,7 @@ describe("report commands", () => {
     const db = openDb(resolveDbPath());
     createSession(db, {
       id: runId,
+      phase: "ISSUANCE",
       sessionId: runId,
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "FAILED",
@@ -223,6 +228,7 @@ describe("report commands", () => {
     const db = openDb(resolveDbPath());
     createSession(db, {
       id: runId,
+      phase: "ISSUANCE",
       sessionId: runId,
       startedAt: "2026-03-11T10:00:00.000Z",
       status: "PASSED",

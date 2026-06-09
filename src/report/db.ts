@@ -26,6 +26,7 @@ function initSchema(db: DatabaseSync): void {
       session_id TEXT NOT NULL,
       started_at TEXT NOT NULL,
       closed_at  TEXT,
+      phase      TEXT NOT NULL,
       status     TEXT NOT NULL DEFAULT 'OPEN'
     );
 

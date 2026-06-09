@@ -59,7 +59,7 @@ function buildReportData(
     generatedAt: formatGeneratedAt(new Date().toISOString()),
     partialCount,
     passCount,
-    profile: resolveProfile(checks),
+    profile: resolveProfile(session.phase),
     reportId: `WCR-${session.sessionId.toUpperCase().replace(/-/g, "").slice(0, 24)}`,
     sessionId: session.sessionId,
     solutionName: config?.wallet.wallet_name ?? "-",

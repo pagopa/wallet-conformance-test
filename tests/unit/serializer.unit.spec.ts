@@ -14,6 +14,7 @@ function buildSession(
   return {
     checks: [],
     id: "run-1",
+    phase: "ISSUANCE",
     sessionId: "run-1",
     startedAt: "2026-03-11T10:00:00.000Z",
     status: "OPEN",

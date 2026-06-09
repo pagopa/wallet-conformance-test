@@ -13,6 +13,7 @@ export interface ConformanceSession {
   checks: ConformanceCheck[];
   closedAt?: string;
   id: string;
+  phase: "ISSUANCE" | "PRESENTATION";
   sessionId: string;
   startedAt: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
