@@ -103,9 +103,7 @@ export function createSession(
   );
 }
 
-export function getLatestSessionId(
-  db: DatabaseSync,
-): string | undefined {
+export function getLatestSessionId(db: DatabaseSync): string | undefined {
   const row = db
     .prepare(
       `
@@ -115,7 +113,7 @@ export function getLatestSessionId(
         LIMIT 1
       `,
     )
-    .get() as { id: string } | undefined;
+    .get() as undefined | { id: string };
 
   return row?.id;
 }
