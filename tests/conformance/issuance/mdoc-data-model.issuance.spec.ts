@@ -210,13 +210,13 @@ testConfigs.forEach((testConfig) => {
     // CI_138 — Mdoc Component Structure Organisation
     // =======================================================================
 
-    test("CI_138: Mdoc Component Structure | Digital Credential is structured into distinct nameSpaces and issuerAuth components per IT-Wallet spec", async () => {
+    test("CI_138: Mdoc Component Structure | Digital Credential issuerAuth unprotected header contains x5chain (label 33) and MSO valueDigests cross-references all nameSpaces entries", async () => {
       const log = baseLog.withTag("CI_138");
       const DESCRIPTION =
-        "Mdoc Digital Credential is properly structured into its two distinct components — nameSpaces (attribute data) and issuerAuth (cryptographic proof/MSO) — with correct types, internal completeness, and MSO valueDigests cross-referencing nameSpaces";
+        "Mdoc Digital Credential: issuerAuth unprotected header contains x5chain (label 33) per RFC 9360, and MSO valueDigests cross-references all nameSpaces entries";
 
       log.start(
-        "Conformance test: mdoc component structure per IT-Wallet spec / ISO 18013-5 §9.1.2.4",
+        "Conformance test: mdoc component structure — x5chain header and nameSpaces ↔ valueDigests cross-link",
       );
 
       let testSuccess = false;
@@ -241,10 +241,9 @@ testConfigs.forEach((testConfig) => {
           // shape and ≥1 entries, issuerAuth as 4-tuple COSE_Sign1 array,
           // payload byte string + Tag 24 wrapper + MSO map, and the
           // signature byte string are all covered by CI_140. This test
-          // focuses on the additional component-level requirements:
-          // x5chain in unprotected header, MSO mandatory field set,
-          // validityInfo.validUntil, deviceKeyInfo.deviceKey, and the
-          // nameSpaces ↔ valueDigests cross-link.
+          // focuses on: x5chain in unprotected header and the nameSpaces ↔
+          // valueDigests cross-link. MSO mandatory field presence is covered
+          // by CI_150.
           // -----------------------------------------------------------------
 
           const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
@@ -296,88 +295,10 @@ testConfigs.forEach((testConfig) => {
             | Map<string, unknown>
             | Record<string, unknown>;
 
-          // Helper to check MSO field presence regardless of Map vs plain object
-          const msoHas = (key: string): boolean =>
-            mso instanceof Map ? mso.has(key) : key in mso;
-
           const msoGet = (key: string): unknown =>
             mso instanceof Map
               ? mso.get(key)
               : (mso as Record<string, unknown>)[key];
-
-          // ISO 18013-5 §9.1.2.4: mandatory MSO fields
-          expect(
-            msoHas("docType"),
-            "MSO must contain mandatory field docType",
-          ).toBe(true);
-          expect(
-            msoHas("version"),
-            "MSO must contain mandatory field version",
-          ).toBe(true);
-          expect(
-            msoHas("validityInfo"),
-            "MSO must contain mandatory field validityInfo",
-          ).toBe(true);
-          expect(
-            msoHas("digestAlgorithm"),
-            "MSO must contain mandatory field digestAlgorithm",
-          ).toBe(true);
-          expect(
-            msoHas("valueDigests"),
-            "MSO must contain mandatory field valueDigests",
-          ).toBe(true);
-          expect(
-            msoHas("deviceKeyInfo"),
-            "MSO must contain mandatory field deviceKeyInfo",
-          ).toBe(true);
-
-          // validityInfo must contain validUntil (ISO 18013-5 §9.1.2.4)
-          const validityInfo = msoGet("validityInfo") as
-            | Map<string, unknown>
-            | null
-            | Record<string, unknown>
-            | undefined;
-
-          expect(
-            validityInfo !== null && typeof validityInfo === "object",
-            "MSO validityInfo must be a map",
-          ).toBe(true);
-
-          const validityInfoHas = (key: string): boolean =>
-            validityInfo instanceof Map
-              ? validityInfo.has(key)
-              : key in (validityInfo as Record<string, unknown>);
-
-          expect(
-            validityInfoHas("validUntil"),
-            "MSO validityInfo must contain validUntil",
-          ).toBe(true);
-
-          log.debug(`  ✓ MSO validityInfo.validUntil present`);
-
-          // deviceKeyInfo must contain deviceKey
-          const deviceKeyInfo = msoGet("deviceKeyInfo") as
-            | Map<string, unknown>
-            | null
-            | Record<string, unknown>
-            | undefined;
-
-          expect(
-            deviceKeyInfo !== null && typeof deviceKeyInfo === "object",
-            "MSO deviceKeyInfo must be a map",
-          ).toBe(true);
-
-          const deviceKeyInfoHas = (key: string): boolean =>
-            deviceKeyInfo instanceof Map
-              ? deviceKeyInfo.has(key)
-              : key in (deviceKeyInfo as Record<string, unknown>);
-
-          expect(
-            deviceKeyInfoHas("deviceKey"),
-            "MSO deviceKeyInfo must contain deviceKey",
-          ).toBe(true);
-
-          log.debug(`  ✓ MSO deviceKeyInfo.deviceKey present`);
 
           // issuerAuth[3] signature byte-string check is covered by CI_140.
 
@@ -2141,5 +2062,176 @@ testConfigs.forEach((testConfig) => {
         }
       },
     );
+
+    // =======================================================================
+    // CI_150 — MobileSecurityObject Required Attributes
+    // =======================================================================
+
+    test("CI_150: Mdoc IssuerAuth MSO | The MobileSecurityObject successfully contains all required attributes as specified in the compliance table (ISO 18013-5 §9.1.2.4)", async () => {
+      const log = baseLog.withTag("CI_150");
+      const DESCRIPTION =
+        'The MobileSecurityObject successfully contains all required attributes as specified in the compliance table: version ("1.0"), digestAlgorithm (SHA-256/384/512), valueDigests, deviceKeyInfo with deviceKey, docType, and validityInfo with signed/validFrom/validUntil (ISO 18013-5 §9.1.2.4)';
+
+      log.start(
+        "Conformance test: MSO required attributes per ISO 18013-5 §9.1.2.4",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_150 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+          const issuerAuth = decoded["issuerAuth"] as unknown[];
+          const payloadBytes = issuerAuth[2];
+          const payloadTagged = decode(
+            Buffer.isBuffer(payloadBytes)
+              ? payloadBytes
+              : Buffer.from(payloadBytes as Uint8Array),
+          ) as cbor.Tagged;
+          const msoBytes = Buffer.isBuffer(payloadTagged.value)
+            ? payloadTagged.value
+            : Buffer.from(payloadTagged.value as Uint8Array);
+          const mso = decode(msoBytes) as
+            | Map<string, unknown>
+            | Record<string, unknown>;
+
+          const msoHas = (key: string): boolean =>
+            mso instanceof Map ? mso.has(key) : key in mso;
+          const msoGet = (key: string): unknown =>
+            mso instanceof Map
+              ? mso.get(key)
+              : (mso as Record<string, unknown>)[key];
+
+          // 1. version — present and equals "1.0"
+          expect(
+            msoHas("version"),
+            "MSO must contain mandatory field version (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          expect(
+            msoGet("version"),
+            'MSO version must be "1.0" (ISO 18013-5 §9.1.2.4)',
+          ).toBe("1.0");
+          log.debug(`  ✓ version="${String(msoGet("version"))}"`);
+
+          // 2. digestAlgorithm — present and one of the spec-allowed values
+          const ALLOWED_DIGEST_ALGORITHMS = [
+            "SHA-256",
+            "SHA-384",
+            "SHA-512",
+          ] as const;
+          expect(
+            msoHas("digestAlgorithm"),
+            "MSO must contain mandatory field digestAlgorithm (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const digestAlgorithm = msoGet("digestAlgorithm") as string;
+          expect(
+            ALLOWED_DIGEST_ALGORITHMS.includes(
+              digestAlgorithm as (typeof ALLOWED_DIGEST_ALGORITHMS)[number],
+            ),
+            `MSO digestAlgorithm must be one of ${ALLOWED_DIGEST_ALGORITHMS.join(", ")}, got "${digestAlgorithm}" (ISO 18013-5 §9.1.2.4)`,
+          ).toBe(true);
+          log.debug(`  ✓ digestAlgorithm="${digestAlgorithm}"`);
+
+          // 3. valueDigests — present and is a map
+          expect(
+            msoHas("valueDigests"),
+            "MSO must contain mandatory field valueDigests (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const valueDigests = msoGet("valueDigests");
+          expect(
+            valueDigests !== null && typeof valueDigests === "object",
+            "MSO valueDigests must be a map (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          log.debug("  ✓ valueDigests present and is a map");
+
+          // 4. deviceKeyInfo — present, is a map, and contains deviceKey
+          expect(
+            msoHas("deviceKeyInfo"),
+            "MSO must contain mandatory field deviceKeyInfo (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const deviceKeyInfo = msoGet("deviceKeyInfo");
+          expect(
+            deviceKeyInfo !== null && typeof deviceKeyInfo === "object",
+            "MSO deviceKeyInfo must be a map (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const deviceKeyInfoHas = (key: string): boolean =>
+            deviceKeyInfo instanceof Map
+              ? deviceKeyInfo.has(key)
+              : key in (deviceKeyInfo as Record<string, unknown>);
+          expect(
+            deviceKeyInfoHas("deviceKey"),
+            "MSO deviceKeyInfo must contain deviceKey (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          log.debug("  ✓ deviceKeyInfo.deviceKey present");
+
+          // 5. docType — present
+          expect(
+            msoHas("docType"),
+            "MSO must contain mandatory field docType (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          log.debug(`  ✓ docType="${String(msoGet("docType"))}"`);
+
+          // 6. validityInfo — present, is a map, and has signed/validFrom/validUntil
+          expect(
+            msoHas("validityInfo"),
+            "MSO must contain mandatory field validityInfo (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const validityInfo = msoGet("validityInfo");
+          expect(
+            validityInfo !== null && typeof validityInfo === "object",
+            "MSO validityInfo must be a map (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          const validityInfoHas = (key: string): boolean =>
+            validityInfo instanceof Map
+              ? validityInfo.has(key)
+              : key in (validityInfo as Record<string, unknown>);
+          const validityInfoGet = (key: string): unknown =>
+            validityInfo instanceof Map
+              ? validityInfo.get(key)
+              : (validityInfo as Record<string, unknown>)[key];
+          expect(
+            validityInfoHas("signed"),
+            "MSO validityInfo must contain signed (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          expect(
+            validityInfoHas("validFrom"),
+            "MSO validityInfo must contain validFrom (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          expect(
+            validityInfoHas("validUntil"),
+            "MSO validityInfo must contain validUntil (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          log.debug(
+            "  ✓ validityInfo: signed, validFrom, validUntil all present",
+          );
+
+          // 7. validFrom ≤ validUntil ordering (tdate = CBOR tag 0 → JS Date)
+          const validFrom = validityInfoGet("validFrom") as Date;
+          const validUntil = validityInfoGet("validUntil") as Date;
+          expect(
+            validFrom instanceof Date && validUntil instanceof Date,
+            "MSO validityInfo.validFrom and validUntil must be tdate (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+          expect(
+            validFrom.getTime() <= validUntil.getTime(),
+            `MSO validityInfo.validFrom (${validFrom.toISOString()}) must be ≤ validUntil (${validUntil.toISOString()}) (ISO 18013-5 §9.1.2.4)`,
+          ).toBe(true);
+          log.debug(
+            `  ✓ validFrom(${validFrom.toISOString()}) ≤ validUntil(${validUntil.toISOString()})`,
+          );
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
