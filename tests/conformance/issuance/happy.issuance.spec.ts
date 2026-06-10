@@ -9,7 +9,10 @@ import {
   resolveCredentialOffer,
 } from "@pagopa/io-wallet-oid4vci";
 import { jsonWebKeySetSchema } from "@pagopa/io-wallet-oid-federation";
-import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
@@ -45,6 +48,9 @@ testConfigs.forEach((testConfig) => {
     let nonceResponse: NonceRequestResponse;
     let credentialResponse: CredentialRequestResponse;
     let walletAttestationResponse: AttestationResponse;
+    const sdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
+    });
 
     beforeAll(async () => {
       try {
@@ -460,6 +466,7 @@ testConfigs.forEach((testConfig) => {
 
           const offer = await resolveCredentialOffer({
             callbacks: { fetch },
+            config: sdkConfig,
             credentialOffer,
           });
           log.debug(
@@ -503,6 +510,7 @@ testConfigs.forEach((testConfig) => {
 
           const offer = await resolveCredentialOffer({
             callbacks: { fetch },
+            config: sdkConfig,
             credentialOffer,
           });
           log.debug(
