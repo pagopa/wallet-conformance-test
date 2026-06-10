@@ -1348,6 +1348,145 @@ testConfigs.forEach((testConfig) => {
     });
 
     // =======================================================================
+    // CI_145 — issuerAuth is a properly formatted COSE Sign1 Document
+    //         per RFC 9052 (protected header, unprotected header, payload,
+    //         signature all correctly structured)
+    // =======================================================================
+
+    test("CI_145: Mdoc IssuerAuth COSE Sign1 | The issuerAuth successfully represents the Mobile Security Object as a properly formatted COSE Sign1 Document according to RFC 9052, containing the complete required data structure with: protected header, unprotected header, payload and signature components", async () => {
+      const log = baseLog.withTag("CI_145");
+      const DESCRIPTION =
+        "The issuerAuth successfully represents the Mobile Security Object as a properly formatted COSE Sign1 Document according to RFC 9052, containing the complete required data structure with: protected header, unprotected header, payload and signature components";
+
+      log.start(
+        "Conformance test: issuerAuth COSE_Sign1 structure per RFC 9052 §4.2 / ISO 18013-5 §9.1.2.4",
+      );
+
+      let testSuccess = false;
+      try {
+        const mdocCredentials = getMdocCredentials();
+
+        if (mdocCredentials.length === 0) {
+          log.debug("→ CI_145 skipped: no mdoc credentials found");
+          testSuccess = true;
+          return;
+        }
+
+        for (const { raw } of mdocCredentials) {
+          const decoded = decode(raw) as Record<string, unknown>;
+          const issuerAuth = decoded["issuerAuth"] as unknown[];
+
+          // -----------------------------------------------------------------
+          // 1. COSE_Sign1 is a 4-element CBOR array
+          //    [protected, unprotected, payload, signature] per RFC 9052 §4.2
+          // -----------------------------------------------------------------
+          expect(
+            Array.isArray(issuerAuth),
+            "issuerAuth must be a CBOR array encoding a COSE_Sign1 structure (RFC 9052 §4.2)",
+          ).toBe(true);
+
+          expect(
+            issuerAuth.length,
+            "COSE_Sign1 must be a 4-tuple: [protected, unprotected, payload, signature] (RFC 9052 §4.2)",
+          ).toBe(4);
+
+          const [protectedHeader, unprotectedHeader, payload, signature] =
+            issuerAuth;
+
+          // -----------------------------------------------------------------
+          // 2. Protected header — bstr that decodes to a CBOR map
+          //    (RFC 9052 §3, `empty_or_serialized_map`)
+          //    Note: alg (label 1) presence and value are validated by CI_146.
+          // -----------------------------------------------------------------
+          expect(
+            protectedHeader instanceof Uint8Array ||
+              Buffer.isBuffer(protectedHeader),
+            "COSE_Sign1[0] (protected header) must be a CBOR byte string (bstr) per RFC 9052 §3",
+          ).toBe(true);
+
+          const protectedHeaderBuf = Buffer.isBuffer(protectedHeader)
+            ? protectedHeader
+            : Buffer.from(protectedHeader as Uint8Array);
+
+          const protectedHeaderMap = decode(protectedHeaderBuf) as
+            | Map<number | string, unknown>
+            | Record<number | string, unknown>;
+
+          expect(
+            typeof protectedHeaderMap === "object" &&
+              protectedHeaderMap !== null,
+            "COSE_Sign1[0] protected header byte string must decode to a CBOR map (RFC 9052 §3)",
+          ).toBe(true);
+
+          log.debug(`  ✓ protected header: bstr → CBOR map`);
+
+          // -----------------------------------------------------------------
+          // 3. Unprotected header — must be a CBOR map (RFC 9052 §3)
+          //    May be empty; type is the key assertion.
+          // -----------------------------------------------------------------
+          expect(
+            unprotectedHeader !== null && typeof unprotectedHeader === "object",
+            "COSE_Sign1[1] (unprotected header) must be a CBOR map (RFC 9052 §3)",
+          ).toBe(true);
+
+          log.debug(`  ✓ unprotected header: CBOR map`);
+
+          // -----------------------------------------------------------------
+          // 4. Payload — non-null, non-empty bstr (RFC 9052 §4.2)
+          //    ISO 18013-5 always carries the MSO as inline (not detached)
+          //    payload, so nil is not valid here.
+          // -----------------------------------------------------------------
+          expect(
+            payload !== null && payload !== undefined,
+            "COSE_Sign1[2] (payload) must be present (not nil/detached) — the MSO is always carried inline in mdoc (RFC 9052 §4.2 / ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
+
+          expect(
+            payload instanceof Uint8Array || Buffer.isBuffer(payload),
+            "COSE_Sign1[2] (payload) must be a CBOR byte string (bstr) per RFC 9052 §4.2",
+          ).toBe(true);
+
+          const payloadBuf = Buffer.isBuffer(payload)
+            ? payload
+            : Buffer.from(payload as Uint8Array);
+
+          expect(
+            payloadBuf.length,
+            "COSE_Sign1[2] (payload) byte string must be non-empty (RFC 9052 §4.2)",
+          ).toBeGreaterThan(0);
+
+          log.debug(`  ✓ payload: ${payloadBuf.length} bytes (non-empty bstr)`);
+
+          // -----------------------------------------------------------------
+          // 5. Signature — non-empty bstr (RFC 9052 §4.2)
+          //    A zero-length signature is cryptographically invalid.
+          // -----------------------------------------------------------------
+          expect(
+            signature instanceof Uint8Array || Buffer.isBuffer(signature),
+            "COSE_Sign1[3] (signature) must be a CBOR byte string (bstr) per RFC 9052 §4.2",
+          ).toBe(true);
+
+          const sigBuf = Buffer.isBuffer(signature)
+            ? signature
+            : Buffer.from(signature as Uint8Array);
+
+          expect(
+            sigBuf.length,
+            "COSE_Sign1[3] (signature) must be non-empty — a zero-length signature is cryptographically invalid (RFC 9052 §4.2)",
+          ).toBeGreaterThan(0);
+
+          log.debug(
+            `  ✓ issuerAuth is a valid COSE_Sign1: payloadLen=${payloadBuf.length}, sigLen=${sigBuf.length}`,
+          );
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // =======================================================================
     // CI_146 — Protected Header alg Parameter (Label 1 int) CBOR Encoding
     // =======================================================================
 
