@@ -145,7 +145,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
   test(
     "RPR-10: Authorization request parameters match OpenID Credential Verifier metadata.",
-    { skip: process.env.CI_CD === "true" },
+    { skip: process.env.CI === "true" },
     async ({ skip }) => {
       const log = baseLog.withTag("RPR010");
 
