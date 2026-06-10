@@ -282,8 +282,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-108 — Authorization Error Response handling
   // -----------------------------------------------------------------------
 
-  test("RPR_108: Authorization Error Response handling | RP correctly handles explicit authorization error from wallet", async () => {
-    const log = baseLog.withTag("RPR_108");
+  test("RPR-108: Authorization Error Response handling | RP correctly handles explicit authorization error from wallet", async () => {
+    const log = baseLog.withTag("RPR-108");
     const DESCRIPTION =
       "RP correctly handles explicit authorization error from wallet";
     log.start("Conformance test: Authorization Error Response handling");
@@ -334,8 +334,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-109 — Authorization Error Response encoding
   // -----------------------------------------------------------------------
 
-  test("RPR_109: Authorization Error Response encoding | RP parses authorization errors over application/x-www-form-urlencoded", async () => {
-    const log = baseLog.withTag("RPR_109");
+  test("RPR-109: Authorization Error Response encoding | RP parses authorization errors over application/x-www-form-urlencoded", async () => {
+    const log = baseLog.withTag("RPR-109");
     const DESCRIPTION =
       "RP parses authorization generic errors over x-www-form-urlencoded";
     log.start("Conformance test: Authorization Error Response encoding");
@@ -385,8 +385,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-114 — Validation error response on response_uri
   // -----------------------------------------------------------------------
 
-  test("RPR_114: Validation error response on response_uri | RP returns correct error structure upon wallet submission failure", async () => {
-    const log = baseLog.withTag("RPR_114");
+  test("RPR-114: Validation error response on response_uri | RP returns correct error structure upon wallet submission failure", async () => {
+    const log = baseLog.withTag("RPR-114");
     const DESCRIPTION =
       "RP returns correct error structure upon wallet submission failure";
     log.start("Conformance test: Validation error response on response_uri");
