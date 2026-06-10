@@ -1728,5 +1728,124 @@ testConfigs.forEach((testConfig) => {
         }
       },
     );
+
+    // =======================================================================
+    // CI_148 — Unprotected Header Optional Parameters Type Validation
+    //         (label 4: kid tstr, label 33: x5chain array)
+    // =======================================================================
+
+    test(
+      "CI_148: Mdoc IssuerAuth Unprotected Header | Unless otherwise specified, " +
+        "the unprotected header contains the optional parameters with correct CBOR types: " +
+        "label 4 (kid, tstr) identifying the Issuer JWK for OpenID Federation, " +
+        "and label 33 (x5chain, array) carrying the X.509 certificate chain for X.509-based authentication",
+      async () => {
+        const log = baseLog.withTag("CI_148");
+        const DESCRIPTION =
+          "The issuerAuth COSE_Sign1 unprotected header optional parameters have the correct CBOR types: " +
+          "label 4 (kid) must be a tstr (text string) per the Infrastructure of Trust specification when present, " +
+          "and label 33 (x5chain) must be an array of DER-encoded X.509 certificates per RFC 9360 when present";
+
+        log.start(
+          "Conformance test: issuerAuth unprotected header parameter types (label 4 tstr, label 33 array)",
+        );
+
+        // kid: unique identifier of the Issuer JWK (Infrastructure of Trust)
+        const KID_LABEL = 4;
+        // x5chain: X.509 certificate chain (RFC 9360)
+        const X5CHAIN_LABEL = 33;
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_148 skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+
+            // issuerAuth[1] is the unprotected header — already decoded as a
+            // CBOR map by the cbor library; no additional Buffer.from/decode needed.
+            const unprotectedHeader = issuerAuth[1] as
+              | Map<number, unknown>
+              | Record<number | string, unknown>;
+
+            const uhHas = (label: number): boolean =>
+              unprotectedHeader instanceof Map
+                ? unprotectedHeader.has(label)
+                : label in
+                  (unprotectedHeader as Record<number | string, unknown>);
+
+            const uhGet = (label: number): unknown =>
+              unprotectedHeader instanceof Map
+                ? unprotectedHeader.get(label)
+                : (unprotectedHeader as Record<number | string, unknown>)[
+                    label
+                  ];
+
+            const kidPresent = uhHas(KID_LABEL);
+            const x5chainPresent = uhHas(X5CHAIN_LABEL);
+            const kidValue = uhGet(KID_LABEL);
+            const x5chainValue = uhGet(X5CHAIN_LABEL);
+
+            // -----------------------------------------------------------------
+            // Label 4 (kid) — if present, must be a tstr (text string).
+            // Carries the unique identifier of the Issuer JWK when the Issuer
+            // of mdoc uses OpenID Federation (Infrastructure of Trust spec).
+            // -----------------------------------------------------------------
+            const kidIsValidType = !kidPresent || typeof kidValue === "string";
+
+            expect(
+              kidIsValidType,
+              "Unprotected header label 4 (kid), when present, must be a tstr (text string) per the Infrastructure of Trust specification",
+            ).toBe(true);
+
+            log.debug(
+              kidPresent
+                ? `  ✓ label 4 (kid) = "${String(kidValue)}" (tstr)`
+                : `  · label 4 (kid) not present — OpenID Federation not in use`,
+            );
+
+            // -----------------------------------------------------------------
+            // Label 33 (x5chain) — if present, must be an array of
+            // DER-encoded X.509 certificates (RFC 9360).
+            // Required for X.509 certificate-based authentication.
+            // -----------------------------------------------------------------
+            const x5chainIsArray =
+              !x5chainPresent || Array.isArray(x5chainValue);
+
+            expect(
+              x5chainIsArray,
+              "Unprotected header label 33 (x5chain), when present, must be an array of DER-encoded X.509 certificates per RFC 9360",
+            ).toBe(true);
+
+            const x5chainIsNonEmpty =
+              !x5chainPresent ||
+              (Array.isArray(x5chainValue) &&
+                (x5chainValue as unknown[]).length > 0);
+
+            expect(
+              x5chainIsNonEmpty,
+              "Unprotected header label 33 (x5chain), when present as an array, must contain at least one certificate (RFC 9360)",
+            ).toBe(true);
+
+            log.debug(
+              x5chainPresent
+                ? `  ✓ label 33 (x5chain) = array[${(x5chainValue as unknown[]).length}] (X.509 certificate chain)`
+                : `  · label 33 (x5chain) not present — X.509-based authentication not in use`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });
