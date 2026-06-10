@@ -35,7 +35,6 @@ function initSchema(db: DatabaseSync): void {
       session_id     TEXT NOT NULL REFERENCES sessions(id),
       requirement_id TEXT NOT NULL,
       description    TEXT NOT NULL,
-      step           TEXT NOT NULL,
       phase          TEXT NOT NULL,
       result         TEXT NOT NULL,
       timestamp      TEXT NOT NULL,

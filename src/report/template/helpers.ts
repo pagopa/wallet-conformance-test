@@ -1,6 +1,8 @@
 import type { ComplianceTier } from "@/report/template/types";
 import type { Config } from "@/types";
 
+import { Phase } from "../types";
+
 // ─── String escaping ──────────────────────────────────────────────────────────
 
 export function escapeHtml(value: string): string {
@@ -77,10 +79,16 @@ export function resolveEntityName(config?: Config): string {
  * The phase is set authoritatively by the reporter at session creation
  * time based on which Vitest config was used (issuance vs presentation).
  */
-export function resolveProfile(phase: "ISSUANCE" | "PRESENTATION"): string {
-  return phase === "PRESENTATION"
-    ? "Relying Party (RP)"
-    : "Credential Issuer (CI)";
+export function resolveProfile(phase: Phase): string {
+  if (phase === "issuance") {
+    return "Credential Issuer (CI)";
+  }
+
+  if (phase === "presentation") {
+    return "Relying Party (RP)";
+  }
+
+  throw new Error(`Unknown phase: ${phase}`);
 }
 
 export function resolveTierLabel(tier: ComplianceTier): string {

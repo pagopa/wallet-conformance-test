@@ -2,7 +2,11 @@ import type { DatabaseSync } from "node:sqlite";
 
 import { randomUUID } from "node:crypto";
 
-import type { ConformanceCheck, ConformanceSession } from "@/report/types";
+import type {
+  ConformanceCheck,
+  ConformanceSession,
+  Phase,
+} from "@/report/types";
 
 export interface SessionSummary {
   checksPerformed: number;
@@ -20,14 +24,13 @@ interface CheckRow {
   phase: ConformanceCheck["phase"];
   requirement_id: string;
   result: ConformanceCheck["result"];
-  step: ConformanceCheck["step"];
   timestamp: string;
 }
 
 interface SessionRow {
   closed_at: null | string;
   id: string;
-  phase: "ISSUANCE" | "PRESENTATION";
+  phase: Phase;
   session_id: string;
   started_at: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
@@ -45,21 +48,19 @@ export function appendCheck(
         session_id,
         requirement_id,
         description,
-        step,
         phase,
         result,
         timestamp,
         http_status,
         error_message
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   ).run(
     randomUUID(),
     sessionId,
     check.requirementId,
     check.description,
-    check.step,
     check.phase,
     check.result,
     check.timestamp,
@@ -126,7 +127,6 @@ export function getSession(
         SELECT
           requirement_id,
           description,
-          step,
           phase,
           result,
           timestamp,
@@ -147,7 +147,6 @@ export function getSession(
       phase: check.phase,
       requirementId: check.requirement_id,
       result: check.result,
-      step: check.step,
       timestamp: check.timestamp,
     })),
     closedAt: sessionRow.closed_at ?? undefined,

@@ -1,21 +1,10 @@
 import type {
   ConformanceCheck,
   ConformanceSession,
-  ConformanceStep,
   VitestAssertionResult,
   VitestJsonReport,
   VitestTestSuite,
 } from "@/report/types";
-
-const STEP_ORDER: ConformanceStep[] = [
-  "PAR",
-  "AUTHORIZE",
-  "PRESENTATION_RESPONSE",
-  "AUTHORIZATION_CODE",
-  "TOKEN",
-  "NONCE",
-  "CREDENTIAL",
-];
 
 type SerializedStatus = "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
 
@@ -23,27 +12,9 @@ export function serializeToVitestJson(
   session: ConformanceSession,
   ttlHours: number,
 ): VitestJsonReport {
-  const checksByStep: Partial<Record<ConformanceStep, ConformanceCheck[]>> = {};
-
-  for (const check of session.checks) {
-    const checks = checksByStep[check.step];
-    if (checks) {
-      checks.push(check);
-      continue;
-    }
-
-    checksByStep[check.step] = [check];
-  }
-
-  const testResults: VitestTestSuite[] = [];
-  for (const step of STEP_ORDER) {
-    const checks = checksByStep[step];
-    if (!checks || checks.length === 0) {
-      continue;
-    }
-
-    testResults.push(toSuite(step, checks));
-  }
+  const testResults: VitestTestSuite[] = [
+    toSuite(session.phase, session.checks),
+  ];
 
   let numPassedTests = 0;
   let numFailedTests = 0;
@@ -130,23 +101,20 @@ function computeSerializedStatus(
   return session.status;
 }
 
-function toSuite(
-  step: ConformanceStep,
-  checks: ConformanceCheck[],
-): VitestTestSuite {
+function toSuite(name: string, checks: ConformanceCheck[]): VitestTestSuite {
   const orderedChecks = [...checks].sort(
     (left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp),
   );
 
   const assertionResults: VitestAssertionResult[] = orderedChecks.map(
     (check) => ({
-      ancestorTitles: [step],
+      ancestorTitles: [name],
       duration: 0,
       failureMessages:
         check.result === "FAIL"
           ? [check.errorMessage ?? `Requirement ${check.requirementId} failed`]
           : [],
-      fullName: `${step} ${check.requirementId} ${check.description}`,
+      fullName: `${name} ${check.requirementId} ${check.description}`,
       location: {
         column: 0,
         line: 0,
@@ -171,7 +139,7 @@ function toSuite(
       orderedChecks.at(-1)?.timestamp ?? "1970-01-01T00:00:00.000Z",
     ),
     message: "",
-    name: step,
+    name,
     startTime: Date.parse(
       orderedChecks[0]?.timestamp ?? "1970-01-01T00:00:00.000Z",
     ),

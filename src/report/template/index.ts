@@ -48,7 +48,15 @@ function buildReportData(
   const complianceTier = resolveComplianceTier(compliancePct);
 
   return {
-    checkCards: checks.map(renderCheckCard).join("\n"),
+    checkCards: [...checks]
+      .sort((a, b) =>
+        a.requirementId.localeCompare(b.requirementId, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      )
+      .map(renderCheckCard)
+      .join("\n"),
     checks,
     compliancePct,
     complianceTier,

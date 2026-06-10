@@ -2,10 +2,9 @@ export interface ConformanceCheck {
   description: string;
   errorMessage?: string;
   httpStatus?: number;
-  phase: "ISSUANCE" | "PRESENTATION";
+  phase: Phase;
   requirementId: string;
   result: "FAIL" | "NOT_REACHED" | "PASS";
-  step: ConformanceStep;
   timestamp: string;
 }
 
@@ -13,20 +12,13 @@ export interface ConformanceSession {
   checks: ConformanceCheck[];
   closedAt?: string;
   id: string;
-  phase: "ISSUANCE" | "PRESENTATION";
+  phase: Phase;
   sessionId: string;
   startedAt: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
 }
 
-export type ConformanceStep =
-  | "AUTHORIZATION_CODE"
-  | "AUTHORIZE"
-  | "CREDENTIAL"
-  | "NONCE"
-  | "PAR"
-  | "PRESENTATION_RESPONSE"
-  | "TOKEN";
+export type Phase = "issuance" | "presentation";
 
 export interface VitestAssertionResult {
   ancestorTitles: string[];

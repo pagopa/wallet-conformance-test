@@ -4,7 +4,7 @@ import type { Reporter } from "vitest/reporters";
 import { randomUUID } from "node:crypto";
 import { TestResult } from "vitest/node.js";
 
-import type { ConformanceCheck, ConformanceStep } from "@/report/types";
+import type { ConformanceCheck } from "@/report/types";
 
 import { openDb, resolveDbPath } from "@/report/db";
 import {
@@ -14,10 +14,6 @@ import {
 } from "@/report/session-store";
 
 type CheckResult = ConformanceCheck["result"];
-interface KeywordStep {
-  keyword: string;
-  step: ConformanceStep;
-}
 
 type ReporterTestCase = Parameters<
   NonNullable<Reporter["onTestCaseResult"]>
@@ -26,20 +22,8 @@ type ReporterTestCase = Parameters<
 type SessionStatus = "FAILED" | "INCOMPLETE" | "PASSED";
 type TestType = "issuance" | "presentation";
 
+// Example IT Wallet Test Matrix IDs -> CI_002 or RPR-001
 const REQUIREMENT_ID_PATTERN = /^([A-Z]+[-_]\d+\w*)\s*:/;
-
-const STEP_KEYWORDS: readonly KeywordStep[] = [
-  { keyword: "authorization code", step: "AUTHORIZATION_CODE" },
-  { keyword: "authorize", step: "AUTHORIZE" },
-  { keyword: "authorization", step: "AUTHORIZE" },
-  { keyword: "presentation response", step: "PRESENTATION_RESPONSE" },
-  { keyword: "response_uri", step: "PRESENTATION_RESPONSE" },
-  { keyword: "response", step: "PRESENTATION_RESPONSE" },
-  { keyword: "token", step: "TOKEN" },
-  { keyword: "nonce", step: "NONCE" },
-  { keyword: "par", step: "PAR" },
-  { keyword: "credential", step: "CREDENTIAL" },
-];
 
 export class ConformanceReporter implements Reporter {
   private checkResults: CheckResult[] = [];
@@ -47,7 +31,7 @@ export class ConformanceReporter implements Reporter {
   private sessionId: string | undefined;
   private readonly testType: TestType;
 
-  constructor(testType: TestType = "issuance") {
+  constructor(testType: TestType) {
     this.testType = testType;
   }
 
@@ -57,14 +41,12 @@ export class ConformanceReporter implements Reporter {
     }
 
     const title = testCase.name;
-    const phase = this.resolvePhase();
     const result = this.mapResult(testCase.result().state);
     const check: ConformanceCheck = {
       description: this.parseTestCaseName(title),
-      phase,
+      phase: this.testType,
       requirementId: this.parseRequirementId(title),
       result,
-      step: this.resolveStep(testCase),
       timestamp: new Date().toISOString(),
     };
 
@@ -102,32 +84,11 @@ export class ConformanceReporter implements Reporter {
 
     createSession(this.db, {
       id: this.sessionId,
-      phase: this.testType === "presentation" ? "PRESENTATION" : "ISSUANCE",
+      phase: this.testType,
       sessionId: this.sessionId,
       startedAt: new Date().toISOString(),
       status: "OPEN",
     });
-  }
-
-  private collectAncestorTitles(testCase: ReporterTestCase): string[] {
-    const titles: string[] = [];
-    let currentParent: unknown = testCase.parent;
-
-    while (currentParent && typeof currentParent === "object") {
-      const parentType = (currentParent as { type?: unknown }).type;
-      if (parentType !== "suite") {
-        break;
-      }
-
-      const name = (currentParent as { name?: unknown }).name;
-      if (typeof name === "string") {
-        titles.push(name);
-      }
-
-      currentParent = (currentParent as { parent?: unknown }).parent;
-    }
-
-    return titles;
   }
 
   private extractFailureMessage(testCase: ReporterTestCase): string {
@@ -191,25 +152,5 @@ export class ConformanceReporter implements Reporter {
     }
 
     return "PASSED";
-  }
-
-  private resolvePhase(): "ISSUANCE" | "PRESENTATION" {
-    return this.testType === "presentation" ? "PRESENTATION" : "ISSUANCE";
-  }
-
-  private resolveStep(testCase: ReporterTestCase): ConformanceStep {
-    const titles = this.collectAncestorTitles(testCase);
-
-    for (const title of titles) {
-      const lowerTitle = title.toLowerCase();
-
-      for (const mapping of STEP_KEYWORDS) {
-        if (lowerTitle.includes(mapping.keyword)) {
-          return mapping.step;
-        }
-      }
-    }
-
-    return "CREDENTIAL";
   }
 }
