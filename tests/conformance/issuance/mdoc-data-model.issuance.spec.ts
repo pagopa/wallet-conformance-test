@@ -1988,5 +1988,158 @@ testConfigs.forEach((testConfig) => {
         }
       },
     );
+
+    // =======================================================================
+    // CI_149 — MSO CBOR Tag 24 bstr Encoding + content-type Header Exclusion
+    // =======================================================================
+
+    test(
+      "CI_149: Mdoc IssuerAuth Payload | The payload successfully contains the " +
+        "MobileSecurityObject properly encoded as a byte string (bstr) using CBOR " +
+        "Tag 24, with the content-type COSE Sign header parameter correctly " +
+        "excluded from the structure",
+      async () => {
+        const log = baseLog.withTag("CI_149");
+        const DESCRIPTION =
+          "The payload successfully contains the MobileSecurityObject properly " +
+          "encoded as a byte string (bstr) using CBOR Tag 24, with the " +
+          "content-type COSE Sign header parameter correctly excluded from the structure";
+
+        log.start(
+          "Conformance test: MSO CBOR Tag 24 bstr encoding and content-type exclusion " +
+            "per ISO 18013-5 §9.1.2.4 / RFC 8949 §3.4 / RFC 9052 §3.1",
+        );
+
+        // COSE content-type header parameter label (RFC 9052 §3.1 Table 2)
+        const CONTENT_TYPE_LABEL = 3;
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_149 skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const [protectedHeaderBytes, unprotectedHeader, payload] =
+              issuerAuth;
+
+            // ---------------------------------------------------------------
+            // 1. Payload is a CBOR byte string (bstr)
+            //    RFC 9052 §4.2 / ISO 18013-5 §9.1.2.4
+            // ---------------------------------------------------------------
+            expect(
+              payload instanceof Uint8Array || Buffer.isBuffer(payload),
+              "COSE_Sign1[2] (payload) must be a CBOR byte string (bstr) per RFC 9052 §4.2 / ISO 18013-5 §9.1.2.4",
+            ).toBe(true);
+
+            const payloadBuf = Buffer.isBuffer(payload)
+              ? payload
+              : Buffer.from(payload as Uint8Array);
+
+            // ---------------------------------------------------------------
+            // 2. Payload bstr decodes to CBOR Tag 24 wrapping the MSO bstr.
+            //    ISO 18013-5 §9.1.2.4:
+            //      MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
+            //    RFC 8949 §3.4 / §3.4.5.1: Tag 24 = embedded CBOR byte string.
+            // ---------------------------------------------------------------
+            const payloadTagged = decode(payloadBuf) as cbor.Tagged;
+
+            expect(
+              payloadTagged instanceof Tagged,
+              "issuerAuth payload bstr must decode to a CBOR Tagged item (ISO 18013-5 §9.1.2.4 / RFC 8949 §3.4)",
+            ).toBe(true);
+
+            expect(
+              payloadTagged.tag,
+              "issuerAuth payload must use CBOR Tag 24 (MobileSecurityObjectBytes = #6.24(bstr .cbor MSO)) per ISO 18013-5 §9.1.2.4 / RFC 8949 §3.4.5.1",
+            ).toBe(24);
+
+            expect(
+              payloadTagged.value instanceof Uint8Array ||
+                Buffer.isBuffer(payloadTagged.value),
+              "CBOR Tag 24 content must be a byte string (bstr) carrying the serialised MSO per ISO 18013-5 §9.1.2.4",
+            ).toBe(true);
+
+            const msoBytes = Buffer.isBuffer(payloadTagged.value)
+              ? payloadTagged.value
+              : Buffer.from(payloadTagged.value as Uint8Array);
+
+            const mso = decode(msoBytes) as
+              | Map<string, unknown>
+              | Record<string, unknown>;
+
+            expect(
+              mso !== null && typeof mso === "object",
+              "CBOR Tag 24 inner bytes must decode to a valid MobileSecurityObject map per ISO 18013-5 §9.1.2.4",
+            ).toBe(true);
+
+            log.debug(
+              `  ✓ Payload: bstr(${payloadBuf.length}B) → Tag 24 → MSO map(${msoBytes.length}B)`,
+            );
+
+            // ---------------------------------------------------------------
+            // 3a. Protected header must NOT contain content-type (label 3).
+            //     ISO 18013-5 §9.1.2.4 restricts the COSE_Sign1 protected
+            //     header to the alg parameter; the MSO type is statically
+            //     defined by the CDDL grammar, making content-type redundant
+            //     and non-conformant.
+            //     RFC 9052 §3.1 Table 2: label 3 = content-type.
+            // ---------------------------------------------------------------
+            const protectedHeaderMap = decode(
+              Buffer.isBuffer(protectedHeaderBytes)
+                ? protectedHeaderBytes
+                : Buffer.from(protectedHeaderBytes as Uint8Array),
+            ) as
+              | Map<number | string, unknown>
+              | Record<number | string, unknown>;
+
+            const protectedHasContentType =
+              protectedHeaderMap instanceof Map
+                ? protectedHeaderMap.has(CONTENT_TYPE_LABEL)
+                : CONTENT_TYPE_LABEL in
+                  (protectedHeaderMap as Record<number | string, unknown>);
+
+            expect(
+              !protectedHasContentType,
+              "Protected header must not contain the content-type parameter (COSE label 3) per ISO 18013-5 §9.1.2.4 / RFC 9052 §3.1",
+            ).toBe(true);
+
+            // ---------------------------------------------------------------
+            // 3b. Unprotected header must NOT contain content-type (label 3).
+            //     Same rationale as 3a; the unprotected header is already
+            //     decoded as a CBOR map by the cbor library.
+            // ---------------------------------------------------------------
+            const unprotectedHeaderMap = unprotectedHeader as
+              | Map<number, unknown>
+              | Record<number | string, unknown>;
+
+            const unprotectedHasContentType =
+              unprotectedHeaderMap instanceof Map
+                ? unprotectedHeaderMap.has(CONTENT_TYPE_LABEL)
+                : CONTENT_TYPE_LABEL in
+                  (unprotectedHeaderMap as Record<number | string, unknown>);
+
+            expect(
+              !unprotectedHasContentType,
+              "Unprotected header must not contain the content-type parameter (COSE label 3) per ISO 18013-5 §9.1.2.4 / RFC 9052 §3.1",
+            ).toBe(true);
+
+            log.debug(
+              `  ✓ content-type (label 3) correctly excluded from both protected and unprotected headers`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });
