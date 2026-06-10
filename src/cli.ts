@@ -54,6 +54,10 @@ function runTestCommand(
 function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
+  env.NODE_OPTIONS = [env.NODE_OPTIONS, "--disable-warning=ExperimentalWarning"]
+    .filter(Boolean)
+    .join(" ");
+
   if (options.fileIni) {
     env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
   }
@@ -212,15 +216,20 @@ testPresentation.action((options) => {
   runTestCommand("test:presentation", options);
 });
 
-program
-  .command("report:list")
+const report = program
+  .command("report")
+  .description("Manage conformance test reports");
+
+report
+  .command("list")
+  .alias("ls")
   .description("List all conformance test runs")
   .action(() => {
     reportList();
   });
 
-program
-  .command("report:create <run_id> <format>")
+report
+  .command("create <run_id> <format>")
   .description("Generate an HTML or PDF conformance report")
   .option(
     "--view <view>",
