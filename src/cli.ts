@@ -229,8 +229,10 @@ report
   });
 
 report
-  .command("create <run_id> <format>")
-  .description("Generate an HTML or PDF conformance report")
+  .command("create <run_id|latest> <format>")
+  .description(
+    "Generate an HTML or PDF conformance report for a run ID or the latest run",
+  )
   .option(
     "--view <view>",
     "Which view to render: both (default), executive, or technical",

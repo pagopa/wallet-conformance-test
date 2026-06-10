@@ -7,13 +7,17 @@ import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { openDb, resolveDbPath } from "@/report/db";
 import { renderPdf } from "@/report/pdf";
 import { serializeToVitestJson } from "@/report/serializer";
-import { closeSession, getSession } from "@/report/session-store";
+import {
+  closeSession,
+  getLatestSessionId,
+  getSession,
+} from "@/report/session-store";
 import { renderHtml } from "@/report/template";
 
 type ReportFormat = "html" | "pdf";
 
 export async function reportCreate(
-  runId: string,
+  runReference: string,
   format: string,
   view = "both",
 ): Promise<void> {
@@ -23,9 +27,17 @@ export async function reportCreate(
   const db = openDb(resolveDbPath());
 
   try {
-    const session = getSession(db, runId);
+    const resolvedRunId =
+      runReference === "latest" ? getLatestSessionId(db) : runReference;
+
+    if (!resolvedRunId) {
+      console.error("No conformance runs found.");
+      process.exit(1);
+    }
+
+    const session = getSession(db, resolvedRunId);
     if (!session) {
-      console.error(`Conformance run not found: ${runId}`);
+      console.error(`Conformance run not found: ${runReference}`);
       process.exit(1);
     }
 
@@ -38,7 +50,7 @@ export async function reportCreate(
     const sessionForRendering = { ...session };
     if (session.status === "OPEN" && report.status === "INCOMPLETE") {
       const closedAt = new Date().toISOString();
-      closeSession(db, runId, "INCOMPLETE", closedAt);
+      closeSession(db, resolvedRunId, "INCOMPLETE", closedAt);
       sessionForRendering.status = "INCOMPLETE";
       sessionForRendering.closedAt = closedAt;
     }
@@ -46,7 +58,7 @@ export async function reportCreate(
     const html = renderHtml(sessionForRendering, config, view);
     const outputPath = path.resolve(
       process.cwd(),
-      `conformance-report-${runId}.${format}`,
+      `conformance-report-${resolvedRunId}.${format}`,
     );
 
     if (format === "html") {

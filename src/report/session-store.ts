@@ -103,6 +103,23 @@ export function createSession(
   );
 }
 
+export function getLatestSessionId(
+  db: DatabaseSync,
+): string | undefined {
+  const row = db
+    .prepare(
+      `
+        SELECT id
+        FROM sessions
+        ORDER BY started_at DESC, id DESC
+        LIMIT 1
+      `,
+    )
+    .get() as { id: string } | undefined;
+
+  return row?.id;
+}
+
 export function getSession(
   db: DatabaseSync,
   sessionId: string,
