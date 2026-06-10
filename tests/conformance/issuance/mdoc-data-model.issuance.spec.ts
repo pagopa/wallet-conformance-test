@@ -1574,5 +1574,86 @@ testConfigs.forEach((testConfig) => {
         }
       },
     );
+
+    // =======================================================================
+    // CI_147 — Protected Header Required Signature Algorithm Value
+    // =======================================================================
+
+    test(
+      "CI_147: Mdoc Credential Format | The protected header successfully contains " +
+        "the required signature algorithm parameter (ES256=-7, ES384=-35, ES512=-36 per RFC 9053)",
+      async () => {
+        const log = baseLog.withTag("CI_147");
+        const DESCRIPTION =
+          "The issuerAuth COSE_Sign1 protected header alg parameter (label 1) contains " +
+          "a value corresponding to a required signature algorithm identifier per RFC 9053 " +
+          "(ES256=-7, ES384=-35, ES512=-36)";
+
+        log.start(
+          "Conformance test: issuerAuth protected header alg value per RFC 9053 / ISO 18013-5 §9.1.2.4",
+        );
+
+        // COSE algorithm integers → JWA names (RFC 9053 §2.1)
+        const COSE_ALG_LABEL = 1;
+        const REQUIRED_COSE_ALG_VALUES: ReadonlyMap<number, string> = new Map([
+          [-36, "ES512"],
+          [-35, "ES384"],
+          [-7, "ES256"],
+        ]);
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_147 skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const protectedHeaderBytes = issuerAuth[0];
+
+            const protectedHeaderMap = decode(
+              Buffer.isBuffer(protectedHeaderBytes)
+                ? protectedHeaderBytes
+                : Buffer.from(protectedHeaderBytes as Uint8Array),
+            ) as
+              | Map<number | string, unknown>
+              | Record<number | string, unknown>;
+
+            const algValue =
+              protectedHeaderMap instanceof Map
+                ? protectedHeaderMap.get(COSE_ALG_LABEL)
+                : (protectedHeaderMap as Record<number | string, unknown>)[
+                    COSE_ALG_LABEL
+                  ];
+
+            const allowedAlgList = [...REQUIRED_COSE_ALG_VALUES.entries()].map(
+              ([k, v]) => `${v}=${k}`,
+            );
+
+            expect(
+              REQUIRED_COSE_ALG_VALUES.has(algValue as number),
+              `Protected header alg (label 1) must be one of the required COSE algorithm identifiers per RFC 9053 (${allowedAlgList.join(", ")}), got ${String(algValue)}`,
+            ).toBe(true);
+
+            const algName =
+              REQUIRED_COSE_ALG_VALUES.get(algValue as number) ?? "unknown";
+
+            log.debug(
+              `  ✓ Protected header alg (label 1) = ${String(algValue)} (${algName}) — ` +
+                `required COSE signature algorithm per RFC 9053`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });
