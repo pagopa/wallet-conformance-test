@@ -43,8 +43,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
   useTestSummary(baseLog, testConfig.name);
 
-  test("RPR003: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
-    const log = baseLog.withTag("RPR003");
+  test("RPR-03: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
+    const log = baseLog.withTag("RPR-03");
 
     log.start(
       "Conformance test: Verifying QR-Code URL alignment with RP metadata",
@@ -72,7 +72,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(parsedQrCode?.clientId).toBeDefined();
       if (!parsedQrCode?.clientId) {
         throw new Error(
-          "RPR006 precondition failed: parsedQrCode.clientId is undefined. " +
+          "RPR-06 precondition failed: parsedQrCode.clientId is undefined. " +
             "The authorization request QR code did not contain a client_id.",
         );
       }
@@ -81,7 +81,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  Expected: ${issuer}`);
       log.debug(`  Actual: ${parsedQrCode.clientId}`);
       const rawClientId = parsedQrCode.clientId;
-      expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
+      expect(extractClientIdPrefix(rawClientId)).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
@@ -96,8 +96,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR009: Relying Party accepts defaults to GET method.", () => {
-    const log = baseLog.withTag("RPR009");
+  test("RPR-09: Relying Party accepts defaults to GET method.", () => {
+    const log = baseLog.withTag("RPR-09");
 
     log.start(
       "Conformance test: Verifying HTTP GET method support for request objects",
@@ -140,8 +140,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR012: Relying Party receives and validates response with state and nonce values.", () => {
-    const log = baseLog.withTag("RPR012");
+  test("RPR-12: Relying Party receives and validates response with state and nonce values.", () => {
+    const log = baseLog.withTag("RPR-12");
 
     log.start(
       "Conformance test: Verifying state and nonce parameter presence and format",
@@ -177,8 +177,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR019: User is redirected correctly, the endpoint works.", () => {
-    const log = baseLog.withTag("RPR019");
+  test("RPR-19: User is redirected correctly, the endpoint works.", () => {
+    const log = baseLog.withTag("RPR-19");
 
     log.start(
       "Conformance test: Verifying redirect URI functionality and response code",
@@ -225,8 +225,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR078: Wallet Attestation request correctly uses standard DCQL query.", () => {
-    const log = baseLog.withTag("RPR078");
+  test("RPR-78: Wallet Attestation request correctly uses standard DCQL query.", () => {
+    const log = baseLog.withTag("RPR-78");
 
     log.start(
       "Conformance test: Verifying DCQL query standard format compliance",
@@ -263,8 +263,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR079: claims parameter is not included in DCQL query for Wallet Attestation.", () => {
-    const log = baseLog.withTag("RPR079");
+  test("RPR-79: claims parameter is not included in DCQL query for Wallet Attestation.", () => {
+    const log = baseLog.withTag("RPR-79");
 
     log.start(
       "Conformance test: Verifying Wallet Attestation does not include claims parameter",
@@ -327,8 +327,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR080: vct_values parameter is correctly required in DCQL query.", () => {
-    const log = baseLog.withTag("RPR080");
+  test("RPR-80: vct_values parameter is correctly required in DCQL query.", () => {
+    const log = baseLog.withTag("RPR-80");
 
     log.start(
       "Conformance test: Verifying vct_values presence in DCQL credentials",
@@ -392,8 +392,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR083: Relying Party correctly provides and handles redirect_uri.", () => {
-    const log = baseLog.withTag("RPR083");
+  test("RPR-83: Relying Party correctly provides and handles redirect_uri.", () => {
+    const log = baseLog.withTag("RPR-83");
 
     log.start(
       "Conformance test: Verifying response_uri and redirect_uri handling",
@@ -450,8 +450,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR089: JWT typ parameter is correctly set to oauth-authz-req+jwt.", () => {
-    const log = baseLog.withTag("RPR089");
+  test("RPR-89: JWT typ parameter is correctly set to oauth-authz-req+jwt.", () => {
+    const log = baseLog.withTag("RPR-89");
 
     log.start("Conformance test: Verifying JWT typ header parameter");
 
@@ -477,8 +477,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR090: response_mode parameter is correctly set to direct_post.jwt.", () => {
-    const log = baseLog.withTag("RPR090");
+  test("RPR-90: response_mode parameter is correctly set to direct_post.jwt.", () => {
+    const log = baseLog.withTag("RPR-90");
 
     log.start("Conformance test: Verifying response_mode parameter value");
 
@@ -502,8 +502,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR091: response_type parameter is correctly set to vp_token.", () => {
-    const log = baseLog.withTag("RPR091");
+  test("RPR-91: response_type parameter is correctly set to vp_token.", () => {
+    const log = baseLog.withTag("RPR-91");
 
     log.start("Conformance test: Verifying response_type parameter value");
 
@@ -527,8 +527,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR092: Relying Party sends Authorization Response to correct response_uri endpoint.", () => {
-    const log = baseLog.withTag("RPR092");
+  test("RPR-92: Relying Party sends Authorization Response to correct response_uri endpoint.", () => {
+    const log = baseLog.withTag("RPR-92");
 
     log.start(
       "Conformance test: Verifying authorization response submission to response_uri",
@@ -561,8 +561,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR093: nonce parameter has sufficient entropy with at least 32 characters.", () => {
-    const log = baseLog.withTag("RPR093");
+  test("RPR-93: nonce parameter has sufficient entropy with at least 32 characters.", () => {
+    const log = baseLog.withTag("RPR-93");
 
     log.start("Conformance test: Verifying nonce entropy requirements");
 
@@ -587,8 +587,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR094: JWT exp parameter is correctly set and not expired.", () => {
-    const log = baseLog.withTag("RPR094");
+  test("RPR-94: JWT exp parameter is correctly set and not expired.", () => {
+    const log = baseLog.withTag("RPR-94");
 
     log.start("Conformance test: Verifying JWT expiration timestamp validity");
 
