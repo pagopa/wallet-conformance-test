@@ -3,6 +3,7 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { X509Certificate } from "@peculiar/x509";
 import cbor from "cbor";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -1838,6 +1839,146 @@ testConfigs.forEach((testConfig) => {
               x5chainPresent
                 ? `  ✓ label 33 (x5chain) = array[${(x5chainValue as unknown[]).length}] (X.509 certificate chain)`
                 : `  · label 33 (x5chain) not present — X.509-based authentication not in use`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
+    // =======================================================================
+    // CI_148a — x5chain is correctly included in the unprotected header
+    // =======================================================================
+
+    test(
+      "CI_148a: Mdoc IssuerAuth Unprotected Header | The x5chain is correctly " +
+        "included in the unprotected header (label 33) per RFC 9360 and ISO 18013-5 §9.1.2.4",
+      async () => {
+        const log = baseLog.withTag("CI_148a");
+        const DESCRIPTION =
+          "The issuerAuth COSE_Sign1 unprotected header contains the x5chain " +
+          "parameter (label 33) with at least one DER-encoded X.509 certificate. " +
+          "Each element must be parseable as a valid X.509 certificate (RFC 9360, " +
+          "ISO 18013-5 §9.1.2.4)";
+
+        log.start(
+          "Conformance test: x5chain present and valid in issuerAuth unprotected header (RFC 9360 / ISO 18013-5 §9.1.2.4)",
+        );
+
+        // COSE x5chain header label per RFC 9360
+        const X5CHAIN_LABEL = 33;
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_148a skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+
+            const unprotectedHeader = issuerAuth[1] as
+              | Map<number, unknown>
+              | Record<number | string, unknown>;
+
+            // Helper accessors (same pattern as CI_148)
+            const uhHas = (label: number): boolean =>
+              unprotectedHeader instanceof Map
+                ? unprotectedHeader.has(label)
+                : label in
+                  (unprotectedHeader as Record<number | string, unknown>);
+
+            const uhGet = (label: number): unknown =>
+              unprotectedHeader instanceof Map
+                ? unprotectedHeader.get(label)
+                : (unprotectedHeader as Record<number | string, unknown>)[
+                    label
+                  ];
+
+            // -----------------------------------------------------------------
+            // Assertion 1 — x5chain MUST be present (required for X.509 issuance)
+            // ISO 18013-5 §9.1.2.4 / RFC 9360
+            // -----------------------------------------------------------------
+            expect(
+              uhHas(X5CHAIN_LABEL),
+              "Unprotected header MUST contain x5chain (label 33) per RFC 9360 / ISO 18013-5 §9.1.2.4",
+            ).toBe(true);
+
+            const x5chainValue = uhGet(X5CHAIN_LABEL);
+
+            // -----------------------------------------------------------------
+            // Assertion 2 — value is a bstr or array of bstr (RFC 9360 §2)
+            //   Single cert: Buffer | Uint8Array
+            //   Chain:       Array<Buffer | Uint8Array>
+            // -----------------------------------------------------------------
+            const isSingleCert =
+              Buffer.isBuffer(x5chainValue) ||
+              x5chainValue instanceof Uint8Array;
+            const isArray = Array.isArray(x5chainValue);
+
+            expect(
+              isSingleCert || isArray,
+              "x5chain (label 33) must be a bstr (single certificate) or an array of bstr values per RFC 9360 §2",
+            ).toBe(true);
+
+            // Normalise to array for uniform iteration
+            const certList: unknown[] = isSingleCert
+              ? [x5chainValue]
+              : (x5chainValue as unknown[]);
+
+            expect(
+              certList.length > 0,
+              "x5chain must contain at least one DER-encoded X.509 certificate (RFC 9360 §2)",
+            ).toBe(true);
+
+            // -----------------------------------------------------------------
+            // Assertion 3 — each element must be a parseable DER-encoded X.509
+            //               certificate (@peculiar/x509 / RFC 9360 §2)
+            // -----------------------------------------------------------------
+            for (let i = 0; i < certList.length; i++) {
+              const certBytes = certList[i];
+
+              expect(
+                Buffer.isBuffer(certBytes) || certBytes instanceof Uint8Array,
+                `x5chain[${i}] must be a bstr (DER bytes) per RFC 9360 §2`,
+              ).toBe(true);
+
+              const derBuf = Buffer.isBuffer(certBytes)
+                ? certBytes
+                : Buffer.from(certBytes as Uint8Array);
+
+              const ab = derBuf.buffer.slice(
+                derBuf.byteOffset,
+                derBuf.byteOffset + derBuf.byteLength,
+              ) as ArrayBuffer;
+
+              let cert: undefined | X509Certificate;
+              try {
+                cert = new X509Certificate(ab);
+              } catch {
+                // will fail the expect below
+              }
+
+              expect(
+                cert,
+                `x5chain[${i}] must be parseable as a valid DER-encoded X.509 certificate (RFC 9360 §2)`,
+              ).toBeDefined();
+
+              log.debug(
+                `  ✓ x5chain[${i}] is a valid X.509 cert — subject: ${cert?.subject ?? "unknown"}`,
+              );
+            }
+
+            log.debug(
+              `  ✓ unprotected header x5chain (label 33) contains ${certList.length} valid certificate(s)`,
             );
           }
 
