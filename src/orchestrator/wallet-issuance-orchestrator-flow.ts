@@ -63,9 +63,10 @@ export class WalletIssuanceOrchestratorFlow {
   private fetchMetadataStep: FetchMetadataDefaultStep;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
-
   private nonceRequestStep: NonceRequestDefaultStep;
+
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
+  private sdkConfig: IoWalletSdkConfig;
   private tokenRequestStep: TokenRequestDefaultStep;
   private readonly TOTAL_STEPS = 6;
 
@@ -74,6 +75,9 @@ export class WalletIssuanceOrchestratorFlow {
     this.log = this.log.withTag(this.issuanceConfig.name);
 
     this.config = loadConfigWithHierarchy();
+    this.sdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
 
     this.log.setLogOptions({
       fileFormat: this.config.logging.log_file_format,
@@ -128,6 +132,7 @@ export class WalletIssuanceOrchestratorFlow {
       );
       const credentialOffer = await resolveCredentialOffer({
         callbacks: { fetch },
+        config: this.sdkConfig,
         credentialOffer: this.config.issuance.credential_offer_uri,
       });
       this.log.debug(
