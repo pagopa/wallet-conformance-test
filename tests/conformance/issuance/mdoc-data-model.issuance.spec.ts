@@ -1346,5 +1346,94 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    // =======================================================================
+    // CI_146 — Protected Header alg Parameter (Label 1 int) CBOR Encoding
+    // =======================================================================
+
+    test(
+      "CI_146: Mdoc Credential Format | The protected header successfully contains " +
+        "the `alg` parameter (label 1, int) properly encoded as a CBOR integer per RFC 9053",
+      async () => {
+        const log = baseLog.withTag("CI_146");
+        const DESCRIPTION =
+          "The issuerAuth COSE_Sign1 protected header contains label 1 (alg) encoded as " +
+          "a CBOR integer value identifying the algorithm used to verify the mdoc Digital " +
+          "Credential's cryptographic signature (RFC 9053)";
+
+        log.start(
+          "Conformance test: issuerAuth protected header alg parameter per RFC 9052 §3.1 / RFC 9053",
+        );
+
+        // COSE alg header parameter label is integer 1 (RFC 9052 §3.1)
+        const COSE_ALG_LABEL = 1;
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_146 skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const protectedHeaderBytes = issuerAuth[0];
+
+            // Decode protected header byte string → CBOR map
+            const protectedHeaderMap = decode(
+              Buffer.isBuffer(protectedHeaderBytes)
+                ? protectedHeaderBytes
+                : Buffer.from(protectedHeaderBytes as Uint8Array),
+            ) as
+              | Map<number | string, unknown>
+              | Record<number | string, unknown>;
+
+            // ---------------------------------------------------------------
+            // Label 1 (int) must be present as a CBOR integer key
+            // (COSE alg parameter, RFC 9052 §3.1)
+            // ---------------------------------------------------------------
+            const hasAlg =
+              protectedHeaderMap instanceof Map
+                ? protectedHeaderMap.has(COSE_ALG_LABEL)
+                : COSE_ALG_LABEL in
+                  (protectedHeaderMap as Record<number | string, unknown>);
+
+            expect(
+              hasAlg,
+              "Protected header must contain COSE label 1 (alg) as a CBOR integer key (RFC 9052 §3.1 / RFC 9053)",
+            ).toBe(true);
+
+            // ---------------------------------------------------------------
+            // Value must be a CBOR integer (RFC 9053 algorithm identifiers)
+            // ---------------------------------------------------------------
+            const algValue =
+              protectedHeaderMap instanceof Map
+                ? protectedHeaderMap.get(COSE_ALG_LABEL)
+                : (protectedHeaderMap as Record<number | string, unknown>)[
+                    COSE_ALG_LABEL
+                  ];
+
+            expect(
+              typeof algValue === "number" && Number.isInteger(algValue),
+              "Protected header alg value (label 1) must be a CBOR integer per RFC 9053",
+            ).toBe(true);
+
+            log.debug(
+              `  ✓ Protected header alg (label 1) = ${String(algValue)} ` +
+                `(COSE algorithm integer per RFC 9053)`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });
