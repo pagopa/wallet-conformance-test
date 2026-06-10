@@ -1655,5 +1655,78 @@ testConfigs.forEach((testConfig) => {
         }
       },
     );
+
+    // =======================================================================
+    // CI_147a — Protected Header Contains Only the Signature Algorithm
+    // =======================================================================
+
+    test(
+      "CI_147a: Mdoc Credential Format | The protected header does not contain " +
+        "elements different from the signature algorithm (RFC 9052 §3.1 / ISO 18013-5 §9.1.2.4)",
+      async () => {
+        const log = baseLog.withTag("CI_147a");
+        const DESCRIPTION =
+          "The issuerAuth COSE_Sign1 protected header contains only the alg parameter " +
+          "(label 1) and no other COSE header parameters. ISO 18013-5 §9.1.2.4 restricts " +
+          "the protected header to the algorithm identifier exclusively (RFC 9052 §3.1)";
+
+        log.start(
+          "Conformance test: issuerAuth protected header contains only alg per RFC 9052 §3.1 / ISO 18013-5 §9.1.2.4",
+        );
+
+        // COSE alg header parameter label is integer 1 (RFC 9052 §3.1)
+        const COSE_ALG_LABEL = 1;
+
+        let testSuccess = false;
+        try {
+          const mdocCredentials = getMdocCredentials();
+
+          if (mdocCredentials.length === 0) {
+            log.debug("→ CI_147a skipped: no mdoc credentials found");
+            testSuccess = true;
+            return;
+          }
+
+          for (const { raw } of mdocCredentials) {
+            const decoded = decode(raw) as Record<string, unknown>;
+
+            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const protectedHeaderBytes = issuerAuth[0];
+
+            // Decode protected header byte string → CBOR map (same path as CI_146/CI_147)
+            const protectedHeaderMap = decode(
+              Buffer.isBuffer(protectedHeaderBytes)
+                ? protectedHeaderBytes
+                : Buffer.from(protectedHeaderBytes as Uint8Array),
+            ) as
+              | Map<number | string, unknown>
+              | Record<number | string, unknown>;
+
+            // Collect all keys, normalising Object.keys() strings to numbers
+            // so they can be compared to the integer COSE label.
+            const allKeys: (number | string)[] =
+              protectedHeaderMap instanceof Map
+                ? [...protectedHeaderMap.keys()]
+                : Object.keys(protectedHeaderMap).map(Number);
+
+            const unexpectedKeys = allKeys.filter((k) => k !== COSE_ALG_LABEL);
+            const hasOnlyAlg = unexpectedKeys.length === 0;
+
+            expect(
+              hasOnlyAlg,
+              `Protected header must contain only the alg parameter (label 1) per RFC 9052 §3.1 / ISO 18013-5 §9.1.2.4. Unexpected labels found: [${unexpectedKeys.join(", ")}]`,
+            ).toBe(true);
+
+            log.debug(
+              `  ✓ Protected header contains only alg (label 1) — no extra parameters`,
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });
