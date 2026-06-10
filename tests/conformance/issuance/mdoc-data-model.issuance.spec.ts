@@ -1249,7 +1249,6 @@ testConfigs.forEach((testConfig) => {
       );
 
       let testSuccess = false;
-      expect.hasAssertions();
       try {
         const mdocCredentials = getMdocCredentials();
 
@@ -1260,7 +1259,10 @@ testConfigs.forEach((testConfig) => {
         }
 
         for (const { raw } of mdocCredentials) {
-          validateMdocRawCredential(raw, log);
+          expect(
+            () => validateMdocRawCredential(raw, log),
+            "mdoc credential must include all required elementIdentifiers in expected nameSpaces",
+          ).not.toThrow();
         }
 
         testSuccess = true;
