@@ -150,7 +150,7 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement",
-      { skip: process.env.CI_CD === "true" },
+      { skip: process.env.CI === "true" },
       async () => {
         const log = baseLog.withTag("CI_004");
         const DESCRIPTION =
