@@ -14,10 +14,36 @@ import { join, resolve } from "node:path";
 import type { CliOptions } from "@/logic";
 
 import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
-import { reportCreate } from "@/report/commands/report-create";
-import { reportList } from "@/report/commands/report-list";
 
 const nodeRequire = createRequire(import.meta.url);
+const experimentalWarningFlag = "--disable-warning=ExperimentalWarning";
+
+function ensureExperimentalWarningsDisabled(): void {
+  if (
+    process.env.NODE_OPTIONS?.split(/\s+/).includes(experimentalWarningFlag)
+  ) {
+    return;
+  }
+
+  const result = spawnSync(process.execPath, process.argv.slice(1), {
+    env: {
+      ...process.env,
+      NODE_OPTIONS: getNodeOptionsWithExperimentalWarningDisabled(
+        process.env.NODE_OPTIONS,
+      ),
+    },
+    shell: process.platform === "win32",
+    stdio: "inherit",
+  });
+
+  process.exit(result.status ?? 1);
+}
+
+function getNodeOptionsWithExperimentalWarningDisabled(
+  nodeOptions: string | undefined,
+): string {
+  return [nodeOptions, experimentalWarningFlag].filter(Boolean).join(" ");
+}
 
 function runTestCommand(
   script: "test:issuance" | "test:presentation",
@@ -54,9 +80,9 @@ function runTestCommand(
 function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
-  env.NODE_OPTIONS = [env.NODE_OPTIONS, "--disable-warning=ExperimentalWarning"]
-    .filter(Boolean)
-    .join(" ");
+  env.NODE_OPTIONS = getNodeOptionsWithExperimentalWarningDisabled(
+    env.NODE_OPTIONS,
+  );
 
   if (options.fileIni) {
     env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
@@ -224,7 +250,8 @@ report
   .command("list")
   .alias("ls")
   .description("List all conformance test runs")
-  .action(() => {
+  .action(async () => {
+    const { reportList } = await import("@/report/commands/report-list");
     reportList();
   });
 
@@ -239,8 +266,11 @@ report
     "both",
   )
   .action(async (runId, format, options) => {
+    const { reportCreate } = await import("@/report/commands/report-create");
     await reportCreate(runId, format, options.view);
   });
+
+ensureExperimentalWarningsDisabled();
 
 // Parse command-line arguments
 program.parse(process.argv);
