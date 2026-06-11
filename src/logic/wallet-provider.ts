@@ -1,3 +1,4 @@
+import * as x509 from "@peculiar/x509";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -7,13 +8,13 @@ import { Config, KeyPair } from "@/types";
 import { createKeys } from "./jwk";
 import {
   createSignedCertificate,
+  hasSanExtension,
   hasX509CertificateExpired,
   pemToBase64Der,
 } from "./pem";
 import { ensureDir, loadJwks } from "./utils";
 
 /** Filenames for persisted intermediate artefacts */
-const CA_INTERMEDIATE_JWKS = "ca_intermediate_jwks";
 const CA_INTERMEDIATE_CERT = "ca_intermediate_cert";
 const WALLET_PROVIDER_CERT = "wallet_provider_cert";
 
@@ -59,7 +60,7 @@ export async function loadWalletProviderCertificate(
   const cachedCA1 = loadCachedCert(ca1Path);
   const cachedCA2 = loadCachedCert(ca2Path);
 
-  if (cachedCA1 && cachedCA2) {
+  if (cachedCA1 && cachedCA2 && hasSanExtension(cachedCA2)) {
     return [cachedCA2, cachedCA1];
   }
 
@@ -76,11 +77,6 @@ export async function loadWalletProviderCertificate(
 
   // ── Generate intermediate key pair (KY1) ──────────────────────────────
   const intermediateKeyPair = await createKeys();
-  const intermediateJwksPath = path.resolve(
-    path.join(caCertPath, CA_INTERMEDIATE_JWKS),
-  );
-
-  writeFileSync(intermediateJwksPath, JSON.stringify(intermediateKeyPair));
 
   // ── CA1: signed by TA, attests KY1 (isCA = true) ─────────────────────
   const taSubject = trust.certificate_subject;
@@ -106,6 +102,12 @@ export async function loadWalletProviderCertificate(
     providerKeyPair,
     `CN=${providerDomain}`,
     false,
+    [
+      new x509.SubjectAlternativeNameExtension(
+        [{ type: "dns", value: providerDomain }],
+        false,
+      ),
+    ],
   );
 
   writeFileSync(ca2Path, ca2Cert.toString("pem"));
