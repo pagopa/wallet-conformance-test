@@ -20,7 +20,6 @@ export interface SessionSummary {
 interface CheckRow {
   description: string;
   error_message: null | string;
-  http_status: null | number;
   phase: ConformanceCheck["phase"];
   requirement_id: string;
   result: ConformanceCheck["result"];
@@ -51,10 +50,9 @@ export function appendCheck(
         phase,
         result,
         timestamp,
-        http_status,
         error_message
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
   ).run(
     randomUUID(),
@@ -145,7 +143,6 @@ export function getSession(
           phase,
           result,
           timestamp,
-          http_status,
           error_message
         FROM checks
         WHERE session_id = ?
@@ -158,7 +155,6 @@ export function getSession(
     checks: checksRows.map((check) => ({
       description: check.description,
       errorMessage: check.error_message ?? undefined,
-      httpStatus: check.http_status ?? undefined,
       phase: check.phase,
       requirementId: check.requirement_id,
       result: check.result,

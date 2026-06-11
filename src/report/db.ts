@@ -38,7 +38,6 @@ function initSchema(db: DatabaseSync): void {
       phase          TEXT NOT NULL,
       result         TEXT NOT NULL,
       timestamp      TEXT NOT NULL,
-      http_status    INTEGER,
       error_message  TEXT
     );
   `);
