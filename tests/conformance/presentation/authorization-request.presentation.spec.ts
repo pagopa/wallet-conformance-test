@@ -453,23 +453,49 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       log.info("→ Tampering KB-JWT signature inside the SD-JWT VP vp_token...");
 
       const tamperedVpToken: Record<string, string | string[]> = {};
-      for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
-        const tamperSdJwt = (sdJwt: string): string => {
-          const parts = sdJwt.split("~");
-          const kbJwt = parts[parts.length - 1] ?? "";
-          const jwtParts = kbJwt.split(".");
-          if (jwtParts.length !== 3) return sdJwt;
-          const sig = jwtParts[2] ?? "";
-          const tamperedSig =
-            sig.slice(0, -4) + (sig.endsWith("AAAA") ? "BBBB" : "AAAA");
-          jwtParts[2] = tamperedSig;
-          parts[parts.length - 1] = jwtParts.join(".");
-          return parts.join("~");
-        };
+      let tamperedSdJwtCount = 0;
 
+      const tamperSdJwt = (sdJwt: string): string => {
+        const parts = sdJwt.split("~");
+        const kbJwt = parts[parts.length - 1];
+        if (!kbJwt) {
+          throw new Error(
+            "Test setup failed: vp_token entry is not an SD-JWT with a KB-JWT segment",
+          );
+        }
+
+        const jwtParts = kbJwt.split(".");
+        if (jwtParts.length !== 3) {
+          throw new Error(
+            "Test setup failed: could not parse KB-JWT inside SD-JWT (expected 3 JWT parts)",
+          );
+        }
+
+        const sig = jwtParts[2] ?? "";
+        if (sig.length < 4) {
+          throw new Error(
+            "Test setup failed: KB-JWT signature too short to tamper",
+          );
+        }
+
+        const tamperedSig =
+          sig.slice(0, -4) + (sig.endsWith("AAAA") ? "BBBB" : "AAAA");
+        jwtParts[2] = tamperedSig;
+        parts[parts.length - 1] = jwtParts.join(".");
+        tamperedSdJwtCount++;
+        return parts.join("~");
+      };
+
+      for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
         tamperedVpToken[credId] = Array.isArray(sdJwtVp)
           ? sdJwtVp.map(tamperSdJwt)
           : tamperSdJwt(sdJwtVp);
+      }
+
+      if (tamperedSdJwtCount === 0) {
+        throw new Error(
+          "Test setup failed: no SD-JWT entries were tampered (KB-JWT signature not found)",
+        );
       }
 
       log.info(
