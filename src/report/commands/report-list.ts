@@ -24,16 +24,15 @@ export function reportList(): void {
       "CHECKS",
     ].join(" ");
 
-    const rows = sessions.map((session) => {
-      const checks = `${session.checksPerformed}/${session.checksTotal}`;
-      return [
+    const rows = sessions.map((session) =>
+      [
         session.runId.padEnd(RUN_ID_WIDTH),
         session.startedAt.padEnd(STARTED_AT_WIDTH),
         (session.closedAt ?? "-").padEnd(CLOSED_AT_WIDTH),
         session.status.padEnd(STATUS_WIDTH),
-        checks,
-      ].join(" ");
-    });
+        String(session.checksPerformed),
+      ].join(" "),
+    );
 
     console.log(header);
     for (const row of rows) {

@@ -10,7 +10,6 @@ import type {
 
 export interface SessionSummary {
   checksPerformed: number;
-  checksTotal: number;
   closedAt?: string;
   runId: string;
   startedAt: string;
@@ -191,7 +190,6 @@ export function listSessions(db: DatabaseSync): SessionSummary[] {
 
   return rows.map((row) => ({
     checksPerformed: row.checks_performed,
-    checksTotal: row.checks_performed,
     closedAt: row.closed_at ?? undefined,
     runId: row.id,
     startedAt: row.started_at,
