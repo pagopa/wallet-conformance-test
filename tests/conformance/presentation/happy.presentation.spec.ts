@@ -4,10 +4,11 @@ import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers"
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
+import { validateTrustChain } from "@pagopa/io-wallet-oid-federation";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import { fetchWithConfig, verifyJwt } from "@/logic";
+import { fetchWithConfig, partialCallbacks, verifyJwt } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -84,7 +85,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  Expected: ${issuer}`);
       log.debug(`  Actual: ${parsedQrCode.clientId}`);
       const rawClientId = parsedQrCode.clientId;
-      expect(extractClientIdPrefix(rawClientId)).toBe(issuer);
+      expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
@@ -217,6 +218,27 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         log.debug(
           "→ Checking request_uri is declared in metadata request_uris...",
         );
+
+        log.debug("→ Verifying trust chain from request object JWT header...");
+        const header =
+          authorizationRequestResult.response?.authorizationRequestHeader;
+        const trustChain = header?.trust_chain;
+
+        if (trustChain && trustChain.length > 0) {
+          log.debug(`  trust_chain present with ${trustChain.length} JWT(s)`);
+          await validateTrustChain([...trustChain], {
+            callbacks: {
+              fetch: fetchWithConfig(config.network),
+              hash: partialCallbacks.hash,
+              verifyJwt: partialCallbacks.verifyJwt,
+            },
+          });
+          log.debug("  ✅ Trust chain signature verification passed");
+        } else {
+          log.debug(
+            "  ℹ trust_chain not present in request object JWT header (may use x5c instead)",
+          );
+        }
 
         testSuccess = true;
       } finally {

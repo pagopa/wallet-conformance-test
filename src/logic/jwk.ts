@@ -7,14 +7,10 @@ import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import * as x509 from "@peculiar/x509";
 import {
   calculateJwkThumbprint,
-  compactVerify,
   decodeJwt,
-  decodeProtectedHeader,
   exportJWK,
   generateKeyPair,
-  importJWK,
   importX509,
-  type JWK,
 } from "jose";
 import { writeFileSync } from "node:fs";
 
@@ -214,49 +210,32 @@ async function jwkFromTrustChain(
   trustChain: string[],
   signerKid: string,
 ): Promise<Jwk> {
-  if (!trustChain[0]) throw new Error("empty trust chain");
+  const entityConfigurationJwt = trustChain[0];
+  if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
-  const allKeys: Jwk[] = [];
+  const keys: Jwk[] = [];
+  const decodedEntityConfig = decodeJwt(entityConfigurationJwt);
 
-  for (const jwt of trustChain) {
-    const header = decodeProtectedHeader(jwt);
-    const decoded = decodeJwt(jwt);
-    const keys: Jwk[] = [];
-
-    // Get top-level jwks
-    if (decoded.jwks) {
-      keys.push(
-        ...parseWithErrorHandling(jsonWebKeySetSchema, decoded.jwks).keys,
-      );
-    }
-
-    // Check also in metadata entries for additional jwks like openid_credential_verifier
-    if (decoded.metadata) {
-      for (const entry of Object.values(decoded.metadata)) {
-        if (entry.jwks && Array.isArray(entry.jwks.keys)) {
-          keys.push(
-            ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
-          );
-        }
-      }
-    }
-
-    // Verify self-signature using the key identified by the header kid (applies to
-    // self-signed JWTs such as entity configurations; entity statements are skipped
-    // when their issuer key is not present in their own payload)
-    const signingKey = keys.find((k) => k.kid === header.kid);
-    if (signingKey) {
-      const cryptoKey = await importJWK(
-        signingKey as JWK,
-        (header.alg ?? "ES256") as string,
-      );
-      await compactVerify(jwt, cryptoKey);
-    }
-
-    allKeys.push(...keys);
+  // Get top-level jwks
+  if (decodedEntityConfig.jwks) {
+    keys.push(
+      ...parseWithErrorHandling(jsonWebKeySetSchema, decodedEntityConfig.jwks)
+        .keys,
+    );
   }
 
-  const federationJwk = allKeys.find((key) => key.kid === signerKid);
+  // Check also in metadata entries for additional jwks like openid_credential_verifier
+  if (decodedEntityConfig.metadata) {
+    for (const entry of Object.values(decodedEntityConfig.metadata)) {
+      if (entry.jwks && Array.isArray(entry.jwks.keys)) {
+        keys.push(
+          ...parseWithErrorHandling(jsonWebKeySetSchema, entry.jwks).keys,
+        );
+      }
+    }
+  }
+
+  const federationJwk = keys.find((key) => key.kid === signerKid);
   if (!federationJwk) throw new Error("key not found in trust chain");
 
   return federationJwk;
