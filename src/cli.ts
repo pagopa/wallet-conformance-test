@@ -11,8 +11,8 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 
-import type { CliOptions } from "@/logic";
-
+import { runInit } from "@/functions";
+import { type CliOptions, loadConfigWithHierarchy } from "@/logic";
 import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
@@ -208,6 +208,26 @@ addCommonOptions(testPresentation);
 
 testPresentation.action((options) => {
   runTestCommand("test:presentation", options);
+});
+
+// Init Command
+const init = program
+  .command("init")
+  .description("Pre-generate cryptographic artifacts for tests")
+  .option("--force", "Overwrite existing artifacts even if valid (env: FORCE)");
+
+addCommonOptions(init);
+
+init.action(async (options) => {
+  try {
+    const config = loadConfigWithHierarchy(options);
+    await runInit({ config, force: options.force });
+  } catch (e) {
+    const err = e as Error;
+
+    console.error(`Initialization failed: ${err.message}`);
+    process.exit(1);
+  }
 });
 
 // Parse command-line arguments
