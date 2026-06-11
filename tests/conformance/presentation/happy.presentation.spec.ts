@@ -81,7 +81,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  Expected: ${issuer}`);
       log.debug(`  Actual: ${parsedQrCode.clientId}`);
       const rawClientId = parsedQrCode.clientId;
-      expect(extractClientIdPrefix(rawClientId).clientId).toBe(issuer);
+      const extractedClientId = extractClientIdPrefix(rawClientId).clientId;
+      log.debug(`  Extracted client_id prefix: ${extractedClientId}`);
+      expect(extractedClientId).toBe(issuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
