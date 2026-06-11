@@ -6,12 +6,7 @@ import type { ReportView } from "@/report/template/types";
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { openDb, resolveDbPath } from "@/report/db";
 import { renderPdf } from "@/report/pdf";
-import { serializeToVitestJson } from "@/report/serializer";
-import {
-  closeSession,
-  getLatestSessionId,
-  getSession,
-} from "@/report/session-store";
+import { getLatestSessionId, getSession } from "@/report/session-store";
 import { renderHtml } from "@/report/template";
 
 type ReportFormat = "html" | "pdf";
@@ -42,20 +37,7 @@ export async function reportCreate(
     }
 
     const config = loadConfigWithHierarchy();
-    const report = serializeToVitestJson(
-      session,
-      config.testing.session_ttl_hours,
-    );
-
-    const sessionForRendering = { ...session };
-    if (session.status === "OPEN" && report.status === "INCOMPLETE") {
-      const closedAt = new Date().toISOString();
-      closeSession(db, resolvedRunId, "INCOMPLETE", closedAt);
-      sessionForRendering.status = "INCOMPLETE";
-      sessionForRendering.closedAt = closedAt;
-    }
-
-    const html = renderHtml(sessionForRendering, config, view);
+    const html = renderHtml(session, config, view);
     const outputPath = path.resolve(
       process.cwd(),
       `conformance-report-${resolvedRunId}.${format}`,

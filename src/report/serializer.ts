@@ -6,11 +6,8 @@ import type {
   VitestTestSuite,
 } from "@/report/types";
 
-type SerializedStatus = "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
-
 export function serializeToVitestJson(
   session: ConformanceSession,
-  ttlHours: number,
 ): VitestJsonReport {
   const testResults: VitestTestSuite[] = [
     toSuite(session.phase, session.checks),
@@ -60,7 +57,7 @@ export function serializeToVitestJson(
     numPendingTestSuites += 1;
   }
 
-  const status = computeSerializedStatus(session, ttlHours);
+  const status = session.status;
 
   return {
     numFailedTests,
@@ -78,27 +75,6 @@ export function serializeToVitestJson(
     success: status === "PASSED",
     testResults,
   };
-}
-
-function computeSerializedStatus(
-  session: ConformanceSession,
-  ttlHours: number,
-): SerializedStatus {
-  if (session.status !== "OPEN") {
-    return session.status;
-  }
-
-  const startedAt = Date.parse(session.startedAt);
-  if (Number.isNaN(startedAt)) {
-    return session.status;
-  }
-
-  const ageMs = Date.now() - startedAt;
-  if (ageMs > ttlHours * 60 * 60 * 1000) {
-    return "INCOMPLETE";
-  }
-
-  return session.status;
 }
 
 function toSuite(name: string, checks: ConformanceCheck[]): VitestTestSuite {
