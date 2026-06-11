@@ -60,7 +60,7 @@ function buildReportData(
     checks,
     compliancePct,
     complianceTier,
-    criticalChecks: checks.filter((c) => c.result === "FAIL").slice(0, 5),
+    criticalChecks: checks.filter((c) => c.result === "FAIL"),
     entityName: resolveEntityName(config),
     executedAt: session.startedAt ? formatDateTime(session.startedAt) : "-",
     failCount,
