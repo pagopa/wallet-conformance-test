@@ -4,6 +4,7 @@ import {
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import * as x509 from "@peculiar/x509";
 import {
   calculateJwkThumbprint,
   decodeJwt,
@@ -120,7 +121,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
       if (!trustChain || !trustChain.length) {
         throw new Error("missing signer's trust chain");
       }
-      return jwkFromTrustChain(trustChain, kid);
+      return await jwkFromTrustChain(trustChain, kid);
     case "jwk":
       return parseWithErrorHandling(
         jsonWebKeySchema,
@@ -162,6 +163,26 @@ async function jwkFromCertificateChain(
     throw new Error("missing x5c certificate");
   }
 
+  if (x5c.length > 1) {
+    const certs = x5c.map(
+      (certB64) => new x509.X509Certificate(Buffer.from(certB64, "base64")),
+    );
+    for (let i = 0; i < certs.length - 1; i++) {
+      const cert = certs[i];
+      const issuerCert = certs[i + 1];
+      if (!cert || !issuerCert) break;
+      const valid = await cert.verify({
+        publicKey: issuerCert,
+        signatureOnly: true,
+      });
+      if (!valid) {
+        throw new Error(
+          `x5c certificate chain signature invalid at index ${i}`,
+        );
+      }
+    }
+  }
+
   const pem = convertBase64DerToPem(x5c[0] as string);
   const key = await importX509(pem, alg, { extractable: true });
   const jwk = await exportJWK(key);
@@ -177,13 +198,18 @@ async function jwkFromCertificateChain(
 
 /**
  * Extracts a JWK from a trust chain array based on the signer's KID.
+ * Also cryptographically verifies the entity configuration self-signature.
  *
  * @param trustChain An array of JWTs representing the trust chain.
  * @param signerKid The KID of the signer to look for in the trust chain.
  * @returns The JWK found in the trust chain.
- * @throws An error if the trust chain is empty or the key is not found.
+ * @throws An error if the trust chain is empty, the entity config signature is invalid,
+ *         or the key is not found.
  */
-function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
+async function jwkFromTrustChain(
+  trustChain: string[],
+  signerKid: string,
+): Promise<Jwk> {
   const entityConfigurationJwt = trustChain[0];
   if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
