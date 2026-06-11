@@ -202,10 +202,9 @@ export function renderHeader(versionPill: string): string {
   return `
     <header class="topbar">
       <div class="brand">
-        <svg class="brand-logo" viewBox="0 0 28 30" aria-hidden="true" focusable="false">
-          <path d="M3 4.5 11.5 9v18L3 22.4V4.5Z" fill="#0B6DD8"/>
-          <path d="M16.5 2.8 25 7.3v18l-8.5-4.6V2.8Z" fill="#075FCA"/>
-        </svg>
+      <svg width="30" height="36" viewBox="0 0 30 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14.1526 0.177162C13.9351 0.0535781 13.7039 -0.00134806 13.4796 2.50963e-05C12.771 0.00551771 12.1212 0.575376 12.1253 1.36906L12.165 8.63578L2.05052 2.94132C1.83165 2.81773 1.60047 2.76281 1.37613 2.76418C0.667548 2.76967 0.0232548 3.33953 0.0218868 4.13322L0 28.0837C0 29.1644 0.484246 30.1064 1.52113 30.69L10.6137 35.8228C10.8326 35.9464 11.0638 36.0014 11.2881 36C11.9967 35.9945 12.6424 35.4246 12.6424 34.6309V10.0707L17.4493 12.7566C18.4875 13.3361 18.9704 14.2822 18.9704 15.3629V29.7535L27.9618 34.8163C28.1807 34.9399 28.4118 34.9948 28.6362 34.9935C29.3448 34.988 29.9904 34.4181 29.9904 33.6244L30 10.8507C30 9.77001 29.5158 8.82802 28.4789 8.24444L14.1526 0.177162Z" fill="#0066CC"/>
+      </svg>
         <div>
           <h1 class="brand-title">IT-Wallet Conformance Report</h1>
           <p class="brand-subtitle">Risultato della verifica di conformità tecnica</p>
