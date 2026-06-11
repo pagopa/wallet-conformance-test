@@ -30,11 +30,6 @@ export interface PushedAuthorizationRequestStepOptions {
   baseUrl: string;
 
   /**
-   * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
-   */
-  clientId: string;
-
-  /**
    * Code verifier used in the Pushed Authorization Request, if not provided it will be generated internally
    */
   codeVerifier?: string;
