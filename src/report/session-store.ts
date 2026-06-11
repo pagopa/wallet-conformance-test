@@ -30,7 +30,6 @@ interface SessionRow {
   closed_at: null | string;
   id: string;
   phase: Phase;
-  session_id: string;
   started_at: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
 }
@@ -62,7 +61,6 @@ export function appendCheck(
     check.phase,
     check.result,
     check.timestamp,
-    check.httpStatus ?? null,
     check.errorMessage ?? null,
   );
 }
@@ -88,12 +86,11 @@ export function createSession(
 ): void {
   db.prepare(
     `
-      INSERT INTO sessions (id, session_id, started_at, closed_at, phase, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, started_at, closed_at, phase, status)
+      VALUES (?, ?, ?, ?, ?)
     `,
   ).run(
     session.id,
-    session.sessionId,
     session.startedAt,
     session.closedAt ?? null,
     session.phase,
@@ -123,7 +120,7 @@ export function getSession(
   const sessionRow = db
     .prepare(
       `
-        SELECT id, session_id, started_at, closed_at, phase, status
+        SELECT id, started_at, closed_at, phase, status
         FROM sessions
         WHERE id = ?
       `,
@@ -163,7 +160,6 @@ export function getSession(
     closedAt: sessionRow.closed_at ?? undefined,
     id: sessionRow.id,
     phase: sessionRow.phase,
-    sessionId: sessionRow.session_id,
     startedAt: sessionRow.started_at,
     status: sessionRow.status,
   };

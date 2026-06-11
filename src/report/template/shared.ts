@@ -28,8 +28,7 @@ interface FooterData {
 }
 
 export function renderCheckCard(check: ConformanceCheck): string {
-  const { description, errorMessage, httpStatus, requirementId, result } =
-    check;
+  const { description, errorMessage, requirementId, result } = check;
 
   if (result === "PASS") {
     return `
@@ -54,14 +53,6 @@ export function renderCheckCard(check: ConformanceCheck): string {
     const problemText = escapeHtml(
       errorMessage ?? "Verifica fallita senza dettagli di errore.",
     );
-    const httpLine =
-      httpStatus !== undefined
-        ? `<div class="detail-box">
-              <span class="detail-label">Stato HTTP:</span>
-              <p class="detail-text">${httpStatus}</p>
-            </div>`
-        : "";
-
     return `
       <article class="check-card fail">
         <div class="check-main">
@@ -83,7 +74,6 @@ export function renderCheckCard(check: ConformanceCheck): string {
             <span class="detail-label">Problema Identificato:</span>
             <p class="detail-text">${problemText}</p>
           </div>
-          ${httpLine}
         </div>
       </article>`;
   }

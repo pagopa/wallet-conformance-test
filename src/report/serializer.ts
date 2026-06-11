@@ -120,7 +120,6 @@ function toSuite(name: string, checks: ConformanceCheck[]): VitestTestSuite {
         line: 0,
       },
       meta: {
-        httpStatus: check.httpStatus,
         requirementId: check.requirementId,
       },
       status:

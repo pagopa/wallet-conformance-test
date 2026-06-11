@@ -1,7 +1,6 @@
 export interface ConformanceCheck {
   description: string;
   errorMessage?: string;
-  httpStatus?: number;
   phase: Phase;
   requirementId: string;
   result: "FAIL" | "NOT_REACHED" | "PASS";
@@ -13,7 +12,6 @@ export interface ConformanceSession {
   closedAt?: string;
   id: string;
   phase: Phase;
-  sessionId: string;
   startedAt: string;
   status: "FAILED" | "INCOMPLETE" | "OPEN" | "PASSED";
 }
@@ -30,7 +28,6 @@ export interface VitestAssertionResult {
     line: number;
   };
   meta: {
-    httpStatus?: number;
     requirementId: string;
   };
   status: "failed" | "passed" | "pending" | "todo";

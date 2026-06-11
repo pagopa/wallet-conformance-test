@@ -50,13 +50,6 @@ export class ConformanceReporter implements Reporter {
       timestamp: new Date().toISOString(),
     };
 
-    const meta = testCase.meta();
-    const httpStatus = this.readHttpStatus(meta);
-
-    if (httpStatus !== undefined) {
-      check.httpStatus = httpStatus;
-    }
-
     if (result === "FAIL") {
       check.errorMessage = this.extractFailureMessage(testCase);
     }
@@ -85,7 +78,6 @@ export class ConformanceReporter implements Reporter {
     createSession(this.db, {
       id: this.sessionId,
       phase: this.testType,
-      sessionId: this.sessionId,
       startedAt: new Date().toISOString(),
       status: "OPEN",
     });
@@ -131,15 +123,6 @@ export class ConformanceReporter implements Reporter {
 
   private parseTestCaseName(name: string): string {
     return name.replace(REQUIREMENT_ID_PATTERN, "");
-  }
-
-  private readHttpStatus(meta: unknown): number | undefined {
-    if (!meta || typeof meta !== "object") {
-      return undefined;
-    }
-
-    const value = (meta as { httpStatus?: unknown }).httpStatus;
-    return typeof value === "number" ? value : undefined;
   }
 
   private resolveFinalStatus(results: readonly CheckResult[]): SessionStatus {
