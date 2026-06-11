@@ -24,10 +24,9 @@ export interface TamperedPopOptions {
   authorizationServer: string;
   /** The wallet attestation JWT to embed in the PoP */
   clientAttestation: string;
+  config: IoWalletSdkConfig;
   /** Override: use a specific expiry (e.g. Date in the past for an expired PoP) */
   expiresAt?: Date;
-  /** The IoWalletSdkConfig to use for signing (allows version overrides) */
-  ioWalletSdkConfig: IoWalletSdkConfig;
   /** Override: use a specific `issuedAt` */
   issuedAt?: Date;
   /** Override: use a fixed jti (for replay tests) */
@@ -61,8 +60,8 @@ export async function buildTamperedPopJwt(
   const {
     authorizationServer,
     clientAttestation,
+    config,
     expiresAt,
-    ioWalletSdkConfig,
     issuedAt,
     jti,
     realUnitKey,
@@ -95,7 +94,7 @@ export async function buildTamperedPopJwt(
       authorizationServer: wrongAud ?? authorizationServer,
       callbacks: customCallbacks,
       clientAttestation,
-      config: ioWalletSdkConfig,
+      config,
       expiresAt,
       issuedAt,
       jti,
@@ -131,12 +130,48 @@ export async function buildTamperedPopJwt(
     authorizationServer: wrongAud ?? authorizationServer,
     callbacks: realCallbacks,
     clientAttestation,
-    config: ioWalletSdkConfig,
+    config,
     expiresAt,
     issuedAt,
     jti,
     signer,
   });
+}
+
+/**
+ * Creates a fake AttestationResponse whose wallet attestation JWT is expired.
+ */
+export async function createExpiredAttestationResponse(): Promise<
+  Omit<AttestationResponse, "created">
+> {
+  const { privateKey, publicKey } = await generateKeyPair("ES256", {
+    extractable: true,
+  });
+  const privateJwk = await exportJWK(privateKey);
+  const publicJwk = await exportJWK(publicKey);
+  const kid = "expired-key-id";
+
+  const fakeKey: { privateKey: KeyPairJwk; publicKey: KeyPairJwk } = {
+    privateKey: { ...privateJwk, kid, kty: "EC" as const },
+    publicKey: { ...publicJwk, kid, kty: "EC" as const },
+  };
+
+  const signingKey = await importJWK(privateJwk, "ES256");
+  const attestation = await new SignJWT({
+    cnf: { jwk: fakeKey.publicKey },
+    iss: "https://wallet-provider.example.org",
+    sub: "expired-wallet-instance",
+  })
+    .setProtectedHeader({ alg: "ES256", kid })
+    .setIssuedAt()
+    .setExpirationTime("-1h")
+    .sign(signingKey);
+
+  return {
+    attestation,
+    providerKey: fakeKey,
+    unitKey: fakeKey,
+  };
 }
 
 /**
@@ -176,6 +211,46 @@ export async function createFakeAttestationResponse(): Promise<
 
   return {
     attestation: fakeAttestation,
+    providerKey: fakeKey,
+    unitKey: fakeKey,
+  };
+}
+
+/**
+ * Creates a fake AttestationResponse whose wallet attestation JWT has a
+ * tampered payload, breaking its cryptographic signature.
+ */
+export async function createTamperedAttestationResponse(
+  field: string,
+  value: unknown,
+): Promise<Omit<AttestationResponse, "created">> {
+  const { privateKey, publicKey } = await generateKeyPair("ES256", {
+    extractable: true,
+  });
+  const privateJwk = await exportJWK(privateKey);
+  const publicJwk = await exportJWK(publicKey);
+  const kid = "tampered-key-id";
+
+  const fakeKey: { privateKey: KeyPairJwk; publicKey: KeyPairJwk } = {
+    privateKey: { ...privateJwk, kid, kty: "EC" as const },
+    publicKey: { ...publicJwk, kid, kty: "EC" as const },
+  };
+
+  const signingKey = await importJWK(privateJwk, "ES256");
+  const attestation = await new SignJWT({
+    cnf: { jwk: fakeKey.publicKey },
+    iss: "https://wallet-provider.example.org",
+    sub: "tampered-wallet-instance",
+  })
+    .setProtectedHeader({ alg: "ES256", kid })
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(signingKey);
+
+  const tampered = tamperJwtPayload(attestation, field, value);
+
+  return {
+    attestation: tampered,
     providerKey: fakeKey,
     unitKey: fakeKey,
   };
