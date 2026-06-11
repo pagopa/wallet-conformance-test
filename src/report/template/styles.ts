@@ -186,7 +186,14 @@ export const REPORT_CSS = `
   .check-card.partial { border-color: var(--yellow-border); background: var(--yellow-bg); color: var(--yellow); }
   .check-main { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: start; gap: 10px; }
   .status-icon { width: 19px; height: 19px; flex: 0 0 auto; }
-  .check-line { display: flex; align-items: center; gap: 6px; min-width: 0; padding-top: 1px; }
+  .check-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+    padding-top: 1px;
+  }
   .code {
     display: inline-flex;
     align-items: center;
@@ -203,7 +210,16 @@ export const REPORT_CSS = `
     letter-spacing: 0.005em;
     white-space: nowrap;
   }
-  .check-title { color: inherit; font-size: 12px; line-height: 1.35; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .check-title {
+    min-width: 0;
+    flex: 1 1 220px;
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 800;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
   .badge {
     display: inline-flex;
     align-items: center;
