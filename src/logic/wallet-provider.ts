@@ -15,7 +15,6 @@ import {
 import { ensureDir, loadJwks } from "./utils";
 
 /** Filenames for persisted intermediate artefacts */
-const CA_INTERMEDIATE_JWKS = "ca_intermediate_jwks";
 const CA_INTERMEDIATE_CERT = "ca_intermediate_cert";
 const WALLET_PROVIDER_CERT = "wallet_provider_cert";
 
@@ -78,11 +77,6 @@ export async function loadWalletProviderCertificate(
 
   // ── Generate intermediate key pair (KY1) ──────────────────────────────
   const intermediateKeyPair = await createKeys();
-  const intermediateJwksPath = path.resolve(
-    path.join(caCertPath, CA_INTERMEDIATE_JWKS),
-  );
-
-  writeFileSync(intermediateJwksPath, JSON.stringify(intermediateKeyPair));
 
   // ── CA1: signed by TA, attests KY1 (isCA = true) ─────────────────────
   const taSubject = trust.certificate_subject;

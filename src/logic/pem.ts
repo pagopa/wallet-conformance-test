@@ -21,6 +21,8 @@ const SIGNING_ALGORITHM = {
   namedCurve: "P-256",
 } as const satisfies EcdsaParams & EcKeyImportParams;
 
+export const OID_SUBJECT_ALTERNATIVE_NAME = "2.5.29.17" as const;
+
 /**
  * Creates a self-signed X.509 certificate and saves it to a file in PEM format.
  *
@@ -219,8 +221,13 @@ export async function createSignedCertificate(
  * SubjectAlternativeName extension (OID 2.5.29.17).
  */
 export function hasSanExtension(certDerBase64: string): boolean {
-  const cert = new x509.X509Certificate(certDerBase64);
-  return !!cert.getExtension("2.5.29.17");
+  if (!certDerBase64) return false;
+  try {
+    const cert = new x509.X509Certificate(certDerBase64);
+    return !!cert.getExtension(OID_SUBJECT_ALTERNATIVE_NAME);
+  } catch {
+    return false;
+  }
 }
 
 export function hasX509CertificateExpired(

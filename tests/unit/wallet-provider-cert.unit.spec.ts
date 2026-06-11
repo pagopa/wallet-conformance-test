@@ -1,21 +1,26 @@
 import * as x509 from "@peculiar/x509";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { createKeys } from "@/logic/jwk";
-import { createSignedCertificate, hasSanExtension } from "@/logic/pem";
+import {
+  createSignedCertificate,
+  hasSanExtension,
+  OID_SUBJECT_ALTERNATIVE_NAME,
+} from "@/logic/pem";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 
-const SAN_OID = "2.5.29.17";
-
 describe("wallet_provider_cert SAN", () => {
-  it("leaf cert created with SAN contains the expected dNSName entry", async () => {
-    const issuerKeyPair = await createKeys();
-    const subjectKeyPair = await createKeys();
+  let certWithSan: x509.X509Certificate;
+  let certWithSanDerBase64: string;
+  let certWithoutSanDerBase64: string;
 
-    const cert = await createSignedCertificate(
-      issuerKeyPair,
+  beforeAll(async () => {
+    const issuerKp = await createKeys();
+    const subjectKp = await createKeys();
+    certWithSan = await createSignedCertificate(
+      issuerKp,
       "CN=TestIssuer",
-      subjectKeyPair,
+      subjectKp,
       `CN=${LOCAL_WP_HOST}`,
       false,
       [
@@ -25,54 +30,54 @@ describe("wallet_provider_cert SAN", () => {
         ),
       ],
     );
+    certWithSanDerBase64 = Buffer.from(certWithSan.rawData).toString("base64");
 
+    const issuerKp2 = await createKeys();
+    const subjectKp2 = await createKeys();
+    const certWithoutSan = await createSignedCertificate(
+      issuerKp2,
+      "CN=TestIssuer",
+      subjectKp2,
+      `CN=${LOCAL_WP_HOST}`,
+      false,
+    );
+    certWithoutSanDerBase64 = Buffer.from(certWithoutSan.rawData).toString(
+      "base64",
+    );
+  });
+
+  it("leaf cert created with SAN extension carries OID 2.5.29.17", () => {
     expect(
-      cert.getExtension(SAN_OID),
-      "SAN extension (OID 2.5.29.17) must be present",
+      certWithSan.getExtension(OID_SUBJECT_ALTERNATIVE_NAME),
+      "SAN extension must be present",
     ).not.toBeNull();
   });
 
-  it("hasSanExtension returns true for a cert that carries a SAN", async () => {
-    const issuerKeyPair = await createKeys();
-    const subjectKeyPair = await createKeys();
-
-    const cert = await createSignedCertificate(
-      issuerKeyPair,
-      "CN=TestIssuer",
-      subjectKeyPair,
-      `CN=${LOCAL_WP_HOST}`,
-      false,
-      [
-        new x509.SubjectAlternativeNameExtension(
-          [{ type: "dns", value: LOCAL_WP_HOST }],
-          false,
-        ),
-      ],
-    );
-
-    const certDerBase64 = Buffer.from(cert.rawData).toString("base64");
+  it("hasSanExtension returns true for cert with SAN", () => {
     expect(
-      hasSanExtension(certDerBase64),
+      hasSanExtension(certWithSanDerBase64),
       "hasSanExtension should return true when SAN is present",
     ).toBe(true);
   });
 
-  it("hasSanExtension returns false for a cert without SAN", async () => {
-    const issuerKeyPair = await createKeys();
-    const subjectKeyPair = await createKeys();
-
-    const cert = await createSignedCertificate(
-      issuerKeyPair,
-      "CN=TestIssuer",
-      subjectKeyPair,
-      `CN=${LOCAL_WP_HOST}`,
-      false,
-    );
-
-    const certDerBase64 = Buffer.from(cert.rawData).toString("base64");
+  it("hasSanExtension returns false for cert without SAN", () => {
     expect(
-      hasSanExtension(certDerBase64),
+      hasSanExtension(certWithoutSanDerBase64),
       "hasSanExtension should return false when SAN is absent",
+    ).toBe(false);
+  });
+
+  it("hasSanExtension returns false for an empty string", () => {
+    expect(
+      hasSanExtension(""),
+      "empty string should not throw and should return false",
+    ).toBe(false);
+  });
+
+  it("hasSanExtension returns false for malformed base64 input", () => {
+    expect(
+      hasSanExtension("not-valid-der-base64!!!"),
+      "malformed input should not throw and should return false",
     ).toBe(false);
   });
 });
