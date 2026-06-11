@@ -13,9 +13,9 @@ import { join, resolve } from "node:path";
 
 import type { CliOptions } from "@/logic";
 
+import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 import { reportCreate } from "@/report/commands/report-create";
 import { reportList } from "@/report/commands/report-list";
-import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
 
