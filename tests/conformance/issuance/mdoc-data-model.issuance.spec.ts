@@ -1520,9 +1520,9 @@ testConfigs.forEach((testConfig) => {
         // COSE algorithm integers → algorithm names (RFC 9864 / IT-Wallet mdoc profile)
         const COSE_ALG_LABEL = 1;
         const REQUIRED_COSE_ALG_VALUES: ReadonlyMap<number, string> = new Map([
-          [-9, "ESP256"],
-          [-51, "ESP384"],
           [-52, "ESP512"],
+          [-51, "ESP384"],
+          [-9, "ESP256"],
         ]);
 
         let testSuccess = false;
@@ -1736,31 +1736,40 @@ testConfigs.forEach((testConfig) => {
             );
 
             // -----------------------------------------------------------------
-            // Label 33 (x5chain) — if present, must be an array of
-            // DER-encoded X.509 certificates (RFC 9360).
-            // Required for X.509 certificate-based authentication.
+            // Label 33 (x5chain) — if present, must be a bare bstr (single
+            // certificate) or an array of DER-encoded X.509 certificates
+            // (RFC 9360 §2). Required for X.509 certificate-based auth.
             // -----------------------------------------------------------------
-            const x5chainIsArray =
+            const x5chainIsBstr =
+              !x5chainPresent ||
+              Buffer.isBuffer(x5chainValue) ||
+              x5chainValue instanceof Uint8Array;
+            const x5chainIsArrayForm =
               !x5chainPresent || Array.isArray(x5chainValue);
+            const x5chainValidEncoding = x5chainIsBstr || x5chainIsArrayForm;
 
             expect(
-              x5chainIsArray,
-              "Unprotected header label 33 (x5chain), when present, must be an array of DER-encoded X.509 certificates per RFC 9360",
+              x5chainValidEncoding,
+              "Unprotected header label 33 (x5chain), when present, must be a bstr (single cert) or an array of bstr per RFC 9360 §2",
             ).toBe(true);
 
             const x5chainIsNonEmpty =
               !x5chainPresent ||
-              (Array.isArray(x5chainValue) &&
-                (x5chainValue as unknown[]).length > 0);
+              (Array.isArray(x5chainValue)
+                ? (x5chainValue as unknown[]).length > 0
+                : Buffer.isBuffer(x5chainValue) ||
+                  x5chainValue instanceof Uint8Array);
 
             expect(
               x5chainIsNonEmpty,
-              "Unprotected header label 33 (x5chain), when present as an array, must contain at least one certificate (RFC 9360)",
+              "Unprotected header label 33 (x5chain), when present, must contain at least one certificate (RFC 9360 §2)",
             ).toBe(true);
 
             log.debug(
               x5chainPresent
-                ? `  ✓ label 33 (x5chain) = array[${(x5chainValue as unknown[]).length}] (X.509 certificate chain)`
+                ? Array.isArray(x5chainValue)
+                  ? `  ✓ label 33 (x5chain) = array[${(x5chainValue as unknown[]).length}] (X.509 certificate chain)`
+                  : `  ✓ label 33 (x5chain) = bstr[${(x5chainValue as Uint8Array).byteLength}] (single X.509 certificate)`
                 : `  · label 33 (x5chain) not present — X.509-based authentication not in use`,
             );
           }
