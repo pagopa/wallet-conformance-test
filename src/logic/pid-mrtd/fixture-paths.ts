@@ -31,7 +31,7 @@ export interface PidMrtdFixturePaths {
 
 /** @deprecated Prefer {@link resolvePidMrtdFixtureDir} with config when available. */
 export function defaultPidMrtdFixtureDir(
-  config?: Pick<Config, "issuance_pid" | "wallet">,
+  config?: Partial<Pick<Config, "issuance_pid" | "wallet">>,
 ): string {
   return resolvePidMrtdFixtureDir(config);
 }
@@ -45,7 +45,7 @@ export function defaultPidMrtdFixtureDir(
  * 3. `./data/backup/pid-mrtd` relative to the current working directory
  */
 export function resolvePidMrtdFixtureDir(
-  config?: Pick<Config, "issuance_pid" | "wallet">,
+  config?: Partial<Pick<Config, "issuance_pid" | "wallet">>,
 ): string {
   const explicit = config?.issuance_pid?.fixture_storage_path;
   if (explicit) {

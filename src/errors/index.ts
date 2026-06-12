@@ -30,10 +30,6 @@ export class MissingFieldError extends Error {
   }
 }
 
-/**
- * Thrown when `issuance.credential_types[]` requests PID issuance but
- * `[issuance_pid].mode` is `none` (FR-3).
- */
 export class PidIssuanceModeNotConfiguredError extends Error {
   readonly code = "PID_ISSUANCE_MODE_NOT_CONFIGURED";
   readonly credentialConfigurationId = PID_CREDENTIAL_CONFIGURATION_ID;
@@ -47,6 +43,18 @@ export class PidIssuanceModeNotConfiguredError extends Error {
         `for standard (Q)EAA issuance tests.`,
     );
     this.name = "PidIssuanceModeNotConfiguredError";
+  }
+}
+
+/** CSCA/DSC fixtures missing or chain verification failed (REQ-03 / FR-21). */
+export class PidMrtdPkiLoadError extends Error {
+  readonly code = "PID_MRTD_PKI_LOAD_FAILED";
+  readonly fixtureDir: string;
+
+  constructor(message: string, fixtureDir: string) {
+    super(message);
+    this.name = "PidMrtdPkiLoadError";
+    this.fixtureDir = fixtureDir;
   }
 }
 export class StatusListTokenCreationError extends Error {

@@ -56,6 +56,7 @@
     "@types/express": "^5.0.3",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
@@ -79,6 +80,7 @@
     "@sd-jwt/jwt-status-list": "^0.19.0",
     "@sd-jwt/sd-jwt-vc": "^0.17.1",
     "@sd-jwt/types": "^0.17.0",
+    "asn1js": "^3.0.6",
     "cbor": "^10.0.11",
     "commander": "^14.0.2",
     "consola": "^3.4.2",
@@ -86,6 +88,7 @@
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
+    "pkijs": "^3.4.0",
     "vitest": "^3.2.4",
     "zod": "^4.3.6"
   }
