@@ -27,6 +27,7 @@ interface CheckRow {
 
 interface SessionRow {
   closed_at: null | string;
+  entity_name: null | string;
   id: string;
   phase: Phase;
   started_at: string;
@@ -85,18 +86,44 @@ export function createSession(
 ): void {
   db.prepare(
     `
-      INSERT INTO sessions (id, started_at, closed_at, phase, status)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO sessions (
+        id,
+        started_at,
+        closed_at,
+        entity_name,
+        phase,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
     `,
   ).run(
     session.id,
     session.startedAt,
     session.closedAt ?? null,
+    session.entityName,
     session.phase,
     session.status,
   );
 }
 
+export function getLatestOpenSessionId(
+  db: DatabaseSync,
+  phase: Phase,
+): string | undefined {
+  const row = db
+    .prepare(
+      `
+        SELECT id
+        FROM sessions
+        WHERE phase = ? AND status = 'OPEN'
+        ORDER BY started_at DESC, id DESC
+        LIMIT 1
+      `,
+    )
+    .get(phase) as undefined | { id: string };
+
+  return row?.id;
+}
 export function getLatestSessionId(db: DatabaseSync): string | undefined {
   const row = db
     .prepare(
@@ -119,7 +146,7 @@ export function getSession(
   const sessionRow = db
     .prepare(
       `
-        SELECT id, started_at, closed_at, phase, status
+        SELECT id, started_at, closed_at, entity_name, phase, status
         FROM sessions
         WHERE id = ?
       `,
@@ -157,6 +184,7 @@ export function getSession(
       timestamp: check.timestamp,
     })),
     closedAt: sessionRow.closed_at ?? undefined,
+    entityName: sessionRow.entity_name ?? "-",
     id: sessionRow.id,
     phase: sessionRow.phase,
     startedAt: sessionRow.started_at,
@@ -195,4 +223,18 @@ export function listSessions(db: DatabaseSync): SessionSummary[] {
     startedAt: row.started_at,
     status: row.status,
   }));
+}
+
+export function updateSessionEntityName(
+  db: DatabaseSync,
+  sessionId: string,
+  entityName: string,
+): void {
+  db.prepare(
+    `
+      UPDATE sessions
+      SET entity_name = ?
+      WHERE id = ?
+    `,
+  ).run(entityName, sessionId);
 }

@@ -24,6 +24,7 @@ type TestType = "issuance" | "presentation";
 
 // Example IT Wallet Test Matrix IDs -> CI_002 or RPR-001
 const REQUIREMENT_ID_PATTERN = /^([A-Z]+[-_]\d+\w*)\s*:/;
+const DEFAULT_ENTITY_NAME = "-";
 
 export class ConformanceReporter implements Reporter {
   private checkResults: CheckResult[] = [];
@@ -76,6 +77,7 @@ export class ConformanceReporter implements Reporter {
     this.checkResults = [];
 
     createSession(this.db, {
+      entityName: DEFAULT_ENTITY_NAME,
       id: this.sessionId,
       phase: this.testType,
       startedAt: new Date().toISOString(),

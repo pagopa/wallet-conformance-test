@@ -1,5 +1,4 @@
 import type { ComplianceTier } from "@/report/template/types";
-import type { Config } from "@/types";
 
 import { Phase } from "../types";
 
@@ -53,25 +52,6 @@ export function resolveComplianceTier(pct: number): ComplianceTier {
   if (pct === 100) return "passed";
   if (pct < 50) return "failed";
   return "partial";
-}
-
-export function resolveEntityName(config?: Config): string {
-  const subject = config?.trust.certificate_subject;
-  if (!subject) {
-    return "-";
-  }
-
-  const orgMatch = /\bO=([^,]+)/.exec(subject);
-  if (orgMatch?.[1]) {
-    return orgMatch[1].trim();
-  }
-
-  const cnMatch = /\bCN=([^,]+)/.exec(subject);
-  if (cnMatch?.[1]) {
-    return cnMatch[1].trim();
-  }
-
-  return subject;
 }
 
 /**

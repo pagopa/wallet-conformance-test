@@ -22,11 +22,12 @@ export function resolveDbPath(): string {
 function initSchema(db: DatabaseSync): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
-      id         TEXT PRIMARY KEY,
-      started_at TEXT NOT NULL,
-      closed_at  TEXT,
-      phase      TEXT NOT NULL,
-      status     TEXT NOT NULL DEFAULT 'OPEN'
+      id          TEXT PRIMARY KEY,
+      started_at  TEXT NOT NULL,
+      closed_at   TEXT,
+      entity_name TEXT NOT NULL DEFAULT '-',
+      phase       TEXT NOT NULL,
+      status      TEXT NOT NULL DEFAULT 'OPEN'
     );
 
     CREATE TABLE IF NOT EXISTS checks (

@@ -8,7 +8,6 @@ import {
   formatDateTime,
   formatGeneratedAt,
   resolveComplianceTier,
-  resolveEntityName,
   resolveProfile,
   resolveTierLabel,
 } from "@/report/template/helpers";
@@ -61,7 +60,7 @@ function buildReportData(
     compliancePct,
     complianceTier,
     criticalChecks: checks.filter((c) => c.result === "FAIL"),
-    entityName: resolveEntityName(config),
+    entityName: session.entityName,
     executedAt: session.startedAt ? formatDateTime(session.startedAt) : "-",
     failCount,
     generatedAt: formatGeneratedAt(new Date().toISOString()),

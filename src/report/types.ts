@@ -10,6 +10,7 @@ export interface ConformanceCheck {
 export interface ConformanceSession {
   checks: ConformanceCheck[];
   closedAt?: string;
+  entityName: string;
   id: string;
   phase: Phase;
   startedAt: string;
