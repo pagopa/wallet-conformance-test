@@ -3,6 +3,7 @@ import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 
 import { fetchWithRetries } from "@/logic/utils";
+import { recordSessionEntityNameFromEntityConfiguration } from "@/report/session-runtime";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
@@ -64,6 +65,11 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
         entityStatementClaims = entityStatementJwtDecoded;
         log.info("Failed to parse entity statement claims:", e);
       }
+
+      recordSessionEntityNameFromEntityConfiguration(
+        "presentation",
+        entityStatementClaims,
+      );
 
       return {
         entityStatementClaims,
