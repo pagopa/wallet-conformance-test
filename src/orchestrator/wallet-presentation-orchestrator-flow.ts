@@ -256,6 +256,10 @@ export class WalletPresentationOrchestratorFlow {
     return walletAttestation;
   }
 
+  private normalizeBaseUrl(url: string): string {
+    return new URL(url).href.replace(/\/+$/, "");
+  }
+
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
