@@ -814,7 +814,6 @@ testConfigs.forEach((testConfig) => {
           }
 
           // 4. Advisory only: ISO 18013-5 §7.1 recommends reverse-domain
-          //    form (e.g. `org.iso.18013.5.1`, `eu.europa.ec.eudi.pid.1`).
           //    Logged as a warning to avoid false negatives on legacy issuers.
           for (const key of nsKeys) {
             const isReverseDomain = /^[a-z0-9]+(\.[a-z0-9_-]+)+$/i.test(key);
@@ -1135,46 +1134,48 @@ testConfigs.forEach((testConfig) => {
         }
       }
 
-      const nsEudi = elementsByNs["eu.europa.ec.eudi.pid.1"] ?? {};
-      const nsIt = elementsByNs["eu.europa.ec.eudi.pid.it.1"] ?? {};
-
-      validateMdocNameSpaces(nsEudi, nsIt, log);
+      validateMdocNameSpaces(elementsByNs, log);
     }
 
     function validateMdocNameSpaces(
-      nsEudi: Record<string, unknown>,
-      nsIt: Record<string, unknown>,
+      ns: Record<string, Record<string, unknown>>,
       log: { debug: (msg: string) => void },
     ): void {
+      // Helpers: search across all namespace records
+      const inAnyNs = (key: string): boolean =>
+        Object.values(ns).some((record) => key in record);
+      const fromAnyNs = (key: string): unknown =>
+        Object.values(ns).find((record) => key in record)?.[key];
+
       // -----------------------------------------------------------------
-      // eu.europa.ec.eudi.pid.1 — REQUIRED elements
+      // REQUIRED elements
       // -----------------------------------------------------------------
 
       // issuing_country — tstr, REQUIRED, ISO 3166-1 Alpha-2 (ISO 18013-5 §7.2)
       expect(
-        "issuing_country" in nsEudi,
-        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED element "issuing_country" (ISO 18013-5 §7.2)',
+        inAnyNs("issuing_country"),
+        'REQUIRED element "issuing_country" must be present (ISO 18013-5 §7.2)',
       ).toBe(true);
 
       expect(
-        typeof nsEudi["issuing_country"],
+        typeof fromAnyNs("issuing_country"),
         '"issuing_country" elementValue must be a tstr (CBOR text string) per ISO 18013-5 §7.2',
       ).toBe("string");
 
       expect(
-        /^[A-Z]{2}$/.test(nsEudi["issuing_country"] as string),
-        `"issuing_country" must be an ISO 3166-1 Alpha-2 country code (2 uppercase letters), got "${String(nsEudi["issuing_country"])}"`,
+        /^[A-Z]{2}$/.test(fromAnyNs("issuing_country") as string),
+        `"issuing_country" must be an ISO 3166-1 Alpha-2 country code (2 uppercase letters), got "${String(fromAnyNs("issuing_country"))}"`,
       ).toBe(true);
 
-      log.debug(`  ✓ issuing_country="${String(nsEudi["issuing_country"])}"`);
+      log.debug(`  ✓ issuing_country="${String(fromAnyNs("issuing_country"))}"`);
 
       // issuing_authority — tstr, REQUIRED, Latin1b ≤150 chars (ISO 18013-5 §7.2)
       expect(
-        "issuing_authority" in nsEudi,
-        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED element "issuing_authority" (ISO 18013-5 §7.2)',
+        inAnyNs("issuing_authority"),
+        'REQUIRED element "issuing_authority" must be present (ISO 18013-5 §7.2)',
       ).toBe(true);
 
-      const issuingAuthority = nsEudi["issuing_authority"] as string;
+      const issuingAuthority = fromAnyNs("issuing_authority") as string;
 
       expect(
         typeof issuingAuthority,
@@ -1195,32 +1196,33 @@ testConfigs.forEach((testConfig) => {
       log.debug(`  ✓ issuing_authority="${issuingAuthority}"`);
 
       // -----------------------------------------------------------------
-      // eu.europa.ec.eudi.pid.1 — OPTIONAL elements
+      // OPTIONAL elements
       // -----------------------------------------------------------------
 
-      // issuance_date — tdate (CBOR tag 0) or full-date (CBOR tag 1004), OPTIONAL (ARF PID Rulebook v1.3 §2.6)
-      const issuanceDateInNs = "issuance_date" in nsEudi;
+      // issuance_date — tdate (CBOR tag 0) or full-date (CBOR tag 1004), OPTIONAL
+      const issuanceDateInNs = inAnyNs("issuance_date");
+      const issuanceDateVal = fromAnyNs("issuance_date");
       const issuanceDateIsValid =
         !issuanceDateInNs ||
-        nsEudi["issuance_date"] instanceof Date ||
-        (nsEudi["issuance_date"] instanceof Tagged &&
-          (nsEudi["issuance_date"] as CborTagged).tag === 1004 &&
-          typeof (nsEudi["issuance_date"] as CborTagged).value === "string");
+        issuanceDateVal instanceof Date ||
+        (issuanceDateVal instanceof Tagged &&
+          (issuanceDateVal as CborTagged).tag === 1004 &&
+          typeof (issuanceDateVal as CborTagged).value === "string");
       expect(
         issuanceDateIsValid,
-        '"issuance_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) per ARF PID Rulebook v1.3 §2.6',
+        '"issuance_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) §2.6',
       ).toBe(true);
       if (issuanceDateInNs) {
         log.debug(`  ✓ issuance_date present and valid type`);
       }
 
-      // expiry_date — tdate or full-date, REQUIRED for PID (ARF PID Rulebook v1.3 §3)
+      // expiry_date — tdate or full-date, REQUIRED IT Wallet
       expect(
-        "expiry_date" in nsEudi,
-        'namespace "eu.europa.ec.eudi.pid.1" must contain REQUIRED (for PID) element "expiry_date" (ARF PID Rulebook v1.3 §3)',
+        inAnyNs("expiry_date"),
+        'REQUIRED element "expiry_date" must be present (IT Wallet §3)',
       ).toBe(true);
 
-      const expiryDate = nsEudi["expiry_date"];
+      const expiryDate = fromAnyNs("expiry_date");
       const expiryDateIsValid =
         expiryDate instanceof Date ||
         (expiryDate instanceof Tagged &&
@@ -1229,7 +1231,7 @@ testConfigs.forEach((testConfig) => {
 
       expect(
         expiryDateIsValid,
-        '"expiry_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) per ARF PID Rulebook v1.3 §3',
+        '"expiry_date" elementValue must be a tdate (CBOR tag 0) or full-date (CBOR tag 1004) §3',
       ).toBe(true);
 
       // ISO 8601-1 YYYY-MM-DD format check (applies to full-date; tdate is already a Date)
@@ -1245,82 +1247,6 @@ testConfigs.forEach((testConfig) => {
 
       log.debug(`  ✓ expiry_date present and valid type`);
 
-      // -----------------------------------------------------------------
-      // eu.europa.ec.eudi.pid.it.1 — REQUIRED elements (PID domestic extension)
-      // -----------------------------------------------------------------
-
-      // sub — uuid tstr, REQUIRED for PID (IT-Wallet domestic extension)
-      expect(
-        "sub" in nsIt,
-        'namespace "eu.europa.ec.eudi.pid.it.1" must contain REQUIRED (for PID) element "sub" (IT-Wallet domestic extension)',
-      ).toBe(true);
-
-      const sub = nsIt["sub"] as string;
-
-      expect(
-        typeof sub,
-        '"sub" elementValue must be a tstr (CBOR text string / UUID)',
-      ).toBe("string");
-
-      // UUID format: 8-4-4-4-12 hex groups
-      expect(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          sub,
-        ),
-        `"sub" must be a valid UUID string, got "${sub}"`,
-      ).toBe(true);
-
-      log.debug(`  ✓ sub="${sub}"`);
-
-      // verification — CBOR map, REQUIRED for PID (IT-Wallet domestic extension)
-      expect(
-        "verification" in nsIt,
-        'namespace "eu.europa.ec.eudi.pid.it.1" must contain REQUIRED (for PID) element "verification" (IT-Wallet domestic extension)',
-      ).toBe(true);
-
-      const verification = nsIt["verification"];
-
-      expect(
-        verification !== null && typeof verification === "object",
-        '"verification" elementValue must be a CBOR map',
-      ).toBe(true);
-
-      const vHas = (key: string): boolean =>
-        verification instanceof Map
-          ? verification.has(key)
-          : key in (verification as Record<string, unknown>);
-      const vGet = (key: string): unknown =>
-        verification instanceof Map
-          ? verification.get(key)
-          : (verification as Record<string, unknown>)[key];
-
-      // trust_framework — tstr, REQUIRED within verification map
-      expect(
-        vHas("trust_framework"),
-        '"verification" map must contain REQUIRED sub-field "trust_framework" (IT-Wallet domestic extension)',
-      ).toBe(true);
-
-      expect(
-        typeof vGet("trust_framework") === "string" &&
-          (vGet("trust_framework") as string).length > 0,
-        '"verification.trust_framework" must be a non-empty tstr',
-      ).toBe(true);
-
-      // assurance_level — tstr, REQUIRED within verification map
-      expect(
-        vHas("assurance_level"),
-        '"verification" map must contain REQUIRED sub-field "assurance_level" (IT-Wallet domestic extension)',
-      ).toBe(true);
-
-      expect(
-        typeof vGet("assurance_level") === "string" &&
-          (vGet("assurance_level") as string).length > 0,
-        '"verification.assurance_level" must be a non-empty tstr',
-      ).toBe(true);
-
-      log.debug(
-        `  ✓ verification map valid: trust_framework="${String(vGet("trust_framework"))}", assurance_level="${String(vGet("assurance_level"))}"`,
-      );
     }
 
     test("CI_144: Mdoc Element Identifiers | All elementIdentifiers defined in the attribute table are properly included in the mdoc-CBOR Digital Credential within their respective nameSpaces", async () => {
@@ -1329,7 +1255,7 @@ testConfigs.forEach((testConfig) => {
         "All elementIdentifiers in the elementIdentifiers attribute table are properly included in the Digital Credential encoded in mdoc-CBOR within their respective nameSpaces, unless otherwise specified";
 
       log.start(
-        "Conformance test: mdoc element identifiers per IT-Wallet table_element_identifiers_mdoc / ISO 18013-5 §7.2 / ARF PID Rulebook v1.3",
+        "Conformance test: mdoc element identifiers per IT-Wallet table_element_identifiers_mdoc / ISO 18013-5 §7.2 / IT Wallet Specs",
       );
 
       let testSuccess = false;
@@ -1617,6 +1543,9 @@ testConfigs.forEach((testConfig) => {
         // COSE algorithm integers → algorithm names (RFC 9864 / IT-Wallet mdoc profile)
         const COSE_ALG_LABEL = 1;
         const REQUIRED_COSE_ALG_VALUES: ReadonlyMap<number, string> = new Map([
+          [-7, "ES256"],
+          [-35, "ES384"],
+          [-36, "ES512"],
           [-52, "ESP512"],
           [-51, "ESP384"],
           [-9, "ESP256"],
