@@ -423,10 +423,16 @@ testConfigs.forEach((testConfig) => {
               ? mso.get(key)
               : (mso as Record<string, unknown>)[key];
 
-          const digestAlgorithmRaw = msoGet("digestAlgorithm") as string;
+          const digestAlgorithmRaw = msoGet("digestAlgorithm");
+
+          expect(
+            typeof digestAlgorithmRaw === "string" &&
+              digestAlgorithmRaw.length > 0,
+            "MSO must contain digestAlgorithm as a non-empty string (ISO 18013-5 §9.1.2.4)",
+          ).toBe(true);
 
           // Normalise "SHA-256" → "sha256" for Node crypto
-          const digestAlgorithm = digestAlgorithmRaw
+          const digestAlgorithm = (digestAlgorithmRaw as string)
             .toLowerCase()
             .replace("-", "");
 
