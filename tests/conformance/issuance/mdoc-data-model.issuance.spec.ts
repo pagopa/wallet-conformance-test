@@ -1167,7 +1167,9 @@ testConfigs.forEach((testConfig) => {
         `"issuing_country" must be an ISO 3166-1 Alpha-2 country code (2 uppercase letters), got "${String(fromAnyNs("issuing_country"))}"`,
       ).toBe(true);
 
-      log.debug(`  ✓ issuing_country="${String(fromAnyNs("issuing_country"))}"`);
+      log.debug(
+        `  ✓ issuing_country="${String(fromAnyNs("issuing_country"))}"`,
+      );
 
       // issuing_authority — tstr, REQUIRED, Latin1b ≤150 chars (ISO 18013-5 §7.2)
       expect(
@@ -1246,7 +1248,6 @@ testConfigs.forEach((testConfig) => {
       ).toBe(true);
 
       log.debug(`  ✓ expiry_date present and valid type`);
-
     }
 
     test("CI_144: Mdoc Element Identifiers | All elementIdentifiers defined in the attribute table are properly included in the mdoc-CBOR Digital Credential within their respective nameSpaces", async () => {
@@ -1543,12 +1544,12 @@ testConfigs.forEach((testConfig) => {
         // COSE algorithm integers → algorithm names (RFC 9864 / IT-Wallet mdoc profile)
         const COSE_ALG_LABEL = 1;
         const REQUIRED_COSE_ALG_VALUES: ReadonlyMap<number, string> = new Map([
-          [-7, "ES256"],
-          [-35, "ES384"],
-          [-36, "ES512"],
           [-52, "ESP512"],
           [-51, "ESP384"],
+          [-36, "ES512"],
+          [-35, "ES384"],
           [-9, "ESP256"],
+          [-7, "ES256"],
         ]);
 
         let testSuccess = false;
