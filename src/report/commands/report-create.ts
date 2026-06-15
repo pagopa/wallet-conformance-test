@@ -27,13 +27,15 @@ export async function reportCreate(
 
     if (!resolvedRunId) {
       console.error("No conformance runs found.");
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
 
     const session = getSession(db, resolvedRunId);
     if (!session) {
       console.error(`Conformance run not found: ${runReference}`);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
 
     const config = loadConfigWithHierarchy();
