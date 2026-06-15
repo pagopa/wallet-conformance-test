@@ -124,7 +124,7 @@ export class ConformanceReporter implements Reporter {
   }
 
   private parseTestCaseName(name: string): string {
-    return name.replace(REQUIREMENT_ID_PATTERN, "");
+    return name.replace(REQUIREMENT_ID_PATTERN, "").trim();
   }
 
   private resolveFinalStatus(results: readonly CheckResult[]): SessionStatus {
