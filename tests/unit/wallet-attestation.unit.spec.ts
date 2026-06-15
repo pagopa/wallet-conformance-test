@@ -1,6 +1,8 @@
 import { Jwk } from "@pagopa/io-wallet-oauth2";
 import {
   addSecondsToDate,
+  calculateJwkThumbprint,
+  HashAlgorithm,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
@@ -10,7 +12,11 @@ import { describe, expect, test, vi } from "vitest";
 import type { KeyPair } from "@/types";
 
 import { loadAttestation } from "@/functions";
-import { buildAttestationPath, loadConfigWithHierarchy } from "@/logic";
+import {
+  buildAttestationPath,
+  loadConfigWithHierarchy,
+  partialCallbacks,
+} from "@/logic";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
@@ -42,6 +48,11 @@ describe("Wallet Attestation Unit Test", () => {
     );
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
     const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
     const providerKey = await importJWK(providerJWK, "ES256");
 
     // Verify wallet attestation JWT
@@ -60,7 +71,7 @@ describe("Wallet Attestation Unit Test", () => {
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
     expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
-    expect(jwt.payload.sub).toBe(unitJWK.kid);
+    expect(jwt.payload.sub).toBe(unitThumbprint);
     expect(jwt.payload.wallet_link).toBe(
       `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
     );
@@ -109,12 +120,17 @@ describe("Wallet Attestation Unit Test", () => {
     );
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
     const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
     const providerKey = await importJWK(providerJWK, "ES256");
     const jwt = await jwtVerify(attestation, providerKey);
 
     expect(providerJWK.kid).toBe(jwt.protectedHeader.kid);
     expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: Jwk }).jwk);
-    expect(unitJWK.kid).toBe(jwt.payload.sub);
+    expect(unitThumbprint).toBe(jwt.payload.sub);
 
     // Verify trust chain is present
     const trustChain = jwt.protectedHeader.trust_chain as string[] | undefined;
@@ -200,6 +216,11 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     );
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
     const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
     const providerKey = await importJWK(providerJWK, "ES256");
 
     const jwt = await jwtVerify(response.attestation, providerKey);
@@ -226,7 +247,7 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
     expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
-    expect(jwt.payload.sub).toBe(unitJWK.kid);
+    expect(jwt.payload.sub).toBe(unitThumbprint);
     expect(jwt.payload.wallet_link).toBe(
       `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
     );
@@ -256,12 +277,17 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     );
     const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
     const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
     const providerKey = await importJWK(providerJWK, "ES256");
     const jwt = await jwtVerify(attestation, providerKey);
 
     expect(providerJWK.kid).toBe(jwt.protectedHeader.kid);
     expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: Jwk }).jwk);
-    expect(unitJWK.kid).toBe(jwt.payload.sub);
+    expect(unitThumbprint).toBe(jwt.payload.sub);
 
     // Verify x5c still present and valid
     const x5c = jwt.protectedHeader.x5c as string[] | undefined;

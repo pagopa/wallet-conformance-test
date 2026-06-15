@@ -41,7 +41,7 @@ export const partialCallbacks: Pick<
   generateRandom: randomBytes,
   hash: (data: BinaryLike, alg: string) =>
     createHash(alg.replace("-", "").toLowerCase()).update(data).digest(),
-  verifyJwt,
+  verifyJwt: async (signer, jwt) => verifyJwt(signer, jwt),
 };
 
 export function fetchWithConfig(network: Config["network"]): Fetch {
