@@ -177,9 +177,14 @@ testConfigs.forEach((testConfig) => {
           // 2. issuerAuth protected header is a CBOR-encoded byte string
           //    containing the alg parameter (ISO 18013-5 §9.1.2.4, RFC 9052)
           // -----------------------------------------------------------------
-          const issuerAuth = decoded["issuerAuth"] as unknown[];
+          const issuerAuth = decoded["issuerAuth"];
 
-          const protectedHeader = issuerAuth[0];
+          expect(
+            Array.isArray(issuerAuth) && (issuerAuth as unknown[]).length >= 4,
+            `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+          ).toBe(true);
+
+          const protectedHeader = (issuerAuth as unknown[])[0];
 
           expect(
             protectedHeader instanceof Uint8Array ||
@@ -250,7 +255,12 @@ testConfigs.forEach((testConfig) => {
           const nsKeys = Object.keys(nameSpaces);
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
-          const issuerAuth = decoded["issuerAuth"] as unknown[];
+          const issuerAuth = decoded["issuerAuth"];
+
+          expect(
+            Array.isArray(issuerAuth) && (issuerAuth as unknown[]).length >= 4,
+            `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+          ).toBe(true);
 
           // -----------------------------------------------------------------
           // Layer B — issuerAuth component completeness
@@ -259,7 +269,7 @@ testConfigs.forEach((testConfig) => {
 
           // issuerAuth[1]: unprotected header — must be a CBOR map containing
           // label 33 (x5chain) per RFC 9360 for X.509-based issuance
-          const unprotectedHeader = issuerAuth[1];
+          const unprotectedHeader = (issuerAuth as unknown[])[1];
 
           const x5chainLabel = 33;
           const unprotectedHas33 =
@@ -279,7 +289,7 @@ testConfigs.forEach((testConfig) => {
 
           // issuerAuth[2]: payload — decode MSO (byte string + Tag 24 wrapper
           // shape are validated by CI_140)
-          const payloadBytes = issuerAuth[2];
+          const payloadBytes = (issuerAuth as unknown[])[2];
 
           const payloadTagged = decode(
             Buffer.isBuffer(payloadBytes)
@@ -368,8 +378,14 @@ testConfigs.forEach((testConfig) => {
           // ---------------------------------------------------------------
           // Decode MSO (same path as CI_138)
           // ---------------------------------------------------------------
-          const issuerAuth = decoded["issuerAuth"] as unknown[];
-          const payloadBytes = issuerAuth[2];
+          const issuerAuth = decoded["issuerAuth"];
+
+          expect(
+            Array.isArray(issuerAuth) && (issuerAuth as unknown[]).length >= 4,
+            `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+          ).toBe(true);
+
+          const payloadBytes = (issuerAuth as unknown[])[2];
 
           const payloadTagged = decode(
             Buffer.isBuffer(payloadBytes)
@@ -1444,8 +1460,21 @@ testConfigs.forEach((testConfig) => {
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
 
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
-            const protectedHeaderBytes = issuerAuth[0];
+            const issuerAuth = decoded["issuerAuth"];
+
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
+
+            const protectedHeaderBytes = (issuerAuth as unknown[])[0];
+
+            expect(
+              Buffer.isBuffer(protectedHeaderBytes) ||
+                protectedHeaderBytes instanceof Uint8Array,
+              `issuerAuth[0] (protected header) must be a bstr (byte string) per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; got ${typeof protectedHeaderBytes}`,
+            ).toBe(true);
 
             // Decode protected header byte string → CBOR map
             const protectedHeaderMap = decode(
@@ -1537,8 +1566,21 @@ testConfigs.forEach((testConfig) => {
 
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
-            const protectedHeaderBytes = issuerAuth[0];
+            const issuerAuth = decoded["issuerAuth"];
+
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
+
+            const protectedHeaderBytes = (issuerAuth as unknown[])[0];
+
+            expect(
+              Buffer.isBuffer(protectedHeaderBytes) ||
+                protectedHeaderBytes instanceof Uint8Array,
+              `issuerAuth[0] (protected header) must be a bstr (byte string) per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; got ${typeof protectedHeaderBytes}`,
+            ).toBe(true);
 
             const protectedHeaderMap = decode(
               Buffer.isBuffer(protectedHeaderBytes)
@@ -1614,8 +1656,21 @@ testConfigs.forEach((testConfig) => {
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
 
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
-            const protectedHeaderBytes = issuerAuth[0];
+            const issuerAuth = decoded["issuerAuth"];
+
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
+
+            const protectedHeaderBytes = (issuerAuth as unknown[])[0];
+
+            expect(
+              Buffer.isBuffer(protectedHeaderBytes) ||
+                protectedHeaderBytes instanceof Uint8Array,
+              `issuerAuth[0] (protected header) must be a bstr (byte string) per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; got ${typeof protectedHeaderBytes}`,
+            ).toBe(true);
 
             // Decode protected header byte string → CBOR map (same path as CI_146/CI_147)
             const protectedHeaderMap = decode(
@@ -1691,11 +1746,17 @@ testConfigs.forEach((testConfig) => {
 
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const issuerAuth = decoded["issuerAuth"];
+
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
 
             // issuerAuth[1] is the unprotected header — already decoded as a
             // CBOR map by the cbor library; no additional Buffer.from/decode needed.
-            const unprotectedHeader = issuerAuth[1] as
+            const unprotectedHeader = (issuerAuth as unknown[])[1] as
               | Map<number, unknown>
               | Record<number | string, unknown>;
 
@@ -1815,9 +1876,15 @@ testConfigs.forEach((testConfig) => {
 
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const issuerAuth = decoded["issuerAuth"];
 
-            const unprotectedHeader = issuerAuth[1] as
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
+
+            const unprotectedHeader = (issuerAuth as unknown[])[1] as
               | Map<number, unknown>
               | Record<number | string, unknown>;
 
@@ -1957,9 +2024,16 @@ testConfigs.forEach((testConfig) => {
 
           for (const { raw } of mdocCredentials) {
             const decoded = decode(raw) as Record<string, unknown>;
-            const issuerAuth = decoded["issuerAuth"] as unknown[];
+            const issuerAuth = decoded["issuerAuth"];
+
+            expect(
+              Array.isArray(issuerAuth) &&
+                (issuerAuth as unknown[]).length >= 4,
+              `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+            ).toBe(true);
+
             const [protectedHeaderBytes, unprotectedHeader, payload] =
-              issuerAuth;
+              issuerAuth as unknown[];
 
             // ---------------------------------------------------------------
             // 1. Payload is a CBOR byte string (bstr)
@@ -2099,8 +2173,20 @@ testConfigs.forEach((testConfig) => {
 
         for (const { raw } of mdocCredentials) {
           const decoded = decode(raw) as Record<string, unknown>;
-          const issuerAuth = decoded["issuerAuth"] as unknown[];
-          const payloadBytes = issuerAuth[2];
+          const issuerAuth = decoded["issuerAuth"];
+
+          expect(
+            Array.isArray(issuerAuth) && (issuerAuth as unknown[]).length >= 4,
+            `issuerAuth must be a COSE_Sign1 4-tuple [protected, unprotected, payload, signature] per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; found ${Array.isArray(issuerAuth) ? (issuerAuth as unknown[]).length : typeof issuerAuth} element(s)`,
+          ).toBe(true);
+
+          const payloadBytes = (issuerAuth as unknown[])[2];
+
+          expect(
+            Buffer.isBuffer(payloadBytes) || payloadBytes instanceof Uint8Array,
+            `issuerAuth[2] (payload) must be a bstr (byte string) per RFC 9052 §4.2 / ISO 18013-5 §9.1.3; got ${typeof payloadBytes}`,
+          ).toBe(true);
+
           const payloadTagged = decode(
             Buffer.isBuffer(payloadBytes)
               ? payloadBytes
