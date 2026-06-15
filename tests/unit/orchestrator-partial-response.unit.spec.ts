@@ -523,7 +523,7 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
     const result = await orchestrator.presentation();
 
     expect(fetchMetadataRun).toHaveBeenCalledWith({
-      baseUrl: "https://verifier.example.com/",
+      baseUrl: "https://verifier.example.com",
     });
     expect(result.success).toBe(false);
     expect(result.fetchMetadataResponse).toEqual(fetchMetadataSuccess);
