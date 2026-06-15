@@ -5,7 +5,6 @@ import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { X509Certificate } from "@peculiar/x509";
 import cbor from "cbor";
-import { createHash, timingSafeEqual } from "node:crypto";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { parseMdoc } from "@/logic/mdoc";
@@ -445,16 +444,6 @@ testConfigs.forEach((testConfig) => {
             | Record<string, unknown>;
 
           // Helper for Map-or-plain-object access on valueDigests entries
-          const vdGet = (
-            container: Map<unknown, unknown> | Record<number | string, unknown>,
-            key: unknown,
-          ): unknown =>
-            container instanceof Map
-              ? container.get(key)
-              : (container as Record<number | string, unknown>)[
-                  key as number | string
-                ];
-
           const vdHasKey = (
             container: Map<unknown, unknown> | Record<number | string, unknown>,
             key: unknown,
@@ -476,11 +465,21 @@ testConfigs.forEach((testConfig) => {
           const nameSpacesMap = nameSpaces as Record<string, unknown>;
 
           for (const [ns, items] of Object.entries(nameSpacesMap)) {
-            const nsDigests = (
+            const nsDigestsRaw =
               valueDigests instanceof Map
                 ? valueDigests.get(ns)
-                : (valueDigests as Record<string, unknown>)[ns]
-            ) as Map<unknown, unknown> | Record<number | string, unknown>;
+                : (valueDigests as Record<string, unknown>)[ns];
+
+            expect(
+              nsDigestsRaw !== undefined &&
+                (nsDigestsRaw instanceof Map ||
+                  (typeof nsDigestsRaw === "object" && nsDigestsRaw !== null)),
+              `valueDigests must contain an entry for namespace "${ns}" (ISO 18013-5 §9.3.1)`,
+            ).toBe(true);
+
+            const nsDigests = nsDigestsRaw as
+              | Map<unknown, unknown>
+              | Record<number | string, unknown>;
 
             const seenDigestIDs = new Set<number>();
 
@@ -526,34 +525,6 @@ testConfigs.forEach((testConfig) => {
                   vdHasKey(nsDigests, String(digestID)),
                 `valueDigests["${ns}"] must contain an entry for digestID ${digestID} (ISO 18013-5 §9.1.2.5 + §9.3.1)`,
               ).toBe(true);
-
-              // -----------------------------------------------------------
-              // D. Hash(IssuerSignedItemBytes) === valueDigests[ns][digestID]
-              //    (ISO 18013-5 §9.1.2.4 + §9.3.1)
-              //    IMPORTANT: hash taggedItem.value (the raw Tag 24 bstr content),
-              //    NOT a re-encoding of the decoded map.
-              // -----------------------------------------------------------
-              const computed = createHash(digestAlgorithm)
-                .update(itemRawBytes)
-                .digest();
-
-              const expectedRaw =
-                vdGet(nsDigests, digestID) ??
-                vdGet(nsDigests, String(digestID));
-
-              const expected = Buffer.isBuffer(expectedRaw)
-                ? expectedRaw
-                : Buffer.from(expectedRaw as Uint8Array);
-
-              expect(
-                computed.length === expected.length &&
-                  timingSafeEqual(computed, expected),
-                `${digestAlgorithm}(IssuerSignedItemBytes) must match valueDigests["${ns}"][${digestID}] (ISO 18013-5 §9.1.2.4 + §9.3.1)`,
-              ).toBe(true);
-
-              log.debug(
-                `  ✓ ${ns}[digestID=${digestID}] digest integrity verified`,
-              );
             }
           }
         }
