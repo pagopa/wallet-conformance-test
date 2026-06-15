@@ -99,12 +99,20 @@ testConfigs.forEach((testConfig) => {
           //    valid IssuerSignedItem maps
           //    (ISO 18013-5 §9.1.2, RFC 8949 §3.4, ISO 18013-5 Table 2)
           // -----------------------------------------------------------------
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"];
 
-          const nsKeys = Object.keys(nameSpaces);
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
+
+          const nameSpacesMap = nameSpaces as Record<string, unknown>;
+          const nsKeys = Object.keys(nameSpacesMap);
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
-          for (const [namespaceName, items] of Object.entries(nameSpaces)) {
+          for (const [namespaceName, items] of Object.entries(nameSpacesMap)) {
             for (const item of items as unknown[]) {
               expect(
                 item instanceof Tagged,
@@ -251,8 +259,17 @@ testConfigs.forEach((testConfig) => {
           // by CI_150.
           // -----------------------------------------------------------------
 
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
-          const nsKeys = Object.keys(nameSpaces);
+          const nameSpaces = decoded["nameSpaces"];
+
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
+
+          const nameSpacesMap = nameSpaces as Record<string, unknown>;
+          const nsKeys = Object.keys(nameSpacesMap);
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
           const issuerAuth = decoded["issuerAuth"];
@@ -441,9 +458,18 @@ testConfigs.forEach((testConfig) => {
               : (key as number | string) in
                 (container as Record<number | string, unknown>);
 
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"];
 
-          for (const [ns, items] of Object.entries(nameSpaces)) {
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
+
+          const nameSpacesMap = nameSpaces as Record<string, unknown>;
+
+          for (const [ns, items] of Object.entries(nameSpacesMap)) {
             const nsDigests = (
               valueDigests instanceof Map
                 ? valueDigests.get(ns)
@@ -753,11 +779,18 @@ testConfigs.forEach((testConfig) => {
           // 2. Standard decode to inspect the nameSpaces key set.
           // -----------------------------------------------------------------
           const decoded = decode(raw) as Record<string, unknown>;
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"];
+
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
 
           // ≥ 1 entry (overlaps with CI_140 by design — matches the
           // compliance-table wording for row CI_141 verbatim)
-          const nsKeys = Object.keys(nameSpaces);
+          const nsKeys = Object.keys(nameSpaces as Record<string, unknown>);
 
           expect(
             nsKeys.length,
@@ -823,12 +856,20 @@ testConfigs.forEach((testConfig) => {
 
         for (const { raw } of mdocCredentials) {
           const decoded = decode(raw) as Record<string, unknown>;
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"];
 
-          const nsKeys = Object.keys(nameSpaces);
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
+
+          const nameSpacesMap = nameSpaces as Record<string, unknown>;
+          const nsKeys = Object.keys(nameSpacesMap);
           log.debug(`  nameSpaces keys: ${nsKeys.join(", ")}`);
 
-          for (const [ns, items] of Object.entries(nameSpaces)) {
+          for (const [ns, items] of Object.entries(nameSpacesMap)) {
             // 1. Array of IssuerSignedItemBytes
             expect(
               Array.isArray(items),
@@ -926,9 +967,18 @@ testConfigs.forEach((testConfig) => {
 
         for (const { raw } of mdocCredentials) {
           const decoded = decode(raw) as Record<string, unknown>;
-          const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+          const nameSpaces = decoded["nameSpaces"];
 
-          for (const [ns, items] of Object.entries(nameSpaces)) {
+          expect(
+            typeof nameSpaces === "object" &&
+              nameSpaces !== null &&
+              !Array.isArray(nameSpaces),
+            "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+          ).toBe(true);
+
+          const nameSpacesMap = nameSpaces as Record<string, unknown>;
+
+          for (const [ns, items] of Object.entries(nameSpacesMap)) {
             (items as cbor.Tagged[]).forEach((tagged, idx) => {
               // CI_142 already proves: tag === 24 and value is bstr.
               const inner = Buffer.isBuffer(tagged.value)
@@ -1035,12 +1085,24 @@ testConfigs.forEach((testConfig) => {
       log: { debug: (msg: string) => void },
     ): void {
       const decoded = decode(raw) as Record<string, unknown>;
-      const nameSpaces = decoded["nameSpaces"] as Record<string, unknown>;
+      const nameSpaces = decoded["nameSpaces"];
+
+      if (
+        typeof nameSpaces !== "object" ||
+        nameSpaces === null ||
+        Array.isArray(nameSpaces)
+      ) {
+        throw new Error(
+          "nameSpaces must be present and be a CBOR map per ISO 18013-5 §9.1.2",
+        );
+      }
+
+      const nameSpacesMap = nameSpaces as Record<string, unknown>;
 
       // Build flat index: elementsByNs[namespace][elementIdentifier] = elementValue
       const elementsByNs: Record<string, Record<string, unknown>> = {};
 
-      for (const [ns, items] of Object.entries(nameSpaces)) {
+      for (const [ns, items] of Object.entries(nameSpacesMap)) {
         const nsRecord: Record<string, unknown> = {};
         elementsByNs[ns] = nsRecord;
         for (const tagged of items as cbor.Tagged[]) {
