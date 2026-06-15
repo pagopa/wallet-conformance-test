@@ -91,8 +91,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-25 — Malformed claims in presentation payload
   // -----------------------------------------------------------------------
 
-  test("RPR_025: Malformed claims in presentation payload | RP rejects a response whose decrypted payload contains malformed claims", async () => {
-    const log = baseLog.withTag("RPR_025");
+  test("RPR-25: Malformed claims in presentation payload | RP rejects a response whose decrypted payload contains malformed claims", async () => {
+    const log = baseLog.withTag("RPR-25");
     const DESCRIPTION = "RP correctly rejected response with malformed claims";
     log.start("Conformance test: Malformed claims in presentation payload");
 
@@ -147,8 +147,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-26 — Malformed claims in presented credentials
   // -----------------------------------------------------------------------
 
-  test("RPR_026: Malformed claims in presented credentials | RP rejects a response whose credential claims are malformed", async () => {
-    const log = baseLog.withTag("RPR_026");
+  test("RPR-26: Malformed claims in presented credentials | RP rejects a response whose credential claims are malformed", async () => {
+    const log = baseLog.withTag("RPR-26");
     const DESCRIPTION =
       "RP correctly rejected response with malformed credential claims";
     log.start("Conformance test: Malformed claims in presented credentials");
@@ -206,8 +206,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-37 — Response encryption failures
   // -----------------------------------------------------------------------
 
-  test("RPR_037: Response encryption failures | RP rejects a response encrypted with a wrong key", async () => {
-    const log = baseLog.withTag("RPR_037");
+  test("RPR-37: Response encryption failures | RP rejects a response encrypted with a wrong key", async () => {
+    const log = baseLog.withTag("RPR-37");
     const DESCRIPTION =
       "RP correctly rejected response with wrong encryption key";
     log.start("Conformance test: Response encryption failures");
@@ -256,8 +256,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-38 — Invalid signatures
   // -----------------------------------------------------------------------
 
-  test("RPR_038: Invalid signatures | RP rejects a response with tampered JARM integrity", async () => {
-    const log = baseLog.withTag("RPR_038");
+  test("RPR-38: Invalid signatures | RP rejects a response with tampered JARM integrity", async () => {
+    const log = baseLog.withTag("RPR-38");
     const DESCRIPTION =
       "RP correctly rejected response with tampered signature";
     log.start("Conformance test: Invalid signatures");
@@ -307,8 +307,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-39 — Invalid nonce values
   // -----------------------------------------------------------------------
 
-  test("RPR_039: Invalid nonce values | RP rejects a response containing a nonce mismatch", async () => {
-    const log = baseLog.withTag("RPR_039");
+  test("RPR-39: Invalid nonce values | RP rejects a response containing a nonce mismatch", async () => {
+    const log = baseLog.withTag("RPR-39");
     const DESCRIPTION = "RP correctly rejected response with mismatched nonce";
     log.start("Conformance test: Invalid nonce values");
 
@@ -389,8 +389,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-49 — Unsupported content types
   // -----------------------------------------------------------------------
 
-  test("RPR_049: Unsupported content types | RP rejects a response posted with an unsupported Content-Type", async () => {
-    const log = baseLog.withTag("RPR_049");
+  test("RPR-49: Unsupported content types | RP rejects a response posted with an unsupported Content-Type", async () => {
+    const log = baseLog.withTag("RPR-49");
     const DESCRIPTION =
       "RP correctly rejected response with unsupported Content-Type";
     log.start("Conformance test: Unsupported content types");
@@ -429,8 +429,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-52 — Response decryption failures
   // -----------------------------------------------------------------------
 
-  test("RPR_052: Response decryption failures | RP rejects malformed JWE content", async () => {
-    const log = baseLog.withTag("RPR_052");
+  test("RPR-52: Response decryption failures | RP rejects malformed JWE content", async () => {
+    const log = baseLog.withTag("RPR-52");
     const DESCRIPTION = "RP correctly rejected response with malformed JWE";
     log.start("Conformance test: Response decryption failures");
 
@@ -465,8 +465,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-60 — Invalid HTTP methods
   // -----------------------------------------------------------------------
 
-  test("RPR_060: Invalid HTTP methods | RP rejects GET request to response_uri", async () => {
-    const log = baseLog.withTag("RPR_060");
+  test("RPR-60: Invalid HTTP methods | RP rejects GET request to response_uri", async () => {
+    const log = baseLog.withTag("RPR-60");
     const DESCRIPTION = "RP correctly rejected GET request to response_uri";
     log.start("Conformance test: Invalid HTTP methods (GET)");
 
@@ -499,8 +499,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-63 — Response signature failures
   // -----------------------------------------------------------------------
 
-  test("RPR_063: Response signature failures | RP rejects a response whose JARM ciphertext has been corrupted", async () => {
-    const log = baseLog.withTag("RPR_063");
+  test("RPR-63: Response signature failures | RP rejects a response whose JARM ciphertext has been corrupted", async () => {
+    const log = baseLog.withTag("RPR-63");
     const DESCRIPTION =
       "RP correctly rejected response with corrupted ciphertext";
     log.start("Conformance test: Response signature failures");
@@ -546,8 +546,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-65 — Invalid JWT signatures
   // -----------------------------------------------------------------------
 
-  test("RPR_065: Invalid JWT signatures | RP rejects a response whose JWT integrity is deliberately broken", async () => {
-    const log = baseLog.withTag("RPR_065");
+  test("RPR-65: Invalid JWT signatures | RP rejects a response whose JWT integrity is deliberately broken", async () => {
+    const log = baseLog.withTag("RPR-65");
     const DESCRIPTION =
       "RP correctly rejected response with broken JWT integrity";
     log.start("Conformance test: Invalid JWT signatures");
@@ -586,8 +586,8 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-66 — Invalid JWT claims
   // -----------------------------------------------------------------------
 
-  test("RPR_066: Invalid JWT claims | RP rejects a response with invalid claim sets inside the encrypted payload", async () => {
-    const log = baseLog.withTag("RPR_066");
+  test("RPR-66: Invalid JWT claims | RP rejects a response with invalid claim sets inside the encrypted payload", async () => {
+    const log = baseLog.withTag("RPR-66");
     const DESCRIPTION =
       "RP correctly rejected response with invalid JWT claims";
     log.start("Conformance test: Invalid JWT claims");
@@ -646,9 +646,9 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // -----------------------------------------------------------------------
 
   test.each(["PUT", "DELETE", "PATCH"])(
-    "RPR_076: Unsupported HTTP methods | RP rejects PUT, DELETE, and PATCH requests to response_uri",
+    "RPR-76: Unsupported HTTP methods | RP rejects PUT, DELETE, and PATCH requests to response_uri",
     async (method) => {
-      const log = baseLog.withTag("RPR_076");
+      const log = baseLog.withTag("RPR-76");
       const DESCRIPTION = "RP correctly rejected unsupported HTTP methods";
       log.start("Conformance test: Unsupported HTTP methods");
 

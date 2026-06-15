@@ -77,9 +77,9 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
 
   // NOTE: This test verifies path-level rejection only. Host-level redirect_uri
   // security (unattested host) cannot be tested without RP-side DNS control.
-  // See IT-Wallet spec RPR_020 for full scenario.
-  test("RPR_020: Invalid redirect_uri handling | RP rejects when wallet follows a redirect to an invalid target", async () => {
-    const log = baseLog.withTag("RPR_020");
+  // See IT-Wallet spec RPR-20 for full scenario.
+  test("RPR-20: Invalid redirect_uri handling | RP rejects when wallet follows a redirect to an invalid target", async () => {
+    const log = baseLog.withTag("RPR-20");
     const DESCRIPTION = "RP securely rejects invalid redirect_uri overrides";
     log.start("Conformance test: Invalid redirect_uri handling");
 
@@ -114,8 +114,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-29 — Invalid response codes
   // -----------------------------------------------------------------------
 
-  test("RPR_029: Invalid response codes | RP gracefully handles invalid response_code in redirect", async () => {
-    const log = baseLog.withTag("RPR_029");
+  test("RPR-29: Invalid response codes | RP gracefully handles invalid response_code in redirect", async () => {
+    const log = baseLog.withTag("RPR-29");
     const DESCRIPTION = "RP gracefully handles invalid response_code replays";
     log.start("Conformance test: Invalid response codes");
 
@@ -166,8 +166,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-41 — Missing response parameters
   // -----------------------------------------------------------------------
 
-  test("RPR_041: Missing response parameters | RP rejects a response_uri POST that omits the 'response' parameter", async () => {
-    const log = baseLog.withTag("RPR_041");
+  test("RPR-41: Missing response parameters | RP rejects a response_uri POST that omits the 'response' parameter", async () => {
+    const log = baseLog.withTag("RPR-41");
     const DESCRIPTION =
       "RP correctly detects missing required response parameters";
     log.start("Conformance test: Missing response parameters");
@@ -201,8 +201,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-64 — Response format errors
   // -----------------------------------------------------------------------
 
-  test("RPR_064: Response format errors | RP rejects a malformed form payload to response_uri", async () => {
-    const log = baseLog.withTag("RPR_064");
+  test("RPR-64: Response format errors | RP rejects a malformed form payload to response_uri", async () => {
+    const log = baseLog.withTag("RPR-64");
     const DESCRIPTION = "RP rejects malformed form/JARM payloads";
     log.start("Conformance test: Response format errors");
 
@@ -235,8 +235,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-98 — Error response content type
   // -----------------------------------------------------------------------
 
-  test("RPR_098: Error response content type | RP returns application/json for error responses on response_uri", async () => {
-    const log = baseLog.withTag("RPR_098");
+  test("RPR-98: Error response content type | RP returns application/json for error responses on response_uri", async () => {
+    const log = baseLog.withTag("RPR-98");
     const DESCRIPTION = "RP returns application/json for error responses";
     log.start("Conformance test: Error response content type");
 
@@ -279,8 +279,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-99 — Error response parameters
   // -----------------------------------------------------------------------
 
-  test("RPR_099: Error response parameters | RP includes error and error_description in error responses", async () => {
-    const log = baseLog.withTag("RPR_099");
+  test("RPR-99: Error response parameters | RP includes error and error_description in error responses", async () => {
+    const log = baseLog.withTag("RPR-99");
     const DESCRIPTION = "RP includes error and error_description parameters";
     log.start("Conformance test: Error response parameters");
 
