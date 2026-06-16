@@ -2,7 +2,7 @@ import * as x509 from "@peculiar/x509";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { LOCAL_WP_HOST } from "@/servers/wp-server";
+import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
@@ -94,7 +94,7 @@ export async function loadWalletProviderCertificate(
   const ca1Base64 = Buffer.from(ca1Cert.rawData).toString("base64");
 
   // ── CA2: signed by KY1, attests providerKeyPair / KY2 (leaf) ─────────
-  const providerDomain = LOCAL_WP_HOST;
+  const providerDomain = getLocalWpBaseUrl(wallet.port);
 
   const ca2Cert = await createSignedCertificate(
     intermediateKeyPair,
