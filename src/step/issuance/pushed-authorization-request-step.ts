@@ -6,6 +6,7 @@ import {
   fetchPushedAuthorizationResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 
+import { PID_CREDENTIAL_CONFIGURATION_ID } from "@/errors";
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { REDIRECT_URI } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
@@ -77,6 +78,24 @@ export interface PushedAuthorizationRequestStepOptions {
 export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   static readonly tag = "PUSHED_AUTHORIZATION_REQUEST";
 
+  /**
+   * FR-10: PID-specific `authorization_details` entry.
+   *
+   * Returns an additional `authorization_details` entry when the PAR request
+   * targets the PID credential configuration ID. Override in test subclasses
+   * to inject negative test cases (e.g. wrong `type`, extra/missing fields).
+   *
+   * Returns `undefined` by default (no extra entry).
+   */
+  protected pidCredentialAuthorizationDetails():
+    | {
+        credential_configuration_id: string;
+        type: string;
+      }
+    | undefined {
+    return undefined;
+  }
+
   async run(
     options: PushedAuthorizationRequestStepOptions,
   ): Promise<PushedAuthorizationRequestResponse> {
@@ -94,14 +113,31 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
+        const isPidRequest = options.credentialConfigurationIds.includes(
+          PID_CREDENTIAL_CONFIGURATION_ID,
+        );
+        const pidEntry = isPidRequest
+          ? this.pidCredentialAuthorizationDetails()
+          : undefined;
+
+        const allEntries = [
+          ...options.credentialConfigurationIds.map((id) => ({
+            credential_configuration_id: id,
+            type: "openid_credential",
+          })),
+          ...(pidEntry ? [pidEntry] : []),
+        ];
+
+        const seen = new Set<string>();
+        const authorization_details = allEntries.filter((entry) => {
+          if (seen.has(entry.credential_configuration_id)) return false;
+          seen.add(entry.credential_configuration_id);
+          return true;
+        });
+
         const createParOptions = {
           audience: options.baseUrl,
-          authorization_details: options.credentialConfigurationIds.map(
-            (id) => ({
-              credential_configuration_id: id,
-              type: "openid_credential",
-            }),
-          ),
+          authorization_details,
           // Hardcode require_signed_request_object to true as the wallet is expected to always sign the request object
           // We'll need to allow overriding this in case we want to test unsigned request objects in negative test cases
           authorizationServerMetadata: {

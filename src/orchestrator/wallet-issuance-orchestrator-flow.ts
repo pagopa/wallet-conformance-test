@@ -29,6 +29,8 @@ import {
   CredentialRequestResponse,
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
+  MockEidLoaInjectionAuthDefaultStep,
+  MockEidLoaInjectionAuthStepResponse,
   NonceRequestDefaultStep,
   NonceRequestResponse,
   PushedAuthorizationRequestDefaultStep,
@@ -73,6 +75,7 @@ export class WalletIssuanceOrchestratorFlow {
 
   private readonly pidIdentityConfig: PidIdentityConfig | undefined;
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
+  private mockEidLoaInjectionStep: MockEidLoaInjectionAuthDefaultStep;
   private tokenRequestStep: TokenRequestDefaultStep;
   private readonly TOTAL_STEPS = 6;
 
@@ -114,6 +117,11 @@ export class WalletIssuanceOrchestratorFlow {
     );
 
     this.nonceRequestStep = new issuanceConfig.nonceRequestStepClass(
+      this.config,
+      this.log,
+    );
+
+    this.mockEidLoaInjectionStep = new MockEidLoaInjectionAuthDefaultStep(
       this.config,
       this.log,
     );
@@ -333,22 +341,42 @@ export class WalletIssuanceOrchestratorFlow {
 
     this.log.info("Loading credentials...");
 
-    const credentials = await loadCredentialsForPresentation(
-      this.config,
-      this.log,
-    );
-    const authorizeResponse = await this.authorizeStep.run({
-      authorizationEndpoint:
-        entityStatementClaims.metadata?.oauth_authorization_server
-          ?.authorization_endpoint,
-      baseUrl: credentialIssuer,
-      clientId: walletAttestationResponse.unitKey.publicKey.kid,
-      credentials,
-      requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
-      rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
-      walletAttestation: walletAttestationResponse,
-    });
-    this._authorizeResponse = authorizeResponse;
+    let authorizeResponse:
+      | AuthorizeStepResponse
+      | MockEidLoaInjectionAuthStepResponse;
+
+    if (this.mockMrtdEnabled && this.pidIdentityConfig) {
+      this.log.info("Using mock eID LoA injection step (L3 mode)");
+      authorizeResponse = await this.mockEidLoaInjectionStep.run({
+        authorizationEndpoint,
+        baseUrl: credentialIssuer,
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        identity: this.pidIdentityConfig,
+        requestUri:
+          pushedAuthorizationRequestResponse.response?.request_uri ?? "",
+      });
+    } else {
+      const credentials = await loadCredentialsForPresentation(
+        this.config,
+        this.log,
+      );
+      authorizeResponse = await this.authorizeStep.run({
+        authorizationEndpoint:
+          entityStatementClaims.metadata?.oauth_authorization_server
+            ?.authorization_endpoint,
+        baseUrl: credentialIssuer,
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentials,
+        requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
+        rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
+        walletAttestation: walletAttestationResponse,
+      });
+    }
+
+    const normalizedAuthorizeResponse =
+      authorizeResponse as AuthorizeStepResponse;
+
+    this._authorizeResponse = normalizedAuthorizeResponse;
     this.log.flowStep(
       3,
       this.TOTAL_STEPS,
@@ -358,7 +386,11 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(authorizeResponse, "Authorization");
 
-    return { ...parCtx, authorizationEndpoint, authorizeResponse };
+    return {
+      ...parCtx,
+      authorizationEndpoint,
+      authorizeResponse: normalizedAuthorizeResponse,
+    };
   }
 
   /**

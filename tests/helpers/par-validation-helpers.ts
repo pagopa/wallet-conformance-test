@@ -443,6 +443,32 @@ export function withSignJwtOverride(
 }
 
 /**
+ * Returns a PAR step class where `pidCredentialAuthorizationDetails()` returns
+ * a custom entry instead of the default.
+ *
+ * Use in negative tests that need to mutate the PID-specific authorization_details
+ * entry (e.g. wrong type, extra/missing fields) without subclassing the step.
+ *
+ * @param StepClass - Base PAR step class to extend (typically `PushedAuthorizationRequestDefaultStep`)
+ * @param entry     - Custom authorization_details entry to return from the hook.
+ *                    Pass `undefined` to suppress the PID entry entirely.
+ */
+export function withPidPar(
+  StepClass: typeof PushedAuthorizationRequestDefaultStep,
+  entry:
+    | { credential_configuration_id: string; type: string }
+    | undefined,
+): typeof PushedAuthorizationRequestDefaultStep {
+  return class extends StepClass {
+    protected override pidCredentialAuthorizationDetails():
+      | { credential_configuration_id: string; type: string }
+      | undefined {
+      return entry;
+    }
+  } as typeof PushedAuthorizationRequestDefaultStep;
+}
+
+/**
  * Helper to import a KeyPairJwk for signing.
  * Avoids repeated casts to Parameters<typeof importJWK>[0].
  */

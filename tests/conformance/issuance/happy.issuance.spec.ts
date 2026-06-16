@@ -953,5 +953,71 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    test("CI_051: PID Issuance | The credential issued is a valid PID (SD-JWT VC) with the required claims.", async () => {
+      const log = baseLog.withTag("CI_051");
+      const DESCRIPTION =
+        "PID credential issued successfully with required claims";
+
+      log.start("Conformance test: PID (L3 mock) credential issued successfully");
+
+      const { PID_CREDENTIAL_CONFIGURATION_ID } = await import("@/errors");
+      if (
+        testConfig.credentialConfigurationId !== PID_CREDENTIAL_CONFIGURATION_ID
+      ) {
+        log.info(
+          `CI_051: skipping — credential type '${testConfig.credentialConfigurationId}' is not PID`,
+        );
+        log.testCompleted(DESCRIPTION, true);
+        return;
+      }
+
+      let testSuccess = false;
+      try {
+        expect(
+          authorizeResponse.success,
+          "Authorization step must succeed for PID issuance",
+        ).toBe(true);
+
+        const code = authorizeResponse.response?.authorizeResponse?.code;
+        expect(
+          code,
+          "Authorization code must be present after mock eID injection",
+        ).toBeTruthy();
+
+        expect(tokenResponse.success, "Token request must succeed").toBe(true);
+
+        const accessToken = tokenResponse.response?.access_token;
+        expect(
+          accessToken,
+          "access_token must be present after token request",
+        ).toBeTruthy();
+
+        expect(
+          credentialResponse.success,
+          "Credential request must succeed",
+        ).toBe(true);
+
+        const credentials = credentialResponse.response?.credentials ?? [];
+        expect(
+          credentials.length,
+          "At least one credential must be issued",
+        ).toBeGreaterThan(0);
+
+        for (const credential of credentials) {
+          const claims = decodeJwt(
+            credential.credential.split("~")[0]!,
+          ) as Record<string, unknown>;
+          expect(
+            claims["cnf"],
+            "PID credential must contain a 'cnf' claim for key binding",
+          ).toBeDefined();
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
