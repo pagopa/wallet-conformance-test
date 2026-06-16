@@ -424,6 +424,126 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   });
 
   // -----------------------------------------------------------------------
+  // RPR-53 — SD-JWT integrity verification failure
+  // -----------------------------------------------------------------------
+
+  test("RPR-53: SD-JWT integrity verification failure | RP rejects a response containing a tampered KB-JWT signature", async () => {
+    const log = baseLog.withTag("RPR-53");
+    const DESCRIPTION =
+      "RP correctly rejected response with tampered SD-JWT KB-JWT signature";
+    log.start("Conformance test: SD-JWT integrity verification failure");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const { requestObject, responseUri } = authResult.response;
+      const rawVpToken = authResult.response.authorizationResponse
+        .authorizationResponsePayload.vp_token as Record<
+        string,
+        string | string[]
+      >;
+
+      log.info("→ Tampering KB-JWT signature inside the SD-JWT VP vp_token...");
+
+      const tamperedVpToken: Record<string, string | string[]> = {};
+      let tamperedSdJwtCount = 0;
+
+      const tamperSdJwt = (sdJwt: string): string => {
+        const parts = sdJwt.split("~");
+        const kbJwt = parts[parts.length - 1];
+        if (!kbJwt) {
+          throw new Error(
+            "Test setup failed: vp_token entry is not an SD-JWT with a KB-JWT segment",
+          );
+        }
+
+        const jwtParts = kbJwt.split(".");
+        if (jwtParts.length !== 3) {
+          throw new Error(
+            "Test setup failed: could not parse KB-JWT inside SD-JWT (expected 3 JWT parts)",
+          );
+        }
+
+        const sig = jwtParts[2] ?? "";
+        if (sig.length < 4) {
+          throw new Error(
+            "Test setup failed: KB-JWT signature too short to tamper",
+          );
+        }
+
+        const tamperedSig =
+          sig.slice(0, -4) + (sig.endsWith("AAAA") ? "BBBB" : "AAAA");
+        jwtParts[2] = tamperedSig;
+        parts[parts.length - 1] = jwtParts.join(".");
+        tamperedSdJwtCount++;
+        return parts.join("~");
+      };
+
+      for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
+        tamperedVpToken[credId] = Array.isArray(sdJwtVp)
+          ? sdJwtVp.map(tamperSdJwt)
+          : tamperSdJwt(sdJwtVp);
+      }
+
+      if (tamperedSdJwtCount === 0) {
+        throw new Error(
+          "Test setup failed: no SD-JWT entries were tampered (KB-JWT signature not found)",
+        );
+      }
+
+      log.info(
+        "→ Re-building JARM with tampered vp_token and posting to response_uri...",
+      );
+
+      const metadata = {
+        ...verifierMetadata,
+        authorization_encrypted_response_alg:
+          verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+        authorization_encrypted_response_enc:
+          verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
+      };
+
+      const tamperedAuthorizationResponse = await createAuthorizationResponse({
+        authorization_encrypted_response_alg:
+          metadata.authorization_encrypted_response_alg,
+        authorization_encrypted_response_enc:
+          metadata.authorization_encrypted_response_enc,
+        callbacks: {
+          ...partialCallbacks,
+          encryptJwe: getEncryptJweCallback(),
+        },
+        config: ioWalletSdkConfig,
+        requestObject,
+        rpJwks: { jwks: metadata.jwks },
+        vp_token: tamperedVpToken,
+      } as CreateAuthorizationResponseVersionedOptions);
+
+      const formBody = new URLSearchParams({
+        response: tamperedAuthorizationResponse.jarm.responseJwe,
+      });
+      const response = await postToResponseUri(responseUri, {
+        body: formBody.toString(),
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP rejected the tampered SD-JWT...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-60 — Invalid HTTP methods
   // -----------------------------------------------------------------------
 
