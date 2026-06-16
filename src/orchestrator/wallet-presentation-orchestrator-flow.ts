@@ -98,14 +98,14 @@ export class WalletPresentationOrchestratorFlow {
         return undefined;
       }
 
-      const baseUrl = new URL(normalizedClientId.clientId);
+      const baseUrl = this.normalizeBaseUrl(normalizedClientId.clientId);
       this.log.debug(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl.href}`,
+        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl}`,
       );
-      return baseUrl.href;
+      return baseUrl;
     }
 
-    return this.config.presentation.verifier;
+    return this.normalizeBaseUrl(this.config.presentation.verifier);
   }
 
   async presentation(): Promise<PresentationFlowResponse> {
