@@ -227,6 +227,36 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
+    const log = baseLog.withTag("RPR028");
+
+    log.start("Conformance test: Verifying response_code entropy requirements");
+
+    const DESCRIPTION =
+      "Relying Party correctly provides response_code with sufficient entropy (≥32 characters, URL-safe charset)";
+    let testSuccess = false;
+    try {
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
+
+      const responseCode = redirectUriResult.response?.responseCode ?? "";
+      log.debug(`  response_code: ${responseCode}`);
+      log.debug(`  Length: ${responseCode.length} characters`);
+
+      expect(responseCode.length).toBeGreaterThanOrEqual(32);
+      log.debug(
+        "  ✅ response_code length meets minimum entropy requirement (≥32)",
+      );
+
+      expect(responseCode).toMatch(/^[a-zA-Z0-9_-]+$/);
+      log.debug("  ✅ response_code uses URL-safe characters only");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-78: Wallet Attestation request correctly uses standard DCQL query.", () => {
     const log = baseLog.withTag("RPR-78");
 
