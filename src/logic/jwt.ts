@@ -74,7 +74,13 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
  * @returns A promise that resolves to an object containing the verification result.
  */
 export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-  const publicJwk = await jwkFromSigner(signer);
+  let publicJwk: Jwk;
+  try {
+    publicJwk = await jwkFromSigner(signer);
+  } catch {
+    return { verified: false };
+  }
+
   const key = await importJWK(publicJwk as JWK, signer.alg);
 
   try {
