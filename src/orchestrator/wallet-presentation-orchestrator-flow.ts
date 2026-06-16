@@ -227,7 +227,7 @@ export class WalletPresentationOrchestratorFlow {
     return new URL(url).href.replace(/\/+$/, "");
   }
 
-  private prepareBaseUrl(): string | undefined {
+  prepareBaseUrl(): string | undefined {
     if (!this.config.presentation.verifier) {
       const authorizeUrl = new URL(
         this.config.presentation.authorize_request_url,
