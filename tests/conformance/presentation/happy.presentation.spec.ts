@@ -220,6 +220,13 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         log.debug(
           "→ Checking request_uri is declared in metadata request_uris...",
         );
+        const requestUris: string[] = verifierMetadata.request_uris ?? [];
+        const actualRequestUri: string = parsedQrCode?.requestUri ?? "";
+        expect(actualRequestUri).toBeTruthy();
+        log.debug(`  request_uri: ${actualRequestUri}`);
+        log.debug(`  Declared request_uris: ${requestUris.join(", ")}`);
+        expect(requestUris).toContain(actualRequestUri);
+        log.debug("  ✅ request_uri is declared in metadata request_uris");
 
         log.debug("→ Verifying trust chain from request object JWT header...");
         const header =
