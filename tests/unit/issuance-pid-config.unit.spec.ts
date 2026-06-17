@@ -131,6 +131,45 @@ describe("pidIssuanceSchema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("accepts mock_authorize_code when mode is l3 (B1-7.2)", () => {
+    const result = pidIssuanceSchema.safeParse({
+      birthdate: "1980-01-10",
+      family_name: "Rossi",
+      given_name: "Mario",
+      mock_authorize_code: "test-auth-code-123",
+      mode: "l3",
+      place_of_birth: "Roma",
+      tax_id_code: "RSSMRA80A10H501Z",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.data.mock_authorize_code).toBe("test-auth-code-123");
+  });
+
+  it("rejects mock_authorize_code when mode is l2plus (B1-7.2)", () => {
+    const result = pidIssuanceSchema.safeParse({
+      birthdate: "1980-01-10",
+      family_name: "Rossi",
+      given_name: "Mario",
+      mock_authorize_code: "test-auth-code-123",
+      mode: "l2plus",
+      mrz: "IDITARSSMRA80A10H501Z<<<<<<<<<<<<<<<",
+      personal_administrative_number: "XX00000XX",
+      place_of_birth: "Roma",
+      tax_id_code: "RSSMRA80A10H501Z",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    const paths = result.error.issues.map((issue) => issue.path.join("."));
+    expect(paths).toContain("mock_authorize_code");
+  });
 });
 
 describe("loadConfigWithHierarchy – issuance_pid FR-3", () => {
@@ -175,6 +214,33 @@ describe("loadConfigWithHierarchy – issuance_pid FR-3", () => {
     expect(config.issuance_pid.mode).toBe("l3");
     expect(config.issuance.credential_types).toContain(
       PID_CREDENTIAL_CONFIGURATION_ID,
+    );
+  });
+
+  it("loads mock_authorize_code for mode l3 (B1-7.2)", () => {
+    writeFileSync(
+      path.join(process.cwd(), "config.ini"),
+      [
+        "[issuance]",
+        "url = https://pid-provider.example",
+        `credential_types[] = ${PID_CREDENTIAL_CONFIGURATION_ID}`,
+        "",
+        "[issuance_pid]",
+        "mode = l3",
+        "given_name = Mario",
+        "family_name = Rossi",
+        "tax_id_code = RSSMRA80A10H501Z",
+        "birthdate = 1980-01-10",
+        "place_of_birth = Roma",
+        "mock_authorize_code = my-static-test-code",
+      ].join("\n"),
+    );
+
+    const config = loadConfigWithHierarchy({}, DEFAULT_INI);
+
+    expect(config.issuance_pid.mode).toBe("l3");
+    expect(config.issuance_pid.mock_authorize_code).toBe(
+      "my-static-test-code",
     );
   });
 

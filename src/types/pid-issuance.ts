@@ -56,6 +56,21 @@ export const pidIssuanceSchema = z
     fixture_storage_path: z.string().min(1).optional(),
     given_name: z.string().min(1).optional(),
     /**
+     * B1-7.2: pre-configured authorization code for L3 mock auth.
+     *
+     * When set, `MockEidLoaInjectionAuthDefaultStep` skips the HTTP
+     * redirect-intercept flow entirely and returns this code directly.
+     * The PAR step still runs normally so the AS records the request.
+     *
+     * Use this when the SUT's test environment provides a pre-issued code
+     * (e.g. a static test code exposed by the PID Provider's test mode) or
+     * when you want to test the token/credential steps independently of the
+     * authorization step.
+     *
+     * No effect when `mode` is not `l3` or when `mock_mrtd_enabled = false`.
+     */
+    mock_authorize_code: z.string().min(1).optional(),
+    /**
      * When set, overrides the derived flag `mode !== "none"` used by REQ-05
      * orchestrator branching. Align with linee guida `MOCK_MRTD_ENABLED`.
      */
@@ -109,6 +124,16 @@ export const pidIssuanceSchema = z
           path: ["personal_administrative_number"],
         });
       }
+    }
+
+    // B1-7.2: mock_authorize_code is only valid for L3 (not L2+ or none).
+    if (data.mock_authorize_code && data.mode !== "l3") {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "[issuance_pid] 'mock_authorize_code' is only valid when mode = 'l3'",
+        path: ["mock_authorize_code"],
+      });
     }
   });
 

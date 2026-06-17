@@ -68,6 +68,27 @@ export class MockEidLoaInjectionAuthDefaultStep extends StepFlow {
   ): Promise<MockEidLoaInjectionAuthStepResponse> {
     return this.execute<MockEidLoaInjectionAuthExecuteResponse>(async () => {
       const log = this.log;
+
+      // B1-7.2: when a pre-configured authorization code is available in the
+      // config, skip the HTTP redirect-intercept flow entirely.
+      const mockAuthorizeCode =
+        this.config.issuance_pid?.mock_authorize_code;
+      if (mockAuthorizeCode) {
+        log.info(
+          "B1-7.2: Using pre-configured authorization code from [issuance_pid].mock_authorize_code (skipping HTTP redirect flow)",
+        );
+        return {
+          authorizeResponse: {
+            code: mockAuthorizeCode,
+            iss: options.baseUrl,
+            state: "",
+          },
+          iss: options.baseUrl,
+          requestObject: undefined,
+          requestObjectJwt: "",
+        };
+      }
+
       const fetchFn = fetchWithConfig(this.config.network);
 
       log.debug("Starting MockEidLoaInjectionAuth Step (L3/CIE+PIN)");
