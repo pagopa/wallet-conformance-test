@@ -71,6 +71,7 @@ export class WalletIssuanceOrchestratorFlow {
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
   private readonly mockMrtdEnabled: boolean;
+
   private nonceRequestStep: NonceRequestDefaultStep;
 
   private readonly pidIdentityConfig: PidIdentityConfig | undefined;
@@ -84,6 +85,9 @@ export class WalletIssuanceOrchestratorFlow {
     this.log = this.log.withTag(this.issuanceConfig.name);
 
     this.config = loadConfigWithHierarchy();
+    this.sdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: this.config.wallet.wallet_version,
+    });
     this.mockMrtdEnabled = isMockMrtdEnabledFromConfig(this.config);
     this.pidIdentityConfig = pidIdentityConfigFromIssuancePid(
       this.config.issuance_pid,
@@ -147,6 +151,7 @@ export class WalletIssuanceOrchestratorFlow {
       );
       const credentialOffer = await resolveCredentialOffer({
         callbacks: { fetch },
+        config: this.sdkConfig,
         credentialOffer: this.config.issuance.credential_offer_uri,
       });
       this.log.debug(
@@ -505,7 +510,6 @@ export class WalletIssuanceOrchestratorFlow {
     const pushedAuthorizationRequestResponse =
       await this.pushedAuthorizationRequestStep.run({
         baseUrl: credentialIssuer,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialConfigurationIds,
         popAttestation,
         pushedAuthorizationRequestEndpoint,
