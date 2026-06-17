@@ -282,6 +282,83 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 - Non-Executable Cases: Tests that were skipped and why.
 - Additional Data: Verbose logs and other debugging information.
 
+## 📊 Reports
+
+Every test run is automatically persisted to a local SQLite database (`data/wct.db`). After one or more runs you can inspect the history and generate a formatted report without re-running any tests.
+
+### How It Works
+
+The built-in `ConformanceReporter` (a Vitest reporter) hooks into each test run and writes every result to the database in real time. For each test case it stores:
+
+- The **requirement ID** (`CI_001`, `RPR-001`, …) parsed from the test title
+- The **result**: `PASS`, `FAIL`, or `NOT_REACHED` (test could not execute)
+- A timestamp and, on failure, the error message
+
+Each run is identified by a UUID and carries an overall status (`PASSED`, `FAILED`, or `INCOMPLETE`) derived from the aggregate results.
+
+### Listing Runs
+
+```bash
+wct report list
+# or the shorter alias
+wct report ls
+```
+
+Prints one row per recorded run:
+
+```
+RUN ID                               STARTED AT               CLOSED AT                STATUS     CHECKS
+b3f2a1c0-...                         2026-06-17T10:00:00.000Z 2026-06-17T10:01:45.000Z PASSED     42
+```
+
+### Generating a Report
+
+```bash
+wct report create <run_id|latest> <format> [--view <view>]
+```
+
+| Argument / Option | Values | Description |
+|---|---|---|
+| `<run_id\|latest>` | UUID from `report list`, or `latest` | Which run to generate a report for |
+| `<format>` | `html`, `pdf` | Output file format |
+| `--view` | `both` (default), `executive`, `technical` | Which view(s) to include |
+
+The report file is written to the **current working directory**:
+
+```
+conformance-report-<run_id>.<format>
+```
+
+#### Examples
+
+HTML report for the most recent run (both views, default):
+
+```bash
+wct report create latest html
+```
+
+PDF with only the executive summary:
+
+```bash
+wct report create latest pdf --view executive
+```
+
+Technical-only HTML for a specific run:
+
+```bash
+wct report create b3f2a1c0-1234-... html --view technical
+```
+
+### Report Views
+
+| View | Content | Audience |
+|---|---|---|
+| `executive` | High-level compliance narrative: overall score as a percentage, pass / fail / partial counts, and a highlighted box listing any critical failures. | Stakeholders, certification bodies |
+| `technical` | Full check-by-check breakdown with requirement IDs, results, and failure messages for every test case. | Developers, integrators |
+| `both` | Interactive HTML with a tab switcher between the two views above (default). | All audiences |
+
+> **Note**: When generating a PDF with `--view both`, both sections are rendered sequentially in the document without the interactive switcher.
+
 ## 📋 Official Test Plans
 
 The tests executed by this tool are a **subset of the official conformance tests** defined within the [IT Wallet Technical Specifications](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en). Specifically, they implement part of the test plans documented in the [Test Plans section](https://italia.github.io/eid-wallet-it-docs/versione-corrente/en/test-plans.html) of the official documentation. See [Test Execution Reference](./tests/docs/TEST-EXECUTION-REFERENCE.md) for more details.
