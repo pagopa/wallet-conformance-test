@@ -4,23 +4,31 @@ import { PNG } from "pngjs";
 
 import { Config } from "@/types";
 
+import { fetchWithConfig } from "./utils";
+
 export async function fetchAuthorizeRequestUrl(
   presentation: Config["presentation"],
+  network: Config["network"],
 ): Promise<string> {
   if (presentation.qr_container_id) {
     const imgSrc = await fetchQrCode(
       presentation.authorize_request_url,
       presentation.qr_container_id,
+      network,
     );
-    return parseQrCode(imgSrc);
+    return parseQrCode(imgSrc, presentation.authorize_request_url, network);
   }
 
   return presentation.authorize_request_url;
 }
 
-async function fetchQrCode(url: string, containerId: string) {
+async function fetchQrCode(
+  url: string,
+  containerId: string,
+  network: Config["network"],
+): Promise<string> {
   // fetch page HTML
-  const response = await fetch(validateUrl(url), {
+  const response = await fetchWithConfig(network)(validateUrl(url), {
     method: "GET",
   });
   if (!response.ok) throw new Error(`failed to fetch page: ${url}`);
@@ -37,7 +45,11 @@ async function fetchQrCode(url: string, containerId: string) {
   return imgSrc;
 }
 
-async function parseQrCode(image: string): Promise<string> {
+async function parseQrCode(
+  image: string,
+  pageUrl: string,
+  network: Config["network"],
+): Promise<string> {
   let buffer;
 
   // handle base64 data URLs
@@ -47,7 +59,10 @@ async function parseQrCode(image: string): Promise<string> {
 
     buffer = Buffer.from(base64, "base64");
   } else {
-    const response = await fetch(image, { method: "GET" });
+    const imageUrl = new URL(image, pageUrl).toString();
+    const response = await fetchWithConfig(network)(validateUrl(imageUrl), {
+      method: "GET",
+    });
 
     if (!response.ok) {
       throw new Error(`failed to fetch QRCode from: ${image}`);

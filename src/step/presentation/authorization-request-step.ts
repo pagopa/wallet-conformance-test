@@ -66,6 +66,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
       const authorizeRequestUrl = await fetchAuthorizeRequestUrl(
         this.config.presentation,
+        this.config.network,
       );
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
       const { parsedQrCode, requestObjectJwt } =
