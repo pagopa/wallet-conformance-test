@@ -13,8 +13,8 @@ import {
   ensureDir,
   hasTrustChainExpired,
   hasX509CertificateExpired,
-  loadCertificate,
-  loadJwks,
+  readCertificate,
+  readJwks,
   VALIDITY_MS,
 } from "@/logic";
 import {
@@ -43,18 +43,16 @@ export async function createMockMdlMdoc(
   credentialsPath: string,
   version: ItWalletSpecsVersion,
 ): Promise<Credential> {
-  const issuerKeyPair = await loadJwks(backupPath, "issuer_mdl_mocked_jwks");
+  const issuerKeyPair = readJwks(backupPath, "issuer_mdl_mocked_jwks");
 
   const credentialIdentifier = "mso_mdoc_mDL";
-  const { publicKey: deviceKey } = await loadJwks(
+  const { publicKey: deviceKey } = readJwks(
     backupPath,
     buildJwksPath(credentialIdentifier),
   );
-  const issuerCertificate = await loadCertificate(
+  const issuerCertificate = readCertificate(
     backupPath,
     buildCertPath(credentialIdentifier),
-    issuerKeyPair,
-    subject,
   );
 
   const expiration = new Date(Date.now() + VALIDITY_MS);
@@ -102,20 +100,15 @@ export async function createMockSdJwt(
   credentialsPath: string,
   version: ItWalletSpecsVersion,
 ): Promise<Credential> {
-  const keyPair = await loadJwks(backupPath, "issuer_pid_mocked_jwks");
+  const keyPair = readJwks(backupPath, "issuer_pid_mocked_jwks");
 
   const credentialIdentifier = "dc_sd_jwt_PersonIdentificationData";
-  const { publicKey: unitKey } = await loadJwks(
+  const { publicKey: unitKey } = readJwks(
     backupPath,
     buildJwksPath(credentialIdentifier),
   );
 
-  const certificate = await loadCertificate(
-    backupPath,
-    "issuer_cert",
-    keyPair,
-    "CN=test_issuer",
-  );
+  const certificate = readCertificate(backupPath, "issuer_cert");
 
   const expiration = new Date(Date.now() + VALIDITY_MS);
   let mockedSdjwt: Credential;

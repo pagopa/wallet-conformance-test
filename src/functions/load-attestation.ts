@@ -20,9 +20,9 @@ import {
   getTrustMarks,
   hasTrustChainExpired,
   loadJsonDumps,
-  loadJwks,
   loadWalletProviderCertificate,
   partialCallbacks,
+  readJwks,
   signJwtCallback,
   validateProviderKeyPair,
 } from "@/logic";
@@ -200,12 +200,15 @@ export const loadAttestation = async (
   ensureDir(
     `${wallet.wallet_attestations_storage_path}/${wallet.wallet_version}`,
   );
-  ensureDir(wallet.backup_storage_path);
 
-  const [providerKeyPair, unitKeyPair] = await Promise.all([
-    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_provider")),
-    loadJwks(wallet.backup_storage_path, buildJwksPath("wallet_unit")),
-  ]);
+  const providerKeyPair = readJwks(
+    wallet.backup_storage_path,
+    buildJwksPath("wallet_provider"),
+  );
+  const unitKeyPair = readJwks(
+    wallet.backup_storage_path,
+    buildJwksPath("wallet_unit"),
+  );
 
   const attestationPath = buildAttestationPath(wallet);
 
@@ -234,9 +237,15 @@ export const loadAttestation = async (
         providerKey: providerKeyPair,
         unitKey: unitKeyPair,
       };
-    } catch {
-      // If the existing attestation cannot be read (missing/unreadable/corrupt),
-      // fall back to generating a new one.
+    } catch (e) {
+      if (
+        e instanceof AttestationExpiredError ||
+        e instanceof TrustChainExpiredError
+      ) {
+        // attestation is stale — fall through to regenerate
+      } else {
+        throw e;
+      }
     }
   }
 
