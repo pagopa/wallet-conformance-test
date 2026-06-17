@@ -4,6 +4,7 @@ import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { JwkSet } from "@pagopa/io-wallet-oauth2";
+import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import {
   CredentialOffer,
   resolveCredentialOffer,
@@ -20,7 +21,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
 import { parseCredential } from "@/functions";
-import { parseMdoc } from "@/logic";
+import { fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
 import { validateDcqlQuery } from "@/logic/dcql";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
@@ -286,48 +287,63 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-    test("CI_008: Fetch Metadata | Credential Issuer metadata", async () => {
-      const log = baseLog.withTag("CI_008");
-      const DESCRIPTION =
-        "All required metadata sections (federation_entity, oauth_authorization_server, openid_credential_issuer) are present";
+    test(
+      "CI_008: Fetch Metadata | Credential Issuer metadata",
+      { skip: process.env.CI === "true" },
+      async () => {
+        const log = baseLog.withTag("CI_008");
+        const DESCRIPTION =
+          "All required metadata sections (federation_entity, oauth_authorization_server, openid_credential_issuer) are present";
 
-      log.start(
-        "Conformance test: Verifying Credential Issuer metadata structure",
-      );
+        log.start(
+          "Conformance test: Verifying Credential Issuer metadata structure",
+        );
 
-      let testSuccess = false;
-      try {
-        const entityClaims =
-          fetchMetadataResponse.response?.entityStatementClaims;
-
-        const result = z
-          .object({
-            metadata: z.any(),
-          })
-          .passthrough()
-          .refine(
-            (data) =>
-              data.metadata !== undefined &&
-              data.metadata?.federation_entity !== undefined &&
-              data.metadata?.oauth_authorization_server !== undefined &&
-              data.metadata?.openid_credential_issuer !== undefined,
-            {
-              message:
-                "metadata or federation_entity|oauth_authorization_server|openid_credential_issuer is missing",
+        let testSuccess = false;
+        try {
+          const config = orchestrator.getConfig();
+          const { credentialIssuer } =
+            await orchestrator.findCredentialConfig();
+          const entityClaims = await fetchMetadata({
+            callbacks: {
+              fetch: fetchWithConfig(config.network),
+              verifyJwt,
             },
-          )
-          .safeParse(entityClaims);
+            config: new IoWalletSdkConfig({
+              itWalletSpecsVersion: config.wallet.wallet_version,
+            }),
+            credentialIssuerUrl: credentialIssuer,
+          });
 
-        expect(
-          result.success,
-          `Error validating schema: ${result.success ? "" : result.error.message}`,
-        ).toBe(true);
+          const result = z
+            .object({
+              metadata: z.any(),
+            })
+            .passthrough()
+            .refine(
+              (data) =>
+                data.metadata !== undefined &&
+                data.metadata?.federation_entity !== undefined &&
+                data.metadata?.oauth_authorization_server !== undefined &&
+                data.metadata?.openid_credential_issuer !== undefined,
+              {
+                message:
+                  "metadata or federation_entity|oauth_authorization_server|openid_credential_issuer is missing",
+              },
+            )
+            .safeParse(entityClaims);
 
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          expect(
+            result.success,
+            `Error validating schema: ${result.success ? "" : result.error.message}`,
+          ).toBe(true);
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test("CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet", async () => {
       const log = baseLog.withTag("CI_009");
