@@ -33,6 +33,7 @@ export interface CliOptions {
   maxRetries?: number;
   port?: number;
   presentationAuthorizeUri?: string;
+  presentationQRId?: string;
   presentationTestsDir?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
@@ -355,6 +356,9 @@ const buildPresentationConfig: ConfigSectionBuilder<Config["presentation"]> = (
   ...(options.presentationAuthorizeUri && {
     authorize_request_url: options.presentationAuthorizeUri,
   }),
+  ...(options.presentationQRId && {
+    qr_container_id: options.presentationQRId,
+  }),
   ...(options.presentationTestsDir && {
     tests_dir: options.presentationTestsDir,
   }),
@@ -483,6 +487,7 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationAuthorizeUri",
     "CONFIG_PRESENTATION_AUTHORIZE_URI",
   );
+  readStringEnv(options, "presentationQRId", "CONFIG_PRESENTATION_QR_ID");
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
   readNumberEnv(options, "maxRetries", "CONFIG_MAX_RETRIES");

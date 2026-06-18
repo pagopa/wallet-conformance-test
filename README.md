@@ -273,6 +273,30 @@ These guides cover:
 > **Note**:
 > The credentials used during the presentation tests will include both the credentials saved during the issuance tests and the auto-generated PID (dc_sd_jwt_PersonIdentificationData).
 
+#### QR Code Scanning (Optional)
+
+In some scenarios, the `authorize_request_url` might point to a web page that displays a QR code rather than directly to the OpenID4VP request. You can configure the tool to automatically fetch that page, find the QR code within a specific HTML container, and parse it.
+
+The `qr_container_id` can be any CSS selector (e.g., `.qr-container` or `#qr-code`) that identifies the HTML element containing the QR code image (`<img>`).
+
+There are three ways to enable it:
+
+1. **CLI flag**:
+   ```bash
+   wct test:presentation --presentation-qr-container-id ".qr-container"
+   ```
+
+2. **Environment variable**:
+   ```bash
+   CONFIG_PRESENTATION_QR_CONTAINER_ID=".qr-container" wct test:presentation
+   ```
+
+3. **`config.ini`**:
+   ```ini
+   [presentation]
+   qr_container_id = .qr-container
+   ```
+
 #### Test Reports
 
 Upon completion of a test suite, the tool generates a comprehensive report (e.g., an HTML file) summarizing the results. The report will clearly detail:

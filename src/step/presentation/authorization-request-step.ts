@@ -14,6 +14,7 @@ import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
+import { fetchAuthorizeRequestUrl } from "@/logic/authorization-url";
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
 import { partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
@@ -63,8 +64,10 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
-      const authorizeRequestUrl =
-        this.config.presentation.authorize_request_url;
+      const authorizeRequestUrl = await fetchAuthorizeRequestUrl(
+        this.config.presentation,
+        this.config.network,
+      );
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
       const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({

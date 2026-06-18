@@ -47,6 +47,7 @@ export const configSchema = z.object({
   }),
   presentation: z.object({
     authorize_request_url: z.string().url(),
+    qr_container_id: z.string().optional(),
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),
