@@ -18,6 +18,7 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import { randomUUID } from "node:crypto";
 
 import {
   buildJwksPath,
@@ -49,11 +50,6 @@ export interface CredentialRequestStepOptions {
   accessToken: string;
 
   /**
-   * Credential Issuer Base URL
-   */
-  baseUrl: string;
-
-  /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
@@ -72,6 +68,11 @@ export interface CredentialRequestStepOptions {
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
    */
   credentialIdentifier: string;
+
+  /**
+   * Credential Issuer Base URL
+   */
+  credentialIssuer: string;
 
   /**
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
@@ -129,7 +130,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
       issuer: getLocalWpBaseUrl(this.config.wallet.port),
-      keyStorage: ["iso_18045_basic"],
+      keyStorage: ["iso_18045_moderate"],
       signer: {
         alg: "ES256",
         kid: providerKey.publicKey.kid,
@@ -138,11 +139,11 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       status: {
         status_list: {
-          idx: 0,
-          uri: `${getLocalWpBaseUrl(this.config.wallet.port)}/status-list`,
+          idx: 4373,
+          uri: `https://iwuitncdnst01.blob.core.windows.net/status-lists/ae783554-e4cd-4646-a73e-337a0062c60d`,
         },
       },
-      userAuthentication: ["iso_18045_basic"],
+      userAuthentication: ["iso_18045_moderate"],
     });
   }
 
@@ -214,7 +215,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       clientId: options.clientId,
       credential_identifier: options.credentialIdentifier,
-      issuerIdentifier: options.baseUrl,
+      issuerIdentifier: options.credentialIssuer,
       nonce: options.nonce,
     };
 
@@ -276,6 +277,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         ...partialCallbacks,
         signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
+      jti: randomUUID(),
       signer: {
         alg: "ES256",
         method: "jwk",

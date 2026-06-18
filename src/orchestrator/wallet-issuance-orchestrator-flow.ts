@@ -221,9 +221,9 @@ export class WalletIssuanceOrchestratorFlow {
 
       const credentialResponse = await this.credentialRequestStep.run({
         accessToken,
-        baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+        credentialIssuer: credentialIssuer,
         credentialRequestEndpoint:
           entityStatementClaims.metadata?.openid_credential_issuer
             ?.credential_endpoint,

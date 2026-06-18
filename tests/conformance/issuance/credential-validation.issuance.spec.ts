@@ -157,9 +157,9 @@ testConfigs.forEach((testConfig) => {
       const step = new StepClass(config, baseLog);
       return step.run({
         accessToken,
-        baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationId,
+        credentialIssuer: credentialIssuer,
         credentialRequestEndpoint: credentialEndpoint,
         dPoPKey: tokenCtx.dPoPKey,
         nonce,
