@@ -38,11 +38,12 @@ async function fetchQrCode(
   const page = cheerio.load(html);
 
   // find image inside target div
-  const imgSrc = page(`${containerId} img`).attr("src");
+  const imgSrc = page(`img ${containerId}`).serialize();
 
   if (!imgSrc) throw new Error("QR image not found");
 
-  return imgSrc;
+  // return imgSrc;
+  return "";
 }
 
 async function parseQrCode(
