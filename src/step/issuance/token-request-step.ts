@@ -7,6 +7,7 @@ import {
   FetchTokenResponseOptions,
   Jwk,
 } from "@pagopa/io-wallet-oauth2";
+import { randomUUID } from "crypto";
 
 import {
   createKeys,
@@ -84,6 +85,7 @@ export class TokenRequestDefaultStep extends StepFlow {
           ...partialCallbacks,
           signJwt: signJwtCallback([dPoPKey.privateKey]),
         },
+        jti: randomUUID(),
         signer: {
           alg: "ES256",
           method: "jwk",

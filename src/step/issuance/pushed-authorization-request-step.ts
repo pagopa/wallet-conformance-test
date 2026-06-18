@@ -7,7 +7,7 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -115,7 +115,9 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             },
           },
           pkceCodeVerifier: options.codeVerifier,
-          redirectUri: REDIRECT_URI,
+          redirectUri: getCallbackRedirectUri(
+            this.config.issuance.callback_port,
+          ),
           responseMode: "query",
         };
 
@@ -137,6 +139,11 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         );
         const pushedAuthorizationRequest =
           await createPushedAuthorizationRequest(finalParOptions);
+
+        log.debug(
+          "Pushed Authorization Request:",
+          JSON.stringify(pushedAuthorizationRequest.request, null, 2),
+        );
 
         const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 

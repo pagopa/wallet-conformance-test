@@ -5,9 +5,8 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
-import { randomUUID } from "node:crypto";
 
-import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
+import { loadAttestation } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
@@ -15,7 +14,7 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import {
   CredentialConfigurationError,
   IssuerMetadataError,
@@ -542,7 +541,7 @@ export class WalletIssuanceOrchestratorFlow {
       code: authorizeResponse.response.authorizeResponse.code,
       code_verifier,
       grant_type: "authorization_code",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getCallbackRedirectUri(this.config.issuance.callback_port),
     };
 
     const tokenResponse = await this.tokenRequestStep.run({

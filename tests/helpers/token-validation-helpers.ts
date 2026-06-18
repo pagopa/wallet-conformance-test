@@ -1,4 +1,4 @@
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
   AuthorizeStepResponse,
@@ -40,12 +40,14 @@ export async function runAndValidateAuthorize(
 
   const codeVerifier = pushedAuthorizationRequestResponse.response.codeVerifier;
 
+  const config = orchestrator.getConfig();
+
   return {
     authorizationServer,
     code,
     codeVerifier,
     fetchMetadataResponse,
-    redirectUri: REDIRECT_URI,
+    redirectUri: getCallbackRedirectUri(config.issuance.callback_port),
     walletAttestationResponse,
   };
 }
