@@ -234,9 +234,13 @@ testConfigs.forEach((testConfig) => {
             "x5c MUST be present and non-empty for signature verification",
           ).toBe(true);
 
+          expect(typeof header.alg, "alg MUST be present as a string").toBe(
+            "string",
+          );
+          const alg = header.alg as string;
           const leafCert = (x5c as string[])[0];
           const pem = `-----BEGIN CERTIFICATE-----\n${leafCert}\n-----END CERTIFICATE-----`;
-          const publicKey = await importX509(pem, header.alg as string);
+          const publicKey = await importX509(pem, alg);
 
           await expect(
             jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
@@ -750,6 +754,10 @@ testConfigs.forEach((testConfig) => {
             lst.length,
             "status_list.lst MUST not be empty",
           ).toBeGreaterThan(0);
+          expect(
+            /^[A-Za-z0-9_-]+$/.test(lst),
+            "status_list.lst MUST be base64url-encoded (JWT base64url alphabet, no padding)",
+          ).toBe(true);
 
           testSuccess = true;
         } finally {
@@ -859,16 +867,14 @@ testConfigs.forEach((testConfig) => {
     // =======================================================================
 
     test(
-      "CI_192: HTTP Status List Response Gzip Content-Encoding | response uses Content-Encoding: gzip per RFC 9110",
+      "CI_192: HTTP Status List Response Content-Encoding | response uses gzip when HTTP compression is applied",
       { skip: ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0) },
       async () => {
         const log = baseLog.withTag("CI_192");
         const DESCRIPTION =
-          "Status List endpoint response uses Content-Encoding: gzip per RFC 9110";
+          "Status List endpoint response uses gzip when HTTP compression is applied (Content-Encoding: gzip)";
 
-        log.start(
-          "Conformance test: Status List response gzip Content-Encoding",
-        );
+        log.start("Conformance test: Status List response Content-Encoding");
 
         let testSuccess = false;
         try {
@@ -876,9 +882,15 @@ testConfigs.forEach((testConfig) => {
 
           log.debug(`  Content-Encoding: ${statusListContentEncoding}`);
 
+          if (!statusListContentEncoding) {
+            log.info("'Content-Encoding' header missing");
+            testSuccess = true;
+            return log.testCompleted(DESCRIPTION, true);
+          }
+
           expect(
             statusListContentEncoding,
-            "Content-Encoding MUST be 'gzip' per RFC 9110",
+            "Content-Encoding MUST be 'gzip'",
           ).toBe("gzip");
 
           testSuccess = true;

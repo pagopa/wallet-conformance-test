@@ -278,7 +278,7 @@ These tests verify the structural and cryptographic properties of issued SD-JWT 
 
 - **CI_191**: Verifies that the Status List endpoint returns a response with the `Content-Type: application/statuslist+jwt` header.
 
-- **CI_192**: Verifies that the Status List endpoint response uses `Content-Encoding: gzip` as required by the specification (RFC 9110).
+- **CI_192**: Verifies that the Status List endpoint response either omits `Content-Encoding` (no HTTP compression) or, if present, includes `gzip`.
 
 ---
 
