@@ -5,8 +5,9 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import { randomUUID } from "node:crypto";
 
-import { loadAttestation } from "@/functions";
+import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
   createLogger,
   loadConfigWithHierarchy,
@@ -328,6 +329,7 @@ export class WalletIssuanceOrchestratorFlow {
           ?.authorization_endpoint,
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
+      credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
       credentials,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
@@ -524,10 +526,6 @@ export class WalletIssuanceOrchestratorFlow {
 
     const code = authorizeResponse.response.authorizeResponse?.code;
     if (!code) throw new StepOutputError("AUTHORIZE", "code");
-
-    const { requestObject } = authorizeResponse.response;
-    if (!requestObject)
-      throw new StepOutputError("AUTHORIZE", "request_object");
 
     const code_verifier =
       pushedAuthorizationRequestResponse.response?.codeVerifier;

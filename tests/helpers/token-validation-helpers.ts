@@ -30,9 +30,6 @@ export async function runAndValidateAuthorize(
 
   const code = authorizeResponse.response.authorizeResponse.code;
 
-  if (!authorizeResponse.response?.requestObject)
-    throw new Error("Authorization Response not found");
-
   if (!pushedAuthorizationRequestResponse.response)
     throw new Error(
       "Pushed Authorization Request Step did not return code_verifier",

@@ -899,7 +899,9 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        expect(authorizeResponse.response?.requestObjectJwt).toBeDefined();
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
 
         testSuccess = true;
       } finally {
@@ -936,7 +938,7 @@ testConfigs.forEach((testConfig) => {
       try {
         const responseState =
           authorizeResponse.response?.authorizeResponse?.state;
-        const requestState = authorizeResponse.response?.requestObject?.state;
+        const requestState = pushedAuthorizationRequestResponse.response?.state;
 
         expect(responseState).toBeDefined();
         expect(typeof responseState).toBe("string");
