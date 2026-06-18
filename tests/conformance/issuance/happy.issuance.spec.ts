@@ -814,6 +814,142 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    // -----------------------------------------------------------------------
+    // CI_035 — Wallet Provider Trust Chain Evaluation
+    // -----------------------------------------------------------------------
+
+    test("CI_035: Wallet Provider Trust Chain Evaluation | Credential Issuer successfully evaluates the Wallet Provider trust chain", async () => {
+      const log = baseLog.withTag("CI_035");
+      const DESCRIPTION =
+        "Wallet Provider trust chain was successfully evaluated by the Credential Issuer";
+
+      log.start(
+        "Conformance test: Verifying Wallet Provider trust chain evaluation",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Verifying PAR was accepted as evidence that the trust chain was evaluated...",
+        );
+        expect(
+          pushedAuthorizationRequestResponse.response,
+          "PAR must have been accepted as evidence of successful trust chain evaluation",
+        ).toBeDefined();
+
+        log.debug(
+          "→ Decoding wallet attestation to inspect embedded trust_chain...",
+        );
+        const attestationJwt = await SDJwt.extractJwt(
+          walletAttestationResponse.attestation,
+        );
+        const trustChain = z
+          .array(z.string())
+          .optional()
+          .parse(attestationJwt.header?.trust_chain);
+
+        if (!trustChain || trustChain.length === 0)
+          throw new Error("undefined or empty trust_chain");
+
+        log.debug(
+          `  trust_chain embedded in attestation (${trustChain.length} element(s)) — verifying none is expired`,
+        );
+        const nowSec = Math.floor(Date.now() / 1000);
+        for (const jwt of trustChain) {
+          const jwtPayload = decodeJwt(jwt);
+          if (jwtPayload.exp === undefined)
+            throw new Error("undefined `exp` in trust_chain item");
+
+          expect(
+            jwtPayload.exp,
+            "Trust chain element must not be expired",
+          ).toBeGreaterThan(nowSec);
+        }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_036 — Federation Metadata Retrieval
+    // -----------------------------------------------------------------------
+
+    test("CI_036: Federation Metadata Retrieval | Credential Issuer retrieves federation metadata from participant endpoints", async () => {
+      const log = baseLog.withTag("CI_036");
+      const DESCRIPTION =
+        "Federation metadata retrieved successfully via .well-known/openid-federation";
+
+      log.start("Conformance test: Verifying federation metadata retrieval");
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Checking metadata was discovered via the federation...");
+        expect(
+          fetchMetadataResponse.response?.discoveredVia,
+          "Metadata must be discovered via the federation (not OID4VCI)",
+        ).toBe("federation");
+
+        log.debug(
+          "→ Verifying entity statement claims contain credential issuer metadata...",
+        );
+        const claims = fetchMetadataResponse.response?.entityStatementClaims;
+        expect(
+          claims?.metadata?.openid_credential_issuer,
+          "Entity statement must include openid_credential_issuer metadata",
+        ).toBeDefined();
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_037 — Wallet Provider Trust Establishment
+    // -----------------------------------------------------------------------
+
+    test("CI_037: Wallet Provider Trust Establishment | Credential Issuer establishes trust in the Wallet Provider via the federation", async () => {
+      const log = baseLog.withTag("CI_037");
+      const DESCRIPTION =
+        "Credential Issuer established trust in the Wallet Provider via the federation";
+
+      log.start(
+        "Conformance test: Verifying Wallet Provider trust establishment via federation",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Verifying PAR was accepted (CI established WP trust before this point)...",
+        );
+        expect(
+          pushedAuthorizationRequestResponse.response?.request_uri,
+          "PAR must have been accepted as evidence of WP trust establishment",
+        ).toBeDefined();
+
+        log.debug("→ Verifying metadata was fetched via the federation...");
+        expect(
+          fetchMetadataResponse.response?.discoveredVia,
+          "Metadata must be discovered via the federation",
+        ).toBe("federation");
+
+        log.debug(
+          "→ Verifying entity statement includes federation_entity metadata...",
+        );
+        const claims = fetchMetadataResponse.response?.entityStatementClaims;
+        expect(
+          claims?.metadata?.federation_entity,
+          "Entity statement must include federation_entity metadata",
+        ).toBeDefined();
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
     // ============================================================================
     // AUTHORIZATION REQUEST TESTS
     // ============================================================================

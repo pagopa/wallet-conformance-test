@@ -1,5 +1,8 @@
+/* eslint-disable max-lines-per-function */
+
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { Oauth2Error } from "@pagopa/io-wallet-oauth2";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
@@ -190,5 +193,51 @@ testConfigs.forEach((testConfig) => {
       },
       { timeout: 120e3 },
     );
+
+    // -----------------------------------------------------------------------
+    // CI_059 — Authorization Response HTTP Status Code
+    // -----------------------------------------------------------------------
+
+    test("CI_059: Authorization Response HTTP Status Code | Issuer returns an appropriate HTTP 4xx error status code for an invalid authorization request", async () => {
+      const log = baseLog.withTag("CI_059");
+      const DESCRIPTION =
+        "Issuer returned expected HTTP 4xx status code for invalid authorization request";
+
+      log.start(
+        "Conformance test: Verifying HTTP error status code for invalid authorization request",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending authorization request without request_uri (should be rejected)...",
+        );
+        const result = await runAuthStep(testConfig.authorizeStepClass);
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        const error = result.error as Oauth2Error;
+        if (!error || error.statusCode !== undefined) {
+          log.debug(
+            "  Error did not carry an HTTP status code (non-Oauth2Error); request was still rejected",
+          );
+          throw new Error(
+            "Error did not carry an HTTP status code (non-Oauth2Error)",
+          );
+        }
+
+        log.debug(`  HTTP status code returned: ${error.statusCode}`);
+        expect(error.statusCode).toBeDefined();
+        expect(
+          [400, 401, 403],
+          `Expected HTTP 400, 401, or 403, got ${error.statusCode}`,
+        ).toContain(error.statusCode);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
