@@ -53,16 +53,25 @@ export async function loadWalletProviderCertificate(
   ensureDir(caCertPath);
   ensureDir(backupPath);
 
-  const wpIntermediateCertPath = path.resolve(path.join(caCertPath, CA_INTERMEDIATE_CERT));
+  const wpIntermediateCertPath = path.resolve(
+    path.join(caCertPath, CA_INTERMEDIATE_CERT),
+  );
   const wpCertPath = path.resolve(path.join(backupPath, WALLET_PROVIDER_CERT));
-  const taCertPath = path.resolve(path.join(backupPath, buildCertPath("trust_anchor")));
+  const taCertPath = path.resolve(
+    path.join(backupPath, buildCertPath("trust_anchor")),
+  );
 
   // ── Try loading the cached chain ──────────────────────────────────────
   const wpIntermediateCachedCert = loadCachedCert(wpIntermediateCertPath);
   const wpCachedCert = loadCachedCert(wpCertPath);
   const taCachedCert = loadCachedCert(taCertPath);
 
-  if (wpCachedCert && hasSanExtension(wpCachedCert) && wpIntermediateCachedCert && taCachedCert) {
+  if (
+    wpCachedCert &&
+    hasSanExtension(wpCachedCert) &&
+    wpIntermediateCachedCert &&
+    taCachedCert
+  ) {
     return [wpCachedCert, wpIntermediateCachedCert, taCachedCert];
   }
 
@@ -93,7 +102,9 @@ export async function loadWalletProviderCertificate(
   );
 
   writeFileSync(wpIntermediateCertPath, wpIntermediateCert.toString("pem"));
-  const wpIntermediateCertBase64 = Buffer.from(wpIntermediateCert.rawData).toString("base64");
+  const wpIntermediateCertBase64 = Buffer.from(
+    wpIntermediateCert.rawData,
+  ).toString("base64");
 
   // ── CA2: signed by KY1, attests providerKeyPair / KY2 (leaf) ─────────
   const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
@@ -106,7 +117,10 @@ export async function loadWalletProviderCertificate(
     false,
     [
       new x509.SubjectAlternativeNameExtension(
-        [{ type: "dns", value: LOCAL_WP_HOST }, { type: "url", value: wpBaseUrl }],
+        [
+          { type: "dns", value: LOCAL_WP_HOST },
+          { type: "url", value: wpBaseUrl },
+        ],
         false,
       ),
     ],
