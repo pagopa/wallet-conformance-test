@@ -4,9 +4,9 @@ import {
 } from "@pagopa/io-wallet-oid4vci";
 import {
   createAuthorizationResponse,
-  CreateAuthorizationResponseVersionedOptions,
+  type CreateAuthorizationResponseVersionedOptions,
   parseAuthorizeRequest,
-  ParsedAuthorizeRequestResult,
+  type ParsedAuthorizeRequestResult,
 } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 import { DcqlQuery } from "dcql";
