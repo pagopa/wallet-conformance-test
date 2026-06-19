@@ -2,7 +2,7 @@ import * as x509 from "@peculiar/x509";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import { getLocalWpBaseUrl, LOCAL_WP_HOST } from "@/servers/wp-server";
 import { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
@@ -12,7 +12,7 @@ import {
   hasX509CertificateExpired,
   pemToBase64Der,
 } from "./pem";
-import { ensureDir, loadJwks } from "./utils";
+import { buildCertPath, buildJwksPath, ensureDir, loadJwks } from "./utils";
 
 /** Filenames for persisted intermediate artefacts */
 const CA_INTERMEDIATE_CERT = "ca_intermediate_cert";
@@ -53,67 +53,69 @@ export async function loadWalletProviderCertificate(
   ensureDir(caCertPath);
   ensureDir(backupPath);
 
-  const ca1Path = path.resolve(path.join(caCertPath, CA_INTERMEDIATE_CERT));
-  const ca2Path = path.resolve(path.join(backupPath, WALLET_PROVIDER_CERT));
+  const wpIntermediateCertPath = path.resolve(path.join(caCertPath, CA_INTERMEDIATE_CERT));
+  const wpCertPath = path.resolve(path.join(backupPath, WALLET_PROVIDER_CERT));
+  const taCertPath = path.resolve(path.join(backupPath, buildCertPath("trust_anchor")));
 
   // ── Try loading the cached chain ──────────────────────────────────────
-  const cachedCA1 = loadCachedCert(ca1Path);
-  const cachedCA2 = loadCachedCert(ca2Path);
+  const wpIntermediateCachedCert = loadCachedCert(wpIntermediateCertPath);
+  const wpCachedCert = loadCachedCert(wpCertPath);
+  const taCachedCert = loadCachedCert(taCertPath);
 
-  if (cachedCA1 && cachedCA2 && hasSanExtension(cachedCA2)) {
-    return [cachedCA2, cachedCA1];
+  if (wpCachedCert && hasSanExtension(wpCachedCert) && wpIntermediateCachedCert && taCachedCert) {
+    return [wpCachedCert, wpIntermediateCachedCert, taCachedCert];
   }
 
   // ── Invalidate stale artefacts ────────────────────────────────────────
-  for (const p of [ca1Path, ca2Path]) {
+  for (const p of [wpIntermediateCertPath, wpCertPath]) {
     if (existsSync(p)) rmSync(p);
   }
 
   // ── Load Trust Anchor key pair ────────────────────────────────────────
   const taKeyPair = await loadJwks(
     trust.federation_trust_anchors_jwks_path,
-    "trust_anchor_jwks",
+    buildJwksPath("trust_anchor"),
   );
 
   // ── Generate intermediate key pair (KY1) ──────────────────────────────
-  const intermediateKeyPair = await createKeys();
+  const wpIntermediateKeyPair = await createKeys();
 
-  // ── CA1: signed by TA, attests KY1 (isCA = true) ─────────────────────
+  // ── wpIntermediateCert: signed by TA, attests KY1 (isCA = true) ─────────────────────
   const taSubject = trust.certificate_subject;
-  const intermediateSubject = "CN=WalletProvider Intermediate CA";
+  const wpSubject = `CN=${LOCAL_WP_HOST}`;
 
-  const ca1Cert = await createSignedCertificate(
+  const wpIntermediateCert = await createSignedCertificate(
     taKeyPair,
     taSubject,
-    intermediateKeyPair,
-    intermediateSubject,
+    wpIntermediateKeyPair,
+    wpSubject,
     true,
   );
 
-  writeFileSync(ca1Path, ca1Cert.toString("pem"));
-  const ca1Base64 = Buffer.from(ca1Cert.rawData).toString("base64");
+  writeFileSync(wpIntermediateCertPath, wpIntermediateCert.toString("pem"));
+  const wpIntermediateCertBase64 = Buffer.from(wpIntermediateCert.rawData).toString("base64");
 
   // ── CA2: signed by KY1, attests providerKeyPair / KY2 (leaf) ─────────
-  const providerDomain = getLocalWpBaseUrl(wallet.port);
+  const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
 
-  const ca2Cert = await createSignedCertificate(
-    intermediateKeyPair,
-    intermediateSubject,
+  const wpCert = await createSignedCertificate(
+    wpIntermediateKeyPair,
+    wpSubject,
     providerKeyPair,
-    `CN=${providerDomain}`,
+    wpSubject,
     false,
     [
       new x509.SubjectAlternativeNameExtension(
-        [{ type: "dns", value: providerDomain }],
+        [{ type: "dns", value: LOCAL_WP_HOST }, { type: "url", value: wpBaseUrl }],
         false,
       ),
     ],
   );
 
-  writeFileSync(ca2Path, ca2Cert.toString("pem"));
-  const ca2Base64 = Buffer.from(ca2Cert.rawData).toString("base64");
+  writeFileSync(wpCertPath, wpCert.toString("pem"));
+  const wpCertBase64 = Buffer.from(wpCert.rawData).toString("base64");
 
-  return [ca2Base64, ca1Base64];
+  return [wpCertBase64, wpIntermediateCertBase64];
 }
 
 /**
