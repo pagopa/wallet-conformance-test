@@ -114,6 +114,11 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
 
 describe("loadConfigWithHierarchy – path resolution", () => {
   it("should resolve package fallback data paths under the package root", () => {
+    // An empty local config.ini in the CWD takes priority over any config.ini
+    // that may exist in the package root (e.g. a developer's local config),
+    // ensuring only the default config.example.ini paths are in effect.
+    writeFileSync(path.join(process.cwd(), "config.ini"), "");
+
     const config = loadConfigWithHierarchy({}, DEFAULT_INI);
 
     expect(config.wallet.backup_storage_path).toBe(
