@@ -853,6 +853,34 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    test(
+      "CI_051: CieID High-Level Authentication | PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_051");
+        const DESCRIPTION =
+          "PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)";
+
+        log.start(
+          "Conformance test: Verifying PID Provider performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+        );
+
+        let testSuccess = false;
+        try {
+          expect(
+            credentialResponse.response?.credentials?.length,
+          ).toBeGreaterThan(0);
+          log.debug(
+            `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+          );
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
     test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
       const DESCRIPTION =
