@@ -65,6 +65,9 @@
     "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["puppeteer"]
+  },
   "dependencies": {
     "@auth0/mdl": "^3.0.0",
     "@pagopa/io-wallet-oauth2": "1.5.2",
@@ -86,6 +89,7 @@
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
+    "puppeteer": "^25.1.0",
     "vitest": "^3.2.4",
     "zod": "^4.3.6"
   }
