@@ -292,13 +292,14 @@ export class AuthorizeDefaultStep extends StepFlow {
 /** Opens the given URL in the system default browser (cross-platform). */
 function openBrowser(url: string): void {
   const os = platform();
+  const quotedUrl = JSON.stringify(url);
   let command: string;
   if (os === "darwin") {
-    command = `open "${url}"`;
+    command = `open ${quotedUrl}`;
   } else if (os === "win32") {
-    command = `start "" "${url}"`;
+    command = `start "" ${quotedUrl}`;
   } else {
-    command = `xdg-open "${url}"`;
+    command = `xdg-open ${quotedUrl}`;
   }
   exec(command, (err) => {
     if (err) {
