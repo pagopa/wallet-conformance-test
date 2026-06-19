@@ -7,7 +7,7 @@ import {
   FetchTokenResponseOptions,
   Jwk,
 } from "@pagopa/io-wallet-oauth2";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 import {
   createKeys,
