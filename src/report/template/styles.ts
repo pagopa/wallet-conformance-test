@@ -256,7 +256,7 @@ export const REPORT_CSS = `
   .detail-label { display: block; margin-bottom: 4px; color: #334155; font-size: 10px; line-height: 1.2; font-weight: 800; }
   .detail-text { margin: 0; color: #1f2937; font-size: 11px; line-height: 1.35; font-weight: 500; word-break: break-word; }
 
-  /* ── Executive view: metrics grid ──
+  /* ── Executive view: metrics grid ── */
 
   .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0 17px; }
   .metric-card { min-height: 74px; border: 1.5px solid; border-radius: var(--radius); padding: 13px 16px 12px; }
