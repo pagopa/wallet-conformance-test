@@ -1,4 +1,6 @@
 /* eslint-disable max-lines-per-function */
+import type { Jwk } from "@pagopa/io-wallet-oauth2";
+
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
@@ -6,6 +8,7 @@ import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { validateTrustChain } from "@pagopa/io-wallet-oid-federation";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import { decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { fetchWithConfig, partialCallbacks, verifyJwt } from "@/logic";
@@ -551,6 +554,94 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       );
       expect(requestObject?.nonce).toMatch(/^[a-zA-Z0-9_-]+$/);
       log.debug("  ✅ nonce parameter is present and valid");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-13: Authorization Response is encrypted for one of the Relying Party public keys.", () => {
+    const log = baseLog.withTag("RPR-13");
+
+    log.start(
+      "Conformance test: Verifying authorization response encryption key selection",
+    );
+
+    const DESCRIPTION =
+      "Authorization Response is encrypted with a public key declared by the Relying Party";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const verifierMetadata =
+        fetchMetadataResult.response?.entityStatementClaims?.metadata
+          ?.openid_credential_verifier;
+      expect(verifierMetadata).toBeDefined();
+      if (!verifierMetadata) {
+        throw new Error("openid_credential_verifier metadata is missing");
+      }
+
+      const authorizationResponse =
+        authorizationRequestResult.response?.authorizationResponse;
+      expect(authorizationResponse?.jarm).toBeDefined();
+      const responseJwe = authorizationResponse?.jarm.responseJwe;
+      const encryptionJwk = authorizationResponse?.jarm.encryptionJwk;
+      expect(responseJwe).toBeDefined();
+      expect(encryptionJwk).toBeDefined();
+      if (!responseJwe || !encryptionJwk) {
+        throw new Error(
+          "authorization response JARM encryption data is missing",
+        );
+      }
+      const responseState =
+        authorizationRequestResult.response?.requestObject.state;
+      expect(responseState).toBeDefined();
+      if (!responseState) {
+        throw new Error("authorization request state is missing");
+      }
+
+      log.debug("→ Checking compact JWE serialization...");
+      const jweParts = responseJwe.split(".");
+      expect(jweParts).toHaveLength(5);
+      expect(responseJwe).not.toContain(responseState);
+      log.debug("  ✅ response is serialized as encrypted JARM");
+
+      log.debug("→ Checking JWE protected header...");
+      const protectedHeader = decodeProtectedHeader(responseJwe);
+      expect(protectedHeader.alg).toBe(
+        verifierMetadata.authorization_encrypted_response_alg ?? "ECDH-ES",
+      );
+      expect(protectedHeader.kid).toBe(encryptionJwk.kid);
+      log.debug(`  alg: ${protectedHeader.alg}`);
+      log.debug(`  enc: ${protectedHeader.enc}`);
+      log.debug(`  kid: ${protectedHeader.kid}`);
+
+      log.debug("→ Checking selected key belongs to RP JWKS...");
+      const rpEncryptionKey = verifierMetadata.jwks.keys.find(
+        (key: Jwk) => key.kid === encryptionJwk.kid,
+      );
+      expect(rpEncryptionKey).toBeDefined();
+      if (!rpEncryptionKey) {
+        throw new Error("selected encryption key is not present in RP JWKS");
+      }
+      expect(rpEncryptionKey.use).toBe("enc");
+      expect(encryptionJwk).toMatchObject({
+        crv: rpEncryptionKey.crv,
+        kid: rpEncryptionKey.kid,
+        kty: rpEncryptionKey.kty,
+        x: rpEncryptionKey.x,
+        y: rpEncryptionKey.y,
+      });
+      log.debug("  ✅ selected encryption key is one of the RP public keys");
+
+      log.debug(
+        "→ Checking RP accepted and evaluated the encrypted response...",
+      );
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
+      log.debug("  ✅ RP accepted the encrypted authorization response");
 
       testSuccess = true;
     } finally {
