@@ -62,6 +62,46 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   }
 
   // -----------------------------------------------------------------------
+  // RPR-14 — Invalid Request Object handling
+  // -----------------------------------------------------------------------
+
+  test("RPR-14: Error response is sent.", async () => {
+    const log = baseLog.withTag("RPR-14");
+    const DESCRIPTION =
+      "RP accepts Authorization Error Response for invalid Request Object";
+    log.start("Conformance test: Invalid Request Object handling");
+
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Posting an invalid_request Authorization Error Response to response_uri...",
+      );
+      const errorBody = new URLSearchParams({
+        error: "invalid_request",
+        error_description:
+          "Wallet rejected the authorization Request Object as invalid",
+      });
+      const response = await postToResponseUri(validResponseUri, {
+        body: errorBody.toString(),
+        contentType: "application/x-www-form-urlencoded",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP processed the wallet error response without crashing...",
+      );
+      expect(
+        response.status,
+        "RP must acknowledge wallet Authorization Error Responses per OpenID4VP direct_post",
+      ).toBe(200);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-20 — Invalid redirect_uri handling
   // -----------------------------------------------------------------------
 
