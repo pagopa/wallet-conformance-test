@@ -106,8 +106,29 @@ export interface CredentialRequestStepOptions {
  * Flow step to request a credential from the issuer's credential endpoint.
  * It uses the access token obtained in the Token Request Step and the nonce from the Nonce Request Step.
  */
+/**
+ * The parameter type of `WalletProvider.createItKeyAttestationJwt`, derived
+ * directly from the SDK so it never drifts from the installed version.
+ */
+export type KeyAttestationOptions = Parameters<
+  WalletProvider["createItKeyAttestationJwt"]
+>[0];
+
 export class CredentialRequestDefaultStep extends StepFlow {
   static readonly tag = "CREDENTIAL_REQUEST";
+
+  /**
+   * Optional overrides merged into the key attestation options before signing.
+   * Intended for conformance tests that need to submit non-standard security
+   * claim values (e.g. unsupported keyStorage / userAuthentication levels) to
+   * verify that the Credential Issuer enforces its security requirements.
+   *
+   * When set, fields in this object replace the corresponding defaults computed
+   * inside `createKeyAttestation`. The SDK does not perform runtime Zod
+   * validation on these fields, so intentionally non-compliant string values
+   * will reach the issuer inside the signed JWT.
+   */
+  protected keyAttestationOverrides?: Partial<KeyAttestationOptions>;
 
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
@@ -123,7 +144,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     const provider = new WalletProvider(this.ioWalletSdkConfig);
 
-    return provider.createItKeyAttestationJwt({
+    const defaults: KeyAttestationOptions = {
       attestedKeys: [credentialKeyPair.publicKey],
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
@@ -143,7 +164,12 @@ export class CredentialRequestDefaultStep extends StepFlow {
         },
       },
       userAuthentication: ["iso_18045_basic"],
-    });
+    };
+
+    return provider.createItKeyAttestationJwt({
+      ...defaults,
+      ...this.keyAttestationOverrides,
+    } as KeyAttestationOptions);
   }
 
   async run(

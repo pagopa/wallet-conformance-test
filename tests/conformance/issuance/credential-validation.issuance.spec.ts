@@ -12,6 +12,7 @@ import {
   withCredentialRequestOverrides,
   withCredentialSignJwtOverride,
   withDPoPSignedByWrongKey,
+  withKeyAttestationOverrides,
   withNoAthDPoP,
   withNoDPoP,
   withPrivateKeyInDPoPHeader,
@@ -166,6 +167,51 @@ testConfigs.forEach((testConfig) => {
         walletAttestation: walletAttestationResponse,
       });
     }
+
+    // -----------------------------------------------------------------------
+    // CI_034 — Wallet Key Attestation Security Claims
+    // -----------------------------------------------------------------------
+
+    test("CI_034: Wallet Key Attestation Security Claims | Issuer rejects a credential request whose Wallet Key Attestation does not meet required device security standards", async () => {
+      const log = baseLog.withTag("CI_034");
+      const DESCRIPTION =
+        "Issuer correctly rejected credential request with insufficient Wallet Key Attestation security claims";
+
+      let testSuccess = false;
+      try {
+        if (!ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+          log.debug(
+            "CI_034 skipped: Wallet Key Attestation is only used for v1.3 credential requests",
+          );
+          testSuccess = true;
+          return;
+        }
+
+        log.debug(
+          "→ Sending credential request with non-compliant keyStorage / userAuthentication claims...",
+        );
+        const result = await runCredentialStep(
+          withKeyAttestationOverrides(testConfig.credentialRequestStepClass, {
+            // "software" and "none" are intentionally below the minimum level
+            // required by the Credential Issuer (iso_18045_basic).  These
+            // values bypass the SDK's TypeScript type but are written verbatim
+            // into the signed key attestation JWT — the issuer must reject them.
+            keyStorage: ["software"],
+            userAuthentication: ["none"],
+          }),
+        );
+        log.debug("  Request completed");
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(
+          result.success,
+          "Issuer should reject a credential request whose Wallet Key Attestation describes a device security posture below the required minimum",
+        ).toBe(false);
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
 
     // -----------------------------------------------------------------------
     // CI_071 — JWT Proof Required Claims
