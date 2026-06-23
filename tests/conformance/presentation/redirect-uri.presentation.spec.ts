@@ -102,6 +102,54 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-17 — Fake HTTP Cookie
+  // -----------------------------------------------------------------------
+
+  test("RPR-17: Fake HTTP Cookie | RP rejects a valid response submitted with a forged session cookie", async () => {
+    const log = baseLog.withTag("RPR-17");
+    const DESCRIPTION =
+      "RP rejects authorization responses coupled to a forged session cookie";
+    log.start("Conformance test: Fake HTTP Cookie");
+
+    let testSuccess = false;
+    try {
+      if (!validAuthResponse.jarm) {
+        throw new Error(
+          "Setup failed: valid authorization response does not include a JARM",
+        );
+      }
+
+      log.info(
+        "→ Posting a valid JARM to response_uri with a forged HTTP Cookie...",
+      );
+      const formBody = new URLSearchParams({
+        response: validAuthResponse.jarm.responseJwe,
+      });
+      const response = await postToResponseUri(validResponseUri, {
+        body: formBody.toString(),
+        contentType: "application/x-www-form-urlencoded",
+        headers: {
+          Cookie:
+            "rp_session=forged-rpr-17-session; session=forged-rpr-17-session",
+        },
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP rejected the forged cookie despite valid state/nonce payload...",
+      );
+      expect(
+        response.ok,
+        "RP must reject a valid response when the HTTP Cookie does not match the session bound to state and nonce",
+      ).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-20 — Invalid redirect_uri handling
   // -----------------------------------------------------------------------
 
