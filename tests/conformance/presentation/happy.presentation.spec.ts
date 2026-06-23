@@ -697,6 +697,104 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-23: Relying Party supports all credential formats declared in vp_formats_supported metadata.", () => {
+    const log = baseLog.withTag("RPR-23");
+
+    log.start(
+      "Conformance test: Verifying Credential Presentation response format compliance",
+    );
+
+    const DESCRIPTION =
+      "Relying Party metadata declares usable credential presentation formats and requests only declared formats";
+    let testSuccess = false;
+    try {
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(authorizationRequestResult.success).toBe(true);
+
+      const verifierMetadata =
+        fetchMetadataResult.response?.entityStatementClaims?.metadata
+          ?.openid_credential_verifier;
+      expect(verifierMetadata).toBeDefined();
+      if (!verifierMetadata) {
+        throw new Error("openid_credential_verifier metadata is missing");
+      }
+
+      const vpFormatsSupported = verifierMetadata.vp_formats_supported;
+      expect(vpFormatsSupported).toBeDefined();
+      expect(vpFormatsSupported).toBeTypeOf("object");
+      if (!vpFormatsSupported || typeof vpFormatsSupported !== "object") {
+        throw new Error("vp_formats_supported metadata is missing");
+      }
+
+      const supportedFormatEntries = Object.entries(vpFormatsSupported);
+      expect(supportedFormatEntries.length).toBeGreaterThan(0);
+      log.debug(
+        `  Metadata-supported formats: ${supportedFormatEntries
+          .map(([format]) => format)
+          .join(", ")}`,
+      );
+
+      for (const [format, parameters] of supportedFormatEntries) {
+        expect(parameters).toBeDefined();
+        expect(parameters).toBeTypeOf("object");
+        if (!parameters || typeof parameters !== "object") {
+          throw new Error(`vp_formats_supported.${format} is not an object`);
+        }
+
+        const algorithmParameters = Object.entries(parameters)
+          .map(([name, value]) => ({ name, value }))
+          .filter(
+            (
+              entry,
+            ): entry is {
+              name: string;
+              value: string[];
+            } =>
+              Array.isArray(entry.value) &&
+              entry.value.every((item) => typeof item === "string"),
+          );
+        expect(algorithmParameters.length).toBeGreaterThan(0);
+
+        for (const { name, value } of algorithmParameters) {
+          expect(value.length).toBeGreaterThan(0);
+          log.debug(`  ${format}.${name}: ${value.join(", ")}`);
+        }
+      }
+
+      const requestObject = authorizationRequestResult.response?.requestObject;
+      const dcqlCredentials = (requestObject?.dcql_query?.credentials ??
+        []) as unknown[];
+      const requestedFormats = new Set<string>(
+        dcqlCredentials
+          .map((credential): unknown => {
+            if (
+              !credential ||
+              typeof credential !== "object" ||
+              !("format" in credential)
+            ) {
+              return undefined;
+            }
+            return (credential as { format?: unknown }).format;
+          })
+          .filter((format): format is string => typeof format === "string"),
+      );
+      expect(requestedFormats.size).toBeGreaterThan(0);
+
+      const supportedFormats = new Set<string>(
+        supportedFormatEntries.map(([format]) => format),
+      );
+      for (const requestedFormat of requestedFormats) {
+        log.debug(`  DCQL requested format: ${requestedFormat}`);
+        expect(supportedFormats.has(requestedFormat)).toBe(true);
+      }
+      log.debug("  ✅ all requested credential formats are metadata-declared");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
     const log = baseLog.withTag("RPR028");
 
