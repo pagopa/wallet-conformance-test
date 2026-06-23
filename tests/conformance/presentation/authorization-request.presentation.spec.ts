@@ -99,6 +99,23 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     });
   }
 
+  async function encryptResponsePayload(payload: unknown): Promise<string> {
+    const encryptJwe = getEncryptJweCallback();
+    const { jwe } = await encryptJwe(
+      {
+        alg: verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+        enc:
+          verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
+        method: "jwk" as const,
+        publicJwk: verifierEncryptionKey,
+      },
+      JSON.stringify(payload),
+    );
+
+    return jwe;
+  }
+
   // -----------------------------------------------------------------------
   // RPR-25 — Malformed claims in presentation payload
   // -----------------------------------------------------------------------
@@ -606,6 +623,115 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the tampered SD-JWT...");
       expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-54 — Response validation failures
+  // -----------------------------------------------------------------------
+
+  test("RPR-54: Relying Party Response | RP returns an error response for response validation failures", async () => {
+    const log = baseLog.withTag("RPR-54");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response validation failed";
+    log.start("Conformance test: Relying Party Response validation failures");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const invalidPayload: Record<string, unknown> = {
+        ...(authResult.response.authorizationResponse
+          .authorizationResponsePayload as Record<string, unknown>),
+      };
+      delete invalidPayload.vp_token;
+
+      log.info(
+        "→ Posting an encrypted response missing the required vp_token claim...",
+      );
+      const invalidJwe = await encryptResponsePayload(invalidPayload);
+      const formBody = new URLSearchParams({ response: invalidJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject response validation failures without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-55 — Response processing errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-55: Relying Party Response | RP returns an error response for response processing errors", async () => {
+    const log = baseLog.withTag("RPR-55");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response processing failed";
+    log.start("Conformance test: Relying Party Response processing errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const payloadWithUnknownCredential = {
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        vp_token: {
+          "unknown-credential-query-id-rpr-055":
+            "header.payload.signature~kb-header.kb-payload.kb-signature",
+        },
+      };
+
+      log.info(
+        "→ Posting an encrypted response with an unprocessable credential query result...",
+      );
+      const processingErrorJwe = await encryptResponsePayload(
+        payloadWithUnknownCredential,
+      );
+      const formBody = new URLSearchParams({ response: processingErrorJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject response processing errors without an internal server error",
+      ).toBeLessThan(500);
 
       testSuccess = true;
     } finally {

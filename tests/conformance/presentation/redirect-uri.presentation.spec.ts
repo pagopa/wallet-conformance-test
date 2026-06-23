@@ -641,6 +641,137 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-56 — Protected Resource Endpoint unauthorized session access
+  // -----------------------------------------------------------------------
+
+  test("RPR-56: Protected Resource Endpoint | RP denies unauthorized session access", async () => {
+    const log = baseLog.withTag("RPR-56");
+    const DESCRIPTION =
+      "RP denies unauthorized access to protected resource endpoints";
+    log.start(
+      "Conformance test: Protected Resource Endpoint unauthorized session access",
+    );
+
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Running redirect step to get a valid protected resource URL...",
+      );
+      const protectedResourceUrl = await fetchRedirectUrl();
+      const unauthorizedUrl = replaceLastPathSegment(
+        protectedResourceUrl,
+        "unauthorized-session-rpr-056",
+      );
+      unauthorizedUrl.searchParams.set(
+        "response_code",
+        "unauthorized-response-code-rpr-056",
+      );
+      log.debug(
+        `→ Accessing protected resource with unauthorized session: ${unauthorizedUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(
+        unauthorizedUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP denied unauthorized access...");
+      expect(
+        [401, 403],
+        "RP must deny protected resource access for an unauthorized session",
+      ).toContain(response.status);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-57 — Redirect URI invalid redirect parameters
+  // -----------------------------------------------------------------------
+
+  test("RPR-57: Redirect URI | RP returns an error response for invalid redirect parameters", async () => {
+    const log = baseLog.withTag("RPR-57");
+    const DESCRIPTION =
+      "RP returns an error response when redirect parameters are invalid";
+    log.start("Conformance test: Redirect URI invalid redirect parameters");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      redirectUrl.searchParams.delete("response_code");
+      redirectUrl.searchParams.set("state", "unexpected-state-rpr-057");
+      redirectUrl.searchParams.set("error", "invalid_request");
+      log.debug(
+        `→ Accessing redirect_uri with invalid parameters: ${redirectUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject invalid redirect parameters without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-58 — Redirect URI redirect failures
+  // -----------------------------------------------------------------------
+
+  test("RPR-58: Redirect URI | RP returns an error response for redirect failures", async () => {
+    const log = baseLog.withTag("RPR-58");
+    const DESCRIPTION =
+      "RP returns an error response when redirect processing fails";
+    log.start("Conformance test: Redirect URI redirect failures");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      redirectUrl.searchParams.set("error", "server_error");
+      redirectUrl.searchParams.set(
+        "error_description",
+        "Simulated redirect failure",
+      );
+      log.debug(
+        `→ Accessing redirect_uri with redirect failure signal: ${redirectUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must handle redirect failures without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-41 — Missing response parameters
   // -----------------------------------------------------------------------
 
