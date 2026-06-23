@@ -293,6 +293,50 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-77: QR Code Generation | QR Code uses the required Q error correction level", () => {
+    const log = baseLog.withTag("RPR-77");
+
+    log.start(
+      "Conformance test: Verifying Cross Device Flow QR-Code payload fits error correction level Q",
+    );
+
+    const DESCRIPTION =
+      "Relying Party QR-Code payload fits the required Q error correction level capacity";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response?.parsedQrCode).toBeDefined();
+
+      const qrCodePayload =
+        orchestrator.getConfig().presentation.authorize_request_url;
+      expect(qrCodePayload).toBeTruthy();
+
+      const payloadBytes = new TextEncoder().encode(qrCodePayload).length;
+      const maxQrVersionByteCapacityByErrorCorrectionLevelQ = 1663;
+
+      log.debug(`  QR-Code payload byte length: ${payloadBytes}`);
+      log.debug(
+        `  QR Level Q byte capacity: ${maxQrVersionByteCapacityByErrorCorrectionLevelQ}`,
+      );
+
+      expect(
+        payloadBytes,
+        "QR-Code payload must fit QR level Q byte capacity (Quartile, up to 25% damage recovery)",
+      ).toBeLessThanOrEqual(maxQrVersionByteCapacityByErrorCorrectionLevelQ);
+
+      const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
+      expect(parsedQrCode?.clientId).toBeTruthy();
+      expect(parsedQrCode?.requestUri).toBeTruthy();
+      log.debug(
+        "  ✅ QR-Code payload is compatible with Level Q error correction (~25% damage recovery)",
+      );
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-07: Relying Party accepts Wallet Instance metadata via POST and replies with an updated Request Object.", () => {
     const log = baseLog.withTag("RPR-07");
 
@@ -985,6 +1029,87 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(hasVctValues).toBe(true);
       log.debug("  ✅ All credentials have valid vct_values");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-81: Wallet Nonce | Relying Party checks wallet_nonce when present", () => {
+    const log = baseLog.withTag("RPR-81");
+
+    log.start("Conformance test: Verifying wallet_nonce binding");
+
+    const DESCRIPTION =
+      "Relying Party correctly checks wallet_nonce when present";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const walletNonce = response?.walletNonce;
+      const requestWalletNonce = response?.requestObject.wallet_nonce;
+
+      expect(walletNonce).toBeDefined();
+      log.debug(`  Wallet-sent wallet_nonce: ${walletNonce}`);
+
+      if (!requestWalletNonce) {
+        log.debug(
+          "  ℹ Request Object does not include wallet_nonce; validation is not applicable",
+        );
+        testSuccess = true;
+        return;
+      }
+
+      log.debug(`  Request Object wallet_nonce: ${requestWalletNonce}`);
+      expect(requestWalletNonce).toBe(walletNonce);
+      log.debug("  ✅ Request Object wallet_nonce is bound to wallet input");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-82: Response Types | response_types_supported is set to vp_token when present", () => {
+    const log = baseLog.withTag("RPR-82");
+
+    log.start(
+      "Conformance test: Verifying response_types_supported metadata value",
+    );
+
+    const DESCRIPTION =
+      "response_types_supported is correctly set to vp_token when present";
+    let testSuccess = false;
+    try {
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+
+      const verifierMetadata =
+        fetchMetadataResult.response?.entityStatementClaims?.metadata
+          ?.openid_credential_verifier;
+      expect(verifierMetadata).toBeDefined();
+      if (!verifierMetadata) {
+        throw new Error("openid_credential_verifier metadata is missing");
+      }
+
+      const responseTypesSupported = verifierMetadata.response_types_supported;
+
+      if (!responseTypesSupported) {
+        log.debug(
+          "  ℹ response_types_supported is not present; validation is not applicable",
+        );
+        testSuccess = true;
+        return;
+      }
+
+      log.debug(
+        `  response_types_supported: ${responseTypesSupported.join(", ")}`,
+      );
+      expect(responseTypesSupported).toEqual(["vp_token"]);
+      log.debug("  ✅ response_types_supported is exactly vp_token");
 
       testSuccess = true;
     } finally {

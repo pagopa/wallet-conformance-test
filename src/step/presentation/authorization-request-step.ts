@@ -25,6 +25,7 @@ export interface AuthorizationRequestExecuteStepResponse {
   parsedQrCode: ParsedQrCode;
   requestObject: ParsedAuthorizeRequestResult["payload"];
   responseUri: string;
+  walletNonce: string;
 }
 
 export interface AuthorizationRequestOptions {
@@ -66,10 +67,12 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       const authorizeRequestUrl =
         this.config.presentation.authorize_request_url;
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
+      const walletNonce = crypto.randomUUID();
       const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl,
           callbacks: { fetch },
+          walletNonce,
         });
       log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
       log.debug("Request Object JWT:", requestObjectJwt);
@@ -138,6 +141,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         parsedQrCode,
         requestObject,
         responseUri,
+        walletNonce,
       };
     });
   }
