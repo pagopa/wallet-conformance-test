@@ -44,7 +44,7 @@ export function renderTechnicalView(
       ${renderDetailsGrid({ entityName, executedAt, profile, solutionName, specVersion })}
 
       <section aria-labelledby="checks-title">
-        <h2 id="checks-title" class="section-title checks-title">Controlli di Conformità Dettagliati</h2>
+        <h2 id="checks-title" class="section-title checks-title">Dettaglio dei controlli di conformità</h2>
         <div class="checks">
           ${checkCards}
         </div>
