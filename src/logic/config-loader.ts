@@ -39,6 +39,7 @@ export interface CliOptions {
   tests?: string;
   timeout?: number;
   trustAnchorCertDir?: string;
+  trustAnchorVerify?: boolean;
   unsafeTls?: boolean;
 }
 
@@ -389,6 +390,9 @@ const buildTrustAnchorConfig: ConfigSectionBuilder<Config["trust_anchor"]> = (
   ...(options.trustAnchorCertDir !== undefined && {
     tls_cert_dir: options.trustAnchorCertDir,
   }),
+  ...(options.trustAnchorVerify !== undefined && {
+    verify: options.trustAnchorVerify,
+  }),
 });
 
 function buildStepsMappingConfig(
@@ -504,6 +508,7 @@ function readCliOptionsFromEnv(): CliOptions {
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");
   readBooleanEnv(options, "unsafeTls", "CONFIG_UNSAFE_TLS");
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
+  readBooleanEnv(options, "trustAnchorVerify", "CONFIG_TRUST_ANCHOR_VERIFY");
   readStringEnv(options, "bindAddress", "OIDF_SERVERS_BIND_ADDRESS");
 
   return options;

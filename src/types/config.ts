@@ -76,6 +76,7 @@ export const configSchema = z.object({
   trust_anchor: z.object({
     port: z.coerce.number(),
     tls_cert_dir: z.string().optional(),
+    verify: zBooleanFromString.optional().default(true),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),
