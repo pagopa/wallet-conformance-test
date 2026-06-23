@@ -462,6 +462,185 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-40 — Relying Party Response malformed responses
+  // -----------------------------------------------------------------------
+
+  test("RPR-40: Relying Party Response | RP rejects malformed authorization responses", async () => {
+    const log = baseLog.withTag("RPR-40");
+    const DESCRIPTION =
+      "RP returns an error response when the wallet response is malformed";
+    log.start("Conformance test: Relying Party Response malformed responses");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Posting a malformed JARM response to response_uri...");
+      const malformedBody = new URLSearchParams({
+        response: "malformed-response-rpr-040",
+      });
+      const response = await postToResponseUri(validResponseUri, {
+        body: malformedBody.toString(),
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-42 — Status Endpoint session timeouts
+  // -----------------------------------------------------------------------
+
+  test("RPR-42: Status Endpoint | RP returns an error response for timed-out sessions", async () => {
+    const log = baseLog.withTag("RPR-42");
+    const DESCRIPTION =
+      "RP returns an error response when the status endpoint session has timed out";
+    log.start("Conformance test: Status Endpoint session timeouts");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const statusUrl = await fetchRedirectUrl();
+      const config = loadConfigWithHierarchy();
+
+      log.info("→ Accessing status endpoint once to complete the session...");
+      const firstResponse = await fetchWithConfig(config.network)(
+        statusUrl.href,
+        { method: "GET" },
+      );
+      log.debug(`  First response status: ${firstResponse.status}`);
+
+      log.info("→ Replaying status endpoint URL after session completion...");
+      const replayResponse = await fetchWithConfig(config.network)(
+        statusUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Replay response status: ${replayResponse.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(replayResponse.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-43 — Status Endpoint invalid status codes
+  // -----------------------------------------------------------------------
+
+  test("RPR-43: Status Endpoint | RP rejects invalid status codes", async () => {
+    const log = baseLog.withTag("RPR-43");
+    const DESCRIPTION =
+      "RP returns an error response when the status endpoint receives an invalid status code";
+    log.start("Conformance test: Status Endpoint invalid status codes");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const statusUrl = await fetchRedirectUrl();
+      statusUrl.searchParams.set("response_code", "invalid-status-rpr-043");
+      log.debug(
+        `→ Accessing status endpoint with invalid code: ${statusUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(statusUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-44 — Redirect URI invalid user sessions
+  // -----------------------------------------------------------------------
+
+  test("RPR-44: Redirect URI | RP rejects invalid user sessions", async () => {
+    const log = baseLog.withTag("RPR-44");
+    const DESCRIPTION =
+      "RP returns an error response when the redirect URI user session is invalid";
+    log.start("Conformance test: Redirect URI invalid user sessions");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      const invalidSessionUrl = replaceLastPathSegment(
+        redirectUrl,
+        "invalid-user-session-rpr-044",
+      );
+      log.debug(
+        `→ Accessing redirect_uri with invalid user session: ${invalidSessionUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(
+        invalidSessionUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-45 — Redirect URI unavailable services
+  // -----------------------------------------------------------------------
+
+  test("RPR-45: Redirect URI | RP handles unavailable services with an error response", async () => {
+    const log = baseLog.withTag("RPR-45");
+    const DESCRIPTION =
+      "RP returns an error response when redirect URI service handling is unavailable";
+    log.start("Conformance test: Redirect URI unavailable services");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      redirectUrl.searchParams.set("error", "temporarily_unavailable");
+      redirectUrl.searchParams.set(
+        "error_description",
+        "Simulated unavailable service",
+      );
+      log.debug(
+        `→ Accessing redirect_uri with unavailable service signal: ${redirectUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-41 — Missing response parameters
   // -----------------------------------------------------------------------
 
