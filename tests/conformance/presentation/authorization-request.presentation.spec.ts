@@ -116,6 +116,23 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     return jwe;
   }
 
+  async function encryptRawResponsePayload(payload: string): Promise<string> {
+    const encryptJwe = getEncryptJweCallback();
+    const { jwe } = await encryptJwe(
+      {
+        alg: verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+        enc:
+          verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
+        method: "jwk" as const,
+        publicJwk: verifierEncryptionKey,
+      },
+      payload,
+    );
+
+    return jwe;
+  }
+
   // -----------------------------------------------------------------------
   // RPR-25 — Malformed claims in presentation payload
   // -----------------------------------------------------------------------
@@ -878,6 +895,106 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the invalid claims...");
       expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-67 — Response parsing errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-67: Relying Party Response | RP returns an error response for response parsing errors", async () => {
+    const log = baseLog.withTag("RPR-67");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response parsing failed";
+    log.start("Conformance test: Relying Party Response parsing errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      log.info(
+        "→ Posting an encrypted response whose plaintext is not JSON...",
+      );
+      const unparsableJwe = await encryptRawResponsePayload(
+        "{ this-is-not-valid-json",
+      );
+      const formBody = new URLSearchParams({ response: unparsableJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject parsing failures without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-68 — Response timeout errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-68: Relying Party Response | RP returns an error response for timed-out authorization responses", async () => {
+    const log = baseLog.withTag("RPR-68");
+    const DESCRIPTION =
+      "RP returned an error response when the authorization response was expired";
+    log.start("Conformance test: Relying Party Response timeout errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const expiredPayload = {
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        exp: Math.floor(Date.now() / 1000) - 60,
+      };
+
+      log.info("→ Posting an encrypted response with an expired exp claim...");
+      const expiredJwe = await encryptResponsePayload(expiredPayload);
+      const formBody = new URLSearchParams({ response: expiredJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP returned a controlled timeout error response...",
+      );
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject timed-out responses without an internal server error",
+      ).toBeLessThan(500);
 
       testSuccess = true;
     } finally {

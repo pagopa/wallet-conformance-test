@@ -829,6 +829,175 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-69 — Status Endpoint session expiration
+  // -----------------------------------------------------------------------
+
+  test("RPR-69: Status Endpoint | RP returns an error response for expired sessions", async () => {
+    const log = baseLog.withTag("RPR-69");
+    const DESCRIPTION =
+      "RP returns an error response when the status endpoint session is expired";
+    log.start("Conformance test: Status Endpoint session expiration");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const statusUrl = await fetchRedirectUrl();
+      const config = loadConfigWithHierarchy();
+
+      log.info("→ Accessing status endpoint once to consume the session...");
+      const firstResponse = await fetchWithConfig(config.network)(
+        statusUrl.href,
+        { method: "GET" },
+      );
+      log.debug(`  First response status: ${firstResponse.status}`);
+
+      log.info("→ Replaying status endpoint URL after session expiration...");
+      const expiredResponse = await fetchWithConfig(config.network)(
+        statusUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Expired-session response status: ${expiredResponse.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(expiredResponse.ok).toBe(false);
+      expect(
+        expiredResponse.status,
+        "RP must reject expired status sessions without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-70 — Status Endpoint session renewal errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-70: Status Endpoint | RP returns an error response for session renewal errors", async () => {
+    const log = baseLog.withTag("RPR-70");
+    const DESCRIPTION =
+      "RP returns an error response when status endpoint session renewal fails";
+    log.start("Conformance test: Status Endpoint session renewal errors");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const renewalUrl = await fetchRedirectUrl();
+      renewalUrl.searchParams.set(
+        "response_code",
+        "invalid-renewal-response-code-rpr-070",
+      );
+      renewalUrl.searchParams.set("renew", "true");
+      log.debug(
+        `→ Accessing status endpoint with invalid renewal parameters: ${renewalUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(renewalUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject failed session renewal without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-71 — Redirect URI redirect loop errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-71: Redirect URI | RP returns an error response for redirect loop errors", async () => {
+    const log = baseLog.withTag("RPR-71");
+    const DESCRIPTION =
+      "RP returns an error response when redirect loop handling fails";
+    log.start("Conformance test: Redirect URI redirect loop errors");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      redirectUrl.searchParams.set(
+        "response_code",
+        "redirect-loop-response-code-rpr-071",
+      );
+      redirectUrl.searchParams.set("redirect_uri", redirectUrl.href);
+      log.debug(
+        `→ Accessing redirect_uri with loop-inducing parameters: ${redirectUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject redirect loop errors without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-72 — Redirect URI redirect security errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-72: Redirect URI | RP returns an error response for redirect security errors", async () => {
+    const log = baseLog.withTag("RPR-72");
+    const DESCRIPTION =
+      "RP returns an error response when redirect security validation fails";
+    log.start("Conformance test: Redirect URI redirect security errors");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      redirectUrl.searchParams.set(
+        "response_code",
+        "redirect-security-response-code-rpr-072",
+      );
+      redirectUrl.searchParams.set("next", "https://evil.example/callback");
+      log.debug(
+        `→ Accessing redirect_uri with unsafe redirect target: ${redirectUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject redirect security errors without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-98 — Error response content type
   // -----------------------------------------------------------------------
 
