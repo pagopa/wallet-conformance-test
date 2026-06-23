@@ -101,11 +101,6 @@ export interface CredentialRequestStepOptions {
    */
   walletAttestation: Omit<AttestationResponse, "created">;
 }
-
-/**
- * Flow step to request a credential from the issuer's credential endpoint.
- * It uses the access token obtained in the Token Request Step and the nonce from the Nonce Request Step.
- */
 /**
  * The parameter type of `WalletProvider.createItKeyAttestationJwt`, derived
  * directly from the SDK so it never drifts from the installed version.
@@ -114,6 +109,11 @@ export type KeyAttestationOptions = Parameters<
   WalletProvider["createItKeyAttestationJwt"]
 >[0];
 
+
+/**
+ * Flow step to request a credential from the issuer's credential endpoint.
+ * It uses the access token obtained in the Token Request Step and the nonce from the Nonce Request Step.
+ */
 export class CredentialRequestDefaultStep extends StepFlow {
   static readonly tag = "CREDENTIAL_REQUEST";
 
