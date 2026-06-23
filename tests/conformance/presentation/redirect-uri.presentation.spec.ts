@@ -61,6 +61,38 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     });
   }
 
+  async function fetchRedirectUrl(): Promise<URL> {
+    const result = await runRedirectStep(validAuthResponse, validResponseUri);
+    expect(result.success).toBe(true);
+
+    expect(result.response).toBeDefined();
+    if (!result.response) {
+      throw new Error("Invalid state: RedirectStep response is undefined");
+    }
+    if (!result.response.redirectUri) {
+      throw new Error("Invalid state: redirectUri is undefined");
+    }
+
+    return new URL(result.response.redirectUri.href);
+  }
+
+  function replaceLastPathSegment(url: URL, replacement: string): URL {
+    const tamperedUrl = new URL(url.href);
+    const pathSegments = tamperedUrl.pathname.split("/");
+    const lastSegmentIndex = pathSegments.findLastIndex(
+      (segment) => segment.length > 0,
+    );
+
+    if (lastSegmentIndex === -1) {
+      tamperedUrl.pathname = `/${replacement}`;
+      return tamperedUrl;
+    }
+
+    pathSegments[lastSegmentIndex] = replacement;
+    tamperedUrl.pathname = pathSegments.join("/");
+    return tamperedUrl;
+  }
+
   // -----------------------------------------------------------------------
   // RPR-14 — Invalid Request Object handling
   // -----------------------------------------------------------------------
@@ -232,7 +264,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   // RPR-30 — Status Endpoint unauthorized access
   // -----------------------------------------------------------------------
 
-  test("RPR-30: Status Endpoint | RP denies unauthorized access", async () => {
+  test("RPR-30: Verify handling of unauthorized access.", async () => {
     const log = baseLog.withTag("RPR-30");
     const DESCRIPTION = "RP denies unauthorized access to the status endpoint";
     log.start("Conformance test: Status Endpoint unauthorized access");
@@ -271,6 +303,157 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         [401, 403],
         "RP must deny unauthorized status endpoint access with HTTP 401 or 403",
       ).toContain(unauthorizedResponse.status);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-31 — Status Endpoint invalid session IDs
+  // -----------------------------------------------------------------------
+
+  test("RPR-31: Test handling of invalid session IDs.", async () => {
+    const log = baseLog.withTag("RPR-31");
+    const DESCRIPTION =
+      "RP returns an error response when the status endpoint session ID is invalid";
+    log.start("Conformance test: Status Endpoint invalid session IDs");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const redirectUrl = await fetchRedirectUrl();
+      const invalidSessionUrl = replaceLastPathSegment(
+        redirectUrl,
+        "invalid-session-id-rpr-031",
+      );
+      log.debug(
+        `→ Accessing status endpoint with invalid session ID: ${invalidSessionUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(
+        invalidSessionUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-32 — Redirect URI expired sessions
+  // -----------------------------------------------------------------------
+
+  test("RPR-32: Verify handling of expired sessions.", async () => {
+    const log = baseLog.withTag("RPR-32");
+    const DESCRIPTION =
+      "RP returns an error response when the redirect URI session is expired";
+    log.start("Conformance test: Redirect URI expired sessions");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      const config = loadConfigWithHierarchy();
+
+      log.info("→ Following redirect_uri once to consume the session...");
+      const firstResponse = await fetchWithConfig(config.network)(
+        redirectUrl.href,
+        { method: "GET" },
+      );
+      log.debug(`  First response status: ${firstResponse.status}`);
+
+      log.info("→ Replaying redirect_uri after session consumption...");
+      const replayResponse = await fetchWithConfig(config.network)(
+        redirectUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Replay response status: ${replayResponse.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(replayResponse.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-33 — Redirect URI server errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-33: Test handling of server errors.", async () => {
+    const log = baseLog.withTag("RPR-33");
+    const DESCRIPTION =
+      "RP returns an error response when redirect URI processing fails server-side";
+    log.start("Conformance test: Redirect URI server errors");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid redirect_uri...");
+      const redirectUrl = await fetchRedirectUrl();
+      const serverErrorUrl = new URL(redirectUrl.href);
+      serverErrorUrl.searchParams.set(
+        "response_code",
+        "trigger-server-error-rpr-033",
+      );
+      serverErrorUrl.searchParams.set("error", "server_error");
+      log.debug(
+        `→ Accessing redirect_uri with server_error: ${serverErrorUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const response = await fetchWithConfig(config.network)(
+        serverErrorUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned an error response...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-34 — Slow network conditions
+  // -----------------------------------------------------------------------
+
+  test("RPR-34: Verify handling of slow network conditions.", async () => {
+    const log = baseLog.withTag("RPR-34");
+    const DESCRIPTION =
+      "RP provides the HTTP response within the maximum limit of 2 seconds";
+    log.start("Conformance test: Slow network conditions");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Measuring redirect_uri HTTP response time...");
+      const redirectUrl = await fetchRedirectUrl();
+      const config = loadConfigWithHierarchy();
+      const startedAt = performance.now();
+      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
+        method: "GET",
+      });
+      const durationMs = performance.now() - startedAt;
+
+      log.debug(`  Response status: ${response.status}`);
+      log.debug(`  Response time: ${durationMs.toFixed(0)}ms`);
+      expect(
+        durationMs,
+        "RP must provide the redirect/status HTTP response within 2 seconds",
+      ).toBeLessThanOrEqual(2000);
 
       testSuccess = true;
     } finally {
