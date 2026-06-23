@@ -136,6 +136,9 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.tests) {
     env.TESTS = options.tests;
   }
+  if (options.walletVersion) {
+    env.CONFIG_WALLET_VERSION = options.walletVersion;
+  }
 
   return env;
 }
@@ -217,6 +220,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--tests <names>",
       "Comma separated list of test names, only the specified tests will be run (env: TESTS)",
+    )
+    .option(
+      "--wallet-version <version>",
+      "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
     );
 }
 
