@@ -199,6 +199,76 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   });
 
   // -----------------------------------------------------------------------
+  // RPR-36 — Large response payloads
+  // -----------------------------------------------------------------------
+
+  test("RPR-36: Verify handling of large response payloads.", async () => {
+    const log = baseLog.withTag("RPR-36");
+    const DESCRIPTION = "RP correctly rejected oversized response payload";
+    log.start("Conformance test: Large response payloads");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+      hasObjectProperties(authResult, ["response"]);
+
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      log.info("→ Building oversized encrypted response payload...");
+      const largePadding = "A".repeat(2 * 1024 * 1024);
+      const oversizedPayload = JSON.stringify({
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        padding: largePadding,
+      });
+
+      const encryptJwe = getEncryptJweCallback();
+      const { jwe: oversizedJwe } = await encryptJwe(
+        {
+          alg:
+            verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+          enc:
+            verifierMetadata.authorization_encrypted_response_enc ||
+            "A128CBC-HS256",
+          method: "jwk" as const,
+          publicJwk: verifierEncryptionKey,
+        },
+        oversizedPayload,
+      );
+
+      log.debug(`  Plaintext payload bytes: ${oversizedPayload.length}`);
+      log.debug(`  JWE response bytes: ${oversizedJwe.length}`);
+      log.info("→ Posting oversized JARM to response_uri...");
+
+      const formBody = new URLSearchParams({ response: oversizedJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP rejected the oversized payload safely...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject oversized responses without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-37 — Response encryption failures
   // -----------------------------------------------------------------------
 
