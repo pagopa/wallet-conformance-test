@@ -229,6 +229,56 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-30 — Status Endpoint unauthorized access
+  // -----------------------------------------------------------------------
+
+  test("RPR-30: Status Endpoint | RP denies unauthorized access", async () => {
+    const log = baseLog.withTag("RPR-30");
+    const DESCRIPTION = "RP denies unauthorized access to the status endpoint";
+    log.start("Conformance test: Status Endpoint unauthorized access");
+
+    let testSuccess = false;
+    try {
+      log.info("→ Running redirect step to get a valid status endpoint URL...");
+      const result = await runRedirectStep(validAuthResponse, validResponseUri);
+      expect(result.success).toBe(true);
+
+      expect(result.response).toBeDefined();
+      if (!result.response) {
+        throw new Error("Invalid state: RedirectStep response is undefined");
+      }
+      if (!result.response.redirectUri) {
+        throw new Error("Invalid state: redirectUri is undefined");
+      }
+
+      const unauthorizedStatusUrl = new URL(result.response.redirectUri.href);
+      unauthorizedStatusUrl.searchParams.delete("response_code");
+      log.debug(
+        `→ Accessing status endpoint without response_code: ${unauthorizedStatusUrl.href}`,
+      );
+
+      const config = loadConfigWithHierarchy();
+      const unauthorizedResponse = await fetchWithConfig(config.network)(
+        unauthorizedStatusUrl.href,
+        { method: "GET" },
+      );
+
+      log.debug(
+        `  Unauthorized response status: ${unauthorizedResponse.status}`,
+      );
+      log.info("→ Validating RP denied unauthorized status endpoint access...");
+      expect(
+        [401, 403],
+        "RP must deny unauthorized status endpoint access with HTTP 401 or 403",
+      ).toContain(unauthorizedResponse.status);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-41 — Missing response parameters
   // -----------------------------------------------------------------------
 
