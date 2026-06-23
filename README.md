@@ -169,6 +169,20 @@ Set it in your `config.ini`:
 wallet_version = V1_3
 ```
 
+Or override it at runtime without editing any file — using the CLI option:
+
+```bash
+wct test:issuance --wallet-version V1_3
+wct test:presentation --wallet-version V1_3
+```
+
+Or via an environment variable:
+
+```bash
+CONFIG_WALLET_VERSION=V1_3 wct test:issuance
+CONFIG_WALLET_VERSION=V1_3 wct test:presentation
+```
+
 > **Tip**: Use `V1_3` when testing against issuers or relying parties that implement the latest specification revision. Use `V1_0` for services that still target the first stable release.
 
 ### TLS Unsafe Mode
