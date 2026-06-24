@@ -1175,6 +1175,48 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-84: Flow Support | Relying Party supports both Same Device and Cross Device flows", () => {
+    const log = baseLog.withTag("RPR-84");
+
+    log.start(
+      "Conformance test: Verifying required Same Device and Cross Device flow support",
+    );
+
+    const DESCRIPTION =
+      "Relying Party supports both Same Device and Cross Device flows";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      log.debug("→ Validating Cross Device Flow QR-Code entry point...");
+      const qrCodePayload =
+        orchestrator.getConfig().presentation.authorize_request_url;
+      expect(qrCodePayload).toBeTruthy();
+      const authorizationRequestUrl = new URL(qrCodePayload);
+      expect(["haip:", "openid4vp:", "https:"]).toContain(
+        authorizationRequestUrl.protocol,
+      );
+      const hasRequest = authorizationRequestUrl.searchParams.has("request");
+      const requestUri =
+        authorizationRequestUrl.searchParams.get("request_uri");
+      expect(hasRequest || Boolean(requestUri)).toBe(true);
+      expect(authorizationRequestResult.response?.parsedQrCode).toBeDefined();
+      log.debug("  ✅ Cross Device Flow QR-Code entry point is supported");
+
+      log.debug("→ Validating Same Device Flow redirect handling...");
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
+      const redirectUri = redirectUriResult.response?.redirectUri;
+      expect(["haip:", "https:"]).toContain(redirectUri?.protocol);
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
+      log.debug("  ✅ Same Device Flow redirect handling is supported");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
   test("RPR-89: JWT typ parameter is correctly set to oauth-authz-req+jwt.", () => {
     const log = baseLog.withTag("RPR-89");
 
