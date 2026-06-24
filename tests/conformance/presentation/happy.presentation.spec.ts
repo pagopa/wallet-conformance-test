@@ -1805,6 +1805,32 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
+
+  test("RPR-112: Response Code Inclusion | Relying Party includes response code in redirect_uri", async () => {
+    const log = baseLog.withTag("RPR-112");
+
+    log.start(
+      "Conformance test: Verifying fresh response_code in redirect_uri",
+    );
+
+    const DESCRIPTION =
+      "Relying Party includes fresh response code in redirect_uri";
+    let testSuccess = false;
+    try {
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
+
+      const responseCode = redirectUriResult.response?.responseCode;
+      expect(responseCode).toBeDefined();
+      expect(responseCode).not.toBe("");
+      log.debug("  ✅ redirect_uri includes a fresh response_code");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-94: JWT exp parameter is correctly set and not expired.", () => {
     const log = baseLog.withTag("RPR-94");
 
