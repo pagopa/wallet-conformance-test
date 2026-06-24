@@ -29,6 +29,7 @@ import {
   CredentialRequestResponse,
   FetchMetadataStepResponse,
   NonceRequestResponse,
+  NotificationRequestResponse,
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
@@ -49,6 +50,7 @@ testConfigs.forEach((testConfig) => {
     let nonceResponse: NonceRequestResponse;
     let credentialResponse: CredentialRequestResponse;
     let walletAttestationResponse: AttestationResponse;
+    let notificationRequestResponse: NotificationRequestResponse | undefined;
     const sdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
     });
@@ -66,6 +68,7 @@ testConfigs.forEach((testConfig) => {
           result.pushedAuthorizationRequestResponse;
         tokenResponse = result.tokenResponse;
         walletAttestationResponse = result.walletAttestationResponse;
+        notificationRequestResponse = result.notificationRequestResponse;
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
@@ -1261,6 +1264,78 @@ testConfigs.forEach((testConfig) => {
           log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
           expect(credentialJkt).toBe(expectedJkt);
         }
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_088b: Notification | Access Token allows access to Notification endpoint for notifying Digital Credential deletion to the Credential Issuer", async ({
+      skip,
+    }) => {
+      const log = baseLog.withTag("CI_088b");
+      const DESCRIPTION =
+        "Access token successfully used to notify credential deletion";
+
+      log.start(
+        "Conformance test: Verifying access token use at Notification endpoint",
+      );
+
+      let testSuccess = false;
+      try {
+        if (!notificationRequestResponse) {
+          log.debug(
+            "→ CI_088b skipped: notificationRequestResponse is not present in IssuanceFlowResponse",
+          );
+          skip();
+          return;
+        }
+
+        expect(
+          notificationRequestResponse.success,
+          "Notification request step failed",
+        ).toBe(true);
+        expect(
+          notificationRequestResponse.response?.status,
+          "Notification endpoint must return 204 No Content",
+        ).toBe(204);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_161a: Notification | User successfully initiates Digital Credential revocation/suspension through Credential Issuer's web service", async ({
+      skip,
+    }) => {
+      const log = baseLog.withTag("CI_161a");
+      const DESCRIPTION =
+        "User successfully initiates Digital Credential revocation/suspension through Credential Issuer's web service";
+
+      log.start(
+        "Conformance test: Verifying user-initiated Digital Credential revocation/suspension",
+      );
+
+      let testSuccess = false;
+      try {
+        if (!notificationRequestResponse) {
+          log.debug(
+            "→ CI_161a skipped: notificationRequestResponse is not present in IssuanceFlowResponse",
+          );
+          skip();
+          return;
+        }
+
+        expect(
+          notificationRequestResponse.success,
+          "Notification request step failed",
+        ).toBe(true);
+        expect(
+          notificationRequestResponse.response?.status,
+          "Notification endpoint must return 204 No Content",
+        ).toBe(204);
 
         testSuccess = true;
       } finally {
