@@ -16,6 +16,17 @@ import { KeyPairJwk } from "@/types";
 
 const wrongClientAttestationPopAudience = "https://attacker.example.com";
 
+/**
+ * Returns a copy of `token` with its last character changed.
+ * Length is preserved so the tampered value targets modification-integrity
+ * protection rather than length or format validation.
+ */
+export function tamperTokenValue(token: string): string {
+  const index = token.length - 1;
+  const replacement = token[index] === "A" ? "B" : "A";
+  return `${token.slice(0, index)}${replacement}`;
+}
+
 export function withInvalidClientAttestationPop(
   StepClass: typeof TokenRequestDefaultStep,
 ): typeof TokenRequestDefaultStep {

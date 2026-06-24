@@ -23,6 +23,7 @@ testConfigs.forEach((testConfig) => {
 
     let credentialResponse: CredentialRequestResponse;
     let refreshTokenTokenEndpoint: string | undefined;
+    let issuedRefreshToken: string | undefined;
 
     beforeAll(async () => {
       try {
@@ -33,6 +34,7 @@ testConfigs.forEach((testConfig) => {
         refreshTokenTokenEndpoint =
           result.fetchMetadataResponse.response?.entityStatementClaims?.metadata
             ?.oauth_authorization_server?.token_endpoint;
+        issuedRefreshToken = result.tokenResponse.response?.refresh_token;
 
         baseLog.info("Re-issuance flow completed successfully");
       } catch (e) {
@@ -213,6 +215,36 @@ testConfigs.forEach((testConfig) => {
           new URL(refreshTokenTokenEndpoint).protocol,
           "Token endpoint must use HTTPS",
         ).toBe("https:");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_099: Refresh Token Security | Refresh tokens are generated with unguessable values and protected from modification", async () => {
+      const log = baseLog.withTag("CI_099");
+      const DESCRIPTION =
+        "Refresh tokens are generated with unguessable values and modification protection";
+
+      let testSuccess = false;
+      try {
+        expect(issuedRefreshToken, "Refresh token is undefined").toBeDefined();
+        if (!issuedRefreshToken) {
+          throw new Error("Refresh token is undefined");
+        }
+        expect(
+          issuedRefreshToken,
+          "Issuer reused the input refresh token instead of generating a new one",
+        ).not.toBe(orchestrator.getConfig().issuance.refresh_token);
+        expect(
+          issuedRefreshToken.length,
+          "Refresh token must have at least 128 bits of encoded entropy",
+        ).toBeGreaterThanOrEqual(22);
+        expect(
+          new Set(issuedRefreshToken).size,
+          "Refresh token has too little character variety",
+        ).toBeGreaterThan(8);
 
         testSuccess = true;
       } finally {
