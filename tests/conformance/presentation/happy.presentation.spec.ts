@@ -443,6 +443,54 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-88: Algorithm Validation | Request Object JWT alg is supported and not none or MAC.", () => {
+    const log = baseLog.withTag("RPR-88");
+
+    log.start(
+      "Conformance test: Verifying Request Object JWT algorithm is supported and not none or MAC",
+    );
+
+    const DESCRIPTION =
+      "Request Object JWT algorithm is supported by the Wallet and is neither none nor MAC-based";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const actualAlg = response?.authorizationRequestHeader.alg;
+      expect(actualAlg).toBeDefined();
+      if (!actualAlg) {
+        throw new Error("Request Object JWT alg header is missing");
+      }
+
+      const supportedAlgorithms =
+        response.walletMetadata.request_object_signing_alg_values_supported;
+      expect(supportedAlgorithms).toBeDefined();
+      expect(supportedAlgorithms?.length).toBeGreaterThan(0);
+      if (!supportedAlgorithms || supportedAlgorithms.length === 0) {
+        throw new Error(
+          "Wallet request_object_signing_alg_values_supported is missing",
+        );
+      }
+
+      const macAlgorithms = new Set(["HS256", "HS384", "HS512"]);
+      log.debug(`  Request Object alg: ${actualAlg}`);
+      log.debug(
+        `  Wallet-supported algorithms: ${supportedAlgorithms.join(", ")}`,
+      );
+
+      expect(actualAlg.toLowerCase()).not.toBe("none");
+      expect(macAlgorithms.has(actualAlg)).toBe(false);
+      expect(supportedAlgorithms).toContain(actualAlg);
+      log.debug("  ✅ Request Object JWT alg is supported and asymmetric");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-08: Relying Party issues the Request Object via HTTP GET response.", () => {
     const log = baseLog.withTag("RPR-08");
 
