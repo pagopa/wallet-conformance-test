@@ -3,6 +3,7 @@ import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
   withInvalidClientAttestationPop,
   withInvalidRefreshTokenDPoP,
+  withRefreshTokenDPoPSignedByWrongKey,
 } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -115,6 +116,37 @@ testConfigs.forEach((testConfig) => {
         expect(
           result.tokenResponse?.success,
           "Token request did not fail; rejection may have happened outside token endpoint DPoP validation",
+        ).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_093: Refresh Token Binding | Issuer rejects a refresh-token reissuance request when DPoP proof key differs from the Refresh Token binding key", async () => {
+      const log = baseLog.withTag("CI_093");
+      const DESCRIPTION =
+        "Issuer correctly rejected refresh-token reissuance with DPoP key not bound to the Refresh Token";
+
+      let testSuccess = false;
+      try {
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow({
+          ...testConfig,
+          tokenRequestStepClass: withRefreshTokenDPoPSignedByWrongKey(
+            testConfig.tokenRequestStepClass,
+          ),
+        });
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.success,
+          "Re-issuance flow succeeded despite DPoP key not matching Refresh Token binding",
+        ).toBe(false);
+        expect(
+          result.tokenResponse?.success,
+          "Token request did not fail; rejection may have happened outside refresh-token DPoP binding validation",
         ).toBe(false);
 
         testSuccess = true;

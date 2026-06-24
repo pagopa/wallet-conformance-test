@@ -1,5 +1,7 @@
 import { buildTamperedPopJwt } from "#/helpers/par-validation-helpers";
-import { createTokenDPoP } from "@pagopa/io-wallet-oauth2";
+import { createTokenDPoP, Jwk, JwtSignerJwk } from "@pagopa/io-wallet-oauth2";
+import { exportJWK, generateKeyPair } from "jose";
+import { randomUUID } from "node:crypto";
 
 import type {
   TokenRequestResponse,
@@ -8,6 +10,7 @@ import type {
 
 import { partialCallbacks, signJwtCallback } from "@/logic";
 import { TokenRequestDefaultStep } from "@/step/issuance";
+import { KeyPairJwk } from "@/types";
 
 const wrongClientAttestationPopAudience = "https://attacker.example.com";
 
@@ -64,6 +67,54 @@ export function withInvalidRefreshTokenDPoP(
       return super.run({
         ...options,
         dpopProof: invalidDpop,
+      });
+    }
+  } as typeof TokenRequestDefaultStep;
+}
+
+/**
+ * Wraps a token request step class to send a valid DPoP proof for the token
+ * endpoint, but signed with a fresh key that is unrelated to the key bound to
+ * the Refresh Token.
+ *
+ * Used for CI_093: the issuer MUST reject the refresh-token reissuance request
+ * because the DPoP proof key thumbprint does not match the Refresh Token
+ * confirmation binding.
+ */
+export function withRefreshTokenDPoPSignedByWrongKey(
+  StepClass: typeof TokenRequestDefaultStep,
+): typeof TokenRequestDefaultStep {
+  return class extends StepClass {
+    async run(options: TokenRequestStepOptions): Promise<TokenRequestResponse> {
+      const { privateKey: wrongPrivate, publicKey: wrongPublic } =
+        await generateKeyPair("ES256", { extractable: true });
+      const wrongPrivateJwk = await exportJWK(wrongPrivate);
+      const wrongPublicJwk = await exportJWK(wrongPublic);
+      const wrongKid = randomUUID();
+
+      const wrongSigner: JwtSignerJwk = {
+        alg: "ES256",
+        method: "jwk",
+        publicJwk: { ...wrongPublicJwk, kid: wrongKid, kty: "EC" } as Jwk,
+      };
+
+      const wrongKeyDpop = await createTokenDPoP({
+        callbacks: {
+          ...partialCallbacks,
+          signJwt: signJwtCallback([
+            { ...wrongPrivateJwk, kid: wrongKid, kty: "EC" } as KeyPairJwk,
+          ]),
+        },
+        signer: wrongSigner,
+        tokenRequest: {
+          method: "POST" as const,
+          url: options.accessTokenEndpoint,
+        },
+      });
+
+      return super.run({
+        ...options,
+        dpopProof: wrongKeyDpop,
       });
     }
   } as typeof TokenRequestDefaultStep;
