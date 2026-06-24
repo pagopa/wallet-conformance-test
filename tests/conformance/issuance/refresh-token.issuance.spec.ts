@@ -9,7 +9,7 @@ import {
   withRefreshTokenDPoPSignedByWrongKey,
 } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
-import { calculateJwkThumbprint } from "jose";
+import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import type {
@@ -348,6 +348,50 @@ testConfigs.forEach((testConfig) => {
           new Set(issuedRefreshToken).size,
           "Refresh token has too little character variety",
         ).toBeGreaterThan(8);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_104: Refresh Token Duration | Issuer time-limits refresh tokens to at most one year", async () => {
+      const log = baseLog.withTag("CI_104");
+      const DESCRIPTION =
+        "Refresh token lifetime is bounded and does not exceed one year";
+
+      const maxRefreshTokenLifetimeSeconds = 365 * 24 * 60 * 60;
+
+      let testSuccess = false;
+      try {
+        expect(issuedRefreshToken, "Refresh token is undefined").toBeDefined();
+        if (!issuedRefreshToken) {
+          throw new Error("Refresh token is undefined");
+        }
+
+        const claims = decodeJwt(issuedRefreshToken);
+
+        expect(
+          typeof claims.iat,
+          "Refresh token must expose issued-at time",
+        ).toBe("number");
+        expect(
+          typeof claims.exp,
+          "Refresh token must expose expiration time",
+        ).toBe("number");
+
+        if (typeof claims.iat !== "number" || typeof claims.exp !== "number") {
+          throw new Error("Refresh token lifetime claims are not numeric");
+        }
+
+        expect(
+          claims.exp,
+          "Refresh token expiration must be after issued-at",
+        ).toBeGreaterThan(claims.iat);
+        expect(
+          claims.exp - claims.iat,
+          "Refresh token lifetime must not exceed one year",
+        ).toBeLessThanOrEqual(maxRefreshTokenLifetimeSeconds);
 
         testSuccess = true;
       } finally {
