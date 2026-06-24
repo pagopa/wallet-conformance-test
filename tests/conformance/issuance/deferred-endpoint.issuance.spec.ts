@@ -9,7 +9,10 @@ import {
 } from "@pagopa/io-wallet-utils";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import type { DeferredCredentialRequestResponse } from "@/step/issuance";
+import type {
+  DeferredCredentialRequestResponse,
+  FetchMetadataStepResponse,
+} from "@/step/issuance";
 
 import { loadConfigWithHierarchy } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
@@ -28,12 +31,14 @@ testConfigs.forEach((testConfig) => {
       const baseLog = orchestrator.getLog();
 
       let deferredCredentialResponse: DeferredCredentialRequestResponse;
+      let fetchMetadataResponse: FetchMetadataStepResponse;
 
       beforeAll(async () => {
         try {
           const result = await orchestrator.deferred();
           assertDeferredIssuanceFlowSuccess(result);
 
+          fetchMetadataResponse = result.fetchMetadataResponse;
           deferredCredentialResponse = result.deferredCredentialResponse;
 
           baseLog.info("Deferred issuance flow completed successfully");
@@ -47,6 +52,44 @@ testConfigs.forEach((testConfig) => {
       });
 
       useTestSummary(baseLog, testConfig.name);
+
+      test("CI_081: Deferred Endpoint Issuance | Credential Issuer supports the Deferred Flow", async () => {
+        const log = baseLog.withTag("CI_081");
+        const DESCRIPTION =
+          "Issuer supports the Deferred Flow and returns a valid deferred refresh token and transaction_id";
+
+        let testSuccess = false;
+        try {
+          expect(
+            fetchMetadataResponse.success,
+            "Fetch metadata step failed",
+          ).toBe(true);
+          expect(
+            fetchMetadataResponse.response,
+            "Fetch metadata response body is undefined",
+          ).toBeDefined();
+
+          const entityStatementClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
+          const deferredCredentialEndpoint =
+            entityStatementClaims?.metadata?.openid_credential_issuer
+              ?.deferred_credential_endpoint;
+
+          expect(
+            deferredCredentialEndpoint,
+            "Issuer metadata does not contain deferred_credential_endpoint",
+          ).toBeDefined();
+
+          log.debug(
+            "→ Deferred credential endpoint is ",
+            deferredCredentialEndpoint,
+          );
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      });
 
       test("CI_088a: Deferred Endpoint Issuance | Access Token allows access to Deferred endpoint for obtaining new Digital Credentials after interval or readiness notification", async () => {
         const log = baseLog.withTag("CI_088a");
