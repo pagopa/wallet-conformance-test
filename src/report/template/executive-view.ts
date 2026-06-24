@@ -68,7 +68,7 @@ export function renderExecutiveView(
       ${renderDetailsGrid({ entityName, executedAt, profile, solutionName, specVersion })}
 
       <section aria-labelledby="validation-title">
-        <h2 id="validation-title" class="section-title">Riepilogo Validazione</h2>
+        <h2 id="validation-title" class="section-title">Riepilogo della verifica</h2>
         <div class="metrics" aria-label="Riepilogo dei controlli di validazione">
           <article class="metric-card total">
             <span class="metric-label">Controlli Totali</span>

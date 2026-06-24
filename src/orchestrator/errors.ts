@@ -52,6 +52,17 @@ export class IssuerMetadataError extends OrchestratorError {
   }
 }
 
+export class ReissuancePreconditionError extends OrchestratorError {
+  constructor() {
+    super(
+      "Re-Issuance Flow requires a refresh token. " +
+        "Set 'refresh_token' under [issuance] in config.ini or pass --refresh-token <token>.",
+      "REISSUANCE_PRECONDITION_FAILED",
+    );
+    this.name = "ReissuancePreconditionError";
+  }
+}
+
 export class StepOutputError extends OrchestratorError {
   readonly missingField: string;
   readonly stepTag: string;

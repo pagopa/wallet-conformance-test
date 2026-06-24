@@ -139,6 +139,9 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.walletVersion) {
     env.CONFIG_WALLET_VERSION = options.walletVersion;
   }
+  if (options.refreshToken) {
+    env.CONFIG_REFRESH_TOKEN = options.refreshToken;
+  }
 
   return env;
 }
@@ -224,6 +227,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--wallet-version <version>",
       "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
+    )
+    .option(
+      "--refresh-token <token>",
+      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN)",
     );
 }
 
