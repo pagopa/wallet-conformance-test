@@ -22,6 +22,7 @@ const envKeys = [
   "CONFIG_STEPS_MAPPING",
   "CONFIG_TIMEOUT",
   "CONFIG_UNSAFE_TLS",
+  "CONFIG_WALLET_VERSION",
   "NODE_TLS_REJECT_UNAUTHORIZED",
 ];
 
@@ -109,6 +110,35 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
         "tests/steps/presentation",
       ),
     });
+  });
+
+  it("should override wallet_version from CONFIG_WALLET_VERSION environment variable", () => {
+    process.env.CONFIG_WALLET_VERSION = "V1_3";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.wallet.wallet_version).toBe("V1_3");
+  });
+
+  it("should override wallet_version via direct CliOptions without touching other wallet fields", () => {
+    const config = loadConfigWithHierarchy(
+      { walletVersion: "V1_3" },
+      DEFAULT_INI,
+    );
+
+    expect(config.wallet.wallet_version).toBe("V1_3");
+    expect(config.wallet.wallet_id).toBe("wallet_cli_instance");
+    expect(config.wallet.backup_storage_path).toBe(
+      path.join(packageRoot, "data/backup"),
+    );
+  });
+
+  it("should reject invalid wallet_version values through the config schema", () => {
+    process.env.CONFIG_WALLET_VERSION = "INVALID_VERSION";
+
+    expect(() => loadConfigWithHierarchy(null, DEFAULT_INI)).toThrow(
+      /Configuration validation failed/,
+    );
   });
 });
 

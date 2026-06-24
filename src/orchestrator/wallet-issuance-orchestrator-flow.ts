@@ -20,6 +20,7 @@ import {
   CredentialConfigurationError,
   IssuerMetadataError,
   OrchestratorError,
+  ReissuancePreconditionError,
   StepOutputError,
 } from "@/orchestrator/errors";
 import {
@@ -41,8 +42,11 @@ import {
   AttestationResponse,
   Config,
   IssuanceFlowResponse,
+  KeyPair,
+  ReissuanceFlowResponse,
   RunThroughAuthorizeContext,
   RunThroughParContext,
+  RunThroughRefreshTokenContext,
   RunThroughTokenContext,
 } from "@/types";
 
@@ -278,6 +282,58 @@ export class WalletIssuanceOrchestratorFlow {
         nonceResponse: this._nonceResponse,
         pushedAuthorizationRequestResponse:
           this._pushedAuthorizationRequestResponse,
+        success: false,
+        tokenResponse: this._tokenResponse,
+        walletAttestationResponse: this._walletAttestationResponse,
+      };
+    }
+  }
+
+  async reissuance(): Promise<ReissuanceFlowResponse> {
+    this.resetResponses();
+
+    try {
+      const refreshToken = this.config.issuance.refresh_token;
+      if (!refreshToken) {
+        throw new ReissuancePreconditionError();
+      }
+
+      const {
+        credentialIssuer,
+        dPoPKey,
+        fetchMetadataResponse,
+        tokenResponse,
+        walletAttestationResponse,
+      } = await this.runThroughRefreshToken(refreshToken);
+
+      const accessToken = tokenResponse.response?.access_token;
+      if (!accessToken)
+        throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
+
+      const { credentialResponse, nonceResponse } =
+        await this.requestCredentialWithToken({
+          accessToken,
+          credentialIssuer,
+          dPoPKey,
+          fetchMetadataResponse,
+          walletAttestationResponse,
+        });
+
+      return {
+        credentialResponse,
+        fetchMetadataResponse,
+        nonceResponse,
+        success: true,
+        tokenResponse,
+        walletAttestationResponse,
+      };
+    } catch (e) {
+      this.log.error("Error in Re-Issuance Flow!", e);
+      return {
+        credentialResponse: this._credentialResponse,
+        error: e instanceof Error ? e : new Error(String(e)),
+        fetchMetadataResponse: this._fetchMetadataResponse,
+        nonceResponse: this._nonceResponse,
         success: false,
         tokenResponse: this._tokenResponse,
         walletAttestationResponse: this._walletAttestationResponse,
@@ -593,6 +649,92 @@ export class WalletIssuanceOrchestratorFlow {
     );
   }
 
+  /**
+   * Performs the shared Nonce Request → Credential Request → optional save-to-disk
+   * sequence used by both issuance() and reissuance().
+   */
+  private async requestCredentialWithToken({
+    accessToken,
+    credentialIssuer,
+    dPoPKey,
+    fetchMetadataResponse,
+    walletAttestationResponse,
+  }: {
+    accessToken: string;
+    credentialIssuer: string;
+    dPoPKey: KeyPair;
+    fetchMetadataResponse: FetchMetadataStepResponse;
+    walletAttestationResponse: AttestationResponse;
+  }): Promise<{
+    credentialResponse: CredentialRequestResponse;
+    nonceResponse: NonceRequestResponse;
+  }> {
+    const entityStatementClaims =
+      fetchMetadataResponse.response?.entityStatementClaims;
+
+    const nonceResponse = await this.nonceRequestStep.run({
+      nonceEndpoint:
+        entityStatementClaims.metadata?.openid_credential_issuer
+          ?.nonce_endpoint,
+    });
+    this._nonceResponse = nonceResponse;
+    this.log.flowStep(
+      5,
+      this.TOTAL_STEPS,
+      "Nonce Request",
+      nonceResponse.success,
+      nonceResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(nonceResponse, "Nonce Request");
+
+    const nonce = nonceResponse.response?.nonce as
+      | undefined
+      | { c_nonce: string };
+    if (!nonce)
+      throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
+
+    const credentialResponse = await this.credentialRequestStep.run({
+      accessToken,
+      clientId: walletAttestationResponse.unitKey.publicKey.kid,
+      credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+      credentialIssuer: credentialIssuer,
+      credentialRequestEndpoint:
+        entityStatementClaims.metadata?.openid_credential_issuer
+          ?.credential_endpoint,
+      dPoPKey,
+      nonce: nonce.c_nonce,
+      walletAttestation: walletAttestationResponse,
+    });
+    this._credentialResponse = credentialResponse;
+    this.log.flowStep(
+      6,
+      this.TOTAL_STEPS,
+      "Credential Request",
+      credentialResponse.success,
+      credentialResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(credentialResponse, "Credential Request");
+
+    // Save credential to disk if configured
+    // Currently, only the first credential is saved because we support requesting one at a time
+    const firstCredential = credentialResponse.response?.credentials?.[0];
+    if (this.config.issuance.save_credential && firstCredential?.credential) {
+      const savedPath = saveCredentialToDisk(
+        this.config.wallet.credentials_storage_path,
+        this.issuanceConfig.credentialConfigurationId,
+        firstCredential.credential,
+        this.config.wallet.wallet_version,
+      );
+      if (savedPath) {
+        this.log.info(`Credential saved to disk: ${savedPath}`);
+      } else {
+        this.log.error("Failed to save credential to disk");
+      }
+    }
+
+    return { credentialResponse, nonceResponse };
+  }
+
   private resetResponses(): void {
     this._authorizeResponse = undefined;
     this._credentialResponse = undefined;
@@ -601,5 +743,112 @@ export class WalletIssuanceOrchestratorFlow {
     this._pushedAuthorizationRequestResponse = undefined;
     this._tokenResponse = undefined;
     this._walletAttestationResponse = undefined;
+  }
+
+  /**
+   * Executes the Re-Issuance flow from metadata discovery through the
+   * refresh-token token request. Does NOT run PAR or authorization steps.
+   */
+  private async runThroughRefreshToken(
+    refreshToken: string,
+  ): Promise<RunThroughRefreshTokenContext> {
+    this.printTestSuiteOnce();
+    this.log.info("Starting Re-Issuance Flow...");
+
+    const { credentialConfigurationIds, credentialIssuer } =
+      await this.findCredentialConfig();
+
+    this.log.info(
+      `Re-issuing credentials ${JSON.stringify(credentialConfigurationIds)} from issuer ${credentialIssuer}`,
+    );
+
+    const fetchMetadataResponse = await this.fetchMetadataStep.run({
+      baseUrl: credentialIssuer,
+    });
+    this._fetchMetadataResponse = fetchMetadataResponse;
+    this.log.flowStep(
+      1,
+      this.TOTAL_STEPS,
+      "Fetch Metadata",
+      fetchMetadataResponse.success,
+      fetchMetadataResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(fetchMetadataResponse, "Fetch Metadata");
+
+    const walletAttestationResponse = await loadAttestation({
+      trust: this.config.trust,
+      trustAnchor: this.config.trust_anchor,
+      wallet: this.config.wallet,
+    });
+    this._walletAttestationResponse = walletAttestationResponse;
+
+    const callbacks = {
+      ...partialCallbacks,
+      signJwt: signJwtCallback([walletAttestationResponse.unitKey.privateKey]),
+    };
+
+    const entityStatementClaims =
+      fetchMetadataResponse.response?.entityStatementClaims;
+    if (!entityStatementClaims) {
+      throw new OrchestratorError(
+        "Fetch Metadata step returned no entity statement claims.",
+        "ENTITY_STATEMENT_CLAIMS_MISSING",
+      );
+    }
+
+    const popAttestation = await createClientAttestationPopJwt({
+      authorizationServer: credentialIssuer,
+      callbacks,
+      clientAttestation: walletAttestationResponse.attestation,
+      config: new IoWalletSdkConfig({
+        itWalletSpecsVersion: this.config.wallet.wallet_version,
+      }),
+      jti: randomUUID(),
+    });
+
+    const tokenEndpoint =
+      entityStatementClaims.metadata?.oauth_authorization_server
+        ?.token_endpoint;
+    if (!tokenEndpoint) {
+      throw new IssuerMetadataError(
+        "token_endpoint",
+        "oauth_authorization_server",
+        "Re-Issuance Token Request",
+      );
+    }
+
+    // refresh_token is guaranteed non-null here — passed from reissuance()
+    // after a null-check guard.
+    const accessTokenRequest: AccessTokenRequest = {
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    };
+
+    const tokenResponse = await this.tokenRequestStep.run({
+      accessTokenEndpoint: tokenEndpoint,
+      accessTokenRequest,
+      popAttestation,
+      walletAttestation: walletAttestationResponse,
+    });
+    this._tokenResponse = tokenResponse;
+    this.log.flowStep(
+      4,
+      this.TOTAL_STEPS,
+      "Re-Issuance Token Request",
+      tokenResponse.success,
+      tokenResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(tokenResponse, "Re-Issuance Token Request");
+
+    const dPoPKey = tokenResponse.response?.dPoPKey;
+    if (!dPoPKey) throw new StepOutputError("TOKEN_REQUEST", "dPoPKey");
+
+    return {
+      credentialIssuer,
+      dPoPKey,
+      fetchMetadataResponse,
+      tokenResponse,
+      walletAttestationResponse,
+    };
   }
 }
