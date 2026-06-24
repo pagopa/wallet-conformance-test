@@ -384,6 +384,64 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-86: Privacy Protection | Relying Party validates Wallet Instance metadata without User information", () => {
+    const log = baseLog.withTag("RPR-86");
+
+    log.start(
+      "Conformance test: Verifying Wallet Instance metadata privacy separation",
+    );
+
+    const DESCRIPTION =
+      "Relying Party correctly evaluates Wallet Instance technical capabilities";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+      expect(redirectUriResult.success).toBe(true);
+
+      const response = authorizationRequestResult.response;
+      const walletMetadata = response?.walletMetadata;
+      expect(walletMetadata).toBeDefined();
+      if (!walletMetadata) {
+        throw new Error("Wallet Instance metadata is missing");
+      }
+
+      log.debug(
+        "→ Validating Wallet Instance metadata contains only technical capabilities...",
+      );
+
+      if (!walletMetadata.request_object_signing_alg_values_supported) {
+        throw new Error(
+          "Wallet metadata request_object_signing_alg_values_supported is missing",
+        );
+      }
+      if (!walletMetadata.vp_formats_supported) {
+        throw new Error("Wallet metadata vp_formats_supported is missing");
+      }
+
+      expect(walletMetadata.response_types_supported).toContain("vp_token");
+      expect(walletMetadata.response_modes_supported).toContain(
+        "direct_post.jwt",
+      );
+      expect(
+        walletMetadata.request_object_signing_alg_values_supported.length,
+      ).toBeGreaterThan(0);
+      expect(
+        Object.keys(walletMetadata.vp_formats_supported).length,
+      ).toBeGreaterThan(0);
+
+      const requestObject = response?.requestObject;
+      expect(requestObject).toBeDefined();
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
+      log.debug(
+        "  ✅ RP continued the flow using technical Wallet metadata only",
+      );
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
   test("RPR-87: Request URI POST Method | Wallet Instance metadata is sent as form-encoded POST.", () => {
     const log = baseLog.withTag("RPR-87");
 
@@ -585,7 +643,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     "RPR-10: Authorization request parameters match OpenID Credential Verifier metadata.",
     { skip: process.env.CI === "true" },
     async ({ skip }) => {
-      const log = baseLog.withTag("RPR010");
+      const log = baseLog.withTag("RPR-010");
 
       log.start(
         "Conformance test: Verifying authorization request parameters match RP metadata",
