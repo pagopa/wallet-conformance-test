@@ -191,7 +191,7 @@ export function renderFooter({
       : "";
   return `
     <footer class="footer">
-      <p>Questo rapporto è stato generato automaticamente dallo strumento di conformità IT-Wallet.</p>
+      <p>Questo rapporto è stato generato automaticamente dallo Strumento di Conformità IT-Wallet.</p>
       <p>ID Rapporto: ${escapeHtml(reportId)}</p>
       ${sessionLine}
       <p class="generated">Generato il: ${escapeHtml(generatedAt)}</p>
