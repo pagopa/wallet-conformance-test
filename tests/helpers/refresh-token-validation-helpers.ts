@@ -34,6 +34,9 @@ const wrongClientAttestationPopAudience = "https://attacker.example.com";
  * protection rather than length or format validation.
  */
 export function tamperTokenValue(token: string): string {
+  if (token.length === 0) {
+    return token;
+  }
   const index = token.length - 1;
   const replacement = token[index] === "A" ? "B" : "A";
   return `${token.slice(0, index)}${replacement}`;
