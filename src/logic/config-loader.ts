@@ -38,10 +38,12 @@ export interface CliOptions {
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
   refreshToken?: string;
+  refreshTokenDeferred?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
   timeout?: number;
+  transactionId?: string;
   trustAnchorCertDir?: string;
   unsafeTls?: boolean;
   walletVersion?: string;
@@ -350,6 +352,10 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .filter((t) => t.length > 0),
   }),
   ...(options.refreshToken && { refresh_token: options.refreshToken }),
+  ...(options.refreshTokenDeferred && {
+    refresh_token_deferred: options.refreshTokenDeferred,
+  }),
+  ...(options.transactionId && { transaction_id: options.transactionId }),
   ...(options.saveCredential !== undefined && {
     save_credential: options.saveCredential,
   }),
@@ -520,6 +526,12 @@ function readCliOptionsFromEnv(): CliOptions {
     "CONFIG_PRESENTATION_TESTS_DIR",
   );
   readStringEnv(options, "refreshToken", "CONFIG_REFRESH_TOKEN");
+  readStringEnv(
+    options,
+    "refreshTokenDeferred",
+    "CONFIG_REFRESH_TOKEN_DEFERRED",
+  );
+  readStringEnv(options, "transactionId", "CONFIG_TRANSACTION_ID");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");
   readBooleanEnv(options, "unsafeTls", "CONFIG_UNSAFE_TLS");
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
