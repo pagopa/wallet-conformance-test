@@ -32,6 +32,8 @@ import {
   FetchMetadataStepResponse,
   NonceRequestDefaultStep,
   NonceRequestResponse,
+  NotificationRequestDefaultStep,
+  NotificationRequestResponse,
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
   TokenRequestDefaultStep,
@@ -55,6 +57,7 @@ export class WalletIssuanceOrchestratorFlow {
   private _credentialResponse?: CredentialRequestResponse;
   private _fetchMetadataResponse?: FetchMetadataStepResponse;
   private _nonceResponse?: NonceRequestResponse;
+  private _notificationRequestResponse?: NotificationRequestResponse;
   private _pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
   private _suitePrinted = false;
   private _tokenResponse?: TokenRequestResponse;
@@ -65,10 +68,12 @@ export class WalletIssuanceOrchestratorFlow {
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
+  private readonly ISSUANCE_WITH_DELETED_TOTAL_STEPS = 7;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
   private nonceRequestStep: NonceRequestDefaultStep;
 
+  private notificationRequestStep: NotificationRequestDefaultStep;
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
   private sdkConfig: IoWalletSdkConfig;
   private tokenRequestStep: TokenRequestDefaultStep;
@@ -119,6 +124,9 @@ export class WalletIssuanceOrchestratorFlow {
       this.config,
       this.log,
     );
+
+    this.notificationRequestStep =
+      new issuanceConfig.notificationRequestStepClass(this.config, this.log);
   }
 
   async findCredentialConfig(): Promise<{
@@ -208,11 +216,51 @@ export class WalletIssuanceOrchestratorFlow {
           walletAttestationResponse,
         });
 
+      if (
+        !this.config.issuance.save_credential &&
+        credentialResponse.response?.notification_id
+      ) {
+        this.log.info(
+          "Credential Response contains 'notification_id' and 'save_credential' is false. Calling Notification Endpoint for credential_deleted event.",
+        );
+
+        const notificationId = credentialResponse.response?.notification_id;
+        const notificationEndpoint =
+          fetchMetadataResponse.response?.entityStatementClaims.metadata
+            ?.openid_credential_issuer?.notification_endpoint;
+        if (!notificationEndpoint) {
+          throw new IssuerMetadataError(
+            "notification_endpoint",
+            "openid_credential_issuer",
+            "Credential Deleted Notification",
+          );
+        }
+
+        const notificationRequestResponse =
+          await this.notificationRequestStep.run({
+            accessToken,
+            dPoPKey,
+            event: "credential_deleted",
+            notificationEndpoint,
+            notificationId,
+          });
+        this._notificationRequestResponse = notificationRequestResponse;
+        this.log.flowStep(
+          this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+          this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+          "Notification Request",
+          notificationRequestResponse.success,
+          notificationRequestResponse.durationMs ?? 0,
+        );
+        assertStepSuccess(notificationRequestResponse, "Notification Request");
+      }
+
       return {
         authorizeResponse,
         credentialResponse,
         fetchMetadataResponse,
         nonceResponse,
+        notificationRequestResponse: this._notificationRequestResponse,
         pushedAuthorizationRequestResponse,
         success: true,
         tokenResponse,
@@ -226,6 +274,7 @@ export class WalletIssuanceOrchestratorFlow {
         error: e instanceof Error ? e : new Error(String(e)),
         fetchMetadataResponse: this._fetchMetadataResponse,
         nonceResponse: this._nonceResponse,
+        notificationRequestResponse: this._notificationRequestResponse,
         pushedAuthorizationRequestResponse:
           this._pushedAuthorizationRequestResponse,
         success: false,
@@ -689,6 +738,7 @@ export class WalletIssuanceOrchestratorFlow {
     this._credentialResponse = undefined;
     this._fetchMetadataResponse = undefined;
     this._nonceResponse = undefined;
+    this._notificationRequestResponse = undefined;
     this._pushedAuthorizationRequestResponse = undefined;
     this._tokenResponse = undefined;
     this._walletAttestationResponse = undefined;

@@ -3,6 +3,7 @@ import {
   CredentialRequestResponse,
   FetchMetadataStepResponse,
   NonceRequestResponse,
+  NotificationRequestResponse,
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
@@ -16,6 +17,7 @@ export interface IssuanceFlowResponse {
   error?: Error;
   fetchMetadataResponse?: FetchMetadataStepResponse;
   nonceResponse?: NonceRequestResponse;
+  notificationRequestResponse?: NotificationRequestResponse;
   pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
   success: boolean;
   tokenResponse?: TokenRequestResponse;
