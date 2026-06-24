@@ -1,6 +1,9 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
-import { withInvalidClientAttestationPop } from "#/helpers/refresh-token-validation-helpers";
+import {
+  withInvalidClientAttestationPop,
+  withInvalidRefreshTokenDPoP,
+} from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -81,6 +84,37 @@ testConfigs.forEach((testConfig) => {
         expect(
           result.tokenResponse?.success,
           "Token request did not fail; rejection may have happened outside token endpoint validation",
+        ).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_092: DPoP Proof JWT | Issuer rejects a refresh-token reissuance request with invalid DPoP proof", async () => {
+      const log = baseLog.withTag("CI_092");
+      const DESCRIPTION =
+        "Issuer correctly rejected refresh-token reissuance with invalid DPoP proof";
+
+      let testSuccess = false;
+      try {
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow({
+          ...testConfig,
+          tokenRequestStepClass: withInvalidRefreshTokenDPoP(
+            testConfig.tokenRequestStepClass,
+          ),
+        });
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.success,
+          "Re-issuance flow succeeded despite invalid DPoP proof",
+        ).toBe(false);
+        expect(
+          result.tokenResponse?.success,
+          "Token request did not fail; rejection may have happened outside token endpoint DPoP validation",
         ).toBe(false);
 
         testSuccess = true;
