@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
@@ -21,6 +22,7 @@ testConfigs.forEach((testConfig) => {
     const baseLog = orchestrator.getLog();
 
     let credentialResponse: CredentialRequestResponse;
+    let refreshTokenTokenEndpoint: string | undefined;
 
     beforeAll(async () => {
       try {
@@ -28,6 +30,9 @@ testConfigs.forEach((testConfig) => {
         assertReissuanceFlowSuccess(result);
 
         credentialResponse = result.credentialResponse;
+        refreshTokenTokenEndpoint =
+          result.fetchMetadataResponse.response?.entityStatementClaims?.metadata
+            ?.oauth_authorization_server?.token_endpoint;
 
         baseLog.info("Re-issuance flow completed successfully");
       } catch (e) {
@@ -183,6 +188,31 @@ testConfigs.forEach((testConfig) => {
           extractTokenError(result.tokenResponse),
           "Issuer did not return the expected OAuth error type 'invalid_grant' for an invalid Refresh Token",
         ).toBe("invalid_grant");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_098: Token Transmission Security | Refresh-token token endpoint uses TLS-protected HTTPS", async () => {
+      const log = baseLog.withTag("CI_098");
+      const DESCRIPTION =
+        "Refresh-token token endpoint uses a TLS-protected HTTPS connection";
+
+      let testSuccess = false;
+      try {
+        expect(
+          refreshTokenTokenEndpoint,
+          "Token endpoint is undefined",
+        ).toBeDefined();
+        if (!refreshTokenTokenEndpoint) {
+          throw new Error("Token endpoint is undefined");
+        }
+        expect(
+          new URL(refreshTokenTokenEndpoint).protocol,
+          "Token endpoint must use HTTPS",
+        ).toBe("https:");
 
         testSuccess = true;
       } finally {
