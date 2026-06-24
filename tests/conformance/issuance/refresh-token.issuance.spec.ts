@@ -9,9 +9,14 @@ import {
   withRefreshTokenDPoPSignedByWrongKey,
 } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import { calculateJwkThumbprint } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import type { CredentialRequestResponse } from "@/step/issuance";
+import type {
+  CredentialRequestResponse,
+  CredentialRequestStepOptions,
+} from "@/step/issuance";
+import type { KeyPair } from "@/types";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 
@@ -19,12 +24,29 @@ const testConfigs = await defineIssuanceTest("RefreshTokenIssuance");
 
 testConfigs.forEach((testConfig) => {
   describe(`[${testConfig.name}] Refresh Token Issuance`, () => {
-    const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
+    let capturedCredentialRequestDPoPKey: KeyPair | undefined;
+
+    class CapturingCredentialRequestStep
+      extends testConfig.credentialRequestStepClass
+    {
+      async run(
+        options: CredentialRequestStepOptions,
+      ): Promise<CredentialRequestResponse> {
+        capturedCredentialRequestDPoPKey = options.dPoPKey;
+        return super.run(options);
+      }
+    }
+
+    const orchestrator = new WalletIssuanceOrchestratorFlow({
+      ...testConfig,
+      credentialRequestStepClass: CapturingCredentialRequestStep,
+    });
     const baseLog = orchestrator.getLog();
 
     let credentialResponse: CredentialRequestResponse;
     let refreshTokenTokenEndpoint: string | undefined;
     let issuedRefreshToken: string | undefined;
+    let refreshTokenDPoPKey: KeyPair | undefined;
 
     beforeAll(async () => {
       try {
@@ -36,6 +58,7 @@ testConfigs.forEach((testConfig) => {
           result.fetchMetadataResponse.response?.entityStatementClaims?.metadata
             ?.oauth_authorization_server?.token_endpoint;
         issuedRefreshToken = result.tokenResponse.response?.refresh_token;
+        refreshTokenDPoPKey = result.tokenResponse.response?.dPoPKey;
 
         baseLog.info("Re-issuance flow completed successfully");
       } catch (e) {
@@ -188,6 +211,54 @@ testConfigs.forEach((testConfig) => {
           result.tokenResponse?.success,
           "Token request did not fail; rejection may have happened outside token endpoint DPoP validation",
         ).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_103: DPoP Proof JWT | Credential Request DPoP proof reuses the DPoP key generated during refresh-token Token Request", async () => {
+      const log = baseLog.withTag("CI_103");
+      const DESCRIPTION =
+        "Credential Request DPoP proof reuses the refresh-token Token Request DPoP key";
+
+      let testSuccess = false;
+      try {
+        expect(
+          refreshTokenDPoPKey,
+          "Refresh-token Token Request DPoP key is undefined",
+        ).toBeDefined();
+        expect(
+          credentialResponse.success,
+          "Credential request step failed",
+        ).toBe(true);
+        expect(
+          credentialResponse.response,
+          "Credential response body is undefined",
+        ).toBeDefined();
+        expect(
+          capturedCredentialRequestDPoPKey,
+          "Credential Request DPoP key was not captured",
+        ).toBeDefined();
+
+        if (!refreshTokenDPoPKey || !capturedCredentialRequestDPoPKey) {
+          throw new Error(
+            "Cannot compare DPoP key thumbprints because a DPoP key is undefined",
+          );
+        }
+
+        const tokenDPoPJkt = await calculateJwkThumbprint(
+          refreshTokenDPoPKey.publicKey,
+        );
+        const credentialRequestDPoPJkt = await calculateJwkThumbprint(
+          capturedCredentialRequestDPoPKey.publicKey,
+        );
+
+        expect(
+          credentialRequestDPoPJkt,
+          "Credential Request DPoP key thumbprint does not match the refresh-token Token Request DPoP key",
+        ).toBe(tokenDPoPJkt);
 
         testSuccess = true;
       } finally {
