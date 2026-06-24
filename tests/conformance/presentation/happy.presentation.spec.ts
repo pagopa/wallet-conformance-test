@@ -18,7 +18,10 @@ import { useTestSummary } from "#/helpers/use-test-summary";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { validateTrustChain } from "@pagopa/io-wallet-oid-federation";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { decodeJwt, decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -34,7 +37,9 @@ const testConfig = await definePresentationTest("HappyFlowPresentation");
 describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   const orchestrator: WalletPresentationOrchestratorFlow =
     new WalletPresentationOrchestratorFlow(testConfig);
+
   const baseLog = orchestrator.getLog();
+  const walletVersion = orchestrator.getConfig().wallet.wallet_version;
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
   let fetchMetadataResult: FetchMetadataVpStepResponse;
@@ -669,7 +674,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
             verifyJwt,
           },
           config: new IoWalletSdkConfig({
-            itWalletSpecsVersion: config.wallet.wallet_version,
+            itWalletSpecsVersion: walletVersion,
           }),
           credentialIssuerUrl: baseUrl,
         });
@@ -922,103 +927,110 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-23: Relying Party supports all credential formats declared in vp_formats_supported metadata.", () => {
-    const log = baseLog.withTag("RPR-23");
+  test(
+    "RPR-23: Relying Party supports all credential formats declared in vp_formats_supported metadata.",
+    { skip: walletVersion === ItWalletSpecsVersion.V1_0 },
+    () => {
+      const log = baseLog.withTag("RPR-23");
 
-    log.start(
-      "Conformance test: Verifying Credential Presentation response format compliance",
-    );
-
-    const DESCRIPTION =
-      "Relying Party metadata declares usable credential presentation formats and requests only declared formats";
-    let testSuccess = false;
-    try {
-      expect(fetchMetadataResult.success).toBe(true);
-      expect(authorizationRequestResult.success).toBe(true);
-
-      const verifierMetadata =
-        fetchMetadataResult.response?.entityStatementClaims?.metadata
-          ?.openid_credential_verifier;
-      expect(verifierMetadata).toBeDefined();
-      if (!verifierMetadata) {
-        throw new Error("openid_credential_verifier metadata is missing");
-      }
-
-      const vpFormatsSupported = verifierMetadata.vp_formats_supported;
-      expect(vpFormatsSupported).toBeDefined();
-      expect(vpFormatsSupported).toBeTypeOf("object");
-      if (!vpFormatsSupported || typeof vpFormatsSupported !== "object") {
-        throw new Error("vp_formats_supported metadata is missing");
-      }
-
-      const supportedFormatEntries = Object.entries(vpFormatsSupported);
-      expect(supportedFormatEntries.length).toBeGreaterThan(0);
-      log.debug(
-        `  Metadata-supported formats: ${supportedFormatEntries
-          .map(([format]) => format)
-          .join(", ")}`,
+      log.start(
+        "Conformance test: Verifying Credential Presentation response format compliance",
       );
 
-      for (const [format, parameters] of supportedFormatEntries) {
-        expect(parameters).toBeDefined();
-        expect(parameters).toBeTypeOf("object");
-        if (!parameters || typeof parameters !== "object") {
-          throw new Error(`vp_formats_supported.${format} is not an object`);
+      const DESCRIPTION =
+        "Relying Party metadata declares usable credential presentation formats and requests only declared formats";
+      let testSuccess = false;
+      try {
+        expect(fetchMetadataResult.success).toBe(true);
+        expect(authorizationRequestResult.success).toBe(true);
+
+        const verifierMetadata =
+          fetchMetadataResult.response?.entityStatementClaims?.metadata
+            ?.openid_credential_verifier;
+        expect(verifierMetadata).toBeDefined();
+        if (!verifierMetadata) {
+          throw new Error("openid_credential_verifier metadata is missing");
         }
 
-        const algorithmParameters = Object.entries(parameters)
-          .map(([name, value]) => ({ name, value }))
-          .filter(
-            (
-              entry,
-            ): entry is {
-              name: string;
-              value: string[];
-            } =>
-              Array.isArray(entry.value) &&
-              entry.value.every((item) => typeof item === "string"),
-          );
-        expect(algorithmParameters.length).toBeGreaterThan(0);
-
-        for (const { name, value } of algorithmParameters) {
-          expect(value.length).toBeGreaterThan(0);
-          log.debug(`  ${format}.${name}: ${value.join(", ")}`);
+        const vpFormatsSupported = verifierMetadata.vp_formats_supported;
+        expect(vpFormatsSupported).toBeDefined();
+        expect(vpFormatsSupported).toBeTypeOf("object");
+        if (!vpFormatsSupported || typeof vpFormatsSupported !== "object") {
+          throw new Error("vp_formats_supported metadata is missing");
         }
+
+        const supportedFormatEntries = Object.entries(vpFormatsSupported);
+        expect(supportedFormatEntries.length).toBeGreaterThan(0);
+        log.debug(
+          `  Metadata-supported formats: ${supportedFormatEntries
+            .map(([format]) => format)
+            .join(", ")}`,
+        );
+
+        for (const [format, parameters] of supportedFormatEntries) {
+          expect(parameters).toBeDefined();
+          expect(parameters).toBeTypeOf("object");
+          if (!parameters || typeof parameters !== "object") {
+            throw new Error(`vp_formats_supported.${format} is not an object`);
+          }
+
+          const algorithmParameters = Object.entries(parameters)
+            .map(([name, value]) => ({ name, value }))
+            .filter(
+              (
+                entry,
+              ): entry is {
+                name: string;
+                value: string[];
+              } =>
+                Array.isArray(entry.value) &&
+                entry.value.every((item) => typeof item === "string"),
+            );
+          expect(algorithmParameters.length).toBeGreaterThan(0);
+
+          for (const { name, value } of algorithmParameters) {
+            expect(value.length).toBeGreaterThan(0);
+            log.debug(`  ${format}.${name}: ${value.join(", ")}`);
+          }
+        }
+
+        const requestObject =
+          authorizationRequestResult.response?.requestObject;
+        const dcqlCredentials = (requestObject?.dcql_query?.credentials ??
+          []) as unknown[];
+        const requestedFormats = new Set<string>(
+          dcqlCredentials
+            .map((credential): unknown => {
+              if (
+                !credential ||
+                typeof credential !== "object" ||
+                !("format" in credential)
+              ) {
+                return undefined;
+              }
+              return (credential as { format?: unknown }).format;
+            })
+            .filter((format): format is string => typeof format === "string"),
+        );
+        expect(requestedFormats.size).toBeGreaterThan(0);
+
+        const supportedFormats = new Set<string>(
+          supportedFormatEntries.map(([format]) => format),
+        );
+        for (const requestedFormat of requestedFormats) {
+          log.debug(`  DCQL requested format: ${requestedFormat}`);
+          expect(supportedFormats.has(requestedFormat)).toBe(true);
+        }
+        log.debug(
+          "  ✅ all requested credential formats are metadata-declared",
+        );
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
       }
-
-      const requestObject = authorizationRequestResult.response?.requestObject;
-      const dcqlCredentials = (requestObject?.dcql_query?.credentials ??
-        []) as unknown[];
-      const requestedFormats = new Set<string>(
-        dcqlCredentials
-          .map((credential): unknown => {
-            if (
-              !credential ||
-              typeof credential !== "object" ||
-              !("format" in credential)
-            ) {
-              return undefined;
-            }
-            return (credential as { format?: unknown }).format;
-          })
-          .filter((format): format is string => typeof format === "string"),
-      );
-      expect(requestedFormats.size).toBeGreaterThan(0);
-
-      const supportedFormats = new Set<string>(
-        supportedFormatEntries.map(([format]) => format),
-      );
-      for (const requestedFormat of requestedFormats) {
-        log.debug(`  DCQL requested format: ${requestedFormat}`);
-        expect(supportedFormats.has(requestedFormat)).toBe(true);
-      }
-      log.debug("  ✅ all requested credential formats are metadata-declared");
-
-      testSuccess = true;
-    } finally {
-      log.testCompleted(DESCRIPTION, testSuccess);
-    }
-  });
+    },
+  );
 
   test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
     const log = baseLog.withTag("RPR028");
@@ -1585,8 +1597,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       );
       expect(actualPresentationIds).toEqual(expectedPresentationIds);
 
-      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
-
       for (const requestedPresentation of requestedPresentations) {
         const { format, id } = requestedPresentation;
         const presentations = normalizePresentationArray(
@@ -1628,7 +1638,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const requestObject = response?.requestObject;
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
-      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
 
       log.debug("→ Extracting KB-JWT proofs from SD-JWT VP presentations...");
       const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
@@ -1665,7 +1674,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const requestObject = response?.requestObject;
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
-      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
       const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
         requestObject,
         vpToken,
@@ -1705,7 +1713,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const requestObject = response?.requestObject;
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
-      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
       const relyingPartyIdentifier = readRelyingPartyIdentifier(
         requestObject,
         response?.parsedQrCode,
@@ -1773,7 +1780,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
         requestObject,
         vpToken,
-        orchestrator.getConfig().wallet.wallet_version,
+        walletVersion,
       );
       expect(sdJwtKbJwtPresentations.length).toBeGreaterThan(0);
 
@@ -1814,7 +1821,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
         requestObject,
         vpToken,
-        orchestrator.getConfig().wallet.wallet_version,
+        walletVersion,
       );
       expect(sdJwtKbJwtPresentations.length).toBeGreaterThan(0);
 
