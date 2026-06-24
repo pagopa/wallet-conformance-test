@@ -1,6 +1,10 @@
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
+import { WalletPresentationOrchestratorFlow } from "@/orchestrator";
+
+import { postToResponseUri } from "./http-helpers";
+
 export interface RequestedPresentation {
   format: string;
   id: string;
@@ -72,6 +76,26 @@ export function normalizePresentationArray(
   }
 
   return presentations;
+}
+
+export async function postFreshValidAuthorizationResponse(
+  orchestrator: WalletPresentationOrchestratorFlow,
+): Promise<Response> {
+  const ctx = await orchestrator.runThroughAuthorize();
+  const authResponse = ctx.authorizationRequestResponse.response;
+  if (!authResponse) {
+    throw new Error(
+      "Setup failed: authorizationRequestResponse.response is undefined — RP did not return a valid authorization response",
+    );
+  }
+
+  const formBody = new URLSearchParams({
+    response: authResponse.authorizationResponse.jarm.responseJwe,
+  });
+
+  return postToResponseUri(authResponse.responseUri, {
+    body: formBody.toString(),
+  });
 }
 
 export function readDcqlCredentials(requestObject: unknown): unknown[] {

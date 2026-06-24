@@ -7,6 +7,7 @@ import {
   assertSignedPresentation,
   isCompactJwt,
   normalizePresentationArray,
+  postFreshValidAuthorizationResponse,
   readRelyingPartyIdentifier,
   readRequestedPresentation,
   readRequiredStringProperty,
@@ -1772,6 +1773,38 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-110: Response Processing | Response URI returns HTTP 200 on successful processing", async () => {
+    const log = baseLog.withTag("RPR-110");
+
+    log.start("Conformance test: Successful response_uri processing");
+
+    const DESCRIPTION =
+      "Response URI returns HTTP 200 with application/json content type";
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Posting a fresh valid Authorization Response to response_uri...",
+      );
+      const response = await postFreshValidAuthorizationResponse(orchestrator);
+
+      log.debug(`  Response status: ${response.status}`);
+      const contentType = response.headers.get("content-type") ?? "";
+      log.debug(`  Content-Type: ${contentType}`);
+
+      log.info(
+        "→ Validating response_uri returned successful JSON processing response...",
+      );
+      expect(response.status, "Response URI must return HTTP 200").toBe(200);
+      expect(
+        contentType.split(";")[0],
+        "Response URI success Content-Type must be application/json",
+      ).toBe("application/json");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
   test("RPR-94: JWT exp parameter is correctly set and not expired.", () => {
     const log = baseLog.withTag("RPR-94");
 
