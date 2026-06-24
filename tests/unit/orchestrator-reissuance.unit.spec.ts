@@ -161,14 +161,7 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("returns typed unsuccessful result when no refresh token is configured", async () => {
-    // No refresh_token in mock config — reissuance() must fail fast
-    const result = await orchestrator.reissuance();
-
-    expect(result.success).toBe(false);
-    expect(result.error?.message).toContain(
-      "Re-Issuance Flow requires a refresh token",
-    );
-    // PAR, authorize, and token steps must not be called
+    // PAR, authorize, and token steps must not be called — spy before running
     const parSpy = vi.spyOn(
       // @ts-expect-error accessing private field for testing
       orchestrator.pushedAuthorizationRequestStep,
@@ -178,6 +171,14 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
       // @ts-expect-error accessing private field for testing
       orchestrator.authorizeStep,
       "run",
+    );
+
+    // No refresh_token in mock config — reissuance() must fail fast
+    const result = await orchestrator.reissuance();
+
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toContain(
+      "Re-Issuance Flow requires a refresh token",
     );
     expect(parSpy).not.toHaveBeenCalled();
     expect(authorizeSpy).not.toHaveBeenCalled();
