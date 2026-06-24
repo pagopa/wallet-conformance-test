@@ -29,7 +29,7 @@ export const configSchema = z.object({
     refresh_token_deferred: z.string().optional(),
     save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
-    transaction_id: z.string().optional(),
+    transaction_id_deferred: z.string().optional(),
     url: z.string().url(),
   }),
   issuer: z.object({

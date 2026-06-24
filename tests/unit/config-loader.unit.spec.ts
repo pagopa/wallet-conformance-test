@@ -158,7 +158,7 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
 
     const config = loadConfigWithHierarchy(null, DEFAULT_INI);
 
-    expect(config.issuance.transaction_id).toBe("deferred-txn-42");
+    expect(config.issuance.transaction_id_deferred).toBe("deferred-txn-42");
   });
 
   it("should map refresh_token_deferred from direct CliOptions", () => {
@@ -176,7 +176,7 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
       DEFAULT_INI,
     );
 
-    expect(config.issuance.transaction_id).toBe("cli-txn-id");
+    expect(config.issuance.transaction_id_deferred).toBe("cli-txn-id");
   });
 });
 

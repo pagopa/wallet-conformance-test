@@ -355,7 +355,7 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
   ...(options.refreshTokenDeferred && {
     refresh_token_deferred: options.refreshTokenDeferred,
   }),
-  ...(options.transactionId && { transaction_id: options.transactionId }),
+  ...(options.transactionId && { transaction_id_deferred: options.transactionId }),
   ...(options.saveCredential !== undefined && {
     save_credential: options.saveCredential,
   }),

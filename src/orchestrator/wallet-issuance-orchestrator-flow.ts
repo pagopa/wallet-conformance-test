@@ -148,7 +148,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     try {
       const refreshTokenDeferred = this.config.issuance.refresh_token_deferred;
-      const transactionId = this.config.issuance.transaction_id;
+      const transactionId = this.config.issuance.transaction_id_deferred;
 
       if (!refreshTokenDeferred || !transactionId) {
         throw new DeferredIssuancePreconditionError();

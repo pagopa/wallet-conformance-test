@@ -38,7 +38,7 @@ export class DeferredIssuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
       "Deferred Issuance Flow requires both a deferred refresh token and a transaction id. " +
-        "Set 'refresh_token_deferred' and 'transaction_id' under [issuance] in config.ini or " +
+        "Set 'refresh_token_deferred' and 'transaction_id_deferred' under [issuance] in config.ini or " +
         "pass --refresh-token-deferred <token> --transaction-id <id>.",
       "DEFERRED_ISSUANCE_PRECONDITION_FAILED",
     );

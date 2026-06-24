@@ -195,7 +195,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
     // Reset deferred-flow fields to undefined after each new orchestrator
     // (the mock returns the same config object, so mutations bleed between tests)
     orchestrator.getConfig().issuance.refresh_token_deferred = undefined;
-    orchestrator.getConfig().issuance.transaction_id = undefined;
+    orchestrator.getConfig().issuance.transaction_id_deferred = undefined;
   });
 
   test("fails fast when both refresh_token_deferred and transaction_id are missing", async () => {
@@ -234,7 +234,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("fails fast when only transaction_id is set", async () => {
-    orchestrator.getConfig().issuance.transaction_id = "txn-123";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-123";
 
     const fetchSpy = vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -250,7 +250,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("does not call PAR or authorize steps", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -289,7 +289,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("token step receives grant_type=refresh_token with refresh_token_deferred value", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "my-deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -323,7 +323,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("deferred step is called with deferred_credential_endpoint and transaction_id", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-xyz";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-xyz";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -357,7 +357,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("deferred step receives the same dPoPKey from the token request", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -387,7 +387,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("returns success:true with deferredCredentialResponse on immediate (200) response", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -417,7 +417,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("returns success:true with deferredCredentialResponse on still-pending (202) response", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -445,7 +445,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("returns success:false with IssuerMetadataError when deferred_credential_endpoint is missing", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -468,7 +468,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("token failure returns partial response with fetchMetadataResponse", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -493,7 +493,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("deferred step failure returns partial response with tokenResponse", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -524,7 +524,7 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
   test("never throws — error is always captured in result.error", async () => {
     orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
-    orchestrator.getConfig().issuance.transaction_id = "txn-abc";
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
