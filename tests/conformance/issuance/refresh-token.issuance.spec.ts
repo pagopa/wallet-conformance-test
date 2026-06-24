@@ -1,11 +1,10 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
+import { withInvalidClientAttestationPop } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import type {
-  CredentialRequestResponse,
-} from "@/step/issuance";
+import type { CredentialRequestResponse } from "@/step/issuance";
 
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 
@@ -52,6 +51,37 @@ testConfigs.forEach((testConfig) => {
           credentialResponse.response,
           "Credential response body is undefined",
         ).toBeDefined();
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_091: OAuth-Client-Attestation-PoP Validation | Issuer rejects a refresh-token reissuance request with invalid OAuth-Client-Attestation-PoP", async () => {
+      const log = baseLog.withTag("CI_091");
+      const DESCRIPTION =
+        "Issuer correctly rejected refresh-token reissuance with invalid OAuth-Client-Attestation-PoP";
+
+      let testSuccess = false;
+      try {
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow({
+          ...testConfig,
+          tokenRequestStepClass: withInvalidClientAttestationPop(
+            testConfig.tokenRequestStepClass,
+          ),
+        });
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.success,
+          "Re-issuance flow succeeded despite invalid OAuth-Client-Attestation-PoP",
+        ).toBe(false);
+        expect(
+          result.tokenResponse?.success,
+          "Token request did not fail; rejection may have happened outside token endpoint validation",
+        ).toBe(false);
 
         testSuccess = true;
       } finally {
