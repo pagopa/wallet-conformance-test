@@ -3,15 +3,22 @@ import type { Jwk } from "@pagopa/io-wallet-oauth2";
 
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
+import {
+  assertSignedPresentation,
+  isCompactJwt,
+  normalizePresentationArray,
+  readRelyingPartyIdentifier,
+  readRequestedPresentation,
+  readRequiredStringProperty,
+  readSdJwtKbJwtPresentationsForRequest,
+  RequestedPresentation,
+} from "#/helpers/rp-presentation";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { validateTrustChain } from "@pagopa/io-wallet-oid-federation";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
-import { decodeProtectedHeader } from "jose";
+import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import { decodeJwt, decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { fetchWithConfig, partialCallbacks, verifyJwt } from "@/logic";
@@ -19,92 +26,6 @@ import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presen
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
-
-interface RequestedPresentation {
-  format: string;
-  id: string;
-}
-
-function assertSignedPresentation(
-  requestedPresentation: RequestedPresentation,
-  presentation: unknown,
-): void {
-  const { format, id } = requestedPresentation;
-  if (typeof presentation !== "string" || presentation.length === 0) {
-    throw new Error(`vp_token.${id} contains an empty presentation`);
-  }
-
-  if (format === "dc+sd-jwt") {
-    const sdJwtParts = presentation.split("~");
-    const issuerJwt = sdJwtParts[0];
-    const kbJwt = sdJwtParts[sdJwtParts.length - 1];
-    if (sdJwtParts.length < 2 || !issuerJwt || !kbJwt) {
-      throw new Error(`vp_token.${id} is not a signed SD-JWT VP`);
-    }
-    if (!isCompactJwt(issuerJwt) || !isCompactJwt(kbJwt)) {
-      throw new Error(`vp_token.${id} is missing signed JWT segments`);
-    }
-    return;
-  }
-
-  if (format === "mso_mdoc") {
-    if (!/^[A-Za-z0-9_-]+$/.test(presentation)) {
-      throw new Error(`vp_token.${id} is not a base64url mdoc VP`);
-    }
-    return;
-  }
-
-  throw new Error(`Unsupported requested presentation format: ${format}`);
-}
-
-function isCompactJwt(value: string): boolean {
-  const parts = value.split(".");
-  return parts.length === 3 && parts.every((part) => part.length > 0);
-}
-
-function normalizePresentationArray(
-  id: string,
-  presentationOrArray: string | string[] | undefined,
-  walletVersion: ItWalletSpecsVersion,
-): string[] {
-  if (!presentationOrArray) {
-    throw new Error(`vp_token.${id} is missing`);
-  }
-  if (
-    walletVersion === ItWalletSpecsVersion.V1_3 &&
-    !Array.isArray(presentationOrArray)
-  ) {
-    throw new Error(`vp_token.${id} must be a presentation array`);
-  }
-
-  const presentations = Array.isArray(presentationOrArray)
-    ? presentationOrArray
-    : [presentationOrArray];
-  if (presentations.length === 0) {
-    throw new Error(`vp_token.${id} must contain at least one presentation`);
-  }
-
-  return presentations;
-}
-
-function readRequestedPresentation(
-  credential: unknown,
-  index: number,
-): RequestedPresentation {
-  if (!credential || typeof credential !== "object") {
-    throw new Error(`dcql_query.credentials[${index}] must be an object`);
-  }
-
-  const { format, id } = credential as { format?: unknown; id?: unknown };
-  if (typeof id !== "string" || id.length === 0) {
-    throw new Error(`dcql_query.credentials[${index}].id must be a string`);
-  }
-  if (typeof format !== "string" || format.length === 0) {
-    throw new Error(`dcql_query.credentials[${index}].format must be a string`);
-  }
-
-  return { format, id };
-}
 
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
@@ -131,9 +52,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     } catch (e) {
       baseLog.error(e);
       throw e;
-    } finally {
-      // Give time for all logs to be flushed before starting tests
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   });
 
@@ -1629,6 +1547,224 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(redirectUriResult.success).toBe(true);
       log.debug("  ✅ vp_token contains every requested signed presentation");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-102: SD-JWT VP contains a KB-JWT proof.", () => {
+    const log = baseLog.withTag("RPR-102");
+
+    log.start("Conformance test: Verifying SD-JWT VP KB-JWT inclusion");
+
+    const DESCRIPTION = "SD-JWT VP contains a KB-JWT proof";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
+
+      log.debug("→ Extracting KB-JWT proofs from SD-JWT VP presentations...");
+      const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
+        requestObject,
+        vpToken,
+        walletVersion,
+      );
+      expect(sdJwtKbJwtPresentations.length).toBeGreaterThan(0);
+
+      for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
+        log.debug(`  ${id}: KB-JWT ${kbJwt}`);
+        expect(isCompactJwt(kbJwt)).toBe(true);
+      }
+
+      log.debug("  ✅ SD-JWT VP presentations include KB-JWT proofs");
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-104: KB-JWT protected header contains required typ and alg.", () => {
+    const log = baseLog.withTag("RPR-104");
+
+    log.start("Conformance test: Verifying KB-JWT protected header claims");
+
+    const DESCRIPTION = "KB-JWT protected header contains required typ and alg";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
+      const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
+        requestObject,
+        vpToken,
+        walletVersion,
+      );
+
+      log.debug("→ Decoding KB-JWT protected headers...");
+      for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
+        const protectedHeader = decodeProtectedHeader(kbJwt);
+        log.debug(
+          `  ${id}: typ=${protectedHeader.typ}, alg=${protectedHeader.alg}`,
+        );
+        expect(protectedHeader.typ).toBe("kb+jwt");
+        expect(protectedHeader.alg).toBe("ES256");
+      }
+
+      log.debug("  ✅ KB-JWT protected headers contain required typ and alg");
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-105: KB-JWT payload contains required iat, aud, nonce, and sd_hash.", () => {
+    const log = baseLog.withTag("RPR-105");
+
+    log.start("Conformance test: Verifying KB-JWT required payload claims");
+
+    const DESCRIPTION =
+      "KB-JWT payload contains required iat, aud, nonce, and sd_hash";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
+      const relyingPartyIdentifier = readRelyingPartyIdentifier(
+        requestObject,
+        response?.parsedQrCode,
+      );
+      const nonce = readRequiredStringProperty(
+        requestObject,
+        "nonce",
+        "requestObject",
+      );
+      const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
+        requestObject,
+        vpToken,
+        walletVersion,
+      );
+
+      log.debug("→ Decoding KB-JWT payloads...");
+      for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
+        const payload = decodeJwt(kbJwt);
+        const sdHash = payload.sd_hash;
+        log.debug(
+          `  ${id}: iat=${payload.iat}, aud=${String(payload.aud)}, nonce=${String(payload.nonce)}, sd_hash=${String(sdHash)}`,
+        );
+
+        expect(payload.iat).toBeTypeOf("number");
+        expect(payload.iat).toBeGreaterThan(0);
+        const audienceValues = Array.isArray(payload.aud)
+          ? payload.aud
+          : [payload.aud];
+        expect(audienceValues).toContain(relyingPartyIdentifier);
+        expect(payload.nonce).toBe(nonce);
+        expect(sdHash).toBeTypeOf("string");
+        expect(sdHash).not.toBe("");
+      }
+
+      log.debug(
+        "  ✅ KB-JWT payloads contain required iat, aud, nonce, and sd_hash",
+      );
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-106: KB-JWT aud claim equals the Relying Party unique entity identifier.", () => {
+    const log = baseLog.withTag("RPR-106");
+
+    log.start("Conformance test: Verifying KB-JWT audience claim");
+
+    const DESCRIPTION =
+      "KB-JWT aud claim equals the Relying Party unique entity identifier";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const relyingPartyIdentifier = readRelyingPartyIdentifier(
+        requestObject,
+        response?.parsedQrCode,
+      );
+
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
+        requestObject,
+        vpToken,
+        orchestrator.getConfig().wallet.wallet_version,
+      );
+      expect(sdJwtKbJwtPresentations.length).toBeGreaterThan(0);
+
+      for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
+        const payload = decodeJwt(kbJwt);
+        log.debug(`  ${id}: aud=${String(payload.aud)}`);
+        expect(payload.aud).toBe(relyingPartyIdentifier);
+      }
+      log.debug("  ✅ KB-JWT aud matches the Relying Party identifier");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-107: KB-JWT nonce claim equals the Request Object nonce.", () => {
+    const log = baseLog.withTag("RPR-107");
+
+    log.start("Conformance test: Verifying KB-JWT nonce claim");
+
+    const DESCRIPTION = "KB-JWT nonce claim equals the Request Object nonce";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const expectedNonce = readRequiredStringProperty(
+        requestObject,
+        "nonce",
+        "requestObject",
+      );
+
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      const sdJwtKbJwtPresentations = readSdJwtKbJwtPresentationsForRequest(
+        requestObject,
+        vpToken,
+        orchestrator.getConfig().wallet.wallet_version,
+      );
+      expect(sdJwtKbJwtPresentations.length).toBeGreaterThan(0);
+
+      for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
+        const payload = decodeJwt(kbJwt);
+        log.debug(`  ${id}: nonce=${String(payload.nonce)}`);
+        expect(payload.nonce).toBe(expectedNonce);
+      }
+      log.debug("  ✅ KB-JWT nonce matches the Request Object nonce");
 
       testSuccess = true;
     } finally {
