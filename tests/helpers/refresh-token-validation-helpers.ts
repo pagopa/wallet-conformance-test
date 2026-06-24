@@ -1,7 +1,9 @@
 import { buildTamperedPopJwt } from "#/helpers/par-validation-helpers";
 import { createTokenDPoP, Jwk, JwtSignerJwk } from "@pagopa/io-wallet-oauth2";
+import { UnexpectedStatusCodeError } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair } from "jose";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 
 import type {
   TokenRequestResponse,
@@ -118,4 +120,42 @@ export function withRefreshTokenDPoPSignedByWrongKey(
       });
     }
   } as typeof TokenRequestDefaultStep;
+}
+
+const oauthErrorBodySchema = z.object({ error: z.string() }).passthrough();
+
+/**
+ * Extracts the OAuth `error` field from a failed token request response.
+ *
+ * When the token endpoint returns a non-200 status, `fetchTokenResponse` throws
+ * an `UnexpectedStatusCodeError` whose `reason` property contains the raw
+ * response body (JSON string).  This helper narrows the error type, parses the
+ * body, and returns the `error` member so tests can assert on it without using
+ * `any`.
+ *
+ * Returns `undefined` when:
+ * - the response is undefined or succeeded
+ * - the error is not an `UnexpectedStatusCodeError`
+ * - the body cannot be parsed as a JSON object with an `error` string
+ */
+export function extractTokenError(
+  tokenResponse: TokenRequestResponse | undefined,
+): string | undefined {
+  const err = tokenResponse?.error;
+  if (!(err instanceof UnexpectedStatusCodeError)) {
+    return undefined;
+  }
+  const parsed = oauthErrorBodySchema.safeParse(
+    (() => {
+      if (typeof err.reason === "object") {
+        return err.reason;
+      }
+      try {
+        return JSON.parse(err.reason ?? "");
+      } catch {
+        return undefined;
+      }
+    })(),
+  );
+  return parsed.success ? parsed.data.error : undefined;
 }

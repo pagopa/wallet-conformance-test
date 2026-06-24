@@ -1,6 +1,7 @@
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
+  extractTokenError,
   withInvalidClientAttestationPop,
   withInvalidRefreshTokenDPoP,
   withRefreshTokenDPoPSignedByWrongKey,
@@ -148,6 +149,40 @@ testConfigs.forEach((testConfig) => {
           result.tokenResponse?.success,
           "Token request did not fail; rejection may have happened outside refresh-token DPoP binding validation",
         ).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_096: Refresh Token Validation | Issuer rejects expired or invalid Refresh Token with invalid_grant", async () => {
+      const log = baseLog.withTag("CI_096");
+      const DESCRIPTION =
+        "Issuer correctly rejected expired or invalid Refresh Token with invalid_grant";
+
+      let testSuccess = false;
+      try {
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow(
+          testConfig,
+        );
+        negativeOrchestrator.getConfig().issuance.refresh_token =
+          "invalid-refresh-token-ci-096";
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.success,
+          "Re-issuance flow succeeded despite invalid Refresh Token",
+        ).toBe(false);
+        expect(
+          result.tokenResponse?.success,
+          "Token request did not fail; rejection may have happened outside token endpoint validation",
+        ).toBe(false);
+        expect(
+          extractTokenError(result.tokenResponse),
+          "Issuer did not return the expected OAuth error type 'invalid_grant' for an invalid Refresh Token",
+        ).toBe("invalid_grant");
 
         testSuccess = true;
       } finally {
