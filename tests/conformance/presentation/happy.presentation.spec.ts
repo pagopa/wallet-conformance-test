@@ -7,7 +7,10 @@ import { useTestSummary } from "#/helpers/use-test-summary";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { validateTrustChain } from "@pagopa/io-wallet-oid-federation";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -16,6 +19,92 @@ import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presen
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
+
+interface RequestedPresentation {
+  format: string;
+  id: string;
+}
+
+function assertSignedPresentation(
+  requestedPresentation: RequestedPresentation,
+  presentation: unknown,
+): void {
+  const { format, id } = requestedPresentation;
+  if (typeof presentation !== "string" || presentation.length === 0) {
+    throw new Error(`vp_token.${id} contains an empty presentation`);
+  }
+
+  if (format === "dc+sd-jwt") {
+    const sdJwtParts = presentation.split("~");
+    const issuerJwt = sdJwtParts[0];
+    const kbJwt = sdJwtParts[sdJwtParts.length - 1];
+    if (sdJwtParts.length < 2 || !issuerJwt || !kbJwt) {
+      throw new Error(`vp_token.${id} is not a signed SD-JWT VP`);
+    }
+    if (!isCompactJwt(issuerJwt) || !isCompactJwt(kbJwt)) {
+      throw new Error(`vp_token.${id} is missing signed JWT segments`);
+    }
+    return;
+  }
+
+  if (format === "mso_mdoc") {
+    if (!/^[A-Za-z0-9_-]+$/.test(presentation)) {
+      throw new Error(`vp_token.${id} is not a base64url mdoc VP`);
+    }
+    return;
+  }
+
+  throw new Error(`Unsupported requested presentation format: ${format}`);
+}
+
+function isCompactJwt(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 3 && parts.every((part) => part.length > 0);
+}
+
+function normalizePresentationArray(
+  id: string,
+  presentationOrArray: string | string[] | undefined,
+  walletVersion: ItWalletSpecsVersion,
+): string[] {
+  if (!presentationOrArray) {
+    throw new Error(`vp_token.${id} is missing`);
+  }
+  if (
+    walletVersion === ItWalletSpecsVersion.V1_3 &&
+    !Array.isArray(presentationOrArray)
+  ) {
+    throw new Error(`vp_token.${id} must be a presentation array`);
+  }
+
+  const presentations = Array.isArray(presentationOrArray)
+    ? presentationOrArray
+    : [presentationOrArray];
+  if (presentations.length === 0) {
+    throw new Error(`vp_token.${id} must contain at least one presentation`);
+  }
+
+  return presentations;
+}
+
+function readRequestedPresentation(
+  credential: unknown,
+  index: number,
+): RequestedPresentation {
+  if (!credential || typeof credential !== "object") {
+    throw new Error(`dcql_query.credentials[${index}] must be an object`);
+  }
+
+  const { format, id } = credential as { format?: unknown; id?: unknown };
+  if (typeof id !== "string" || id.length === 0) {
+    throw new Error(`dcql_query.credentials[${index}].id must be a string`);
+  }
+  if (typeof format !== "string" || format.length === 0) {
+    throw new Error(`dcql_query.credentials[${index}].format must be a string`);
+  }
+
+  return { format, id };
+}
 
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
@@ -1462,6 +1551,84 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  Length: ${requestObject?.nonce.length} characters`);
       expect(requestObject?.nonce.length).toBeGreaterThanOrEqual(32);
       log.debug("  ✅ nonce has sufficient entropy (≥32 characters)");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-101: Presentation Array | vp_token contains the requested signed presentations.", () => {
+    const log = baseLog.withTag("RPR-101");
+
+    log.start(
+      "Conformance test: Verifying vp_token contains the requested signed presentations",
+    );
+
+    const DESCRIPTION =
+      "vp_token contains the requested signed presentations as required";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const requestObject = response?.requestObject;
+      const dcqlCredentials = requestObject?.dcql_query?.credentials ?? [];
+      expect(Array.isArray(dcqlCredentials)).toBe(true);
+      expect(dcqlCredentials.length).toBeGreaterThan(0);
+
+      const vpToken =
+        response?.authorizationResponse.authorizationResponsePayload.vp_token;
+      expect(vpToken).toBeDefined();
+      expect(vpToken).toBeTypeOf("object");
+      if (!vpToken || Array.isArray(vpToken)) {
+        throw new Error(
+          "vp_token must be an object keyed by DCQL credential id",
+        );
+      }
+
+      const requestedPresentations: RequestedPresentation[] =
+        dcqlCredentials.map((credential: unknown, index: number) =>
+          readRequestedPresentation(credential, index),
+        );
+      const requestedPresentationIds = requestedPresentations.map(
+        ({ id }) => id,
+      );
+
+      const actualPresentationIds = Object.keys(vpToken).sort();
+      const expectedPresentationIds = [
+        ...new Set(requestedPresentationIds),
+      ].sort();
+      log.debug(
+        `  Requested presentation ids: ${expectedPresentationIds.join(", ")}`,
+      );
+      log.debug(
+        `  vp_token presentation ids: ${actualPresentationIds.join(", ")}`,
+      );
+      expect(actualPresentationIds).toEqual(expectedPresentationIds);
+
+      const walletVersion = orchestrator.getConfig().wallet.wallet_version;
+
+      for (const requestedPresentation of requestedPresentations) {
+        const { format, id } = requestedPresentation;
+        const presentations = normalizePresentationArray(
+          id,
+          vpToken[id],
+          walletVersion,
+        );
+        expect(presentations.length).toBeGreaterThan(0);
+        log.debug(
+          `  ${id}: ${presentations.length} signed presentation(s) for ${format}`,
+        );
+
+        for (const presentation of presentations) {
+          assertSignedPresentation(requestedPresentation, presentation);
+        }
+      }
+
+      expect(redirectUriResult.success).toBe(true);
+      log.debug("  ✅ vp_token contains every requested signed presentation");
 
       testSuccess = true;
     } finally {
