@@ -300,6 +300,36 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
         }) as never,
       );
 
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(
+      makeStepSuccess({
+        authorizeResponse: { code: "mock-auth-code" },
+        iss: "https://issuer.example.com",
+        requestObjectJwt: "mock-request-object-jwt",
+      }) as never,
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.nonceRequestStep,
+      "run",
+    ).mockResolvedValue(nonceSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.credentialRequestStep,
+      "run",
+    ).mockResolvedValue(credentialSuccess as never);
+
     const result = await orchestrator.issuance();
 
     // issuance() should have attempted PAR (it may fail later, but PAR must be tried)
