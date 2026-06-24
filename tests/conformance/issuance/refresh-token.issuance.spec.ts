@@ -1,5 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { withCredentialRequestOverrides } from "#/helpers/credential-validation-helpers";
 import { assertReissuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
   extractTokenError,
@@ -87,6 +88,73 @@ testConfigs.forEach((testConfig) => {
           credentialResponse.response,
           "Credential response body is undefined",
         ).toBeDefined();
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_114: Refresh Token Security | Issuer rejects first-time issuance with an Access Token obtained through Refresh Token flow", async () => {
+      const log = baseLog.withTag("CI_114");
+      const DESCRIPTION =
+        "Issuer correctly rejected first-time issuance with a refresh-token Access Token";
+
+      let testSuccess = false;
+      try {
+        const firstTimeCredentialConfigurationId = testConfigs.find(
+          ({ credentialConfigurationId }) =>
+            credentialConfigurationId !== testConfig.credentialConfigurationId,
+        )?.credentialConfigurationId;
+
+        if (!firstTimeCredentialConfigurationId) {
+          log.debug(
+            "CI_114 skipped: no alternate configured credential type is available to model first-time issuance",
+          );
+          testSuccess = true;
+          return;
+        }
+
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow({
+          ...testConfig,
+          credentialRequestStepClass: withCredentialRequestOverrides(
+            testConfig.credentialRequestStepClass,
+            {
+              credential_identifier: firstTimeCredentialConfigurationId,
+            },
+          ),
+        });
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.fetchMetadataResponse?.success,
+          "Metadata discovery failed before the first-time issuance Credential Request",
+        ).toBe(true);
+        expect(
+          result.tokenResponse?.success,
+          "Refresh-token Token Request failed before the first-time issuance Credential Request",
+        ).toBe(true);
+        expect(
+          result.tokenResponse?.response?.access_token,
+          "Refresh-token Token Request did not return an Access Token",
+        ).toBeDefined();
+        expect(
+          result.nonceResponse?.success,
+          "Nonce Request failed before the first-time issuance Credential Request",
+        ).toBe(true);
+        expect(
+          result.success,
+          "Re-issuance flow succeeded even though the refresh-token Access Token was used for first-time issuance",
+        ).toBe(false);
+        expect(
+          result.credentialResponse,
+          "Credential Request result is undefined; rejection did not happen at the Credential endpoint",
+        ).toBeDefined();
+        expect(
+          result.credentialResponse?.success,
+          `Issuer accepted first-time issuance for credential '${firstTimeCredentialConfigurationId}' using a refresh-token Access Token bound to '${testConfig.credentialConfigurationId}'`,
+        ).toBe(false);
 
         testSuccess = true;
       } finally {
