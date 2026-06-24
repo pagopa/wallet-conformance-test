@@ -22,6 +22,16 @@ export interface IssuanceFlowResponse {
   walletAttestationResponse?: AttestationResponse;
 }
 
+export interface ReissuanceFlowResponse {
+  credentialResponse?: CredentialRequestResponse;
+  error?: Error;
+  fetchMetadataResponse?: FetchMetadataStepResponse;
+  nonceResponse?: NonceRequestResponse;
+  success: boolean;
+  tokenResponse?: TokenRequestResponse;
+  walletAttestationResponse?: AttestationResponse;
+}
+
 export type RunThroughAuthorizeContext = RunThroughParContext & {
   authorizationEndpoint: string;
   authorizeResponse: AuthorizeStepResponse;
@@ -34,6 +44,14 @@ export interface RunThroughParContext {
   popAttestation: string;
   pushedAuthorizationRequestEndpoint: string;
   pushedAuthorizationRequestResponse: PushedAuthorizationRequestResponse;
+  walletAttestationResponse: AttestationResponse;
+}
+
+export interface RunThroughRefreshTokenContext {
+  credentialIssuer: string;
+  dPoPKey: KeyPair;
+  fetchMetadataResponse: FetchMetadataStepResponse;
+  tokenResponse: TokenRequestResponse;
   walletAttestationResponse: AttestationResponse;
 }
 
