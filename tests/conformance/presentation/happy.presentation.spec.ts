@@ -376,6 +376,73 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
+  test("RPR-87: Request URI POST Method | Wallet Instance metadata is sent as form-encoded POST.", () => {
+    const log = baseLog.withTag("RPR-87");
+
+    log.start(
+      "Conformance test: Verifying request_uri_method=post sends Wallet Instance metadata as application/x-www-form-urlencoded",
+    );
+
+    const DESCRIPTION =
+      "Relying Party accepts Wallet Instance metadata sent via form-encoded POST to request_uri";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      const parsedQrCode = response?.parsedQrCode;
+      const requestUriMethod = parsedQrCode?.requestUriMethod ?? "get";
+      if (requestUriMethod !== "post") {
+        log.debug(
+          `  ℹ request_uri_method is ${requestUriMethod}; POST metadata exchange validation is not applicable`,
+        );
+        testSuccess = true;
+        return;
+      }
+
+      expect(parsedQrCode?.requestUri).toBeDefined();
+      expect(response?.requestObject).toBeDefined();
+
+      const requestObjectFetch = response?.requestObjectFetch;
+      expect(requestObjectFetch).toBeDefined();
+      if (!requestObjectFetch) {
+        throw new Error("request_uri fetch details are missing");
+      }
+
+      log.debug(`  request_uri: ${parsedQrCode?.requestUri}`);
+      log.debug(`  request_uri_method: ${requestUriMethod}`);
+      log.debug(`  HTTP method: ${requestObjectFetch.method}`);
+      expect(requestObjectFetch.url).toBe(parsedQrCode?.requestUri);
+      expect(requestObjectFetch.method).toBe("POST");
+
+      log.debug(`  Content-Type: ${requestObjectFetch.contentType}`);
+      expect(requestObjectFetch.contentType?.split(";")[0]).toBe(
+        "application/x-www-form-urlencoded",
+      );
+
+      expect(requestObjectFetch.body).toBeDefined();
+      const formBody = new URLSearchParams(requestObjectFetch.body);
+      const walletMetadataBody = formBody.get("wallet_metadata");
+      expect(walletMetadataBody).toBeTruthy();
+      expect(formBody.get("wallet_nonce")).toBe(response?.walletNonce);
+
+      const walletMetadata = JSON.parse(walletMetadataBody ?? "{}");
+      expect(walletMetadata).toEqual(response?.walletMetadata);
+      expect(walletMetadata.response_modes_supported).toContain(
+        "direct_post.jwt",
+      );
+      expect(walletMetadata.response_types_supported).toContain("vp_token");
+      log.debug(
+        "  ✅ Wallet Instance metadata was sent as application/x-www-form-urlencoded POST",
+      );
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
   test("RPR-08: Relying Party issues the Request Object via HTTP GET response.", () => {
     const log = baseLog.withTag("RPR-08");
 

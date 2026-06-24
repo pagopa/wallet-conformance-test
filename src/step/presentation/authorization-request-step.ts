@@ -5,6 +5,7 @@ import {
   type CreateAuthorizationResponseResult,
   type CreateAuthorizationResponseVersionedOptions,
   fetchAuthorizationRequest,
+  type FetchAuthorizationRequestOptions,
   type Openid4vpAuthorizationRequestHeader,
   parseAuthorizeRequest,
   ParsedAuthorizeRequestResult,
@@ -24,7 +25,9 @@ export interface AuthorizationRequestExecuteStepResponse {
   authorizationResponse: CreateAuthorizationResponseResult;
   parsedQrCode: ParsedQrCode;
   requestObject: ParsedAuthorizeRequestResult["payload"];
+  requestObjectFetch?: RequestObjectFetchDetails;
   responseUri: string;
+  walletMetadata: WalletMetadata;
   walletNonce: string;
 }
 
@@ -49,6 +52,17 @@ export type AuthorizationRequestStepResponse = StepResponse & {
   response?: AuthorizationRequestExecuteStepResponse;
 };
 
+interface RequestObjectFetchDetails {
+  body?: string;
+  contentType?: string;
+  method: string;
+  url: string;
+}
+
+type WalletMetadata = NonNullable<
+  FetchAuthorizationRequestOptions["walletMetadata"]
+>;
+
 /**
  * Implementation of the Authorization Request Step for OpenID4VP flow.
  * This step handles fetching the authorization request, building the VP token,
@@ -67,13 +81,33 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       const authorizeRequestUrl =
         this.config.presentation.authorize_request_url;
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
+
       const walletNonce = crypto.randomUUID();
+      const walletMetadata = buildWalletMetadata();
+      let requestObjectFetch: RequestObjectFetchDetails | undefined;
+
+      const capturingFetch: typeof fetch = async (input, init) => {
+        const request = input instanceof Request ? input : undefined;
+        const headers = new Headers(init?.headers ?? request?.headers);
+
+        requestObjectFetch = {
+          body: typeof init?.body === "string" ? init.body : undefined,
+          contentType: headers.get("content-type") ?? undefined,
+          method: (init?.method ?? request?.method ?? "GET").toUpperCase(),
+          url: request?.url ?? input.toString(),
+        };
+
+        return fetch(input, init);
+      };
+
       const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl,
-          callbacks: { fetch },
+          callbacks: { fetch: capturingFetch },
+          walletMetadata,
           walletNonce,
         });
+
       log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
       log.debug("Request Object JWT:", requestObjectJwt);
 
@@ -140,7 +174,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         authorizationResponse,
         parsedQrCode,
         requestObject,
+        requestObjectFetch,
         responseUri,
+        walletMetadata,
         walletNonce,
       };
     });
@@ -149,4 +185,30 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   tag(): string {
     return AuthorizationRequestDefaultStep.tag;
   }
+}
+
+function buildWalletMetadata(): WalletMetadata {
+  const walletClientIdPrefixesSupported = [
+    "redirect_uri",
+    "x509_san_dns",
+    "x509_san_uri",
+  ];
+
+  const walletVpFormatsSupported: WalletMetadata["vp_formats_supported"] = {
+    "dc+sd-jwt": {
+      "kb-jwt_alg_values": ["ES256"],
+      "sd-jwt_alg_values": ["ES256"],
+    },
+    mso_mdoc: {
+      alg: ["ES256"],
+    },
+  };
+
+  return {
+    client_id_prefixes_supported: walletClientIdPrefixesSupported,
+    request_object_signing_alg_values_supported: ["ES256"],
+    response_modes_supported: ["direct_post.jwt"],
+    response_types_supported: ["vp_token"],
+    vp_formats_supported: walletVpFormatsSupported,
+  };
 }
