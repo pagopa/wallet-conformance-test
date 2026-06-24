@@ -10,6 +10,10 @@ import {
   withRefreshTokenDPoPSignedByWrongKey,
 } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -19,12 +23,17 @@ import type {
 } from "@/step/issuance";
 import type { KeyPair } from "@/types";
 
+import { loadConfigWithHierarchy } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 
 const testConfigs = await defineIssuanceTest("RefreshTokenIssuance");
 
+const isV1_0 = new IoWalletSdkConfig({
+  itWalletSpecsVersion: loadConfigWithHierarchy().wallet.wallet_version,
+}).isVersion(ItWalletSpecsVersion.V1_0);
+
 testConfigs.forEach((testConfig) => {
-  describe(`[${testConfig.name}] Refresh Token Issuance`, () => {
+  describe.skipIf(isV1_0)(`[${testConfig.name}] Refresh Token Issuance`, () => {
     let capturedCredentialRequestDPoPKey: KeyPair | undefined;
 
     class CapturingCredentialRequestStep
