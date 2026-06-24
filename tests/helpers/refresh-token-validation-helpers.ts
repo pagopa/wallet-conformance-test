@@ -1,16 +1,28 @@
 import { buildTamperedPopJwt } from "#/helpers/par-validation-helpers";
-import { createTokenDPoP, Jwk, JwtSignerJwk } from "@pagopa/io-wallet-oauth2";
+import {
+  createTokenDPoP,
+  fetchTokenResponse,
+  type FetchTokenResponseOptions,
+  Jwk,
+  JwtSignerJwk,
+} from "@pagopa/io-wallet-oauth2";
 import { UnexpectedStatusCodeError } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair } from "jose";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import type {
+  TokenRequestExecuteResponse,
   TokenRequestResponse,
   TokenRequestStepOptions,
 } from "@/step/issuance";
 
-import { partialCallbacks, signJwtCallback } from "@/logic";
+import {
+  createKeys,
+  fetchWithConfig,
+  partialCallbacks,
+  signJwtCallback,
+} from "@/logic";
 import { TokenRequestDefaultStep } from "@/step/issuance";
 import { KeyPairJwk } from "@/types";
 
@@ -80,6 +92,44 @@ export function withInvalidRefreshTokenDPoP(
       return super.run({
         ...options,
         dpopProof: invalidDpop,
+      });
+    }
+  } as typeof TokenRequestDefaultStep;
+}
+
+/**
+ * Wraps a token request step class to send the refresh-token token request
+ * without any DPoP proof header.
+ *
+ * Used for CI_102: the issuer MUST reject the token request because the
+ * DPoP proof is entirely absent (RFC 9449 §5.2).
+ */
+export function withMissingRefreshTokenDPoP(
+  StepClass: typeof TokenRequestDefaultStep,
+): typeof TokenRequestDefaultStep {
+  return class extends StepClass {
+    async run(options: TokenRequestStepOptions): Promise<TokenRequestResponse> {
+      return this.execute<TokenRequestExecuteResponse>(async () => {
+        // Generate a throwaway key pair so the return type is satisfied if the
+        // server unexpectedly accepts the request (which would be a compliance
+        // failure — the test asserts success: false).
+        const dPoPKey = await createKeys();
+
+        const fetchOptions = {
+          accessTokenEndpoint: options.accessTokenEndpoint,
+          accessTokenRequest: options.accessTokenRequest,
+          callbacks: { fetch: fetchWithConfig(this.config.network) },
+          clientAttestationDPoP: options.popAttestation,
+          walletAttestation: options.walletAttestation.attestation,
+        } satisfies Omit<FetchTokenResponseOptions, "dPoP">;
+
+        // dPoP intentionally omitted — tests that the issuer rejects requests
+        // without a DPoP proof (RFC 9449 §5.2).
+        const tokenResponse = await fetchTokenResponse(
+          fetchOptions as FetchTokenResponseOptions,
+        );
+
+        return { ...tokenResponse, dPoPKey };
       });
     }
   } as typeof TokenRequestDefaultStep;

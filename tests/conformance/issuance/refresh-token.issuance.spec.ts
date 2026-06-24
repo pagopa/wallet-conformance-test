@@ -5,6 +5,7 @@ import {
   extractTokenError,
   withInvalidClientAttestationPop,
   withInvalidRefreshTokenDPoP,
+  withMissingRefreshTokenDPoP,
   withRefreshTokenDPoPSignedByWrongKey,
 } from "#/helpers/refresh-token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
@@ -155,6 +156,37 @@ testConfigs.forEach((testConfig) => {
         expect(
           result.tokenResponse?.success,
           "Token request did not fail; rejection may have happened outside refresh-token DPoP binding validation",
+        ).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_102: DPoP Proof JWT | DPoP Proof is required for all refresh token operations to obtain new Access Tokens", async () => {
+      const log = baseLog.withTag("CI_102");
+      const DESCRIPTION =
+        "Issuer correctly rejected refresh-token reissuance with missing DPoP proof";
+
+      let testSuccess = false;
+      try {
+        const negativeOrchestrator = new WalletIssuanceOrchestratorFlow({
+          ...testConfig,
+          tokenRequestStepClass: withMissingRefreshTokenDPoP(
+            testConfig.tokenRequestStepClass,
+          ),
+        });
+
+        const result = await negativeOrchestrator.reissuance();
+
+        expect(
+          result.success,
+          "Re-issuance flow succeeded despite missing DPoP proof",
+        ).toBe(false);
+        expect(
+          result.tokenResponse?.success,
+          "Token request did not fail; rejection may have happened outside token endpoint DPoP validation",
         ).toBe(false);
 
         testSuccess = true;
