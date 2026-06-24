@@ -1,4 +1,4 @@
-import type { IssuanceFlowResponse } from "@/types";
+import type { IssuanceFlowResponse, ReissuanceFlowResponse } from "@/types";
 import type { PresentationFlowResponse } from "@/types";
 
 /**
@@ -29,6 +29,22 @@ export function assertPresentationFlowSuccess(
   if (!result.success) {
     throw new Error(
       `Presentation flow failed: ${result.error?.message ?? "unknown error"}`,
+    );
+  }
+}
+
+/**
+ * Asserts that a re-issuance flow completed successfully.
+ * Narrows the type so all step responses are non-optional.
+ */
+export function assertReissuanceFlowSuccess(
+  result: ReissuanceFlowResponse,
+): asserts result is Required<Omit<ReissuanceFlowResponse, "error">> & {
+  success: true;
+} {
+  if (!result.success) {
+    throw new Error(
+      `Re-issuance flow failed: ${result.error?.message ?? "unknown error"}`,
     );
   }
 }

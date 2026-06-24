@@ -37,6 +37,7 @@ export interface CliOptions {
   port?: number;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
+  refreshToken?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
@@ -348,6 +349,7 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
+  ...(options.refreshToken && { refresh_token: options.refreshToken }),
   ...(options.saveCredential !== undefined && {
     save_credential: options.saveCredential,
   }),
@@ -517,6 +519,7 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationTestsDir",
     "CONFIG_PRESENTATION_TESTS_DIR",
   );
+  readStringEnv(options, "refreshToken", "CONFIG_REFRESH_TOKEN");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");
   readBooleanEnv(options, "unsafeTls", "CONFIG_UNSAFE_TLS");
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
