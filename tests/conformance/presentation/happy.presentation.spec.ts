@@ -8,6 +8,7 @@ import {
   assertVpTokenRecord,
   isCompactJwt,
   normalizePresentationArray,
+  normalizeUriBasePath,
   postFreshValidAuthorizationResponse,
   readDcqlClaimPaths,
   readRelyingPartyIdentifier,
@@ -16,6 +17,7 @@ import {
   readSdJwtDisclosedClaimNames,
   readSdJwtKbJwtPresentationsForRequest,
   RequestedPresentation,
+  uriMatchesDeclaredBasePath,
 } from "#/helpers/rp-presentation";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
@@ -708,26 +710,34 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         log.debug("  ✅ client_id matches metadata");
 
         log.debug(
-          "→ Checking response_uri is declared in metadata response_uris...",
+          "→ Checking response_uri is covered by metadata response_uris base paths...",
         );
         const responseUris: string[] = verifierMetadata.response_uris ?? [];
         const requestResponseUri: string = requestObject?.response_uri ?? "";
         expect(requestResponseUri).toBeTruthy();
         log.debug(`  response_uri: ${requestResponseUri}`);
         log.debug(`  Declared response_uris: ${responseUris.join(", ")}`);
-        expect(responseUris).toContain(requestResponseUri);
-        log.debug("  ✅ response_uri is declared in metadata response_uris");
+        expect(
+          responseUris.some((declaredResponseUri) =>
+            uriMatchesDeclaredBasePath(requestResponseUri, declaredResponseUri),
+          ),
+        ).toBe(true);
+        log.debug("  ✅ response_uri is covered by metadata response_uris");
 
         log.debug(
-          "→ Checking request_uri is declared in metadata request_uris...",
+          "→ Checking request_uri is covered by metadata request_uris base paths...",
         );
         const requestUris: string[] = verifierMetadata.request_uris ?? [];
         const actualRequestUri: string = parsedQrCode?.requestUri ?? "";
         expect(actualRequestUri).toBeTruthy();
         log.debug(`  request_uri: ${actualRequestUri}`);
         log.debug(`  Declared request_uris: ${requestUris.join(", ")}`);
-        expect(requestUris).toContain(actualRequestUri);
-        log.debug("  ✅ request_uri is declared in metadata request_uris");
+        expect(
+          requestUris.some((declaredRequestUri) =>
+            uriMatchesDeclaredBasePath(actualRequestUri, declaredRequestUri),
+          ),
+        ).toBe(true);
+        log.debug("  ✅ request_uri is covered by metadata request_uris");
 
         log.debug("→ Verifying trust chain from request object JWT header...");
         const header =
@@ -1519,6 +1529,57 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.testCompleted(DESCRIPTION, testSuccess);
     }
   });
+
+  test("RPR-85: Endpoint Security | request_uri is attested in verifier metadata request_uris.", () => {
+    const log = baseLog.withTag("RPR-85");
+
+    log.start(
+      "Conformance test: Verifying request_uri base path is attested by verifier metadata",
+    );
+
+    const DESCRIPTION =
+      "request_uri base path is present in client metadata request_uris";
+    let testSuccess = false;
+    try {
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const verifierMetadata =
+        fetchMetadataResult.response?.entityStatementClaims?.metadata
+          ?.openid_credential_verifier;
+      expect(verifierMetadata).toBeDefined();
+      if (!verifierMetadata) {
+        throw new Error("openid_credential_verifier metadata is missing");
+      }
+
+      const requestUri =
+        authorizationRequestResult.response?.parsedQrCode.requestUri ?? "";
+      const requestUris: string[] = verifierMetadata.request_uris ?? [];
+      expect(requestUri).toBeTruthy();
+      expect(requestUris.length).toBeGreaterThan(0);
+
+      log.debug(`  request_uri: ${requestUri}`);
+      log.debug(`  request_uri base path: ${normalizeUriBasePath(requestUri)}`);
+      log.debug(`  metadata request_uris: ${requestUris.join(", ")}`);
+
+      const isAttestedByMetadata = requestUris.some((declaredRequestUri) =>
+        uriMatchesDeclaredBasePath(requestUri, declaredRequestUri),
+      );
+      expect(
+        isAttestedByMetadata,
+        "request_uri must be under a base path declared in metadata request_uris",
+      ).toBe(true);
+      log.debug(
+        "  ✅ request_uri is covered by an attested metadata request_uris base path",
+      );
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
   test("RPR-89: JWT typ parameter is correctly set to oauth-authz-req+jwt.", () => {
     const log = baseLog.withTag("RPR-89");
 
@@ -1973,6 +2034,59 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         contentType.split(";")[0],
         "Response URI success Content-Type must be application/json",
       ).toBe("application/json");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-95: Response URI Security | response_uri is attested in verifier metadata response_uris.", () => {
+    const log = baseLog.withTag("RPR-95");
+
+    log.start(
+      "Conformance test: Verifying response_uri base path is attested by verifier metadata",
+    );
+
+    const DESCRIPTION =
+      "response_uri base path is present in client metadata response_uris";
+    let testSuccess = false;
+    try {
+      expect(fetchMetadataResult.success).toBe(true);
+      expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const verifierMetadata =
+        fetchMetadataResult.response?.entityStatementClaims?.metadata
+          ?.openid_credential_verifier;
+      expect(verifierMetadata).toBeDefined();
+      if (!verifierMetadata) {
+        throw new Error("openid_credential_verifier metadata is missing");
+      }
+
+      const responseUri =
+        authorizationRequestResult.response?.requestObject.response_uri ?? "";
+      const responseUris: string[] = verifierMetadata.response_uris ?? [];
+      expect(responseUri).toBeTruthy();
+      expect(responseUris.length).toBeGreaterThan(0);
+
+      log.debug(`  response_uri: ${responseUri}`);
+      log.debug(
+        `  response_uri base path: ${normalizeUriBasePath(responseUri)}`,
+      );
+      log.debug(`  metadata response_uris: ${responseUris.join(", ")}`);
+
+      const isAttestedByMetadata = responseUris.some((declaredResponseUri) =>
+        uriMatchesDeclaredBasePath(responseUri, declaredResponseUri),
+      );
+      expect(
+        isAttestedByMetadata,
+        "response_uri must be under a base path declared in metadata response_uris",
+      ).toBe(true);
+      log.debug(
+        "  ✅ response_uri is covered by an attested metadata response_uris base path",
+      );
 
       testSuccess = true;
     } finally {

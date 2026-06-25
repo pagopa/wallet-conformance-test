@@ -80,6 +80,12 @@ export function normalizePresentationArray(
   return presentations;
 }
 
+export function normalizeUriBasePath(uri: string): string {
+  const url = new URL(uri);
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${pathname}`;
+}
+
 export async function postFreshValidAuthorizationResponse(
   orchestrator: WalletPresentationOrchestratorFlow,
 ): Promise<Response> {
@@ -289,4 +295,16 @@ export function readSdJwtPresentationParts(
   }
 
   return { issuerJwt, kbJwt, presentation };
+}
+
+export function uriMatchesDeclaredBasePath(
+  uri: string,
+  declaredBasePath: string,
+): boolean {
+  const actualBasePath = normalizeUriBasePath(uri);
+  const normalizedDeclaredBasePath = normalizeUriBasePath(declaredBasePath);
+  return (
+    actualBasePath === normalizedDeclaredBasePath ||
+    actualBasePath.startsWith(`${normalizedDeclaredBasePath}/`)
+  );
 }
