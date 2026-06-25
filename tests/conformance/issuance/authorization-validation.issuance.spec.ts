@@ -2,7 +2,6 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
-import { Oauth2Error } from "@pagopa/io-wallet-oauth2";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
@@ -210,29 +209,27 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.debug(
-          "→ Sending authorization request without request_uri (should be rejected)...",
+          "→ Sending GET authorization request without request_uri (should be rejected)...",
         );
-        const result = await runAuthStep(testConfig.authorizeStepClass);
+        const url = new URL(authorizationEndpoint);
+        url.searchParams.set(
+          "client_id",
+          walletAttestationResponse.unitKey.publicKey.kid ?? "",
+        );
+
+        const response = await fetch(url.toString(), { redirect: "manual" });
 
         log.debug("→ Validating issuer rejected the request...");
-        expect(result.success).toBe(false);
+        expect(
+          response.ok,
+          `Expected issuer to reject the request, got HTTP ${response.status}`,
+        ).toBe(false);
 
-        const error = result.error as Oauth2Error;
-        if (!error || error.statusCode !== undefined) {
-          log.debug(
-            "  Error did not carry an HTTP status code (non-Oauth2Error); request was still rejected",
-          );
-          throw new Error(
-            "Error did not carry an HTTP status code (non-Oauth2Error)",
-          );
-        }
-
-        log.debug(`  HTTP status code returned: ${error.statusCode}`);
-        expect(error.statusCode).toBeDefined();
+        log.debug(`  HTTP status code returned: ${response.status}`);
         expect(
           [400, 401, 403],
-          `Expected HTTP 400, 401, or 403, got ${error.statusCode}`,
-        ).toContain(error.statusCode);
+          `Expected HTTP 400, 401, or 403, got ${response.status}`,
+        ).toContain(response.status);
 
         testSuccess = true;
       } finally {
