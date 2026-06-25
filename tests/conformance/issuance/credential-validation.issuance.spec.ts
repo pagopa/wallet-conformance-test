@@ -1175,7 +1175,7 @@ testConfigs.forEach((testConfig) => {
         log.debug("  ✓ Invalid access token → 401");
 
         log.debug(
-          "→ [2/3] Sending credential request without a DPoP proof header...",
+          "→ [2/3] Sending credential request with an empty DPoP proof string...",
         );
         const missingDpopResult = await runCredentialStep(
           withNoDPoP(testConfig.credentialRequestStepClass),
@@ -1187,7 +1187,7 @@ testConfigs.forEach((testConfig) => {
         ).toBeInstanceOf(UnexpectedStatusCodeError);
         expect(
           (missingDpopResult.error as UnexpectedStatusCodeError).statusCode,
-          "Credential endpoint MUST return 401 when DPoP proof is absent (RFC 9449 §9.1)",
+          "Credential endpoint MUST return 401 when DPoP proof is empty/invalid (RFC 9449 §9.1)",
         ).toBe(401);
         log.debug("  ✓ Missing DPoP proof → 401");
 
