@@ -772,6 +772,45 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
   });
 
   // -----------------------------------------------------------------------
+  // RPR-59 — Same Device Flow user cancellation
+  // -----------------------------------------------------------------------
+
+  test("RPR-59: Same Device Flow | RP handles wallet cancellation with access_denied", async () => {
+    const log = baseLog.withTag("RPR-59");
+    const DESCRIPTION =
+      "RP handles Same Device Flow cancellation through access_denied";
+    log.start("Conformance test: Same Device Flow user cancellation");
+
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Posting a wallet cancellation Authorization Error Response to response_uri...",
+      );
+      const errorBody = new URLSearchParams({
+        error: "access_denied",
+        error_description: "User cancelled the Same Device Flow",
+      });
+      const response = await postToResponseUri(validResponseUri, {
+        body: errorBody.toString(),
+        contentType: "application/x-www-form-urlencoded",
+      });
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP acknowledges the cancellation without treating it as a server error...",
+      );
+      expect(
+        response.status,
+        "RP must acknowledge wallet cancellation errors on response_uri per OID4VP direct_post",
+      ).toBe(200);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
   // RPR-41 — Missing response parameters
   // -----------------------------------------------------------------------
 
