@@ -5,12 +5,15 @@ import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
   assertSignedPresentation,
+  assertVpTokenRecord,
   isCompactJwt,
   normalizePresentationArray,
   postFreshValidAuthorizationResponse,
+  readDcqlClaimPaths,
   readRelyingPartyIdentifier,
   readRequestedPresentation,
   readRequiredStringProperty,
+  readSdJwtDisclosedClaimNames,
   readSdJwtKbJwtPresentationsForRequest,
   RequestedPresentation,
 } from "#/helpers/rp-presentation";
@@ -1055,6 +1058,112 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       expect(responseCode).toMatch(/^[a-zA-Z0-9_-]+$/);
       log.debug("  ✅ response_code uses URL-safe characters only");
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-62: User Consent | Wallet returns optional claims requested by the Relying Party.", async () => {
+    const log = baseLog.withTag("RPR-62");
+
+    log.start(
+      "Conformance test: Verifying user-consented optional data is returned in the presentation",
+    );
+
+    const DESCRIPTION =
+      "Wallet returns the claim data requested by the Relying Party after user consent";
+    let testSuccess = false;
+    try {
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      const response = authorizationRequestResult.response;
+      if (!response) {
+        throw new Error("Authorization request response is missing");
+      }
+
+      const requestObject = response.requestObject;
+      const dcqlCredentials = requestObject.dcql_query?.credentials ?? [];
+      expect(Array.isArray(dcqlCredentials)).toBe(true);
+      expect(dcqlCredentials.length).toBeGreaterThan(0);
+
+      const vpToken =
+        response.authorizationResponse.authorizationResponsePayload.vp_token;
+      assertVpTokenRecord(vpToken);
+
+      let credentialsWithRequestedClaims = 0;
+      for (const [credentialIndex, credential] of dcqlCredentials.entries()) {
+        const requestedClaimPaths = readDcqlClaimPaths(
+          credential,
+          credentialIndex,
+        );
+        if (requestedClaimPaths.length === 0) {
+          continue;
+        }
+
+        credentialsWithRequestedClaims += 1;
+        const requestedPresentation = readRequestedPresentation(
+          credential,
+          credentialIndex,
+        );
+        const presentations = normalizePresentationArray(
+          requestedPresentation.id,
+          vpToken[requestedPresentation.id],
+          walletVersion,
+        );
+
+        log.debug(
+          `  ${requestedPresentation.id}: RP requested claims ${requestedClaimPaths
+            .map((path) => path.join("."))
+            .join(", ")}`,
+        );
+        expect(presentations.length).toBeGreaterThan(0);
+
+        if (requestedPresentation.format !== "dc+sd-jwt") {
+          log.debug(
+            `  ${requestedPresentation.id}: signed ${requestedPresentation.format} presentation returned`,
+          );
+          continue;
+        }
+
+        const disclosedClaimNames = new Set<string>();
+        for (const presentation of presentations) {
+          const presentationClaimNames =
+            await readSdJwtDisclosedClaimNames(presentation);
+          for (const claimName of presentationClaimNames) {
+            disclosedClaimNames.add(claimName);
+          }
+        }
+
+        const requestedLeafClaimNames = requestedClaimPaths.map((path) => {
+          const leaf = path.at(-1);
+          if (!leaf) {
+            throw new Error("Requested claim path has no leaf segment");
+          }
+          return leaf;
+        });
+        log.debug(
+          `  ${requestedPresentation.id}: wallet disclosed claims ${[
+            ...disclosedClaimNames,
+          ].join(", ")}`,
+        );
+
+        for (const claimName of requestedLeafClaimNames) {
+          expect(
+            disclosedClaimNames.has(claimName),
+            `Wallet must resend user-consented claim '${claimName}' requested by the RP`,
+          ).toBe(true);
+        }
+      }
+
+      expect(
+        credentialsWithRequestedClaims,
+        "RPR-62 requires at least one RP-requested optional claim in the DCQL query",
+      ).toBeGreaterThan(0);
+      expect(redirectUriResult.success).toBe(true);
+      log.debug("  ✅ User-consented requested claims are present in vp_token");
 
       testSuccess = true;
     } finally {

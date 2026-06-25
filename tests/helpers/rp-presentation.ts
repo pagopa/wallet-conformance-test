@@ -1,5 +1,7 @@
 import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { digest } from "@sd-jwt/crypto-nodejs";
+import { decodeSdJwt } from "@sd-jwt/decode";
 
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator";
 
@@ -98,6 +100,51 @@ export async function postFreshValidAuthorizationResponse(
   });
 }
 
+export function readDcqlClaimPaths(
+  credential: unknown,
+  credentialIndex: number,
+): string[][] {
+  if (!credential || typeof credential !== "object") {
+    throw new Error(
+      `dcql_query.credentials[${credentialIndex}] must be an object`,
+    );
+  }
+
+  const claims = (credential as { claims?: unknown }).claims;
+  if (claims === undefined) {
+    return [];
+  }
+  if (!Array.isArray(claims)) {
+    throw new Error(
+      `dcql_query.credentials[${credentialIndex}].claims must be an array`,
+    );
+  }
+
+  return claims.map((claim, claimIndex) => {
+    if (!claim || typeof claim !== "object") {
+      throw new Error(
+        `dcql_query.credentials[${credentialIndex}].claims[${claimIndex}] must be an object`,
+      );
+    }
+
+    const path = (claim as { path?: unknown }).path;
+    if (!Array.isArray(path) || path.length === 0) {
+      throw new Error(
+        `dcql_query.credentials[${credentialIndex}].claims[${claimIndex}].path must be a non-empty array`,
+      );
+    }
+
+    return path.map((segment) => {
+      if (typeof segment !== "string" && typeof segment !== "number") {
+        throw new Error(
+          `dcql_query.credentials[${credentialIndex}].claims[${claimIndex}].path contains an unsupported segment`,
+        );
+      }
+      return String(segment);
+    });
+  });
+}
+
 export function readDcqlCredentials(requestObject: unknown): unknown[] {
   if (!requestObject || typeof requestObject !== "object") {
     throw new Error("requestObject is missing");
@@ -164,6 +211,20 @@ export function readRequiredStringProperty(
   }
 
   return propertyValue;
+}
+
+export async function readSdJwtDisclosedClaimNames(
+  presentation: string,
+): Promise<Set<string>> {
+  const decodedPresentation = await decodeSdJwt(presentation, digest);
+
+  return new Set(
+    decodedPresentation.disclosures.flatMap((disclosure) => {
+      const disclosureData = disclosure.decode();
+      const claimName = disclosureData[1];
+      return typeof claimName === "string" ? [claimName] : [];
+    }),
+  );
 }
 
 export function readSdJwtKbJwtPresentations(
