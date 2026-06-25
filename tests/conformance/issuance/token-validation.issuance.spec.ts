@@ -256,6 +256,7 @@ testConfigs.forEach((testConfig) => {
         });
 
         expect(result.success).toBe(false);
+        expect(result.error).toBeInstanceOf(UnexpectedStatusCodeError);
         const tokenError = result.error as UnexpectedStatusCodeError;
         expect(
           tokenError.statusCode,
@@ -387,7 +388,7 @@ testConfigs.forEach((testConfig) => {
     // -----------------------------------------------------------------------
 
     test(
-      "CI_070: C_nonce | Same c_nonce is reusable until the server provides a new one",
+      "CI_070: C_nonce | Server issues distinct nonces and credential requests with fresh c_nonce must succeed",
       { timeout: 20e3 },
       async () => {
         const log = baseLog.withTag("CI_070");
@@ -400,8 +401,11 @@ testConfigs.forEach((testConfig) => {
         let testSuccess = false;
         try {
           log.info("→ Running full flow to obtain token context...");
+          const freshOrchestrator = new WalletIssuanceOrchestratorFlow(
+            testConfig,
+          );
           const tokenCtx: RunThroughTokenContext =
-            await orchestrator.runThroughToken();
+            await freshOrchestrator.runThroughToken();
           const entityStatementClaims =
             tokenCtx.fetchMetadataResponse.response?.entityStatementClaims;
 
