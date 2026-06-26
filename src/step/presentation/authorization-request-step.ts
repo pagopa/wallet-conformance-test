@@ -16,7 +16,7 @@ import { DcqlQuery } from "dcql";
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { partialCallbacks } from "@/logic/utils";
+import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
@@ -86,24 +86,21 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       const walletMetadata = buildWalletMetadata();
       let requestObjectFetch: RequestObjectFetchDetails | undefined;
 
-      const capturingFetch: typeof fetch = async (input, init) => {
-        const request = input instanceof Request ? input : undefined;
-        const headers = new Headers(init?.headers ?? request?.headers);
-
-        requestObjectFetch = {
-          body: typeof init?.body === "string" ? init.body : undefined,
-          contentType: headers.get("content-type") ?? undefined,
-          method: (init?.method ?? request?.method ?? "GET").toUpperCase(),
-          url: request?.url ?? input.toString(),
-        };
-
-        return fetch(input, init);
-      };
+      const fetchCallback = fetchWithConfig(this.config.network, {
+        onRequest: ({ body, headers, method, url }) => {
+          requestObjectFetch = {
+            body: typeof body === "string" ? body : undefined,
+            contentType: headers.get("content-type") ?? undefined,
+            method,
+            url,
+          };
+        },
+      });
 
       const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl,
-          callbacks: { fetch: capturingFetch },
+          callbacks: { fetch: fetchCallback },
           walletMetadata,
           walletNonce,
         });

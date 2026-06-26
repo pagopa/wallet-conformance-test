@@ -50,22 +50,22 @@ export class RedirectUriDefaultStep extends StepFlow {
         );
       }
 
-      const configuredFetch = fetchWithConfig(this.config.network);
       let contentType: string | undefined;
       let status: number | undefined;
-      const capturingFetch: typeof fetch = async (input, init) => {
-        const response = await configuredFetch(input, init);
-        contentType = response.headers.get("content-type") ?? undefined;
-        status = response.status;
-        return response;
-      };
+
+      const fetchCallback = fetchWithConfig(this.config.network, {
+        onResponse: (response) => {
+          contentType = response.headers.get("content-type") ?? undefined;
+          status = response.status;
+        },
+      });
 
       log.info(`Fetching authorization response from: ${options.responseUri}`);
       const { redirect_uri } = await fetchAuthorizationResponse({
         authorizationResponseJarm:
           options.authorizationResponse.jarm.responseJwe,
         callbacks: {
-          fetch: capturingFetch,
+          fetch: fetchCallback,
         },
         presentationResponseUri: options.responseUri,
       });
