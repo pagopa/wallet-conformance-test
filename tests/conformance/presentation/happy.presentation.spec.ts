@@ -861,6 +861,10 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  kid: ${protectedHeader.kid}`);
 
       log.debug("→ Checking selected key belongs to RP JWKS...");
+      const rpJwksKeys = verifierMetadata.jwks?.keys;
+      if (!Array.isArray(rpJwksKeys) || rpJwksKeys.length === 0) {
+        throw new Error("RP JWKS is missing or empty in verifier metadata");
+      }
       const rpEncryptionKey = verifierMetadata.jwks.keys.find(
         (key: Jwk) => key.kid === encryptionJwk.kid,
       );
