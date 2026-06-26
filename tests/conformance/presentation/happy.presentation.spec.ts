@@ -9,7 +9,6 @@ import {
   isCompactJwt,
   normalizePresentationArray,
   normalizeUriBasePath,
-  postFreshValidAuthorizationResponse,
   readDcqlClaimPaths,
   readRelyingPartyIdentifier,
   readRequestedPresentation,
@@ -2016,20 +2015,24 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     const DESCRIPTION =
       "Response URI returns HTTP 200 with application/json content type";
     let testSuccess = false;
+
     try {
-      log.info(
-        "→ Posting a fresh valid Authorization Response to response_uri...",
-      );
-      const response = await postFreshValidAuthorizationResponse(orchestrator);
+      log.info("→ Inspecting the already completed response_uri exchange...");
 
-      log.debug(`  Response status: ${response.status}`);
-      const contentType = response.headers.get("content-type") ?? "";
+      expect(redirectUriResult.success).toBe(true);
+
+      const redirectResponse = redirectUriResult.response;
+      if (!redirectResponse) {
+        throw new Error("Redirect URI response is missing");
+      }
+
+      log.debug(`  Response status: ${redirectResponse.status}`);
+      expect(redirectResponse.status, "Response URI must return HTTP 200").toBe(
+        200,
+      );
+
+      const contentType = redirectResponse.contentType ?? "";
       log.debug(`  Content-Type: ${contentType}`);
-
-      log.info(
-        "→ Validating response_uri returned successful JSON processing response...",
-      );
-      expect(response.status, "Response URI must return HTTP 200").toBe(200);
       expect(
         contentType.split(";")[0],
         "Response URI success Content-Type must be application/json",

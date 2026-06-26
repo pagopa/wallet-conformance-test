@@ -3,10 +3,6 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
 
-import { WalletPresentationOrchestratorFlow } from "@/orchestrator";
-
-import { postToResponseUri } from "./http-helpers";
-
 export interface RequestedPresentation {
   format: string;
   id: string;
@@ -84,26 +80,6 @@ export function normalizeUriBasePath(uri: string): string {
   const url = new URL(uri);
   const pathname = url.pathname.replace(/\/+$/, "");
   return `${url.origin}${pathname}`;
-}
-
-export async function postFreshValidAuthorizationResponse(
-  orchestrator: WalletPresentationOrchestratorFlow,
-): Promise<Response> {
-  const ctx = await orchestrator.runThroughAuthorize();
-  const authResponse = ctx.authorizationRequestResponse.response;
-  if (!authResponse) {
-    throw new Error(
-      "Setup failed: authorizationRequestResponse.response is undefined — RP did not return a valid authorization response",
-    );
-  }
-
-  const formBody = new URLSearchParams({
-    response: authResponse.authorizationResponse.jarm.responseJwe,
-  });
-
-  return postToResponseUri(authResponse.responseUri, {
-    body: formBody.toString(),
-  });
 }
 
 export function readDcqlClaimPaths(
