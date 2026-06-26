@@ -266,7 +266,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     );
 
     const DESCRIPTION =
-      "Relying Party QR-Code payload fits QR error correction level H capacity and remains suitable for damaged-code recovery";
+      "Relying Party QR-Code payload fits the required Q error correction level capacity";
     let testSuccess = false;
     try {
       expect(authorizationRequestResult.success).toBe(true);
@@ -277,31 +277,26 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(qrCodePayload).toBeTruthy();
 
       const payloadBytes = new TextEncoder().encode(qrCodePayload).length;
-      const maxQrVersionByteCapacityByErrorCorrectionLevel = {
-        H: 1273,
-        Q: 1663,
-      } as const;
+      const maxQrVersionByteCapacityByErrorCorrectionLevelQ = 1663;
 
       log.debug(`  QR-Code payload byte length: ${payloadBytes}`);
       log.debug(
-        `  QR Level H byte capacity: ${maxQrVersionByteCapacityByErrorCorrectionLevel.H}`,
-      );
-      log.debug(
-        `  QR Level Q byte capacity: ${maxQrVersionByteCapacityByErrorCorrectionLevel.Q}`,
+        `  QR Level Q byte capacity: ${maxQrVersionByteCapacityByErrorCorrectionLevelQ}`,
       );
 
-      expect(payloadBytes).toBeLessThanOrEqual(
-        maxQrVersionByteCapacityByErrorCorrectionLevel.H,
-      );
+      expect(
+        payloadBytes,
+        "QR-Code payload must fit QR level Q byte capacity (Quartile, up to 25% damage recovery)",
+      ).toBeLessThanOrEqual(maxQrVersionByteCapacityByErrorCorrectionLevelQ);
       log.debug(
-        "  ✅ QR-Code payload can be encoded with Level H error correction (~30% damage recovery)",
+        "  ✅ QR-Code payload is compatible with Level Q error correction (~25% damage recovery)",
       );
 
       const parsedQrCode = authorizationRequestResult.response?.parsedQrCode;
       expect(parsedQrCode?.clientId).toBeTruthy();
       expect(parsedQrCode?.requestUri).toBeTruthy();
       log.debug(
-        "  ✅ Damaged-code recovery capacity preserves a complete authorization request payload",
+        "  ✅ Required Q error correction capacity preserves a complete authorization request payload",
       );
 
       testSuccess = true;
