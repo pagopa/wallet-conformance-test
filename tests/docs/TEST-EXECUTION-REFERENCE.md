@@ -244,6 +244,42 @@ These tests verify the structural and cryptographic properties of issued SD-JWT 
 
 - **CI_135**: Fetches the type metadata document and validates its structure against the SD-JWT-VC §6.2 schema using Zod. Asserts that `vct` is present (required), and that all optional fields — `name`, `description`, `display`, `claims`, `schema`, `schema_uri` — have the correct types when present. Skipped when the endpoint returns a non-200 status.
 
+#### Status List Tests
+
+- **CI_175**: Verifies that the Status List endpoint is reachable using the URI extracted from the credential's `status.status_list` claim. Asserts that the endpoint returns an HTTP 2xx response and a non-empty JWT body.
+
+- **CI_176**: Verifies that the `idx` claim in the credential is a non-negative integer that corresponds to a valid entry within the fetched Status List byte array.
+
+- **CI_177**: Verifies that the Status List Token is a cryptographically signed JWT with the `typ` header set to `statuslist+jwt`. It validates the signature against the public key found in the `x5c` header.
+
+- **CI_178**: Verifies that the `bits` parameter in the Status List Token is one of the spec-defined values: 1, 2, 4, or 8.
+
+- **CI_179**: Verifies that the compressed Status List (`lst`) is non-empty and that the resulting byte array is large enough to accommodate the credential's index (`idx`).
+
+- **CI_180**: Verifies that the status value at the credential's `idx` in the Status List is `0x00` (VALID).
+
+- **CI_181**: Verifies that the `lst` field in the Status List Token is correctly compressed using the DEFLATE/ZLIB algorithm and can be successfully decompressed.
+
+- **CI_181a**: Confirms that decompression of the `lst` field produces valid data. (Note: exact compression level is advisory).
+
+- **CI_182**: Explicitly checks that the Status List endpoint is available and returns an HTTP 2xx success status.
+
+- **CI_183**: Verifies that the status value at the credential's `idx` is within the valid range permitted by the configured `bits` value (e.g., 0–1 for 1 bit, 0–255 for 8 bits).
+
+- **CI_184**: Verifies that any additional application-specific state values in the Status List do not exceed the maximum value allowed by the `bits` configuration.
+
+- **CI_185**: Verifies that the Status List Token payload contains all required claims: `iss` (issuer), `sub` (token URI), `iat` (issued-at), and `status_list` (containing `bits` and `lst`).
+
+- **CI_186**: Verifies that the Status List Token's `exp` claim does not exceed `iat + 86400` seconds, enforcing a maximum 24-hour validity for the token.
+
+- **CI_187**: Verifies the internal structure of the `status_list` claim, ensuring `bits` is an integer from the set {1, 2, 4, 8} and `lst` is a non-empty base64url-encoded string.
+
+- **CI_190**: Verifies that the `status.status_list` object within the issued credential contains a valid `idx` (non-negative integer) and a valid `uri` (reachable URL).
+
+- **CI_191**: Verifies that the Status List endpoint returns a response with the `Content-Type: application/statuslist+jwt` header.
+
+- **CI_192**: Verifies that the Status List endpoint response either omits `Content-Encoding` (no HTTP compression) or, if present, includes `gzip`.
+
 ---
 
 ### Presentation Flow Tests

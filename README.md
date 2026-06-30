@@ -169,6 +169,20 @@ Set it in your `config.ini`:
 wallet_version = V1_3
 ```
 
+Or override it at runtime without editing any file — using the CLI option:
+
+```bash
+wct test:issuance --wallet-version V1_3
+wct test:presentation --wallet-version V1_3
+```
+
+Or via an environment variable:
+
+```bash
+CONFIG_WALLET_VERSION=V1_3 wct test:issuance
+CONFIG_WALLET_VERSION=V1_3 wct test:presentation
+```
+
 > **Tip**: Use `V1_3` when testing against issuers or relying parties that implement the latest specification revision. Use `V1_0` for services that still target the first stable release.
 
 ### TLS Unsafe Mode
@@ -281,6 +295,83 @@ Upon completion of a test suite, the tool generates a comprehensive report (e.g.
 - Failure Cases: Tests that failed, with details to help identify the root cause.
 - Non-Executable Cases: Tests that were skipped and why.
 - Additional Data: Verbose logs and other debugging information.
+
+## 📊 Reports
+
+Every test run is automatically persisted to a local SQLite database (`data/wct.db`). After one or more runs you can inspect the history and generate a formatted report without re-running any tests.
+
+### How It Works
+
+The built-in `ConformanceReporter` (a Vitest reporter) hooks into each test run and writes every result to the database in real time. For each test case it stores:
+
+- The **requirement ID** (`CI_001`, `RPR-001`, …) parsed from the test title
+- The **result**: `PASS`, `FAIL`, or `NOT_REACHED` (test could not execute)
+- A timestamp and, on failure, the error message
+
+Each run is identified by a UUID and carries an overall status (`PASSED`, `FAILED`, or `INCOMPLETE`) derived from the aggregate results.
+
+### Listing Runs
+
+```bash
+wct report list
+# or the shorter alias
+wct report ls
+```
+
+Prints one row per recorded run:
+
+```
+RUN ID                               STARTED AT               CLOSED AT                STATUS     CHECKS
+b3f2a1c0-...                         2026-06-17T10:00:00.000Z 2026-06-17T10:01:45.000Z PASSED     42
+```
+
+### Generating a Report
+
+```bash
+wct report create <run_id|latest> <format> [--view <view>]
+```
+
+| Argument / Option | Values | Description |
+|---|---|---|
+| `<run_id\|latest>` | UUID from `report list`, or `latest` | Which run to generate a report for |
+| `<format>` | `html`, `pdf` | Output file format |
+| `--view` | `both` (default), `executive`, `technical` | Which view(s) to include |
+
+The report file is written to the **current working directory**:
+
+```
+conformance-report-<run_id>.<format>
+```
+
+#### Examples
+
+HTML report for the most recent run (both views, default):
+
+```bash
+wct report create latest html
+```
+
+PDF with only the executive summary:
+
+```bash
+wct report create latest pdf --view executive
+```
+
+Technical-only HTML for a specific run:
+
+```bash
+wct report create b3f2a1c0-1234-... html --view technical
+```
+
+### Report Views
+
+| View | Content | Audience |
+|---|---|---|
+| `executive` | High-level compliance narrative: overall score as a percentage, pass / fail / partial counts, and a highlighted box listing any critical failures. | Stakeholders, certification bodies |
+| `technical` | Full check-by-check breakdown with requirement IDs, results, and failure messages for every test case. | Developers, integrators |
+| `both` | Interactive HTML with a tab switcher between the two views above (default). | All audiences |
+
+> **Note**: When generating a PDF with `--view both`, both sections are rendered sequentially in the document without the interactive switcher.
 
 ## 📋 Official Test Plans
 
