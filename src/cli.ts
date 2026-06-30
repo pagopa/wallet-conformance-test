@@ -16,6 +16,34 @@ import type { CliOptions } from "@/logic";
 import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 
 const nodeRequire = createRequire(import.meta.url);
+const experimentalWarningFlag = "--disable-warning=ExperimentalWarning";
+
+function ensureExperimentalWarningsDisabled(): void {
+  if (
+    process.env.NODE_OPTIONS?.split(/\s+/).includes(experimentalWarningFlag)
+  ) {
+    return;
+  }
+
+  const result = spawnSync(process.execPath, process.argv.slice(1), {
+    env: {
+      ...process.env,
+      NODE_OPTIONS: getNodeOptionsWithExperimentalWarningDisabled(
+        process.env.NODE_OPTIONS,
+      ),
+    },
+    shell: process.platform === "win32",
+    stdio: "inherit",
+  });
+
+  process.exit(result.status ?? 1);
+}
+
+function getNodeOptionsWithExperimentalWarningDisabled(
+  nodeOptions: string | undefined,
+): string {
+  return [nodeOptions, experimentalWarningFlag].filter(Boolean).join(" ");
+}
 
 function runTestCommand(
   script: "test:issuance" | "test:presentation",
@@ -51,6 +79,10 @@ function runTestCommand(
  */
 function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   const env = { ...process.env };
+
+  env.NODE_OPTIONS = getNodeOptionsWithExperimentalWarningDisabled(
+    env.NODE_OPTIONS,
+  );
 
   if (options.fileIni) {
     env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
@@ -103,6 +135,12 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   }
   if (options.tests) {
     env.TESTS = options.tests;
+  }
+  if (options.walletVersion) {
+    env.CONFIG_WALLET_VERSION = options.walletVersion;
+  }
+  if (options.refreshToken) {
+    env.CONFIG_REFRESH_TOKEN = options.refreshToken;
   }
 
   return env;
@@ -185,6 +223,14 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--tests <names>",
       "Comma separated list of test names, only the specified tests will be run (env: TESTS)",
+    )
+    .option(
+      "--wallet-version <version>",
+      "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
+    )
+    .option(
+      "--refresh-token <token>",
+      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN)",
     );
 }
 
@@ -209,6 +255,36 @@ addCommonOptions(testPresentation);
 testPresentation.action((options) => {
   runTestCommand("test:presentation", options);
 });
+
+const report = program
+  .command("report")
+  .description("Manage conformance test reports");
+
+report
+  .command("list")
+  .alias("ls")
+  .description("List all conformance test runs")
+  .action(async () => {
+    const { reportList } = await import("@/report/commands/report-list");
+    reportList();
+  });
+
+report
+  .command("create <run_id|latest> <format>")
+  .description(
+    "Generate an HTML or PDF conformance report for a run ID or the latest run",
+  )
+  .option(
+    "--view <view>",
+    "Which view to render: both (default), executive, or technical",
+    "both",
+  )
+  .action(async (runId, format, options) => {
+    const { reportCreate } = await import("@/report/commands/report-create");
+    await reportCreate(runId, format, options.view);
+  });
+
+ensureExperimentalWarningsDisabled();
 
 // Parse command-line arguments
 program.parse(process.argv);

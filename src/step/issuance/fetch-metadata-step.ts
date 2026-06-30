@@ -1,6 +1,7 @@
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
 
 import { fetchWithConfig } from "@/logic/utils";
+import { recordSessionEntityNameFromEntityConfiguration } from "@/report/session-runtime";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
@@ -51,6 +52,11 @@ export class FetchMetadataDefaultStep extends StepFlow {
       log.debug(
         "Metadata fetched successfully:",
         JSON.stringify(result, null, 2),
+      );
+
+      recordSessionEntityNameFromEntityConfiguration(
+        "issuance",
+        result.openid_federation_claims,
       );
 
       return {

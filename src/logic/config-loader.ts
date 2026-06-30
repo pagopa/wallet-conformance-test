@@ -1,4 +1,7 @@
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import {
+  ItWalletSpecsVersion,
+  parseWithErrorHandling,
+} from "@pagopa/io-wallet-utils";
 import { parse } from "ini";
 import { existsSync, readFileSync } from "node:fs";
 import path from "path";
@@ -34,12 +37,14 @@ export interface CliOptions {
   port?: number;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
+  refreshToken?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
   timeout?: number;
   trustAnchorCertDir?: string;
   unsafeTls?: boolean;
+  walletVersion?: string;
 }
 
 interface ConfigLayer {
@@ -198,6 +203,7 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   const logging = buildLoggingConfig(options);
   const trustAnchor = buildTrustAnchorConfig(options);
   const stepsMapping = buildStepsMappingConfig(options);
+  const wallet = buildWalletConfig(options);
 
   if (hasConfigValues<Config["issuance"]>(issuance)) {
     partialConfig.issuance = issuance as Config["issuance"];
@@ -216,6 +222,9 @@ function cliOptionsToConfig(options: CliOptions): Partial<Config> {
   }
   if (stepsMapping) {
     partialConfig.steps_mapping = stepsMapping;
+  }
+  if (hasConfigValues<Config["wallet"]>(wallet)) {
+    partialConfig.wallet = wallet as Config["wallet"];
   }
 
   return partialConfig;
@@ -340,6 +349,7 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
+  ...(options.refreshToken && { refresh_token: options.refreshToken }),
   ...(options.saveCredential !== undefined && {
     save_credential: options.saveCredential,
   }),
@@ -388,6 +398,14 @@ const buildTrustAnchorConfig: ConfigSectionBuilder<Config["trust_anchor"]> = (
   ...(options.port !== undefined && { port: options.port }),
   ...(options.trustAnchorCertDir !== undefined && {
     tls_cert_dir: options.trustAnchorCertDir,
+  }),
+});
+
+const buildWalletConfig: ConfigSectionBuilder<Config["wallet"]> = (
+  options,
+) => ({
+  ...(options.walletVersion && {
+    wallet_version: options.walletVersion as ItWalletSpecsVersion,
   }),
 });
 
@@ -501,10 +519,12 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationTestsDir",
     "CONFIG_PRESENTATION_TESTS_DIR",
   );
+  readStringEnv(options, "refreshToken", "CONFIG_REFRESH_TOKEN");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");
   readBooleanEnv(options, "unsafeTls", "CONFIG_UNSAFE_TLS");
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
   readStringEnv(options, "bindAddress", "OIDF_SERVERS_BIND_ADDRESS");
+  readStringEnv(options, "walletVersion", "CONFIG_WALLET_VERSION");
 
   return options;
 }
