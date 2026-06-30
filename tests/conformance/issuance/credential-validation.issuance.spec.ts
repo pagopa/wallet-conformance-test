@@ -12,6 +12,7 @@ import {
   withCredentialRequestOverrides,
   withCredentialSignJwtOverride,
   withDPoPSignedByWrongKey,
+  withFakeAccessToken,
   withNoAthDPoP,
   withNoDPoP,
   withPrivateKeyInDPoPHeader,
@@ -30,6 +31,7 @@ import {
 import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
+  UnexpectedStatusCodeError,
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "@sd-jwt/decode";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
@@ -703,6 +705,75 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
+    // CI_080 — Recommended Fresh Cryptographic Key Generation
+    // -----------------------------------------------------------------------
+
+    test("CI_080: Fresh Cryptographic Key | Each credential request uses a freshly generated key pair, distinct from the wallet attestation key and from keys used in prior requests", async () => {
+      const log = baseLog.withTag("CI_080");
+      const DESCRIPTION =
+        "Credential requests use fresh key pairs distinct from the wallet attestation key";
+
+      log.start(
+        "Conformance test: Verifying fresh cryptographic key generation per credential request",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Running first credential request to capture its key pair...",
+        );
+        const result1 = await runCredentialStep(
+          testConfig.credentialRequestStepClass,
+        );
+
+        log.debug(
+          "→ Running second credential request to capture its key pair...",
+        );
+        const result2 = await runCredentialStep(
+          testConfig.credentialRequestStepClass,
+        );
+
+        expect(result1.success, "First credential request must succeed").toBe(
+          true,
+        );
+        expect(result2.success, "Second credential request must succeed").toBe(
+          true,
+        );
+
+        const credKey1 = result1.response?.credentialKeyPair.publicKey;
+        const credKey2 = result2.response?.credentialKeyPair.publicKey;
+        const walletKey = walletAttestationResponse.unitKey.publicKey;
+
+        expect(
+          credKey1,
+          "First credential response must contain a key pair",
+        ).toBeDefined();
+        expect(
+          credKey2,
+          "Second credential response must contain a key pair",
+        ).toBeDefined();
+
+        log.debug(`  First credential key kid:  ${credKey1?.kid}`);
+        log.debug(`  Second credential key kid: ${credKey2?.kid}`);
+        log.debug(`  Wallet attestation key kid: ${walletKey.kid}`);
+
+        expect(
+          credKey1?.kid,
+          "Credential key MUST differ from wallet attestation key (key separation)",
+        ).not.toBe(walletKey.kid);
+
+        expect(
+          credKey1?.kid,
+          "Each credential request MUST use a freshly generated key (unlinkability)",
+        ).not.toBe(credKey2?.kid);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
     // CI_082 — DPoP Proof and Access Token
     // -----------------------------------------------------------------------
 
@@ -1064,6 +1135,85 @@ testConfigs.forEach((testConfig) => {
           "→ Validating issuer rejected the unknown credential type...",
         );
         expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_085 — Credential Response HTTP Status Code table
+    // -----------------------------------------------------------------------
+
+    test("CI_085: Credential Response HTTP Status Code | Credential endpoint returns correct HTTP status codes for each class of error", async () => {
+      const log = baseLog.withTag("CI_085");
+      const DESCRIPTION =
+        "Credential endpoint returned correct HTTP status codes for invalid token (401), missing DPoP (401), and invalid proof (400)";
+
+      log.start(
+        "Conformance test: Verifying HTTP status codes in credential endpoint error responses",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ [1/3] Sending credential request with a fake/invalid access token...",
+        );
+        const invalidTokenResult = await runCredentialStep(
+          withFakeAccessToken(testConfig.credentialRequestStepClass),
+        );
+        expect(invalidTokenResult.success).toBe(false);
+        expect(
+          invalidTokenResult.error,
+          "Error must carry the HTTP status code",
+        ).toBeInstanceOf(UnexpectedStatusCodeError);
+        expect(
+          (invalidTokenResult.error as UnexpectedStatusCodeError).statusCode,
+          "Credential endpoint MUST return 401 for an invalid access token (RFC 6750 §3)",
+        ).toBe(401);
+        log.debug("  ✓ Invalid access token → 401");
+
+        log.debug(
+          "→ [2/3] Sending credential request with an empty DPoP proof string...",
+        );
+        const missingDpopResult = await runCredentialStep(
+          withNoDPoP(testConfig.credentialRequestStepClass),
+        );
+        expect(missingDpopResult.success).toBe(false);
+        expect(
+          missingDpopResult.error,
+          "Error must carry the HTTP status code",
+        ).toBeInstanceOf(UnexpectedStatusCodeError);
+        expect(
+          (missingDpopResult.error as UnexpectedStatusCodeError).statusCode,
+          "Credential endpoint MUST return 401 when DPoP proof is empty/invalid (RFC 9449 §9.1)",
+        ).toBe(401);
+        log.debug("  ✓ Missing DPoP proof → 401");
+
+        log.debug(
+          "→ [3/3] Sending credential request with nonce claim removed from proof JWT...",
+        );
+        const invalidProofResult = await runCredentialStep(
+          withCredentialSignJwtOverride(
+            testConfig.credentialRequestStepClass,
+            signWithoutClaim(
+              "nonce",
+              walletAttestationResponse.unitKey.privateKey,
+              walletAttestationResponse.unitKey.publicKey,
+            ),
+          ),
+        );
+        expect(invalidProofResult.success).toBe(false);
+        expect(
+          invalidProofResult.error,
+          "Error must carry the HTTP status code",
+        ).toBeInstanceOf(UnexpectedStatusCodeError);
+        expect(
+          (invalidProofResult.error as UnexpectedStatusCodeError).statusCode,
+          "Credential endpoint MUST return 400 for an invalid proof JWT (OpenID4VCI invalid_proof)",
+        ).toBe(400);
+        log.debug("  ✓ Invalid proof JWT → 400");
 
         testSuccess = true;
       } finally {
