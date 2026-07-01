@@ -327,6 +327,26 @@ export function withDPoPSignedByWrongKey(
 }
 
 /**
+ * Wraps a credential request step to send a fake/invalid access token.
+ * The issuer MUST respond with 401 Unauthorized per RFC 6750 §3.
+ * Used for CI_085a.
+ */
+export function withFakeAccessToken(
+  StepClass: typeof CredentialRequestDefaultStep,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    async run(
+      options: CredentialRequestStepOptions,
+    ): Promise<CredentialRequestResponse> {
+      return super.run({
+        ...options,
+        accessToken: "fake-invalid-access-token-for-ci-085a",
+      });
+    }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
  * Wraps a credential request step class to send a DPoP that has no `ath`
  * claim at all (as if the token-endpoint DPoP were reused at the credential
  * endpoint). The signature is valid.
