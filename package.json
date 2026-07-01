@@ -40,7 +40,7 @@
     "test:issuance": "vitest run --config vitest.issuance.config.js",
     "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
     "test:presentation": "vitest run --config vitest.presentation.config.js",
-    "prepublish": "pnpm build"
+    "prepack": "pnpm build"
   },
   "keywords": [
     "wallet",
