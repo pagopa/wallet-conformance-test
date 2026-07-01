@@ -13,12 +13,30 @@ import {
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
   CredentialRequestStepOptions,
+  KeyAttestationOptions,
 } from "@/step/issuance/credential-request-step";
 import { KeyPairJwk } from "@/types";
 
 // ---------------------------------------------------------------------------
 // SignJwtCallback factories (credential proof manipulation)
 // ---------------------------------------------------------------------------
+
+/**
+ * Loose override type accepted by `withKeyAttestationOverrides`.
+ *
+ * `keyStorage` and `userAuthentication` intentionally accept arbitrary strings
+ * so that conformance tests can inject non-compliant values (e.g. `"software"`,
+ * `"none"`) without TypeScript errors.  The SDK does not validate these fields
+ * with Zod at runtime — they are embedded verbatim into the signed JWT and
+ * rejected (or accepted) by the Credential Issuer.
+ */
+export type KeyAttestationTestOverrides = Omit<
+  Partial<KeyAttestationOptions>,
+  "keyStorage" | "userAuthentication"
+> & {
+  keyStorage?: [string, ...string[]];
+  userAuthentication?: [string, ...string[]];
+};
 
 /**
  * Returns a SignJwtCallback that signs with HS256 (symmetric algorithm).
@@ -128,6 +146,10 @@ export function signWithWrongKey(): SignJwtCallback {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Step class factory helpers
+// ---------------------------------------------------------------------------
+
 /**
  * Returns a SignJwtCallback that overrides the `typ` header claim.
  * Used for CI_073 (wrong proof type declaration).
@@ -150,10 +172,6 @@ export function signWithWrongTyp(
     return { jwt, signerJwk: realPublicKey as Jwk };
   };
 }
-
-// ---------------------------------------------------------------------------
-// Step class factory helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Wraps a credential request step to send a DPoP proof whose `alg` header
@@ -343,6 +361,27 @@ export function withFakeAccessToken(
         accessToken: "fake-invalid-access-token-for-ci-085a",
       });
     }
+  } as typeof CredentialRequestDefaultStep;
+}
+
+/**
+ * Wraps a credential request step class so that `createKeyAttestation` merges
+ * the supplied overrides over its computed defaults before signing.
+ *
+ * Mirrors `withParOverrides` / `withCredentialRequestOverrides` patterns.
+ * Used for CI_034: verifies that the Issuer rejects a Credential Request whose
+ * Wallet Key Attestation carries insufficient or unsupported security claims.
+ */
+export function withKeyAttestationOverrides(
+  StepClass: typeof CredentialRequestDefaultStep,
+  overrides: KeyAttestationTestOverrides,
+): typeof CredentialRequestDefaultStep {
+  return class extends StepClass {
+    // Cast is safe: the SDK does not perform Zod validation on keyStorage /
+    // userAuthentication at runtime; the values are written directly into the
+    // JWT payload.
+    protected override keyAttestationOverrides =
+      overrides as unknown as Partial<KeyAttestationOptions>;
   } as typeof CredentialRequestDefaultStep;
 }
 
@@ -553,6 +592,10 @@ export function withWrongHtmDPoP(
   } as typeof CredentialRequestDefaultStep;
 }
 
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 /**
  * Wraps a credential request step to send a DPoP proof whose `htu` claim
  * does not match the credential endpoint URL.
@@ -631,7 +674,7 @@ export function withWrongTypDPoP(
 }
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Key attestation override helpers (CI_034)
 // ---------------------------------------------------------------------------
 
 /**
