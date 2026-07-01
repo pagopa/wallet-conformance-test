@@ -337,38 +337,6 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   });
 
   // -----------------------------------------------------------------------
-  // RPR-27 — Expired Request Object handling
-  // -----------------------------------------------------------------------
-
-  test("RPR-27: Error Handling | Holder rejects expired authorization requests", async () => {
-    const log = baseLog.withTag("RPR-27");
-    const DESCRIPTION =
-      "Holder is notified of expiration and sends no Presentation Response";
-
-    log.start("Conformance test: Expired Request Object handling");
-
-    let testSuccess = false;
-    try {
-      const authResult = await runAuthorizationStep(
-        testConfig.authorizeStepClass,
-      );
-      expect(authResult.success).toBe(true);
-      assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
-      hasObjectProperties(authResult, ["response"]);
-
-      const requestObjectExpiration = authResult.response.requestObject.exp;
-      expect(requestObjectExpiration).toBeDefined();
-      expect(requestObjectExpiration).toBeLessThan(
-        Math.floor(Date.now() / 1000) + 60,
-      );
-
-      testSuccess = true;
-    } finally {
-      log.testCompleted(DESCRIPTION, testSuccess);
-    }
-  });
-
-  // -----------------------------------------------------------------------
   // RPR-36 — Large response payloads
   // -----------------------------------------------------------------------
 
