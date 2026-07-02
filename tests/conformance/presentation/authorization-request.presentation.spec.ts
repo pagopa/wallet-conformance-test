@@ -14,7 +14,10 @@ import {
   CompactEncrypt,
   decodeJwt,
   decodeProtectedHeader,
+  exportJWK,
   generateKeyPair,
+  importJWK,
+  SignJWT,
 } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
@@ -202,6 +205,103 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     if (tamperedSdJwtCount === 0) {
       throw new Error(
         "Test setup failed: no SD-JWT entries were tampered (KB-JWT signature not found)",
+      );
+    }
+
+    const metadata = {
+      ...verifierMetadata,
+      authorization_encrypted_response_alg:
+        verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+      authorization_encrypted_response_enc:
+        verifierMetadata.authorization_encrypted_response_enc ||
+        "A128CBC-HS256",
+    };
+
+    const tamperedAuthorizationResponse = await createAuthorizationResponse({
+      authorization_encrypted_response_alg:
+        metadata.authorization_encrypted_response_alg,
+      authorization_encrypted_response_enc:
+        metadata.authorization_encrypted_response_enc,
+      callbacks: {
+        ...partialCallbacks,
+        encryptJwe: getEncryptJweCallback(),
+      },
+      config: ioWalletSdkConfig,
+      requestObject,
+      rpJwks: { jwks: metadata.jwks },
+      vp_token: tamperedVpToken,
+    } as CreateAuthorizationResponseVersionedOptions);
+
+    const formBody = new URLSearchParams({
+      response: tamperedAuthorizationResponse.jarm.responseJwe,
+    });
+    return postToResponseUri(responseUri, {
+      body: formBody.toString(),
+    });
+  }
+
+  async function postKbJwtSignedWithWrongKeyAuthorizationResponse(): Promise<Response> {
+    const authResult = await runAuthorizationStep(
+      testConfig.authorizeStepClass,
+    );
+    expect(authResult.success).toBe(true);
+    assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+    hasObjectProperties(authResult, ["response"]);
+    if (!authResult.response) {
+      throw new Error("auth request was not successful");
+    }
+
+    const { requestObject, responseUri } = authResult.response;
+    const rawVpToken = authResult.response.authorizationResponse
+      .authorizationResponsePayload.vp_token as Record<
+      string,
+      string | string[]
+    >;
+
+    const tamperedVpToken: Record<string, string | string[]> = {};
+    let tamperedSdJwtCount = 0;
+
+    const resignSdJwtWithWrongKey = async (sdJwt: string): Promise<string> => {
+      const parts = sdJwt.split("~");
+      if (parts.length < 2) {
+        return sdJwt;
+      }
+
+      const kbJwt = parts[parts.length - 1];
+      if (!kbJwt) {
+        return sdJwt;
+      }
+
+      const header = decodeProtectedHeader(kbJwt);
+      const payload = decodeJwt(kbJwt) as Record<string, unknown>;
+      const { privateKey } = await generateKeyPair("ES256", {
+        extractable: true,
+      });
+      const wrongPrivateJwk = await exportJWK(privateKey);
+      const wrongKey = await importJWK(wrongPrivateJwk, "ES256");
+
+      const resignedKbJwt = await new SignJWT(payload)
+        .setProtectedHeader({
+          alg: header.alg || "ES256",
+          ...(typeof header.kid === "string" ? { kid: header.kid } : {}),
+          typ: header.typ || "kb+jwt",
+        })
+        .sign(wrongKey);
+
+      parts[parts.length - 1] = resignedKbJwt;
+      tamperedSdJwtCount++;
+      return parts.join("~");
+    };
+
+    for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
+      tamperedVpToken[credId] = Array.isArray(sdJwtVp)
+        ? await Promise.all(sdJwtVp.map(resignSdJwtWithWrongKey))
+        : await resignSdJwtWithWrongKey(sdJwtVp);
+    }
+
+    if (tamperedSdJwtCount === 0) {
+      throw new Error(
+        "Test setup failed: no SD-JWT entries were re-signed with a wrong key",
       );
     }
 
@@ -663,25 +763,27 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
   // RPR-103 — KB-JWT signature validation using public key
   // -----------------------------------------------------------------------
 
-  test("RPR-103: KB-JWT signature validation using public key | RP rejects a response containing a tampered KB-JWT signature", async () => {
+  test("RPR-103: KB-JWT signature validation using public key | RP rejects a response whose KB-JWT is validly signed by the wrong key", async () => {
     const log = baseLog.withTag("RPR-103");
     const DESCRIPTION =
-      "RPR-103: RP validates the KB-JWT signature using the public key and rejects tampered signatures";
+      "RPR-103: RP validates the KB-JWT signature against the key bound in the SD-JWT cnf claim";
     log.start(
       "Conformance test: RPR-103 KB-JWT signature validation using public key",
     );
 
     let testSuccess = false;
     try {
-      log.info("→ Tampering KB-JWT signature inside the SD-JWT VP vp_token...");
       log.info(
-        "→ Re-building JARM with tampered vp_token and posting to response_uri...",
+        "→ Re-signing KB-JWT inside the SD-JWT VP vp_token with a fresh, unrelated key...",
       );
-      const response = await postTamperedKbJwtSignatureAuthorizationResponse();
+      log.info(
+        "→ Re-building JARM with the re-signed vp_token and posting to response_uri...",
+      );
+      const response = await postKbJwtSignedWithWrongKeyAuthorizationResponse();
 
       log.debug(`  Response status: ${response.status}`);
       log.info(
-        "→ Validating RP rejects the KB-JWT signature using the public key...",
+        "→ Validating RP rejects a KB-JWT that does not verify against the bound public key...",
       );
       expect(response.ok).toBe(false);
 
