@@ -101,6 +101,7 @@ export class NotificationRequestDefaultStep extends StepFlow {
         ...partialCallbacks,
         signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
+      jti: crypto.randomUUID(),
       signer: {
         alg: "ES256",
         method: "jwk",
