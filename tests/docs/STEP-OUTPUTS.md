@@ -524,7 +524,7 @@ and returns the authorization code.
 **Input** (`NotificationRequestStepOptions`):
 ```typescript
 {
-  accessToken: string;          // Bearer access token from TokenRequestStep
+  accessToken: string;          // DPoP-bound access token from TokenRequestStep (used as Authorization: DPoP <token>)
   dPoPKey: KeyPair;             // Same ephemeral key pair returned by TokenRequestStep.response.dPoPKey
   event: NotificationEvent;     // "credential_accepted" | "credential_deleted" | "credential_failure"
   notificationEndpoint: string; // URL from metadata.openid_credential_issuer.notification_endpoint
