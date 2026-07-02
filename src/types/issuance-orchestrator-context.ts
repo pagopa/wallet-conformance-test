@@ -1,6 +1,7 @@
 import {
   AuthorizeStepResponse,
   CredentialRequestResponse,
+  DeferredCredentialRequestResponse,
   FetchMetadataStepResponse,
   NonceRequestResponse,
   PushedAuthorizationRequestResponse,
@@ -9,6 +10,15 @@ import {
 
 import { AttestationResponse } from "./attestation-response";
 import { KeyPair } from "./key-pair";
+
+export interface DeferredIssuanceFlowResponse {
+  deferredCredentialResponse?: DeferredCredentialRequestResponse;
+  error?: Error;
+  fetchMetadataResponse?: FetchMetadataStepResponse;
+  success: boolean;
+  tokenResponse?: TokenRequestResponse;
+  walletAttestationResponse?: AttestationResponse;
+}
 
 export interface IssuanceFlowResponse {
   authorizeResponse?: AuthorizeStepResponse;
