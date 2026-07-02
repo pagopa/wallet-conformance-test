@@ -136,6 +136,20 @@ export class DeferredCredentialRequestDefaultStep extends StepFlow {
       ? zCredentialResponseV1_3
       : zCredentialResponseV1_0;
 
-    return schema.parse(body);
+    const parsedResponse = schema.parse(body);
+
+    // Spec: on 202 (still pending), response transaction_id MUST equal the sent one
+    if (httpResponse.status === 202 && "transaction_id" in parsedResponse) {
+      const pending = parsedResponse as { transaction_id: string };
+      if (pending.transaction_id !== options.transactionId) {
+        throw new Error(
+          `Deferred Credential Request: response transaction_id ` +
+            `("${pending.transaction_id}") does not match sent transaction_id ` +
+            `("${options.transactionId}") — spec violation`,
+        );
+      }
+    }
+
+    return parsedResponse;
   }
 }
