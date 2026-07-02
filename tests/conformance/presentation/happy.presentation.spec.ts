@@ -232,7 +232,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(parsedQrCode?.clientId).toBeDefined();
       if (!parsedQrCode?.clientId) {
         throw new Error(
-          "RPR-06 precondition failed: parsedQrCode.clientId is undefined. " +
+          "RPR-03 precondition failed: parsedQrCode.clientId is undefined. " +
             "The authorization request QR code did not contain a client_id.",
         );
       }
