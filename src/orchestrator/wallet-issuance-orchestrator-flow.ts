@@ -278,107 +278,21 @@ export class WalletIssuanceOrchestratorFlow {
       if (!accessToken)
         throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
 
-      const entityStatementClaims =
-        fetchMetadataResponse.response?.entityStatementClaims;
+      const { credentialResponse, nonceResponse } =
+        await this.requestCredentialWithToken({
+          accessToken,
+          credentialIssuer,
+          dPoPKey,
+          fetchMetadataResponse,
+          walletAttestationResponse,
+        });
 
-      const nonceResponse = await this.nonceRequestStep.run({
-        nonceEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.nonce_endpoint,
-      });
-      this._nonceResponse = nonceResponse;
-      this.log.flowStep(
-        5,
-        this.TOTAL_STEPS,
-        "Nonce Request",
-        nonceResponse.success,
-        nonceResponse.durationMs ?? 0,
-      );
-      assertStepSuccess(nonceResponse, "Nonce Request");
-
-      const nonce = nonceResponse.response?.nonce as
-        | undefined
-        | { c_nonce: string };
-      if (!nonce)
-        throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
-
-      const credentialResponse = await this.credentialRequestStep.run({
+      await this.sendCredentialDeletedNotificationIfNeeded({
         accessToken,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialIssuer: credentialIssuer,
-        credentialRequestEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.credential_endpoint,
+        credentialResponse,
         dPoPKey,
-        nonce: nonce.c_nonce,
-        walletAttestation: walletAttestationResponse,
+        fetchMetadataResponse,
       });
-      this._credentialResponse = credentialResponse;
-      this.log.flowStep(
-        6,
-        this.TOTAL_STEPS,
-        "Credential Request",
-        credentialResponse.success,
-        credentialResponse.durationMs ?? 0,
-      );
-      assertStepSuccess(credentialResponse, "Credential Request");
-
-      // Save credential to disk if configured
-      // Currently, only the first credential is saved because we support requesting one at a time
-      const firstCredential = credentialResponse.response?.credentials?.[0];
-      if (this.config.issuance.save_credential && firstCredential?.credential) {
-        const savedPath = saveCredentialToDisk(
-          this.config.wallet.credentials_storage_path,
-          this.issuanceConfig.credentialConfigurationId,
-          firstCredential.credential,
-          this.config.wallet.wallet_version,
-        );
-        if (savedPath) {
-          this.log.info(`Credential saved to disk: ${savedPath}`);
-        } else {
-          this.log.error("Failed to save credential to disk");
-        }
-      }
-
-      if (
-        !this.config.issuance.save_credential &&
-        credentialResponse.response?.notification_id
-      ) {
-        this.log.info(
-          "Credential Response contains 'notification_id' and 'save_credential' is false. Calling Notification Endpoint for credential_deleted event.",
-        );
-
-        const notificationId = credentialResponse.response?.notification_id;
-        const notificationEndpoint =
-          fetchMetadataResponse.response?.entityStatementClaims.metadata
-            ?.openid_credential_issuer?.notification_endpoint;
-        if (!notificationEndpoint) {
-          throw new IssuerMetadataError(
-            "notification_endpoint",
-            "openid_credential_issuer",
-            "Credential Deleted Notification",
-          );
-        }
-
-        const notificationRequestResponse =
-          await this.notificationRequestStep.run({
-            accessToken,
-            dPoPKey,
-            event: "credential_deleted",
-            notificationEndpoint,
-            notificationId,
-          });
-        this._notificationRequestResponse = notificationRequestResponse;
-        this.log.flowStep(
-          this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
-          this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
-          "Notification Request",
-          notificationRequestResponse.success,
-          notificationRequestResponse.durationMs ?? 0,
-        );
-        assertStepSuccess(notificationRequestResponse, "Notification Request");
-      }
 
       return {
         authorizeResponse,
@@ -742,6 +656,24 @@ export class WalletIssuanceOrchestratorFlow {
     return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
 
+  private getCredentialDeletedNotificationEndpoint(
+    fetchMetadataResponse: FetchMetadataStepResponse,
+  ): string {
+    const notificationEndpoint =
+      fetchMetadataResponse.response?.entityStatementClaims.metadata
+        ?.openid_credential_issuer?.notification_endpoint;
+
+    if (!notificationEndpoint) {
+      throw new IssuerMetadataError(
+        "notification_endpoint",
+        "openid_credential_issuer",
+        "Credential Deleted Notification",
+      );
+    }
+
+    return notificationEndpoint;
+  }
+
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
@@ -1056,5 +988,45 @@ export class WalletIssuanceOrchestratorFlow {
     } else {
       this.log.error("Failed to save deferred credential to disk");
     }
+  }
+
+  private async sendCredentialDeletedNotificationIfNeeded({
+    accessToken,
+    credentialResponse,
+    dPoPKey,
+    fetchMetadataResponse,
+  }: {
+    accessToken: string;
+    credentialResponse: CredentialRequestResponse;
+    dPoPKey: KeyPair;
+    fetchMetadataResponse: FetchMetadataStepResponse;
+  }): Promise<void> {
+    if (this.config.issuance.save_credential) return;
+
+    const notificationId = credentialResponse.response?.notification_id;
+    if (!notificationId) return;
+
+    this.log.info(
+      "Credential Response contains 'notification_id' and 'save_credential' is false. Calling Notification Endpoint for credential_deleted event.",
+    );
+
+    const notificationRequestResponse = await this.notificationRequestStep.run({
+      accessToken,
+      dPoPKey,
+      event: "credential_deleted",
+      notificationEndpoint: this.getCredentialDeletedNotificationEndpoint(
+        fetchMetadataResponse,
+      ),
+      notificationId,
+    });
+    this._notificationRequestResponse = notificationRequestResponse;
+    this.log.flowStep(
+      this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+      this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+      "Notification Request",
+      notificationRequestResponse.success,
+      notificationRequestResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(notificationRequestResponse, "Notification Request");
   }
 }
