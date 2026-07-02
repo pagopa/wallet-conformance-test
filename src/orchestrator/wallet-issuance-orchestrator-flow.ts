@@ -1010,13 +1010,20 @@ export class WalletIssuanceOrchestratorFlow {
       "Credential Response contains 'notification_id' and 'save_credential' is false. Calling Notification Endpoint for credential_deleted event.",
     );
 
+    const notificationEndpoint =
+      this.getCredentialDeletedNotificationEndpoint(fetchMetadataResponse);
+    if (!notificationEndpoint) {
+      this.log.info(
+        "Issuer metadata does not expose 'notification_endpoint'; skipping Notification Request step.",
+      );
+      return;
+    }
+
     const notificationRequestResponse = await this.notificationRequestStep.run({
       accessToken,
       dPoPKey,
       event: "credential_deleted",
-      notificationEndpoint: this.getCredentialDeletedNotificationEndpoint(
-        fetchMetadataResponse,
-      ),
+      notificationEndpoint,
       notificationId,
     });
     this._notificationRequestResponse = notificationRequestResponse;
