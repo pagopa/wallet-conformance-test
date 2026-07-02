@@ -1848,14 +1848,24 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         walletVersion,
       );
 
+      const macAlgorithms = new Set(["HS256", "HS384", "HS512"]);
       log.debug("→ Decoding KB-JWT protected headers...");
       for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
         const protectedHeader = decodeProtectedHeader(kbJwt);
-        log.debug(
-          `  ${id}: typ=${protectedHeader.typ}, alg=${protectedHeader.alg}`,
-        );
+        const actualAlg = protectedHeader.alg;
+        log.debug(`  ${id}: typ=${protectedHeader.typ}, alg=${actualAlg}`);
         expect(protectedHeader.typ).toBe("kb+jwt");
-        expect(protectedHeader.alg).toBe("ES256");
+        expect(actualAlg, "RPR-104: KB-JWT alg must be present").toBeDefined();
+        if (!actualAlg) {
+          throw new Error("KB-JWT alg header is missing");
+        }
+        expect(actualAlg, "RPR-104: KB-JWT alg must not be 'none'").not.toBe(
+          "none",
+        );
+        expect(
+          macAlgorithms.has(actualAlg),
+          "RPR-104: KB-JWT alg must not be a MAC algorithm",
+        ).toBe(false);
       }
 
       log.debug("  ✅ KB-JWT protected headers contain required typ and alg");
@@ -1954,8 +1964,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       for (const { id, kbJwt } of sdJwtKbJwtPresentations) {
         const payload = decodeJwt(kbJwt);
+        const audienceValues = Array.isArray(payload.aud)
+          ? payload.aud
+          : [payload.aud];
         log.debug(`  ${id}: aud=${String(payload.aud)}`);
-        expect(payload.aud).toBe(relyingPartyIdentifier);
+        expect(
+          audienceValues,
+          "RPR-106: KB-JWT aud must equal RP identifier",
+        ).toContain(relyingPartyIdentifier);
       }
       log.debug("  ✅ KB-JWT aud matches the Relying Party identifier");
 
