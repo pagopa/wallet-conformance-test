@@ -16,6 +16,12 @@ const zBooleanFromString = z.union([z.boolean(), z.stringbool()]);
  */
 export const configSchema = z.object({
   issuance: z.object({
+    /**
+     * Port on which the local OAuth2 callback server listens.
+     * The `redirect_uri` used in PAR and token requests is
+     * `http://localhost:{callback_port}/cb`.
+     */
+    callback_port: z.coerce.number().default(4000),
     certificate_subject: z.string().optional(),
     credential_offer_uri: z
       .string()
@@ -26,8 +32,10 @@ export const configSchema = z.object({
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
     refresh_token: z.string().optional(),
+    refresh_token_deferred: z.string().optional(),
     save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
+    transaction_id_deferred: z.string().optional(),
     url: z.string().url(),
   }),
   issuer: z.object({

@@ -486,7 +486,9 @@ describe("Load Mocked Credentials", async () => {
 
       // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
       const date = new Date(2015, 1, 1);
-      const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2);
+      // Advance by 2 years + 60 s to clear the 30-second clock-skew tolerance
+      // used in the credential expiry check (exp < Date.now() - 30 s).
+      const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2 + 60);
 
       try {
         vi.useFakeTimers();

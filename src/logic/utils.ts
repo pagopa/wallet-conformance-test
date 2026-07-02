@@ -25,7 +25,7 @@ import {
 import { resolvePackageAssetPath } from "./runtime-paths";
 
 export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
-export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
+export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365 * 2; // 2 years
 
 // Re-export config loading functions
 export {
