@@ -23,6 +23,18 @@ export const assertPidJwtPayloadClaims = (
     "status must be a non-null object in the JWT payload",
   ).toBe(true);
 
+  expect(
+    typeof payload["issuing_authority"] === "string" &&
+      (payload["issuing_authority"] as string).length > 0,
+    "issuing_authority must be a non-empty string in the JWT payload",
+  ).toBe(true);
+
+  expect(
+    typeof payload["issuing_country"] === "string" &&
+      (payload["issuing_country"] as string).length === 2,
+    "issuing_country must be a 2-character ISO 3166-1 Alpha-2 code in the JWT payload",
+  ).toBe(true);
+
   if (!isV1_0) {
     expect(
       typeof payload["verification"] === "object" &&
