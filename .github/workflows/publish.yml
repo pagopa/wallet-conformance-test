@@ -15,6 +15,7 @@ jobs:
   publish:
     name: Publish npm package
     runs-on: ubuntu-latest
+    environment: prod
     env:
       HUSKY: "0"
 
