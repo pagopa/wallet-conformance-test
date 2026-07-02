@@ -38,7 +38,7 @@ import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
 
-describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
+describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
   const orchestrator: WalletPresentationOrchestratorFlow =
     new WalletPresentationOrchestratorFlow(testConfig);
 
@@ -48,6 +48,19 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   let authorizationRequestResult: AuthorizationRequestStepResponse;
   let fetchMetadataResult: FetchMetadataVpStepResponse;
   let redirectUriResult: RedirectUriStepResponse;
+
+  function readQrCodePayload(): string {
+    const qrCodePayload =
+      authorizationRequestResult.response?.authorizeRequestUrl;
+    expect(qrCodePayload).toBeTruthy();
+    if (!qrCodePayload) {
+      throw new Error(
+        "QR-Code payload is unavailable from the authorization request step",
+      );
+    }
+
+    return qrCodePayload;
+  }
 
   beforeAll(async () => {
     try {
@@ -148,9 +161,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
+      const qrCodePayload = readQrCodePayload();
 
-      const qrCodePayload =
-        orchestrator.getConfig().presentation.authorize_request_url;
       log.debug(`  QR-Code payload: ${qrCodePayload}`);
       expect(qrCodePayload).toBeTruthy();
 
@@ -271,9 +283,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response?.parsedQrCode).toBeDefined();
+      const qrCodePayload = readQrCodePayload();
 
-      const qrCodePayload =
-        orchestrator.getConfig().presentation.authorize_request_url;
       expect(qrCodePayload).toBeTruthy();
 
       const payloadBytes = new TextEncoder().encode(qrCodePayload).length;
@@ -318,9 +329,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response?.parsedQrCode).toBeDefined();
+      const qrCodePayload = readQrCodePayload();
 
-      const qrCodePayload =
-        orchestrator.getConfig().presentation.authorize_request_url;
       expect(qrCodePayload).toBeTruthy();
 
       const payloadBytes = new TextEncoder().encode(qrCodePayload).length;
@@ -658,7 +668,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       let testSuccess = false;
       try {
         const config = orchestrator.getConfig();
-        const baseUrl = orchestrator.prepareBaseUrl();
+        const baseUrl = await orchestrator.prepareBaseUrl();
         if (!baseUrl) {
           log.warn(
             `  Skipping verifier metadata fetch: unsupported client_id format`,
@@ -1498,10 +1508,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     try {
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
+      const qrCodePayload = readQrCodePayload();
 
       log.debug("→ Validating Cross Device Flow QR-Code entry point...");
-      const qrCodePayload =
-        orchestrator.getConfig().presentation.authorize_request_url;
       expect(qrCodePayload).toBeTruthy();
       const authorizationRequestUrl = new URL(qrCodePayload);
       expect(["haip:", "openid4vp:", "https:"]).toContain(

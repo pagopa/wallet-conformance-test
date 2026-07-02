@@ -4,6 +4,7 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import {
   FetchMetadataVpDefaultStep,
   FetchMetadataVpStepResponse,
@@ -75,12 +76,12 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  prepareBaseUrl(): string | undefined {
+  async prepareBaseUrl(): Promise<string | undefined> {
     if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
+      const authorizeUrl = await getAuthorizeRequestUrl(
+        this.config.presentation,
       );
-      const clientId = authorizeUrl.searchParams.get("client_id");
+      const clientId = new URL(authorizeUrl).searchParams.get("client_id");
 
       if (!clientId) {
         throw new Error(
@@ -147,7 +148,7 @@ export class WalletPresentationOrchestratorFlow {
   async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
     this.printTestSuiteOnce();
 
-    const baseUrl = this.prepareBaseUrl();
+    const baseUrl = await this.prepareBaseUrl();
 
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;

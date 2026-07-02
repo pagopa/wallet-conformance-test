@@ -15,6 +15,7 @@ import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
 import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
@@ -23,6 +24,7 @@ import { StepFlow, type StepResponse } from "@/step/step-flow";
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateAuthorizationResponseResult;
+  authorizeRequestUrl: string;
   parsedQrCode: ParsedQrCode;
   requestObject: ParsedAuthorizeRequestResult["payload"];
   requestObjectFetch?: RequestObjectFetchDetails;
@@ -78,8 +80,10 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
-      const authorizeRequestUrl =
-        this.config.presentation.authorize_request_url;
+      const authorizeRequestUrl = await getAuthorizeRequestUrl(
+        this.config.presentation,
+      );
+
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
 
       const walletNonce = crypto.randomUUID();
@@ -169,6 +173,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       return {
         authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
+        authorizeRequestUrl,
         parsedQrCode,
         requestObject,
         requestObjectFetch,
