@@ -18,6 +18,7 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
+import { randomUUID } from "node:crypto";
 
 import {
   buildJwksPath,
@@ -49,11 +50,6 @@ export interface CredentialRequestStepOptions {
   accessToken: string;
 
   /**
-   * Credential Issuer Base URL
-   */
-  baseUrl: string;
-
-  /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
@@ -72,6 +68,11 @@ export interface CredentialRequestStepOptions {
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
    */
   credentialIdentifier: string;
+
+  /**
+   * Credential Issuer Base URL
+   */
+  credentialIssuer: string;
 
   /**
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
@@ -101,6 +102,13 @@ export interface CredentialRequestStepOptions {
    */
   walletAttestation: Omit<AttestationResponse, "created">;
 }
+/**
+ * The parameter type of `WalletProvider.createItKeyAttestationJwt`, derived
+ * directly from the SDK so it never drifts from the installed version.
+ */
+export type KeyAttestationOptions = Parameters<
+  WalletProvider["createItKeyAttestationJwt"]
+>[0];
 
 /**
  * Flow step to request a credential from the issuer's credential endpoint.
@@ -108,6 +116,19 @@ export interface CredentialRequestStepOptions {
  */
 export class CredentialRequestDefaultStep extends StepFlow {
   static readonly tag = "CREDENTIAL_REQUEST";
+
+  /**
+   * Optional overrides merged into the key attestation options before signing.
+   * Intended for conformance tests that need to submit non-standard security
+   * claim values (e.g. unsupported keyStorage / userAuthentication levels) to
+   * verify that the Credential Issuer enforces its security requirements.
+   *
+   * When set, fields in this object replace the corresponding defaults computed
+   * inside `createKeyAttestation`. The SDK does not perform runtime Zod
+   * validation on these fields, so intentionally non-compliant string values
+   * will reach the issuer inside the signed JWT.
+   */
+  protected keyAttestationOverrides?: Partial<KeyAttestationOptions>;
 
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
@@ -123,13 +144,13 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     const provider = new WalletProvider(this.ioWalletSdkConfig);
 
-    return provider.createItKeyAttestationJwt({
+    const defaults: KeyAttestationOptions = {
       attestedKeys: [credentialKeyPair.publicKey],
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
       issuer: getLocalWpBaseUrl(this.config.wallet.port),
-      keyStorage: ["iso_18045_basic"],
+      keyStorage: ["iso_18045_moderate"],
       signer: {
         alg: "ES256",
         kid: providerKey.publicKey.kid,
@@ -138,12 +159,17 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       status: {
         status_list: {
-          idx: 0,
-          uri: `${getLocalWpBaseUrl(this.config.wallet.port)}/status-list`,
+          idx: 4373,
+          uri: `https://iwuitncdnst01.blob.core.windows.net/status-lists/ae783554-e4cd-4646-a73e-337a0062c60d`,
         },
       },
-      userAuthentication: ["iso_18045_basic"],
-    });
+      userAuthentication: ["iso_18045_moderate"],
+    };
+
+    return provider.createItKeyAttestationJwt({
+      ...defaults,
+      ...this.keyAttestationOverrides,
+    } as KeyAttestationOptions);
   }
 
   async run(
@@ -214,7 +240,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       clientId: options.clientId,
       credential_identifier: options.credentialIdentifier,
-      issuerIdentifier: options.baseUrl,
+      issuerIdentifier: options.credentialIssuer,
       nonce: options.nonce,
     };
 
@@ -276,6 +302,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         ...partialCallbacks,
         signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
+      jti: randomUUID(),
       signer: {
         alg: "ES256",
         method: "jwk",

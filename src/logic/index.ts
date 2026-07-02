@@ -1,3 +1,4 @@
+export * from "./callback-server";
 export * from "./config-loader";
 export * from "./entrypoint";
 export * from "./federation-metadata";

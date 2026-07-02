@@ -15,9 +15,10 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import {
   CredentialConfigurationError,
+  DeferredIssuancePreconditionError,
   IssuerMetadataError,
   OrchestratorError,
   ReissuancePreconditionError,
@@ -28,6 +29,8 @@ import {
   AuthorizeStepResponse,
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
+  DeferredCredentialRequestDefaultStep,
+  DeferredCredentialRequestResponse,
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
   NonceRequestDefaultStep,
@@ -41,6 +44,7 @@ import { assertStepSuccess } from "@/step/step-flow";
 import {
   AttestationResponse,
   Config,
+  DeferredIssuanceFlowResponse,
   IssuanceFlowResponse,
   KeyPair,
   ReissuanceFlowResponse,
@@ -53,6 +57,7 @@ import {
 export class WalletIssuanceOrchestratorFlow {
   private _authorizeResponse?: AuthorizeStepResponse;
   private _credentialResponse?: CredentialRequestResponse;
+  private _deferredCredentialResponse?: DeferredCredentialRequestResponse;
   private _fetchMetadataResponse?: FetchMetadataStepResponse;
   private _nonceResponse?: NonceRequestResponse;
   private _pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
@@ -64,6 +69,7 @@ export class WalletIssuanceOrchestratorFlow {
   private authorizeStep: AuthorizeDefaultStep;
   private config: Config;
   private credentialRequestStep: CredentialRequestDefaultStep;
+  private deferredCredentialRequestStep: DeferredCredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
@@ -119,6 +125,72 @@ export class WalletIssuanceOrchestratorFlow {
       this.config,
       this.log,
     );
+
+    this.deferredCredentialRequestStep =
+      new DeferredCredentialRequestDefaultStep(this.config, this.log);
+  }
+
+  /**
+   * Executes the Deferred Issuance Flow.
+   *
+   * Requires both `refresh_token_deferred` and `transaction_id` to be set in
+   * the issuance configuration (or passed via CLI / env). Fails fast without
+   * contacting any remote endpoint when either prerequisite is missing.
+   *
+   * The flow:
+   *   1. Fetch issuer metadata.
+   *   2. Load wallet attestation.
+   *   3. Request a new access token using the deferred refresh token.
+   *   4. POST to `deferred_credential_endpoint` with the `transaction_id`.
+   */
+  async deferred(): Promise<DeferredIssuanceFlowResponse> {
+    this.resetResponses();
+
+    try {
+      const refreshTokenDeferred = this.config.issuance.refresh_token_deferred;
+      const transactionId = this.config.issuance.transaction_id_deferred;
+
+      if (!refreshTokenDeferred || !transactionId) {
+        throw new DeferredIssuancePreconditionError();
+      }
+
+      const {
+        dPoPKey,
+        fetchMetadataResponse,
+        tokenResponse,
+        walletAttestationResponse,
+      } = await this.runThroughRefreshToken(refreshTokenDeferred);
+
+      const accessToken = tokenResponse.response?.access_token;
+      if (!accessToken)
+        throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
+
+      const deferredCredentialResponse =
+        await this.requestDeferredCredentialWithToken({
+          accessToken,
+          dPoPKey,
+          fetchMetadataResponse,
+          transactionId,
+        });
+
+      return {
+        deferredCredentialResponse,
+        fetchMetadataResponse,
+        success: true,
+        tokenResponse,
+        walletAttestationResponse,
+      };
+    } catch (e) {
+      this.log.error("Error in Deferred Issuance Flow!", e);
+      return {
+        deferredCredentialResponse: this._deferredCredentialResponse,
+        error: e instanceof Error ? e : new Error(String(e)),
+        fetchMetadataResponse: this._fetchMetadataResponse,
+        success: false,
+        tokenResponse: this._tokenResponse,
+        walletAttestationResponse: this._walletAttestationResponse,
+      };
+    }
   }
 
   async findCredentialConfig(): Promise<{
@@ -199,14 +271,68 @@ export class WalletIssuanceOrchestratorFlow {
       if (!accessToken)
         throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
 
-      const { credentialResponse, nonceResponse } =
-        await this.requestCredentialWithToken({
-          accessToken,
-          credentialIssuer,
-          dPoPKey,
-          fetchMetadataResponse,
-          walletAttestationResponse,
-        });
+      const entityStatementClaims =
+        fetchMetadataResponse.response?.entityStatementClaims;
+
+      const nonceResponse = await this.nonceRequestStep.run({
+        nonceEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.nonce_endpoint,
+      });
+      this._nonceResponse = nonceResponse;
+      this.log.flowStep(
+        5,
+        this.TOTAL_STEPS,
+        "Nonce Request",
+        nonceResponse.success,
+        nonceResponse.durationMs ?? 0,
+      );
+      assertStepSuccess(nonceResponse, "Nonce Request");
+
+      const nonce = nonceResponse.response?.nonce as
+        | undefined
+        | { c_nonce: string };
+      if (!nonce)
+        throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
+
+      const credentialResponse = await this.credentialRequestStep.run({
+        accessToken,
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+        credentialIssuer: credentialIssuer,
+        credentialRequestEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.credential_endpoint,
+        dPoPKey,
+        nonce: nonce.c_nonce,
+        walletAttestation: walletAttestationResponse,
+      });
+      this._credentialResponse = credentialResponse;
+      this.log.flowStep(
+        6,
+        this.TOTAL_STEPS,
+        "Credential Request",
+        credentialResponse.success,
+        credentialResponse.durationMs ?? 0,
+      );
+      assertStepSuccess(credentialResponse, "Credential Request");
+
+      // Save credential to disk if configured
+      // Currently, only the first credential is saved because we support requesting one at a time
+      const firstCredential = credentialResponse.response?.credentials?.[0];
+      if (this.config.issuance.save_credential && firstCredential?.credential) {
+        const savedPath = saveCredentialToDisk(
+          this.config.wallet.credentials_storage_path,
+          this.issuanceConfig.credentialConfigurationId,
+          firstCredential.credential,
+          this.config.wallet.wallet_version,
+        );
+        if (savedPath) {
+          this.log.info(`Credential saved to disk: ${savedPath}`);
+        } else {
+          this.log.error("Failed to save credential to disk");
+        }
+      }
 
       return {
         authorizeResponse,
@@ -331,6 +457,7 @@ export class WalletIssuanceOrchestratorFlow {
           ?.authorization_endpoint,
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
+      credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
       credentials,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
@@ -528,10 +655,6 @@ export class WalletIssuanceOrchestratorFlow {
     const code = authorizeResponse.response.authorizeResponse?.code;
     if (!code) throw new StepOutputError("AUTHORIZE", "code");
 
-    const { requestObject } = authorizeResponse.response;
-    if (!requestObject)
-      throw new StepOutputError("AUTHORIZE", "request_object");
-
     const code_verifier =
       pushedAuthorizationRequestResponse.response?.codeVerifier;
     if (!code_verifier)
@@ -544,7 +667,7 @@ export class WalletIssuanceOrchestratorFlow {
       code: authorizeResponse.response.authorizeResponse.code,
       code_verifier,
       grant_type: "authorization_code",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getCallbackRedirectUri(this.config.issuance.callback_port),
     };
 
     const tokenResponse = await this.tokenRequestStep.run({
@@ -644,9 +767,9 @@ export class WalletIssuanceOrchestratorFlow {
 
     const credentialResponse = await this.credentialRequestStep.run({
       accessToken,
-      baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+      credentialIssuer: credentialIssuer,
       credentialRequestEndpoint:
         entityStatementClaims.metadata?.openid_credential_issuer
           ?.credential_endpoint,
@@ -684,9 +807,64 @@ export class WalletIssuanceOrchestratorFlow {
     return { credentialResponse, nonceResponse };
   }
 
+  /**
+   * Sends a Deferred Credential Request to the deferred_credential_endpoint using
+   * the access token and transaction_id. Saves the credential to disk if configured.
+   */
+  private async requestDeferredCredentialWithToken({
+    accessToken,
+    dPoPKey,
+    fetchMetadataResponse,
+    transactionId,
+  }: {
+    accessToken: string;
+    dPoPKey: KeyPair;
+    fetchMetadataResponse: FetchMetadataStepResponse;
+    transactionId: string;
+  }): Promise<DeferredCredentialRequestResponse> {
+    const entityStatementClaims =
+      fetchMetadataResponse.response?.entityStatementClaims;
+
+    const deferredCredentialEndpoint =
+      entityStatementClaims?.metadata?.openid_credential_issuer
+        ?.deferred_credential_endpoint;
+    if (!deferredCredentialEndpoint) {
+      throw new IssuerMetadataError(
+        "deferred_credential_endpoint",
+        "openid_credential_issuer",
+        "Deferred Credential Request",
+      );
+    }
+
+    const deferredCredentialResponse =
+      await this.deferredCredentialRequestStep.run({
+        accessToken,
+        deferredCredentialEndpoint,
+        dPoPKey,
+        transactionId,
+      });
+    this._deferredCredentialResponse = deferredCredentialResponse;
+    this.log.flowStep(
+      5,
+      this.TOTAL_STEPS,
+      "Deferred Credential Request",
+      deferredCredentialResponse.success,
+      deferredCredentialResponse.durationMs ?? 0,
+    );
+    assertStepSuccess(
+      deferredCredentialResponse,
+      "Deferred Credential Request",
+    );
+
+    this.saveFirstCredentialIfConfigured(deferredCredentialResponse);
+
+    return deferredCredentialResponse;
+  }
+
   private resetResponses(): void {
     this._authorizeResponse = undefined;
     this._credentialResponse = undefined;
+    this._deferredCredentialResponse = undefined;
     this._fetchMetadataResponse = undefined;
     this._nonceResponse = undefined;
     this._pushedAuthorizationRequestResponse = undefined;
@@ -799,5 +977,35 @@ export class WalletIssuanceOrchestratorFlow {
       tokenResponse,
       walletAttestationResponse,
     };
+  }
+
+  private saveFirstCredentialIfConfigured(
+    deferredCredentialResponse: DeferredCredentialRequestResponse,
+  ): void {
+    if (!this.config.issuance.save_credential) return;
+
+    const firstCredential =
+      deferredCredentialResponse.response &&
+      "credentials" in deferredCredentialResponse.response
+        ? (
+            deferredCredentialResponse.response as {
+              credentials: { credential?: string }[];
+            }
+          ).credentials?.[0]
+        : undefined;
+
+    if (!firstCredential?.credential) return;
+
+    const savedPath = saveCredentialToDisk(
+      this.config.wallet.credentials_storage_path,
+      this.issuanceConfig.credentialConfigurationId,
+      firstCredential.credential,
+      this.config.wallet.wallet_version,
+    );
+    if (savedPath) {
+      this.log.info(`Deferred credential saved to disk: ${savedPath}`);
+    } else {
+      this.log.error("Failed to save deferred credential to disk");
+    }
   }
 }
