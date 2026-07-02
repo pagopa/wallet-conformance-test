@@ -656,24 +656,6 @@ export class WalletIssuanceOrchestratorFlow {
     return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
 
-  private getCredentialDeletedNotificationEndpoint(
-    fetchMetadataResponse: FetchMetadataStepResponse,
-  ): string {
-    const notificationEndpoint =
-      fetchMetadataResponse.response?.entityStatementClaims.metadata
-        ?.openid_credential_issuer?.notification_endpoint;
-
-    if (!notificationEndpoint) {
-      throw new IssuerMetadataError(
-        "notification_endpoint",
-        "openid_credential_issuer",
-        "Credential Deleted Notification",
-      );
-    }
-
-    return notificationEndpoint;
-  }
-
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
@@ -1011,7 +993,8 @@ export class WalletIssuanceOrchestratorFlow {
     );
 
     const notificationEndpoint =
-      this.getCredentialDeletedNotificationEndpoint(fetchMetadataResponse);
+      fetchMetadataResponse.response?.entityStatementClaims.metadata
+        ?.openid_credential_issuer?.notification_endpoint;
     if (!notificationEndpoint) {
       this.log.info(
         "Issuer metadata does not expose 'notification_endpoint'; skipping Notification Request step.",
