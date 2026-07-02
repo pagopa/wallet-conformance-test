@@ -1,7 +1,7 @@
 import {
   Jwk,
   type JwtSigner,
-  VerifyJwtCallback,
+  type VerifyJwtCallback,
 } from "@pagopa/io-wallet-oauth2";
 import {
   fetchAndValidateTrustChain,
