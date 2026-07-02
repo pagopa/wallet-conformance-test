@@ -169,6 +169,7 @@ testConfigs.forEach((testConfig) => {
           testSuccess = true;
         } catch (e) {
           log.error("Error fetching metadata:", e);
+          throw e;
         } finally {
           log.testCompleted(DESCRIPTION, testSuccess);
         }
