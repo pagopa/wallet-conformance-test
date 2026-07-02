@@ -22,6 +22,7 @@ const testConfig = await definePresentationTest("RedirectUriValidation");
 describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () => {
   const orchestrator = new WalletPresentationOrchestratorFlow(testConfig);
   const baseLog = orchestrator.getLog();
+  const config = loadConfigWithHierarchy();
 
   let validResponseUri: string;
   let validAuthResponse: CreateAuthorizationResponseResult;
@@ -53,12 +54,15 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     authorizationResponse: CreateAuthorizationResponseResult,
     responseUri: string,
   ): Promise<RedirectUriStepResponse> {
-    const config = loadConfigWithHierarchy();
     const step = new RedirectUriDefaultStep(config, createQuietLogger());
     return step.run({
       authorizationResponse,
       responseUri,
     });
+  }
+
+  async function fetchUrl(url: string | URL): Promise<Response> {
+    return fetchWithConfig(config.network)(url, { method: "GET" });
   }
 
   async function fetchRedirectUrl(): Promise<URL> {
@@ -244,11 +248,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
       log.debug(`→ Using redirect_uri: ${redirectUrl.href}`);
       log.info("→ Replaying redirect_uri with an invalid response_code...");
 
-      const config = loadConfigWithHierarchy();
-      const replayResponse = await fetchWithConfig(config.network)(
-        redirectUrl.href,
-        { method: "GET" },
-      );
+      const replayResponse = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Replay response status: ${replayResponse.status}`);
       log.info("→ Validating RP rejected the invalid response_code...");
@@ -289,11 +289,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing status endpoint without response_code: ${unauthorizedStatusUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const unauthorizedResponse = await fetchWithConfig(config.network)(
-        unauthorizedStatusUrl.href,
-        { method: "GET" },
-      );
+      const unauthorizedResponse = await fetchUrl(unauthorizedStatusUrl.href);
 
       log.debug(
         `  Unauthorized response status: ${unauthorizedResponse.status}`,
@@ -332,11 +328,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing status endpoint with invalid session ID: ${invalidSessionUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(
-        invalidSessionUrl.href,
-        { method: "GET" },
-      );
+      const response = await fetchUrl(invalidSessionUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -362,20 +354,13 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Running redirect step to get a valid redirect_uri...");
       const redirectUrl = await fetchRedirectUrl();
-      const config = loadConfigWithHierarchy();
 
       log.info("→ Following redirect_uri once to consume the session...");
-      const firstResponse = await fetchWithConfig(config.network)(
-        redirectUrl.href,
-        { method: "GET" },
-      );
+      const firstResponse = await fetchUrl(redirectUrl.href);
       log.debug(`  First response status: ${firstResponse.status}`);
 
       log.info("→ Replaying redirect_uri after session consumption...");
-      const replayResponse = await fetchWithConfig(config.network)(
-        redirectUrl.href,
-        { method: "GET" },
-      );
+      const replayResponse = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Replay response status: ${replayResponse.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -411,11 +396,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with server_error: ${serverErrorUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(
-        serverErrorUrl.href,
-        { method: "GET" },
-      );
+      const response = await fetchUrl(serverErrorUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -441,11 +422,8 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Measuring redirect_uri HTTP response time...");
       const redirectUrl = await fetchRedirectUrl();
-      const config = loadConfigWithHierarchy();
       const startedAt = performance.now();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
       const durationMs = performance.now() - startedAt;
 
       log.debug(`  Response status: ${response.status}`);
@@ -505,20 +483,13 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Running redirect step to get a valid status endpoint URL...");
       const statusUrl = await fetchRedirectUrl();
-      const config = loadConfigWithHierarchy();
 
       log.info("→ Accessing status endpoint once to complete the session...");
-      const firstResponse = await fetchWithConfig(config.network)(
-        statusUrl.href,
-        { method: "GET" },
-      );
+      const firstResponse = await fetchUrl(statusUrl.href);
       log.debug(`  First response status: ${firstResponse.status}`);
 
       log.info("→ Replaying status endpoint URL after session completion...");
-      const replayResponse = await fetchWithConfig(config.network)(
-        statusUrl.href,
-        { method: "GET" },
-      );
+      const replayResponse = await fetchUrl(statusUrl.href);
 
       log.debug(`  Replay response status: ${replayResponse.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -549,10 +520,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing status endpoint with invalid code: ${statusUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(statusUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(statusUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -586,11 +554,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with invalid user session: ${invalidSessionUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(
-        invalidSessionUrl.href,
-        { method: "GET" },
-      );
+      const response = await fetchUrl(invalidSessionUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -625,10 +589,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with unavailable service signal: ${redirectUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -670,11 +631,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing protected resource with unauthorized session: ${unauthorizedUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(
-        unauthorizedUrl.href,
-        { method: "GET" },
-      );
+      const response = await fetchUrl(unauthorizedUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP denied unauthorized access...");
@@ -710,10 +667,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with invalid parameters: ${redirectUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -752,10 +706,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with redirect failure signal: ${redirectUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned an error response...");
@@ -881,20 +832,13 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
     try {
       log.info("→ Running redirect step to get a valid status endpoint URL...");
       const statusUrl = await fetchRedirectUrl();
-      const config = loadConfigWithHierarchy();
 
       log.info("→ Accessing status endpoint once to consume the session...");
-      const firstResponse = await fetchWithConfig(config.network)(
-        statusUrl.href,
-        { method: "GET" },
-      );
+      const firstResponse = await fetchUrl(statusUrl.href);
       log.debug(`  First response status: ${firstResponse.status}`);
 
       log.info("→ Replaying status endpoint URL after session expiration...");
-      const expiredResponse = await fetchWithConfig(config.network)(
-        statusUrl.href,
-        { method: "GET" },
-      );
+      const expiredResponse = await fetchUrl(statusUrl.href);
 
       log.debug(`  Expired-session response status: ${expiredResponse.status}`);
       log.info("→ Validating RP returned a controlled error response...");
@@ -933,10 +877,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing status endpoint with invalid renewal parameters: ${renewalUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(renewalUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(renewalUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned a controlled error response...");
@@ -975,10 +916,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with loop-inducing parameters: ${redirectUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned a controlled error response...");
@@ -1017,10 +955,7 @@ describe(`[${testConfig.name}] Presentation Redirect URI Validation Tests`, () =
         `→ Accessing redirect_uri with unsafe redirect target: ${redirectUrl.href}`,
       );
 
-      const config = loadConfigWithHierarchy();
-      const response = await fetchWithConfig(config.network)(redirectUrl.href, {
-        method: "GET",
-      });
+      const response = await fetchUrl(redirectUrl.href);
 
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP returned a controlled error response...");
