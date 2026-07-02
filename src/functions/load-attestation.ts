@@ -101,6 +101,7 @@ const buildAttestationOptions = async (
   const commonOptions = {
     callbacks,
     dpopJwkPublic: unitPublicKey,
+    expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
     issuer: wpBaseUrl,
     walletLink: `${wpBaseUrl}/wallet`,
     walletName: wallet.wallet_name,
@@ -127,7 +128,7 @@ const buildAttestationOptions = async (
       );
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
-        signer: { ...signerBase, method: "x5c", trustChain, x5c },
+        signer: { ...signerBase, method: "x5c", x5c },
       };
       return attestationOptions;
     }

@@ -455,10 +455,10 @@ testConfigs.forEach((testConfig) => {
             );
             return step.run({
               accessToken,
-              baseUrl: tokenCtx.credentialIssuer,
               clientId:
                 tokenCtx.walletAttestationResponse.unitKey.publicKey.kid,
               credentialIdentifier: testConfig.credentialConfigurationId,
+              credentialIssuer: tokenCtx.credentialIssuer,
               credentialRequestEndpoint: credentialEndpoint,
               dPoPKey: tokenCtx.dPoPKey,
               nonce,

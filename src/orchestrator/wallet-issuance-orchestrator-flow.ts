@@ -15,7 +15,7 @@ import {
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import {
   CredentialConfigurationError,
   DeferredIssuancePreconditionError,
@@ -271,14 +271,68 @@ export class WalletIssuanceOrchestratorFlow {
       if (!accessToken)
         throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
 
-      const { credentialResponse, nonceResponse } =
-        await this.requestCredentialWithToken({
-          accessToken,
-          credentialIssuer,
-          dPoPKey,
-          fetchMetadataResponse,
-          walletAttestationResponse,
-        });
+      const entityStatementClaims =
+        fetchMetadataResponse.response?.entityStatementClaims;
+
+      const nonceResponse = await this.nonceRequestStep.run({
+        nonceEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.nonce_endpoint,
+      });
+      this._nonceResponse = nonceResponse;
+      this.log.flowStep(
+        5,
+        this.TOTAL_STEPS,
+        "Nonce Request",
+        nonceResponse.success,
+        nonceResponse.durationMs ?? 0,
+      );
+      assertStepSuccess(nonceResponse, "Nonce Request");
+
+      const nonce = nonceResponse.response?.nonce as
+        | undefined
+        | { c_nonce: string };
+      if (!nonce)
+        throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
+
+      const credentialResponse = await this.credentialRequestStep.run({
+        accessToken,
+        clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+        credentialIssuer: credentialIssuer,
+        credentialRequestEndpoint:
+          entityStatementClaims.metadata?.openid_credential_issuer
+            ?.credential_endpoint,
+        dPoPKey,
+        nonce: nonce.c_nonce,
+        walletAttestation: walletAttestationResponse,
+      });
+      this._credentialResponse = credentialResponse;
+      this.log.flowStep(
+        6,
+        this.TOTAL_STEPS,
+        "Credential Request",
+        credentialResponse.success,
+        credentialResponse.durationMs ?? 0,
+      );
+      assertStepSuccess(credentialResponse, "Credential Request");
+
+      // Save credential to disk if configured
+      // Currently, only the first credential is saved because we support requesting one at a time
+      const firstCredential = credentialResponse.response?.credentials?.[0];
+      if (this.config.issuance.save_credential && firstCredential?.credential) {
+        const savedPath = saveCredentialToDisk(
+          this.config.wallet.credentials_storage_path,
+          this.issuanceConfig.credentialConfigurationId,
+          firstCredential.credential,
+          this.config.wallet.wallet_version,
+        );
+        if (savedPath) {
+          this.log.info(`Credential saved to disk: ${savedPath}`);
+        } else {
+          this.log.error("Failed to save credential to disk");
+        }
+      }
 
       return {
         authorizeResponse,
@@ -403,6 +457,7 @@ export class WalletIssuanceOrchestratorFlow {
           ?.authorization_endpoint,
       baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
+      credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
       credentials,
       requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
@@ -600,10 +655,6 @@ export class WalletIssuanceOrchestratorFlow {
     const code = authorizeResponse.response.authorizeResponse?.code;
     if (!code) throw new StepOutputError("AUTHORIZE", "code");
 
-    const { requestObject } = authorizeResponse.response;
-    if (!requestObject)
-      throw new StepOutputError("AUTHORIZE", "request_object");
-
     const code_verifier =
       pushedAuthorizationRequestResponse.response?.codeVerifier;
     if (!code_verifier)
@@ -616,7 +667,7 @@ export class WalletIssuanceOrchestratorFlow {
       code: authorizeResponse.response.authorizeResponse.code,
       code_verifier,
       grant_type: "authorization_code",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getCallbackRedirectUri(this.config.issuance.callback_port),
     };
 
     const tokenResponse = await this.tokenRequestStep.run({
@@ -716,9 +767,9 @@ export class WalletIssuanceOrchestratorFlow {
 
     const credentialResponse = await this.credentialRequestStep.run({
       accessToken,
-      baseUrl: credentialIssuer,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+      credentialIssuer: credentialIssuer,
       credentialRequestEndpoint:
         entityStatementClaims.metadata?.openid_credential_issuer
           ?.credential_endpoint,

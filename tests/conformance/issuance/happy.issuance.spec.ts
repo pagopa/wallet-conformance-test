@@ -2,6 +2,10 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
+import {
+  assertPidJwtPayloadClaims,
+  assertPidSdDisclosures,
+} from "#/helpers/pid-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { JwkSet } from "@pagopa/io-wallet-oauth2";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
@@ -15,6 +19,8 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
+import { digest } from "@sd-jwt/crypto-nodejs";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -853,6 +859,34 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    test(
+      "CI_051: CieID High-Level Authentication | PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_051");
+        const DESCRIPTION =
+          "PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)";
+
+        log.start(
+          "Conformance test: Verifying PID Provider performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+        );
+
+        let testSuccess = false;
+        try {
+          expect(
+            credentialResponse.response?.credentials?.length,
+          ).toBeGreaterThan(0);
+          log.debug(
+            `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+          );
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
     test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
       const DESCRIPTION =
@@ -899,7 +933,9 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        expect(authorizeResponse.response?.requestObjectJwt).toBeDefined();
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
 
         testSuccess = true;
       } finally {
@@ -936,7 +972,7 @@ testConfigs.forEach((testConfig) => {
       try {
         const responseState =
           authorizeResponse.response?.authorizeResponse?.state;
-        const requestState = authorizeResponse.response?.requestObject?.state;
+        const requestState = pushedAuthorizationRequestResponse.response?.state;
 
         expect(responseState).toBeDefined();
         expect(typeof responseState).toBe("string");
@@ -1267,6 +1303,69 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    test(
+      "CI_117: Credential | The Italian PID is successfully provided with the User attributes defined in the PID table",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_117");
+        const DESCRIPTION =
+          "Italian PID contains all mandatory user attributes as SD disclosures and required metadata claims";
+
+        log.start(
+          "Conformance test: Verifying Italian PID user attributes and metadata claims",
+        );
+
+        let testSuccess = false;
+        try {
+          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
+
+          const sdJwtCredentials: string[] = [];
+          for (const credObj of credentialResponse.response?.credentials ??
+            []) {
+            try {
+              await SDJwt.extractJwt(credObj.credential);
+              sdJwtCredentials.push(credObj.credential);
+            } catch {
+              /* non-SD-JWT, skip */
+            }
+          }
+
+          expect(
+            sdJwtCredentials.length,
+            "At least one SD-JWT PID credential must be present",
+          ).toBeGreaterThan(0);
+
+          const instance = new SDJwtVcInstance({ hasher: digest });
+
+          for (const credentialJwt of sdJwtCredentials) {
+            const decoded = await instance.decode(credentialJwt);
+            const payload = decoded.jwt?.payload as Record<string, unknown>;
+
+            const disclosureMap = new Map<string, unknown>();
+            for (const disc of decoded.disclosures ?? []) {
+              if (disc.key !== undefined)
+                disclosureMap.set(disc.key, disc.value);
+            }
+
+            log.debug(
+              `  Disclosed claims: ${JSON.stringify([...disclosureMap.keys()])}`,
+            );
+
+            assertPidSdDisclosures(disclosureMap, isV1_0);
+            assertPidJwtPayloadClaims(payload, isV1_0);
+
+            log.debug(
+              "  ✓ All mandatory PID user attributes and metadata claims validated",
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");

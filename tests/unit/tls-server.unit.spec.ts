@@ -39,7 +39,9 @@ describe("Load server certificate test", async () => {
 
   it("should regenerate the certificate once it's expired", async () => {
     const now = new Date(2015, 1, 1);
-    const twoYearsLater = addSecondsToDate(now, 3600 * 24 * 365 * 2);
+    // Advance by 2 years + 60 s to clear the 30-second clock-skew tolerance
+    // used in hasX509CertificateExpired (notAfter < Date.now() - 30 s).
+    const twoYearsLater = addSecondsToDate(now, 3600 * 24 * 365 * 2 + 60);
     vi.useFakeTimers();
 
     vi.setSystemTime(now);

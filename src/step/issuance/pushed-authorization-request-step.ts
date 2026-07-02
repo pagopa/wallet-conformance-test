@@ -7,7 +7,7 @@ import {
 } from "@pagopa/io-wallet-oauth2";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
-import { REDIRECT_URI } from "@/logic/constants";
+import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
@@ -17,6 +17,11 @@ export type PushedAuthorizationRequestExecuteResponse =
      * Code verifier used in the Pushed Authorization Request, if not provided it will be generated internally
      */
     codeVerifier: string;
+
+    /**
+     * State value sent in the authorization request, it can be used to correlate the authorization response with the request
+     */
+    state: string;
   };
 
 export type PushedAuthorizationRequestResponse = StepResponse & {
@@ -89,6 +94,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
+        const state = crypto.randomUUID();
         const createParOptions = {
           audience: options.baseUrl,
           authorization_details: options.credentialConfigurationIds.map(
@@ -115,8 +121,11 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
             },
           },
           pkceCodeVerifier: options.codeVerifier,
-          redirectUri: REDIRECT_URI,
+          redirectUri: getCallbackRedirectUri(
+            this.config.issuance.callback_port,
+          ),
           responseMode: "query",
+          state,
         };
 
         const finalParOptions = {
@@ -137,6 +146,11 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         );
         const pushedAuthorizationRequest =
           await createPushedAuthorizationRequest(finalParOptions);
+
+        log.debug(
+          "Pushed Authorization Request:",
+          JSON.stringify(pushedAuthorizationRequest.request, null, 2),
+        );
 
         const codeVerifier = pushedAuthorizationRequest.pkceCodeVerifier;
 
@@ -162,6 +176,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         return {
           ...parResponse,
           codeVerifier,
+          state,
         };
       },
     );
