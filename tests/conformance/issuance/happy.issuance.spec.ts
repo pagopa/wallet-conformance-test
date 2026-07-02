@@ -1273,27 +1273,60 @@ testConfigs.forEach((testConfig) => {
           []) {
           expect(credential.credential).toBeDefined();
 
-          const sdJwt = await SDJwt.extractJwt(credential.credential);
-          const payload = sdJwt.payload as
-            | undefined
-            | { cnf?: { jkt?: string; jwk?: object } };
+          // Resolve the key-binding JWK from either SD-JWT VC (cnf.jwk) or
+          // mdoc-CBOR (deviceKeyInfo.deviceKey converted from COSE_Key).
+          let boundKeyJwk: object | undefined;
 
-          expect(
-            payload?.cnf,
-            "SD-JWT credential must contain cnf claim for key binding",
-          ).toBeDefined();
-
-          const confirmationJwk = payload?.cnf?.jwk;
-          expect(
-            confirmationJwk,
-            "SD-JWT credential cnf claim must contain either jkt or jwk",
-          ).toBeDefined();
-          if (!confirmationJwk) {
-            throw new Error(
-              "SD-JWT credential cnf claim must contain either jkt or jwk",
-            );
+          try {
+            const sdJwt = await SDJwt.extractJwt(credential.credential);
+            const payload = sdJwt.payload as
+              | undefined
+              | { cnf?: { jwk?: object } };
+            boundKeyJwk = payload?.cnf?.jwk;
+            log.debug("  Format: SD-JWT VC");
+          } catch {
+            log.debug("  Not SD-JWT VC, trying mdoc-CBOR...");
           }
-          const credentialJkt = await calculateJwkThumbprint(confirmationJwk);
+
+          if (boundKeyJwk === undefined) {
+            try {
+              const mdocDoc = parseMdoc(
+                Buffer.from(credential.credential, "base64url"),
+              );
+              const deviceKey =
+                mdocDoc.issuerSigned.issuerAuth.decodedPayload.deviceKeyInfo
+                  ?.deviceKey;
+              // Convert COSE_Key (RFC 8152) to JWK.
+              // CBOR label -1 = crv (1=P-256, 2=P-384, 3=P-521), -2 = x, -3 = y.
+              const CRV_MAP: Record<number, string> = {
+                1: "P-256",
+                2: "P-384",
+                3: "P-521",
+              };
+              if (deviceKey !== undefined) {
+                const crvId = deviceKey.get(-1) as number;
+                const x = deviceKey.get(-2) as Uint8Array;
+                const y = deviceKey.get(-3) as Uint8Array;
+                boundKeyJwk = {
+                  crv: CRV_MAP[crvId] ?? "P-256",
+                  kty: "EC" as const,
+                  x: Buffer.from(x).toString("base64url"),
+                  y: Buffer.from(y).toString("base64url"),
+                };
+              }
+              log.debug("  Format: mdoc-CBOR");
+            } catch {
+              log.error("  Credential is neither SD-JWT VC nor mdoc-CBOR");
+            }
+          }
+
+          expect(
+            boundKeyJwk,
+            "Credential must be bound to the wallet key via cnf.jwk (SD-JWT VC) or deviceKeyInfo.deviceKey (mdoc-CBOR)",
+          ).toBeDefined();
+          if (boundKeyJwk === undefined) continue;
+
+          const credentialJkt = await calculateJwkThumbprint(boundKeyJwk);
           log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
           expect(credentialJkt).toBe(expectedJkt);
         }

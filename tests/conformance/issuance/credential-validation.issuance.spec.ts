@@ -34,9 +34,9 @@ import {
   ItWalletSpecsVersion,
   UnexpectedStatusCodeError,
 } from "@pagopa/io-wallet-utils";
-import { decodeJwt } from "@sd-jwt/decode";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { parseCredentialStatus } from "@/functions";
 import {
   createKeys,
   fetchWithConfig,
@@ -645,7 +645,7 @@ testConfigs.forEach((testConfig) => {
 
     // -----------------------------------------------------------------------
     // CI_079 — Credential Registration
-    // Note: currwently we support only sd-jwt-vc, planned mdoc with task WLEO-1006
+    // Supports both dc+sd-jwt and mso_mdoc credential formats.
     // -----------------------------------------------------------------------
 
     test("CI_079: Credential Registration | Issued credential references a valid status list entry initialized as valid", async () => {
@@ -676,28 +676,22 @@ testConfigs.forEach((testConfig) => {
 
         log.debug("→ Checking credential for status claim...");
         for (const credentialObj of credentials ?? []) {
-          const credentialJwt = credentialObj.credential;
-          expect(credentialJwt).toBeDefined();
+          const credentialCompact = credentialObj.credential;
+          expect(credentialCompact).toBeDefined();
 
-          const { payload } = decodeJwt(credentialJwt);
-          log.debug(
-            `  Credential claims: ${JSON.stringify(Object.keys(payload))}`,
-          );
-
-          const statusClaim = payload["status"] as
-            | Record<string, unknown>
-            | undefined;
+          const statusClaim = await parseCredentialStatus(credentialCompact);
           expect(
             statusClaim,
             "Credential MUST contain a 'status' claim",
-          ).toBeDefined();
-          log.debug(`  Status claim present: ${statusClaim !== undefined}`);
+          ).not.toBeNull();
+          log.debug(`  Status claim present: ${statusClaim !== null}`);
 
+          const statusAny = statusClaim as unknown as Record<string, unknown>;
           const specVersion = ioWalletSdkConfig.itWalletSpecsVersion;
-          const statusList = statusClaim?.["status_list"] as
+          const statusList = statusAny["status_list"] as
             | Record<string, unknown>
             | undefined;
-          const statusAssertion = statusClaim?.["status_assertion"] as
+          const statusAssertion = statusAny["status_assertion"] as
             | Record<string, unknown>
             | undefined;
           const requiredStatusField =
