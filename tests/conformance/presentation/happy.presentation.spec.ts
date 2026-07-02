@@ -1044,7 +1044,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   );
 
   test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
-    const log = baseLog.withTag("RPR028");
+    const log = baseLog.withTag("RPR-28");
 
     log.start("Conformance test: Verifying response_code entropy requirements");
 
