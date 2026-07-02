@@ -23,7 +23,10 @@ import {
   fetchPushedAuthorizationResponse,
   type PushedAuthorizationRequest,
 } from "@pagopa/io-wallet-oauth2";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  UnexpectedStatusCodeError,
+} from "@pagopa/io-wallet-utils";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
@@ -288,6 +291,74 @@ testConfigs.forEach((testConfig) => {
 
         log.debug("→ Validating issuer rejected the tampered request...");
         expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_017 — PAR Scope and Authorization Details Interpretation
+    // -----------------------------------------------------------------------
+
+    test("CI_017: PAR Scope and Authorization Details Interpretation | Issuer accepts a PAR request containing both scope and authorization_details", async () => {
+      const log = baseLog.withTag("CI_017");
+      const DESCRIPTION =
+        "Issuer correctly accepted PAR with both scope and authorization_details";
+
+      log.start(
+        "Conformance test: Verifying PAR with both scope and authorization_details is accepted",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending PAR request with scope='openid' alongside authorization_details...",
+        );
+        const result = await runParStep(
+          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
+            scope: "openid",
+          }),
+        );
+
+        log.debug("→ Validating issuer accepted the request...");
+        expect(result.success).toBe(true);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_017a — PAR Authorization Details Precedence
+    // -----------------------------------------------------------------------
+
+    test("CI_017a: PAR Authorization Details Precedence | Issuer honours authorization_details when both scope and authorization_details reference the same credential type", async () => {
+      const log = baseLog.withTag("CI_017a");
+      const DESCRIPTION =
+        "Issuer correctly accepted PAR with matching scope and authorization_details";
+
+      log.start(
+        "Conformance test: Verifying authorization_details precedence over scope for the same credential type",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          `→ Sending PAR with scope='${testConfig.credentialConfigurationId}' matching authorization_details...`,
+        );
+        const result = await runParStep(
+          withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
+            scope: testConfig.credentialConfigurationId,
+          }),
+        );
+
+        log.debug(
+          "→ Validating issuer accepted the request (authorization_details honoured)...",
+        );
+        expect(result.success).toBe(true);
 
         testSuccess = true;
       } finally {
@@ -854,6 +925,43 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
+    // CI_030 — Wallet Provider Federation Membership Validation
+    // -----------------------------------------------------------------------
+
+    test("CI_030: Wallet Provider Federation Membership Validation | Issuer rejects a PAR from a Wallet Provider not present in the federation", async () => {
+      const log = baseLog.withTag("CI_030");
+      const DESCRIPTION =
+        "Issuer correctly rejected PAR from a Wallet Provider not in the federation";
+
+      log.start(
+        "Conformance test: Verifying Wallet Provider federation membership validation",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Creating attestation from a Wallet Provider not registered in the federation...",
+        );
+        const fakeAttestation = await createFakeAttestationResponse();
+
+        log.debug("→ Sending PAR request with unregistered Wallet Provider...");
+        const result = await runParStep(
+          testConfig.pushedAuthorizationRequestStepClass,
+          fakeAttestation,
+        );
+
+        log.debug(
+          "→ Validating issuer rejected the unregistered Wallet Provider...",
+        );
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
     // CI_031 — Wallet Attestation Cryptographic Signature Validation
     // -----------------------------------------------------------------------
 
@@ -949,6 +1057,54 @@ testConfigs.forEach((testConfig) => {
 
         log.debug("→ Validating issuer rejected the request...");
         expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // CI_045 — PAR Response HTTP Status Code
+    // -----------------------------------------------------------------------
+
+    test("CI_045: PAR Response HTTP Status Code | Issuer returns an appropriate HTTP 4xx error status code for an invalid PAR request", async () => {
+      const log = baseLog.withTag("CI_045");
+      const DESCRIPTION =
+        "Issuer returned expected HTTP 4xx status code for invalid PAR";
+
+      log.start(
+        "Conformance test: Verifying HTTP error status code for invalid PAR request",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug("→ Sending PAR request signed with wrong key...");
+        const result = await runParStep(
+          withSignJwtOverride(
+            testConfig.pushedAuthorizationRequestStepClass,
+            signWithWrongKey(),
+          ),
+        );
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        const error = result.error as UnexpectedStatusCodeError;
+        if (!error || error.statusCode === undefined) {
+          log.debug(
+            "  Error did not carry an HTTP status code (non-UnexpectedStatusCodeError); request was still rejected",
+          );
+          throw new Error(
+            "Error did not carry an HTTP status code (non-UnexpectedStatusCodeError)",
+          );
+        }
+
+        log.debug(`  HTTP status code returned: ${error.statusCode}`);
+        expect(
+          [400, 401],
+          `Expected HTTP 400 or 401, got ${error.statusCode}`,
+        ).toContain(error.statusCode);
 
         testSuccess = true;
       } finally {
