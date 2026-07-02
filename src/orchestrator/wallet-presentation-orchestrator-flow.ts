@@ -4,6 +4,7 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import {
   FetchMetadataVpDefaultStep,
   FetchMetadataVpStepResponse,
@@ -75,12 +76,13 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  prepareBaseUrl(): string | undefined {
+  async prepareBaseUrl(): Promise<string | undefined> {
     if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
+      const authorizeUrl = await getAuthorizeRequestUrl(
+        this.config.presentation,
       );
-      const clientId = authorizeUrl.searchParams.get("client_id");
+
+      const clientId = new URL(authorizeUrl).searchParams.get("client_id");
 
       if (!clientId) {
         throw new Error(
@@ -145,9 +147,8 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
-    this.printTestSuiteOnce();
-
-    const baseUrl = this.prepareBaseUrl();
+    const baseUrl = await this.prepareBaseUrl();
+    this.printTestSuiteOnce(baseUrl);
 
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
@@ -260,13 +261,13 @@ export class WalletPresentationOrchestratorFlow {
     return new URL(url).href.replace(/\/+$/, "");
   }
 
-  private printTestSuiteOnce(): void {
+  private printTestSuiteOnce(target: string | undefined): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
     this.log.testSuite({
       profile: this.presentationConfig.name,
       specsVersion: this.config.wallet.wallet_version,
-      target: this.config.presentation.authorize_request_url,
+      target: target ?? "N/A",
       title: this.presentationConfig.name,
     });
 

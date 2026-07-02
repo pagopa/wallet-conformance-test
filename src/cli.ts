@@ -113,6 +113,11 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     "CONFIG_PRESENTATION_AUTHORIZE_URI",
     options.presentationAuthorizeUri,
   );
+  applyEnvOption(
+    env,
+    "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
+    options.presentationAuthorizeScript,
+  );
   applyEnvOption(env, "CONFIG_CREDENTIAL_TYPES", options.credentialTypes);
   applyEnvOption(env, "CONFIG_TIMEOUT", options.timeout);
   applyEnvOption(env, "CONFIG_MAX_RETRIES", options.maxRetries);
@@ -171,6 +176,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--presentation-authorize-uri <uri>",
       "Override the presentation authorize URL (env: CONFIG_PRESENTATION_AUTHORIZE_URI)",
+    )
+    .option(
+      "--presentation-authorize-script <path>",
+      "Override the presentation authorize script path (env: CONFIG_PRESENTATION_AUTHORIZE_SCRIPT)",
     )
     .option(
       "--credential-types <types>",
