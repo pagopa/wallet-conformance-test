@@ -3,5 +3,6 @@ export * from "./credential-request-step";
 export * from "./deferred-credential-request-step";
 export * from "./fetch-metadata-step";
 export * from "./nonce-request-step";
+export * from "./notification-request-step";
 export * from "./pushed-authorization-request-step";
 export * from "./token-request-step";

@@ -29,6 +29,29 @@ You must have [Node.js >= 22.19.0](https://nodejs.org/en/about/previous-releases
 
 ### Installation
 
+#### Using npx (Recommended)
+
+The easiest way to use the tool is via `npx` — no manual installation or cloning required. This will always fetch the latest version of the tool from npm:
+
+Examples:
+
+```bash
+npx @pagopa/it-wallet-conformance-tool@latest test:issuance --credential-issuer-uri <url> --wallet-version V1_0
+npx @pagopa/it-wallet-conformance-tool@latest test:presentation --presentation-authorize-uri <url> --wallet-version V1_3
+```
+
+Or pin a specific version:
+
+```bash
+npx @pagopa/it-wallet-conformance-tool@1.2.0 test:issuance
+```
+
+---
+
+#### From Source
+
+Alternatively, you can clone the repository and install locally:
+
 1. Clone the repository to your local machine:
 
    ```bash
@@ -47,13 +70,11 @@ You must have [Node.js >= 22.19.0](https://nodejs.org/en/about/previous-releases
    pnpm install
    ```
 
-4. Install the CLI globally using pnpm:
+4. Install the CLI globally using pnpm, this will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
 
    ```bash
    pnpm install -g
    ```
-
-This will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
 
 5. Verify the installation by checking the version:
 
@@ -113,13 +134,13 @@ If you prefer using Docker, you can pull the official image from the GitHub Cont
 
 To run the tests, create a local directory (e.g., data) to store configuration and reports. Then, launch the container, mounting your local directory as a volume:
 
-1. Create a directory for your data
+First create a directory for your data:
 
 ```bash
 mkdir data
 ```
 
-2. Run the container
+Then run the container:
 
 ```bash
 docker run -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
@@ -157,8 +178,8 @@ Use a custom configuration file:
 
 The `wallet_version` setting (under the `[wallet]` section) controls which version of the Italian IT Wallet technical specification the tool targets. Different versions define different data models, credential formats, and protocol behaviours. Supported values:
 
-| Value  | Description |
-|--------|-------------|
+| Value  | Description                                                                                        |
+| ------ | -------------------------------------------------------------------------------------------------- |
 | `V1_0` | Targets the 1.0.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en/). |
 | `V1_3` | Targets the 1.3.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.3.3/en/). |
 
@@ -223,7 +244,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 ##### Using Configuration File
 
-2. Configure your `config.ini` file with the credential issuer URL and credential types:
+1. Configure your `config.ini` file with the credential issuer URL and credential types:
 
    ```ini
    [issuance]
@@ -231,7 +252,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
    credential_types[] = dc_sd_jwt_EuropeanDisabilityCard
    ```
 
-3. Run the test command:
+2. Run the test command:
 
    ```bash
    wct test:issuance
@@ -239,7 +260,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 ##### Using Command-Line Options
 
-2. Alternatively, bypass the configuration file and specify parameters directly:
+1. Alternatively, bypass the configuration file and specify parameters directly:
 
    ```bash
    wct test:issuance --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
@@ -251,7 +272,7 @@ The pre-configured happy flow tests and security tests validate the issuance of 
 
 > **Note**: By default, credentials generated during testing are not saved to disk. However, you can configure the tool to save them locally for presentation phase. You can configure that using `config.ini` with `save_credential = true` or using cli option `--save-credential`
 
-**📖 For detailed test configuration and customization**, see the comprehensive [Internal Test Configuration Guide](./tests/docs/TEST-CONFIGURATION-GUIDE.md). If you want to create external test specs see the comprehensive [External Test Configuration Guide](./tests/docs/ISSUANCE-TESTING-GUIDE.md).  
+**📖 For detailed test configuration and customization**, see the comprehensive [Internal Test Configuration Guide](./tests/docs/TEST-CONFIGURATION-GUIDE.md). If you want to create external test specs see the comprehensive [External Test Configuration Guide](./tests/docs/ISSUANCE-TESTING-GUIDE.md).
 
 These guides cover:
 
@@ -264,24 +285,22 @@ These guides cover:
 
 The presentation flow simulates your wallet presenting a credential to a Relying Party (Verifier). There are two ways to supply the authorization request URL that the RP generates (e.g. from a QR code):
 
-- **Static URL** — paste it directly into `config.ini` or pass it via CLI.
-- **Dynamic script** — configure a shell script (`authorize_request_script`) that calls the RP's API and prints a fresh URL to `stdout` on every run. This is the recommended approach because most RPs generate a new URL per session.
+1. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
 
 Quick examples:
 
-```ini
-# config.ini — static URL
-[presentation]
-authorize_request_url = https://rp.example.com/auth?client_id=...&request_uri=...&state=...
+2. Similarly, to test the presentation flow, you will use the `test:presentation` command:
+
+   ```bash
+   wct test:presentation [OPTIONS]
+   ```
 
 # config.ini — dynamic script (recommended)
 [presentation]
 authorize_request_script = ./scripts/presentation.example.sh
 ```
 
-```bash
-# CLI — static URL
-wct test:presentation --presentation-authorize-uri 'https://rp.example.com/auth?...'
+1. Alternatively, bypass the configuration file and specify parameters directly:
 
 # CLI — dynamic script
 wct test:presentation --presentation-authorize-script ./scripts/presentation.example.sh
@@ -335,11 +354,11 @@ b3f2a1c0-...                         2026-06-17T10:00:00.000Z 2026-06-17T10:01:4
 wct report create <run_id|latest> <format> [--view <view>]
 ```
 
-| Argument / Option | Values | Description |
-|---|---|---|
-| `<run_id\|latest>` | UUID from `report list`, or `latest` | Which run to generate a report for |
-| `<format>` | `html`, `pdf` | Output file format |
-| `--view` | `both` (default), `executive`, `technical` | Which view(s) to include |
+| Argument / Option  | Values                                     | Description                        |
+| ------------------ | ------------------------------------------ | ---------------------------------- |
+| `<run_id\|latest>` | UUID from `report list`, or `latest`       | Which run to generate a report for |
+| `<format>`         | `html`, `pdf`                              | Output file format                 |
+| `--view`           | `both` (default), `executive`, `technical` | Which view(s) to include           |
 
 The report file is written to the **current working directory**:
 
@@ -369,11 +388,11 @@ wct report create b3f2a1c0-1234-... html --view technical
 
 ### Report Views
 
-| View | Content | Audience |
-|---|---|---|
+| View        | Content                                                                                                                                            | Audience                           |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | `executive` | High-level compliance narrative: overall score as a percentage, pass / fail / partial counts, and a highlighted box listing any critical failures. | Stakeholders, certification bodies |
-| `technical` | Full check-by-check breakdown with requirement IDs, results, and failure messages for every test case. | Developers, integrators |
-| `both` | Interactive HTML with a tab switcher between the two views above (default). | All audiences |
+| `technical` | Full check-by-check breakdown with requirement IDs, results, and failure messages for every test case.                                             | Developers, integrators            |
+| `both`      | Interactive HTML with a tab switcher between the two views above (default).                                                                        | All audiences                      |
 
 > **Note**: When generating a PDF with `--view both`, both sections are rendered sequentially in the document without the interactive switcher.
 
@@ -421,12 +440,14 @@ When running tests, the tool creates a sample PID credential containing fictiona
 **Non-selectively disclosable claims** (present in the JWT payload, not in disclosure frame):
 
 - **`verification`**: An Italian domestic mandatory extension (per ARF HLR PID_06) asserting the identity verification method and assurance level:
+
   ```json
   {
     "trust_framework": "it_cie",
     "assurance_level": "high"
   }
   ```
+
   `trust_framework: "it_cie"` reflects that PID issuance is gated on the CIE identity infrastructure. `assurance_level: "high"` corresponds to LoA High (eIDAS High), the level required for PID issuance. Look under /dumps folder for more detail.
 
 > **Note (V1_3 only)**: The `verification` claim is specific to the V1.3 data model. V1_0 uses a different PID data model and does not include this claim.
@@ -435,11 +456,11 @@ When running tests, the tool creates a sample PID credential containing fictiona
 
 The tool spins up several **local HTTPS servers** that provide OpenID Federation metadata used during conformance testing. Together they simulate a complete federation hierarchy — Trust Anchor → Wallet Provider → Credential Issuer — so that issuers and relying parties under test can resolve and validate entity configurations without any external dependency.
 
-| Server | Hostname | Default Port | Purpose |
-|---|---|---|---|
-| **Trust Anchor** | `trust-anchor.wct.example.org` | `3001` | Root of trust — serves `openid-federation` and `/fetch` endpoints |
-| **Wallet Provider** | `wallet-provider.wct.example.org` | `3002` | Exposes the Wallet Provider entity configuration and JWKS |
-| **Credential Issuer** | `credential-issuer.wct.example.org` | `3003` | Exposes the mock PID issuer entity configuration |
+| Server                | Hostname                            | Default Port | Purpose                                                           |
+| --------------------- | ----------------------------------- | ------------ | ----------------------------------------------------------------- |
+| **Trust Anchor**      | `trust-anchor.wct.example.org`      | `3001`       | Root of trust — serves `openid-federation` and `/fetch` endpoints |
+| **Wallet Provider**   | `wallet-provider.wct.example.org`   | `3002`       | Exposes the Wallet Provider entity configuration and JWKS         |
+| **Credential Issuer** | `credential-issuer.wct.example.org` | `3003`       | Exposes the mock PID issuer entity configuration                  |
 
 ### DNS Resolution Requirement
 

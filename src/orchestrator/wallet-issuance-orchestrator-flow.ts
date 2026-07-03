@@ -35,6 +35,8 @@ import {
   FetchMetadataStepResponse,
   NonceRequestDefaultStep,
   NonceRequestResponse,
+  NotificationRequestDefaultStep,
+  NotificationRequestResponse,
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
   TokenRequestDefaultStep,
@@ -60,6 +62,7 @@ export class WalletIssuanceOrchestratorFlow {
   private _deferredCredentialResponse?: DeferredCredentialRequestResponse;
   private _fetchMetadataResponse?: FetchMetadataStepResponse;
   private _nonceResponse?: NonceRequestResponse;
+  private _notificationRequestResponse?: NotificationRequestResponse;
   private _pushedAuthorizationRequestResponse?: PushedAuthorizationRequestResponse;
   private _suitePrinted = false;
   private _tokenResponse?: TokenRequestResponse;
@@ -71,10 +74,12 @@ export class WalletIssuanceOrchestratorFlow {
   private credentialRequestStep: CredentialRequestDefaultStep;
   private deferredCredentialRequestStep: DeferredCredentialRequestDefaultStep;
   private fetchMetadataStep: FetchMetadataDefaultStep;
+  private readonly ISSUANCE_WITH_DELETED_TOTAL_STEPS = 7;
   private issuanceConfig: IssuerTestConfiguration;
   private log = createLogger();
   private nonceRequestStep: NonceRequestDefaultStep;
 
+  private notificationRequestStep: NotificationRequestDefaultStep;
   private pushedAuthorizationRequestStep: PushedAuthorizationRequestDefaultStep;
   private sdkConfig: IoWalletSdkConfig;
   private tokenRequestStep: TokenRequestDefaultStep;
@@ -126,6 +131,8 @@ export class WalletIssuanceOrchestratorFlow {
       this.log,
     );
 
+    this.notificationRequestStep =
+      new issuanceConfig.notificationRequestStepClass(this.config, this.log);
     this.deferredCredentialRequestStep =
       new DeferredCredentialRequestDefaultStep(this.config, this.log);
   }
@@ -271,74 +278,28 @@ export class WalletIssuanceOrchestratorFlow {
       if (!accessToken)
         throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
 
-      const entityStatementClaims =
-        fetchMetadataResponse.response?.entityStatementClaims;
+      const { credentialResponse, nonceResponse } =
+        await this.requestCredentialWithToken({
+          accessToken,
+          credentialIssuer,
+          dPoPKey,
+          fetchMetadataResponse,
+          walletAttestationResponse,
+        });
 
-      const nonceResponse = await this.nonceRequestStep.run({
-        nonceEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.nonce_endpoint,
-      });
-      this._nonceResponse = nonceResponse;
-      this.log.flowStep(
-        5,
-        this.TOTAL_STEPS,
-        "Nonce Request",
-        nonceResponse.success,
-        nonceResponse.durationMs ?? 0,
-      );
-      assertStepSuccess(nonceResponse, "Nonce Request");
-
-      const nonce = nonceResponse.response?.nonce as
-        | undefined
-        | { c_nonce: string };
-      if (!nonce)
-        throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
-
-      const credentialResponse = await this.credentialRequestStep.run({
+      await this.sendCredentialDeletedNotificationIfNeeded({
         accessToken,
-        clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
-        credentialIssuer: credentialIssuer,
-        credentialRequestEndpoint:
-          entityStatementClaims.metadata?.openid_credential_issuer
-            ?.credential_endpoint,
+        credentialResponse,
         dPoPKey,
-        nonce: nonce.c_nonce,
-        walletAttestation: walletAttestationResponse,
+        fetchMetadataResponse,
       });
-      this._credentialResponse = credentialResponse;
-      this.log.flowStep(
-        6,
-        this.TOTAL_STEPS,
-        "Credential Request",
-        credentialResponse.success,
-        credentialResponse.durationMs ?? 0,
-      );
-      assertStepSuccess(credentialResponse, "Credential Request");
-
-      // Save credential to disk if configured
-      // Currently, only the first credential is saved because we support requesting one at a time
-      const firstCredential = credentialResponse.response?.credentials?.[0];
-      if (this.config.issuance.save_credential && firstCredential?.credential) {
-        const savedPath = saveCredentialToDisk(
-          this.config.wallet.credentials_storage_path,
-          this.issuanceConfig.credentialConfigurationId,
-          firstCredential.credential,
-          this.config.wallet.wallet_version,
-        );
-        if (savedPath) {
-          this.log.info(`Credential saved to disk: ${savedPath}`);
-        } else {
-          this.log.error("Failed to save credential to disk");
-        }
-      }
 
       return {
         authorizeResponse,
         credentialResponse,
         fetchMetadataResponse,
         nonceResponse,
+        notificationRequestResponse: this._notificationRequestResponse,
         pushedAuthorizationRequestResponse,
         success: true,
         tokenResponse,
@@ -352,6 +313,7 @@ export class WalletIssuanceOrchestratorFlow {
         error: e instanceof Error ? e : new Error(String(e)),
         fetchMetadataResponse: this._fetchMetadataResponse,
         nonceResponse: this._nonceResponse,
+        notificationRequestResponse: this._notificationRequestResponse,
         pushedAuthorizationRequestResponse:
           this._pushedAuthorizationRequestResponse,
         success: false,
@@ -867,6 +829,7 @@ export class WalletIssuanceOrchestratorFlow {
     this._deferredCredentialResponse = undefined;
     this._fetchMetadataResponse = undefined;
     this._nonceResponse = undefined;
+    this._notificationRequestResponse = undefined;
     this._pushedAuthorizationRequestResponse = undefined;
     this._tokenResponse = undefined;
     this._walletAttestationResponse = undefined;
@@ -1006,6 +969,59 @@ export class WalletIssuanceOrchestratorFlow {
       this.log.info(`Deferred credential saved to disk: ${savedPath}`);
     } else {
       this.log.error("Failed to save deferred credential to disk");
+    }
+  }
+
+  private async sendCredentialDeletedNotificationIfNeeded({
+    accessToken,
+    credentialResponse,
+    dPoPKey,
+    fetchMetadataResponse,
+  }: {
+    accessToken: string;
+    credentialResponse: CredentialRequestResponse;
+    dPoPKey: KeyPair;
+    fetchMetadataResponse: FetchMetadataStepResponse;
+  }): Promise<void> {
+    if (this.config.issuance.save_credential) return;
+
+    const notificationId = credentialResponse.response?.notification_id;
+    if (!notificationId) return;
+
+    this.log.info(
+      "Credential Response contains 'notification_id' and 'save_credential' is false. Calling Notification Endpoint for credential_deleted event.",
+    );
+
+    const notificationEndpoint =
+      fetchMetadataResponse.response?.entityStatementClaims.metadata
+        ?.openid_credential_issuer?.notification_endpoint;
+    if (!notificationEndpoint) {
+      this.log.info(
+        "Issuer metadata does not expose 'notification_endpoint'; skipping Notification Request step.",
+      );
+      return;
+    }
+
+    const notificationRequestResponse = await this.notificationRequestStep.run({
+      accessToken,
+      dPoPKey,
+      event: "credential_deleted",
+      notificationEndpoint,
+      notificationId,
+    });
+    this._notificationRequestResponse = notificationRequestResponse;
+    this.log.flowStep(
+      this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+      this.ISSUANCE_WITH_DELETED_TOTAL_STEPS,
+      "Notification Request",
+      notificationRequestResponse.success,
+      notificationRequestResponse.durationMs ?? 0,
+    );
+    if (!notificationRequestResponse.success) {
+      this.log.warn(
+        `Notification endpoint request failed (${notificationRequestResponse.error?.message ?? "unknown error"}). ` +
+          `Proceeding: notification is non-critical for valid issuance.`,
+      );
     }
   }
 }
