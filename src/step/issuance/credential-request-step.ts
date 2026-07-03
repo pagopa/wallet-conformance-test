@@ -7,17 +7,15 @@ import {
   BaseCredentialRequestOptions,
   createCredentialRequest,
   CredentialRequest,
-  CredentialRequestOptions,
+  CredentialRequestOptionsV1_3,
+  CredentialRequestOptionsV1_4,
   CredentialResponse,
   fetchCredentialResponse,
   FetchCredentialResponseOptions,
   ImmediateCredentialResponse,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { randomUUID } from "node:crypto";
 
 import {
@@ -257,38 +255,54 @@ export class CredentialRequestDefaultStep extends StepFlow {
       } satisfies typeof baseOptions.callbacks,
     };
 
-    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
-      const keyAttestation = await this.createKeyAttestation(
-        options.walletAttestation,
-        credentialKeyPair,
-      );
-
-      this.log.debug("Key Attestation JWT created:", keyAttestation);
-
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) {
       return createCredentialRequest({
         ...commonOptions,
         config: this.ioWalletSdkConfig,
-        keyAttestation,
-        signers: [
-          {
-            alg: "ES256",
-            method: "jwk" as const,
-            publicJwk: credentialKeyPair.publicKey,
-          },
-        ],
-      } satisfies CredentialRequestOptions);
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      });
     }
 
-    return createCredentialRequest({
+    const keyAttestation = await this.createKeyAttestation(
+      options.walletAttestation,
+      credentialKeyPair,
+    );
+
+    this.log.debug("Key Attestation JWT created:", keyAttestation);
+
+    const keyAttestationOptions = {
       ...commonOptions,
-      config: this
-        .ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
-      signer: {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: credentialKeyPair.publicKey,
-      },
-    });
+      keyAttestation,
+      signers: [
+        {
+          alg: "ES256" as const,
+          method: "jwk" as const,
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      ],
+    };
+
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+      return createCredentialRequest({
+        ...keyAttestationOptions,
+        config: this.ioWalletSdkConfig,
+      } satisfies CredentialRequestOptionsV1_3);
+    }
+
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)) {
+      return createCredentialRequest({
+        ...keyAttestationOptions,
+        config: this.ioWalletSdkConfig,
+      } satisfies CredentialRequestOptionsV1_4);
+    }
+
+    throw new Error(
+      `unimplemented wallet_version for credential request: ${this.ioWalletSdkConfig.itWalletSpecsVersion}`,
+    );
   }
 
   private async buildDPoP(

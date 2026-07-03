@@ -232,7 +232,7 @@ function addCommonOptions(command: Command): Command {
     )
     .option(
       "--wallet-version <version>",
-      "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
+      "Override the IT Wallet specification version (V1_0, V1_3, V1_4) (env: CONFIG_WALLET_VERSION)",
     )
     .option(
       "--refresh-token <token>",

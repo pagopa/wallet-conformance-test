@@ -60,7 +60,8 @@ export function normalizePresentationArray(
     throw new Error(`vp_token.${id} is missing`);
   }
   if (
-    walletVersion === ItWalletSpecsVersion.V1_3 &&
+    (walletVersion === ItWalletSpecsVersion.V1_3 ||
+      walletVersion === ItWalletSpecsVersion.V1_4) &&
     !Array.isArray(presentationOrArray)
   ) {
     throw new Error(`vp_token.${id} must be a presentation array`);

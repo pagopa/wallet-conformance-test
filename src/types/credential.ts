@@ -33,7 +33,7 @@ export type DcqlMatchSuccess = Extract<
   { success: true }
 >;
 
-export type StatusClaim = StatusClaimV1_0 | StatusClaimV1_3;
+export type StatusClaim = StatusClaimV1_0 | StatusClaimV1_3 | StatusClaimV1_4;
 
 export interface StatusClaimV1_0 {
   status_assertion: {
@@ -42,6 +42,13 @@ export interface StatusClaimV1_0 {
 }
 
 export interface StatusClaimV1_3 {
+  status_list: {
+    idx: number;
+    uri: string;
+  };
+}
+
+export interface StatusClaimV1_4 {
   status_list: {
     idx: number;
     uri: string;
