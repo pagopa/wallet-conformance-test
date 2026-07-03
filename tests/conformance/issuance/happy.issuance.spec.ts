@@ -1372,6 +1372,10 @@ testConfigs.forEach((testConfig) => {
           notificationRequestResponse.response?.status,
           "Notification endpoint must return 204 No Content",
         ).toBe(204);
+        expect(
+          notificationRequestResponse.response?.event,
+          "CI_161a must send credential_deleted for revocation",
+        ).toBe("credential_deleted");
 
         testSuccess = true;
       } finally {

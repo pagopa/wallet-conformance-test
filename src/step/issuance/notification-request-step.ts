@@ -14,6 +14,7 @@ export type NotificationEvent =
   | "credential_failure";
 
 export interface NotificationRequestExecuteResponse {
+  event: NotificationEvent;
   status: number;
 }
 
@@ -90,7 +91,7 @@ export class NotificationRequestDefaultStep extends StepFlow {
         );
       }
 
-      return { status };
+      return { event: options.event, status };
     });
   }
 

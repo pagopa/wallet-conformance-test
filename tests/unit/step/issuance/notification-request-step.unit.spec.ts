@@ -198,7 +198,7 @@ describe("NotificationRequestDefaultStep", () => {
   });
 
   describe("success path (HTTP 204)", () => {
-    it("returns success: true with status 204", async () => {
+    it("returns success: true with status 204 and the event that was sent", async () => {
       setupHappyPathMocks(204);
       const step = makeStep();
 
@@ -206,6 +206,7 @@ describe("NotificationRequestDefaultStep", () => {
 
       expect(result.success).toBe(true);
       expect(result.response?.status).toBe(204);
+      expect(result.response?.event).toBe("credential_deleted");
     });
   });
 
