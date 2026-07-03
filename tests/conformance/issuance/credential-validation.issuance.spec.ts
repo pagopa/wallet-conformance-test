@@ -638,14 +638,15 @@ testConfigs.forEach((testConfig) => {
           ).not.toBeNull();
           log.debug(`  Status claim present: ${statusClaim !== null}`);
 
-          const statusAny = statusClaim as unknown as Record<string, unknown>;
           const specVersion = ioWalletSdkConfig.itWalletSpecsVersion;
-          const statusList = statusAny["status_list"] as
-            | Record<string, unknown>
-            | undefined;
-          const statusAssertion = statusAny["status_assertion"] as
-            | Record<string, unknown>
-            | undefined;
+          const statusList =
+            statusClaim !== null && "status_list" in statusClaim
+              ? statusClaim.status_list
+              : undefined;
+          const statusAssertion =
+            statusClaim !== null && "status_assertion" in statusClaim
+              ? statusClaim.status_assertion
+              : undefined;
           const requiredStatusField =
             specVersion === ItWalletSpecsVersion.V1_3
               ? {
@@ -660,19 +661,19 @@ testConfigs.forEach((testConfig) => {
             specVersion === ItWalletSpecsVersion.V1_3
               ? [
                   {
-                    actual: typeof statusList?.["idx"],
+                    actual: typeof statusList?.idx,
                     expected: "number",
                     message: "'status_list.idx' MUST be a number",
                   },
                   {
-                    actual: typeof statusList?.["uri"],
+                    actual: typeof statusList?.uri,
                     expected: "string",
                     message: "'status_list.uri' MUST be a string",
                   },
                 ]
               : [
                   {
-                    actual: typeof statusAssertion?.["credential_hash_alg"],
+                    actual: typeof statusAssertion?.credential_hash_alg,
                     expected: "string",
                     message: "'credential_hash_alg' MUST be a string",
                   },

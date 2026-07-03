@@ -89,6 +89,33 @@ export async function createVpTokenMdoc(
  * @throws {MDLParseError} If the credential buffer cannot be decoded or parsed as a valid mdoc.
  * @throws {ValidationError} If the decoded mdoc fails schema validation.
  */
+const COSE_EC2_CRV_MAP: Record<number, string> = {
+  1: "P-256",
+  2: "P-384",
+  3: "P-521",
+};
+
+/**
+ * Converts a COSE_Key (RFC 8152) EC2 key map to a JWK.
+ * Only EC2 keys (kty=2) with P-256/P-384/P-521 curves are supported.
+ */
+export function coseKeyToJwk(deviceKey: Map<number, unknown>): JsonWebKey {
+  const kty = deviceKey.get(1) as number | undefined;
+  if (kty !== 2)
+    throw new Error(`Unsupported COSE kty ${kty}; only EC2 (2) supported`);
+  const crvId = deviceKey.get(-1) as number;
+  const x = deviceKey.get(-2) as Uint8Array;
+  const y = deviceKey.get(-3) as Uint8Array;
+  const crv = COSE_EC2_CRV_MAP[crvId];
+  if (!crv || !x || !y) throw new Error("COSE EC2 key missing required fields");
+  return {
+    crv,
+    kty: "EC",
+    x: Buffer.from(x).toString("base64url"),
+    y: Buffer.from(y).toString("base64url"),
+  };
+}
+
 export function parseMdoc(credential: Buffer): IssuerSignedDocument {
   try {
     const doc = parseWithErrorHandling(

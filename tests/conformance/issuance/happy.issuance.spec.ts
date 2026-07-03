@@ -21,7 +21,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
 import { parseCredential } from "@/functions";
-import { fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
+import { coseKeyToJwk, fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
 import { validateDcqlQuery } from "@/logic/dcql";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
@@ -1202,6 +1202,7 @@ testConfigs.forEach((testConfig) => {
     // CREDENTIAL REQUEST TESTS
     // ============================================================================
 
+    // eslint-disable-next-line complexity
     test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
       const DESCRIPTION =
@@ -1239,20 +1240,24 @@ testConfigs.forEach((testConfig) => {
 
           // Resolve the key-binding JWK from either SD-JWT VC (cnf.jwk) or
           // mdoc-CBOR (deviceKeyInfo.deviceKey converted from COSE_Key).
-          let boundKeyJwk: object | undefined;
+          let boundKeyJwk: JsonWebKey | undefined;
+          let detectedFormat: "dc+sd-jwt" | "mso_mdoc" | undefined;
 
           try {
             const sdJwt = await SDJwt.extractJwt(credential.credential);
+            detectedFormat = "dc+sd-jwt";
             const payload = sdJwt.payload as
               | undefined
-              | { cnf?: { jwk?: object } };
+              | { cnf?: { jwk?: JsonWebKey } };
             boundKeyJwk = payload?.cnf?.jwk;
             log.debug("  Format: SD-JWT VC");
-          } catch {
-            log.debug("  Not SD-JWT VC, trying mdoc-CBOR...");
+          } catch (err: unknown) {
+            log.debug(
+              `  Not SD-JWT VC (${err instanceof Error ? err.message : String(err)}), trying mdoc-CBOR...`,
+            );
           }
 
-          if (boundKeyJwk === undefined) {
+          if (detectedFormat === undefined) {
             try {
               const mdocDoc = parseMdoc(
                 Buffer.from(credential.credential, "base64url"),
@@ -1260,37 +1265,30 @@ testConfigs.forEach((testConfig) => {
               const deviceKey =
                 mdocDoc.issuerSigned.issuerAuth.decodedPayload.deviceKeyInfo
                   ?.deviceKey;
-              // Convert COSE_Key (RFC 8152) to JWK.
-              // CBOR label -1 = crv (1=P-256, 2=P-384, 3=P-521), -2 = x, -3 = y.
-              const CRV_MAP: Record<number, string> = {
-                1: "P-256",
-                2: "P-384",
-                3: "P-521",
-              };
               if (deviceKey !== undefined) {
-                const crvId = deviceKey.get(-1) as number;
-                const x = deviceKey.get(-2) as Uint8Array;
-                const y = deviceKey.get(-3) as Uint8Array;
-                boundKeyJwk = {
-                  crv: CRV_MAP[crvId] ?? "P-256",
-                  kty: "EC" as const,
-                  x: Buffer.from(x).toString("base64url"),
-                  y: Buffer.from(y).toString("base64url"),
-                };
+                boundKeyJwk = coseKeyToJwk(deviceKey);
               }
+              detectedFormat = "mso_mdoc";
               log.debug("  Format: mdoc-CBOR");
-            } catch {
-              log.error("  Credential is neither SD-JWT VC nor mdoc-CBOR");
+            } catch (err: unknown) {
+              log.error(
+                `  Credential is neither SD-JWT VC nor mdoc-CBOR: ${err instanceof Error ? err.message : String(err)}`,
+              );
             }
+          }
+
+          if (detectedFormat === "dc+sd-jwt" && boundKeyJwk === undefined) {
+            throw new Error(
+              "SD-JWT credential is missing cnf.jwk — key binding cannot be verified",
+            );
           }
 
           expect(
             boundKeyJwk,
             "Credential must be bound to the wallet key via cnf.jwk (SD-JWT VC) or deviceKeyInfo.deviceKey (mdoc-CBOR)",
           ).toBeDefined();
-          if (boundKeyJwk === undefined) continue;
-
-          const credentialJkt = await calculateJwkThumbprint(boundKeyJwk);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const credentialJkt = await calculateJwkThumbprint(boundKeyJwk!);
           log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
           expect(credentialJkt).toBe(expectedJkt);
         }
