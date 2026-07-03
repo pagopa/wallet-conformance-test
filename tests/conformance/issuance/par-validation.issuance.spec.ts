@@ -30,8 +30,10 @@ import {
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
 import {
+  buildJwksPath,
   createQuietLogger,
   loadConfigWithHierarchy,
+  loadJwks,
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
@@ -205,7 +207,20 @@ testConfigs.forEach((testConfig) => {
         log.debug(
           "→ Creating fake wallet attestation with unregistered key...",
         );
-        const fakeAttestation = await createFakeAttestationResponse();
+        const config = orchestrator.getConfig();
+        const fakeAttestation = await createFakeAttestationResponse(
+          {
+            trust: config.trust,
+            trustAnchor: config.trust_anchor,
+            wallet: config.wallet,
+          },
+          {
+            provider: await loadJwks(
+              config.wallet.backup_storage_path,
+              buildJwksPath("wallet_provider"),
+            ),
+          },
+        );
         log.debug("  Fake attestation created");
 
         log.debug("→ Sending PAR request with fake attestation...");
@@ -942,7 +957,20 @@ testConfigs.forEach((testConfig) => {
         log.debug(
           "→ Creating attestation from a Wallet Provider not registered in the federation...",
         );
-        const fakeAttestation = await createFakeAttestationResponse();
+        const config = orchestrator.getConfig();
+        const fakeAttestation = await createFakeAttestationResponse(
+          {
+            trust: config.trust,
+            trustAnchor: config.trust_anchor,
+            wallet: config.wallet,
+          },
+          {
+            provider: await loadJwks(
+              config.wallet.backup_storage_path,
+              buildJwksPath("wallet_unit"),
+            ),
+          },
+        );
 
         log.debug("→ Sending PAR request with unregistered Wallet Provider...");
         const result = await runParStep(
