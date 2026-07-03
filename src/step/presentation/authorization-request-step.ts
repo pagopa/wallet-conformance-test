@@ -15,7 +15,6 @@ import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
-import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
 import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
@@ -34,6 +33,11 @@ export interface AuthorizationRequestExecuteStepResponse {
 }
 
 export interface AuthorizationRequestOptions {
+  /**
+   * Authorization request URL for this execution.
+   */
+  authorizeRequestUrl: string;
+
   /**
    * Credentials along with their associated DPoP keys.
    */
@@ -80,9 +84,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
-      const authorizeRequestUrl = await getAuthorizeRequestUrl(
-        this.config.presentation,
-      );
+      const authorizeRequestUrl = options.authorizeRequestUrl;
 
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
 

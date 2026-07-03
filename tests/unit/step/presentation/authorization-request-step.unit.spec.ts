@@ -200,6 +200,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -228,6 +229,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -251,6 +253,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -271,6 +274,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -301,6 +305,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -322,6 +327,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -349,6 +355,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -373,6 +380,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -397,6 +405,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -426,6 +435,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       await expect(
         step.run({
+          authorizeRequestUrl: stubAuthorizeRequestUrl,
           credentials: [],
           verifierMetadata,
           walletAttestation: {} as never,
@@ -446,6 +456,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -471,6 +482,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,

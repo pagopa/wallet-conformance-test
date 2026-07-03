@@ -76,13 +76,13 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  async prepareBaseUrl(): Promise<string | undefined> {
+  async prepareBaseUrl(
+    authorizeRequestUrl: string,
+  ): Promise<string | undefined> {
     if (!this.config.presentation.verifier) {
-      const authorizeUrl = await getAuthorizeRequestUrl(
-        this.config.presentation,
+      const clientId = new URL(authorizeRequestUrl).searchParams.get(
+        "client_id",
       );
-
-      const clientId = new URL(authorizeUrl).searchParams.get("client_id");
 
       if (!clientId) {
         throw new Error(
@@ -147,8 +147,12 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
-    const baseUrl = await this.prepareBaseUrl();
-    this.printTestSuiteOnce(baseUrl);
+    const authorizeRequestUrl = await getAuthorizeRequestUrl(
+      this.config.presentation,
+    );
+
+    this.printTestSuiteOnce(authorizeRequestUrl);
+    const baseUrl = await this.prepareBaseUrl(authorizeRequestUrl);
 
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
@@ -181,6 +185,7 @@ export class WalletPresentationOrchestratorFlow {
       credentials,
       verifierMetadata,
       walletAttestationResponse,
+      authorizeRequestUrl,
     );
     this.log.flowStep(
       2,
@@ -203,9 +208,11 @@ export class WalletPresentationOrchestratorFlow {
     credentials: CredentialWithKey[],
     verifierMetadata: ItWalletCredentialVerifierMetadata | undefined,
     walletAttestation: AttestationResponse,
+    authorizeRequestUrl: string,
   ) {
     const authorizationRequestResponse =
       await this.authorizationRequestStep.run({
+        authorizeRequestUrl,
         credentials,
         verifierMetadata,
         walletAttestation,
@@ -261,13 +268,13 @@ export class WalletPresentationOrchestratorFlow {
     return new URL(url).href.replace(/\/+$/, "");
   }
 
-  private printTestSuiteOnce(target: string | undefined): void {
+  private printTestSuiteOnce(target: string): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
     this.log.testSuite({
       profile: this.presentationConfig.name,
       specsVersion: this.config.wallet.wallet_version,
-      target: target ?? "N/A",
+      target: decodeURIComponent(target),
       title: this.presentationConfig.name,
     });
 

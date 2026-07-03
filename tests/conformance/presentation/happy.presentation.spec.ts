@@ -670,7 +670,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
       let testSuccess = false;
       try {
         const config = orchestrator.getConfig();
-        const baseUrl = await orchestrator.prepareBaseUrl();
+        const baseUrl = await orchestrator.prepareBaseUrl(readQrCodePayload());
         if (!baseUrl) {
           log.warn(
             `  Skipping verifier metadata fetch: unsupported client_id format`,
