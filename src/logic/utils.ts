@@ -44,11 +44,28 @@ export const partialCallbacks: Pick<
   verifyJwt: async (signer, jwt) => verifyJwt(signer, jwt),
 };
 
-export function fetchWithConfig(network: Config["network"]): Fetch {
-  return (input, init) => {
+interface FetchWithConfigOptions {
+  onRequest?: (request: FetchWithConfigRequest) => Promise<void> | void;
+  onResponse?: (response: Response) => Promise<void> | void;
+}
+
+interface FetchWithConfigRequest {
+  body: RequestInit["body"] | undefined;
+  headers: Headers;
+  method: string;
+  url: string;
+}
+
+export function fetchWithConfig(
+  network: Config["network"],
+  options?: FetchWithConfigOptions,
+): Fetch {
+  return async (input, init) => {
+    const request = input instanceof Request ? input : undefined;
+
     // Normalize all HeadersInit variants (plain object, Headers instance, tuple array)
     // and set required headers last so callers cannot override them.
-    const headers = new Headers(init?.headers);
+    const headers = new Headers(init?.headers ?? request?.headers);
     if (network.user_agent) {
       headers.set("User-Agent", network.user_agent);
     }
@@ -60,7 +77,16 @@ export function fetchWithConfig(network: Config["network"]): Fetch {
       ? AbortSignal.any([timeoutSignal, init.signal])
       : timeoutSignal;
 
-    return fetch(input, { ...init, headers, signal });
+    await options?.onRequest?.({
+      body: init?.body,
+      headers,
+      method: (init?.method ?? request?.method ?? "GET").toUpperCase(),
+      url: request?.url ?? input.toString(),
+    });
+
+    const response = await fetch(input, { ...init, headers, signal });
+    await options?.onResponse?.(response);
+    return response;
   };
 }
 

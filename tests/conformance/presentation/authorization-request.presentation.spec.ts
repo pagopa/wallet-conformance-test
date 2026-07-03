@@ -10,7 +10,15 @@ import {
   type CreateAuthorizationResponseVersionedOptions,
 } from "@pagopa/io-wallet-oid4vp";
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
-import { CompactEncrypt, generateKeyPair } from "jose";
+import {
+  CompactEncrypt,
+  decodeJwt,
+  decodeProtectedHeader,
+  exportJWK,
+  generateKeyPair,
+  importJWK,
+  SignJWT,
+} from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
@@ -96,6 +104,236 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       credentials,
       verifierMetadata,
       walletAttestation: attestationOverride ?? walletAttestationResponse,
+    });
+  }
+
+  async function encryptResponsePayload(payload: unknown): Promise<string> {
+    const encryptJwe = getEncryptJweCallback();
+    const { jwe } = await encryptJwe(
+      {
+        alg: verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+        enc:
+          verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
+        method: "jwk" as const,
+        publicJwk: verifierEncryptionKey,
+      },
+      JSON.stringify(payload),
+    );
+
+    return jwe;
+  }
+
+  async function encryptRawResponsePayload(payload: string): Promise<string> {
+    const encryptJwe = getEncryptJweCallback();
+    const { jwe } = await encryptJwe(
+      {
+        alg: verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+        enc:
+          verifierMetadata.authorization_encrypted_response_enc ||
+          "A128CBC-HS256",
+        method: "jwk" as const,
+        publicJwk: verifierEncryptionKey,
+      },
+      payload,
+    );
+
+    return jwe;
+  }
+
+  async function postTamperedKbJwtSignatureAuthorizationResponse(): Promise<Response> {
+    const authResult = await runAuthorizationStep(
+      testConfig.authorizeStepClass,
+    );
+    expect(authResult.success).toBe(true);
+    assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+    hasObjectProperties(authResult, ["response"]);
+    if (!authResult.response) {
+      throw new Error("auth request was not successful");
+    }
+
+    const { requestObject, responseUri } = authResult.response;
+    const rawVpToken = authResult.response.authorizationResponse
+      .authorizationResponsePayload.vp_token as Record<
+      string,
+      string | string[]
+    >;
+
+    const tamperedVpToken: Record<string, string | string[]> = {};
+    let tamperedSdJwtCount = 0;
+
+    const tamperSdJwt = (sdJwt: string): string => {
+      const parts = sdJwt.split("~");
+      if (parts.length < 2) {
+        return sdJwt;
+      }
+
+      const kbJwt = parts[parts.length - 1];
+      if (!kbJwt) {
+        return sdJwt;
+      }
+
+      const jwtParts = kbJwt.split(".");
+      if (jwtParts.length !== 3) {
+        return sdJwt;
+      }
+
+      decodeProtectedHeader(kbJwt);
+      decodeJwt(kbJwt);
+
+      const sig = jwtParts[2] ?? "";
+      if (sig.length < 4) {
+        throw new Error(
+          "Test setup failed: KB-JWT signature too short to tamper",
+        );
+      }
+
+      const tamperedSig =
+        sig.slice(0, -4) + (sig.endsWith("AAAA") ? "BBBB" : "AAAA");
+      jwtParts[2] = tamperedSig;
+      parts[parts.length - 1] = jwtParts.join(".");
+      tamperedSdJwtCount++;
+      return parts.join("~");
+    };
+
+    for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
+      tamperedVpToken[credId] = Array.isArray(sdJwtVp)
+        ? sdJwtVp.map(tamperSdJwt)
+        : tamperSdJwt(sdJwtVp);
+    }
+
+    if (tamperedSdJwtCount === 0) {
+      throw new Error(
+        "Test setup failed: no SD-JWT entries were tampered (KB-JWT signature not found)",
+      );
+    }
+
+    const metadata = {
+      ...verifierMetadata,
+      authorization_encrypted_response_alg:
+        verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+      authorization_encrypted_response_enc:
+        verifierMetadata.authorization_encrypted_response_enc ||
+        "A128CBC-HS256",
+    };
+
+    const tamperedAuthorizationResponse = await createAuthorizationResponse({
+      authorization_encrypted_response_alg:
+        metadata.authorization_encrypted_response_alg,
+      authorization_encrypted_response_enc:
+        metadata.authorization_encrypted_response_enc,
+      callbacks: {
+        ...partialCallbacks,
+        encryptJwe: getEncryptJweCallback(),
+      },
+      config: ioWalletSdkConfig,
+      requestObject,
+      rpJwks: { jwks: metadata.jwks },
+      vp_token: tamperedVpToken,
+    } as CreateAuthorizationResponseVersionedOptions);
+
+    const formBody = new URLSearchParams({
+      response: tamperedAuthorizationResponse.jarm.responseJwe,
+    });
+    return postToResponseUri(responseUri, {
+      body: formBody.toString(),
+    });
+  }
+
+  async function postKbJwtSignedWithWrongKeyAuthorizationResponse(): Promise<Response> {
+    const authResult = await runAuthorizationStep(
+      testConfig.authorizeStepClass,
+    );
+    expect(authResult.success).toBe(true);
+    assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+    hasObjectProperties(authResult, ["response"]);
+    if (!authResult.response) {
+      throw new Error("auth request was not successful");
+    }
+
+    const { requestObject, responseUri } = authResult.response;
+    const rawVpToken = authResult.response.authorizationResponse
+      .authorizationResponsePayload.vp_token as Record<
+      string,
+      string | string[]
+    >;
+
+    const tamperedVpToken: Record<string, string | string[]> = {};
+    let tamperedSdJwtCount = 0;
+
+    const resignSdJwtWithWrongKey = async (sdJwt: string): Promise<string> => {
+      const parts = sdJwt.split("~");
+      if (parts.length < 2) {
+        return sdJwt;
+      }
+
+      const kbJwt = parts[parts.length - 1];
+      if (!kbJwt) {
+        return sdJwt;
+      }
+
+      const header = decodeProtectedHeader(kbJwt);
+      const payload = decodeJwt(kbJwt) as Record<string, unknown>;
+      const { privateKey } = await generateKeyPair("ES256", {
+        extractable: true,
+      });
+      const wrongPrivateJwk = await exportJWK(privateKey);
+      const wrongKey = await importJWK(wrongPrivateJwk, "ES256");
+
+      const resignedKbJwt = await new SignJWT(payload)
+        .setProtectedHeader({
+          alg: header.alg || "ES256",
+          ...(typeof header.kid === "string" ? { kid: header.kid } : {}),
+          typ: header.typ || "kb+jwt",
+        })
+        .sign(wrongKey);
+
+      parts[parts.length - 1] = resignedKbJwt;
+      tamperedSdJwtCount++;
+      return parts.join("~");
+    };
+
+    for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
+      tamperedVpToken[credId] = Array.isArray(sdJwtVp)
+        ? await Promise.all(sdJwtVp.map(resignSdJwtWithWrongKey))
+        : await resignSdJwtWithWrongKey(sdJwtVp);
+    }
+
+    if (tamperedSdJwtCount === 0) {
+      throw new Error(
+        "Test setup failed: no SD-JWT entries were re-signed with a wrong key",
+      );
+    }
+
+    const metadata = {
+      ...verifierMetadata,
+      authorization_encrypted_response_alg:
+        verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+      authorization_encrypted_response_enc:
+        verifierMetadata.authorization_encrypted_response_enc ||
+        "A128CBC-HS256",
+    };
+
+    const tamperedAuthorizationResponse = await createAuthorizationResponse({
+      authorization_encrypted_response_alg:
+        metadata.authorization_encrypted_response_alg,
+      authorization_encrypted_response_enc:
+        metadata.authorization_encrypted_response_enc,
+      callbacks: {
+        ...partialCallbacks,
+        encryptJwe: getEncryptJweCallback(),
+      },
+      config: ioWalletSdkConfig,
+      requestObject,
+      rpJwks: { jwks: metadata.jwks },
+      vp_token: tamperedVpToken,
+    } as CreateAuthorizationResponseVersionedOptions);
+
+    const formBody = new URLSearchParams({
+      response: tamperedAuthorizationResponse.jarm.responseJwe,
+    });
+    return postToResponseUri(responseUri, {
+      body: formBody.toString(),
     });
   }
 
@@ -191,6 +429,76 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the malformed credentials...");
       expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-36 — Large response payloads
+  // -----------------------------------------------------------------------
+
+  test("RPR-36: Verify handling of large response payloads.", async () => {
+    const log = baseLog.withTag("RPR-36");
+    const DESCRIPTION = "RP correctly rejected oversized response payload";
+    log.start("Conformance test: Large response payloads");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      assertStepSuccess(authResult, AuthorizationRequestDefaultStep.tag);
+      hasObjectProperties(authResult, ["response"]);
+
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      log.info("→ Building oversized encrypted response payload...");
+      const largePadding = "A".repeat(2 * 1024 * 1024);
+      const oversizedPayload = JSON.stringify({
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        padding: largePadding,
+      });
+
+      const encryptJwe = getEncryptJweCallback();
+      const { jwe: oversizedJwe } = await encryptJwe(
+        {
+          alg:
+            verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
+          enc:
+            verifierMetadata.authorization_encrypted_response_enc ||
+            "A128CBC-HS256",
+          method: "jwk" as const,
+          publicJwk: verifierEncryptionKey,
+        },
+        oversizedPayload,
+      );
+
+      log.debug(`  Plaintext payload bytes: ${oversizedPayload.length}`);
+      log.debug(`  JWE response bytes: ${oversizedJwe.length}`);
+      log.info("→ Posting oversized JARM to response_uri...");
+
+      const formBody = new URLSearchParams({ response: oversizedJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP rejected the oversized payload safely...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject oversized responses without an internal server error",
+      ).toBeLessThan(500);
 
       testSuccess = true;
     } finally {
@@ -435,6 +743,68 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
 
     let testSuccess = false;
     try {
+      log.info("→ Tampering KB-JWT signature inside the SD-JWT VP vp_token...");
+      log.info(
+        "→ Re-building JARM with tampered vp_token and posting to response_uri...",
+      );
+      const response = await postTamperedKbJwtSignatureAuthorizationResponse();
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP rejected the tampered SD-JWT...");
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-103 — KB-JWT signature validation using public key
+  // -----------------------------------------------------------------------
+
+  test("RPR-103: KB-JWT signature validation using public key | RP rejects a response whose KB-JWT is validly signed by the wrong key", async () => {
+    const log = baseLog.withTag("RPR-103");
+    const DESCRIPTION =
+      "RPR-103: RP validates the KB-JWT signature against the key bound in the SD-JWT cnf claim";
+    log.start(
+      "Conformance test: RPR-103 KB-JWT signature validation using public key",
+    );
+
+    let testSuccess = false;
+    try {
+      log.info(
+        "→ Re-signing KB-JWT inside the SD-JWT VP vp_token with a fresh, unrelated key...",
+      );
+      log.info(
+        "→ Re-building JARM with the re-signed vp_token and posting to response_uri...",
+      );
+      const response = await postKbJwtSignedWithWrongKeyAuthorizationResponse();
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP rejects a KB-JWT that does not verify against the bound public key...",
+      );
+      expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-54 — Response validation failures
+  // -----------------------------------------------------------------------
+
+  test("RPR-54: Relying Party Response | RP returns an error response for response validation failures", async () => {
+    const log = baseLog.withTag("RPR-54");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response validation failed";
+    log.start("Conformance test: Relying Party Response validation failures");
+
+    let testSuccess = false;
+    try {
       const authResult = await runAuthorizationStep(
         testConfig.authorizeStepClass,
       );
@@ -443,99 +813,88 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
         throw new Error("auth request was not successful");
       }
 
-      const { requestObject, responseUri } = authResult.response;
-      const rawVpToken = authResult.response.authorizationResponse
-        .authorizationResponsePayload.vp_token as Record<
-        string,
-        string | string[]
-      >;
-
-      log.info("→ Tampering KB-JWT signature inside the SD-JWT VP vp_token...");
-
-      const tamperedVpToken: Record<string, string | string[]> = {};
-      let tamperedSdJwtCount = 0;
-
-      const tamperSdJwt = (sdJwt: string): string => {
-        const parts = sdJwt.split("~");
-        const kbJwt = parts[parts.length - 1];
-        if (!kbJwt) {
-          throw new Error(
-            "Test setup failed: vp_token entry is not an SD-JWT with a KB-JWT segment",
-          );
-        }
-
-        const jwtParts = kbJwt.split(".");
-        if (jwtParts.length !== 3) {
-          throw new Error(
-            "Test setup failed: could not parse KB-JWT inside SD-JWT (expected 3 JWT parts)",
-          );
-        }
-
-        const sig = jwtParts[2] ?? "";
-        if (sig.length < 4) {
-          throw new Error(
-            "Test setup failed: KB-JWT signature too short to tamper",
-          );
-        }
-
-        const tamperedSig =
-          sig.slice(0, -4) + (sig.endsWith("AAAA") ? "BBBB" : "AAAA");
-        jwtParts[2] = tamperedSig;
-        parts[parts.length - 1] = jwtParts.join(".");
-        tamperedSdJwtCount++;
-        return parts.join("~");
+      const invalidPayload: Record<string, unknown> = {
+        ...(authResult.response.authorizationResponse
+          .authorizationResponsePayload as Record<string, unknown>),
       };
-
-      for (const [credId, sdJwtVp] of Object.entries(rawVpToken)) {
-        tamperedVpToken[credId] = Array.isArray(sdJwtVp)
-          ? sdJwtVp.map(tamperSdJwt)
-          : tamperSdJwt(sdJwtVp);
-      }
-
-      if (tamperedSdJwtCount === 0) {
-        throw new Error(
-          "Test setup failed: no SD-JWT entries were tampered (KB-JWT signature not found)",
-        );
-      }
+      delete invalidPayload.vp_token;
 
       log.info(
-        "→ Re-building JARM with tampered vp_token and posting to response_uri...",
+        "→ Posting an encrypted response missing the required vp_token claim...",
+      );
+      const invalidJwe = await encryptResponsePayload(invalidPayload);
+      const formBody = new URLSearchParams({ response: invalidJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
       );
 
-      const metadata = {
-        ...verifierMetadata,
-        authorization_encrypted_response_alg:
-          verifierMetadata.authorization_encrypted_response_alg || "ECDH-ES",
-        authorization_encrypted_response_enc:
-          verifierMetadata.authorization_encrypted_response_enc ||
-          "A128CBC-HS256",
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject response validation failures without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-55 — Response processing errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-55: Relying Party Response | RP returns an error response for response processing errors", async () => {
+    const log = baseLog.withTag("RPR-55");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response processing failed";
+    log.start("Conformance test: Relying Party Response processing errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const payloadWithUnknownCredential = {
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        vp_token: {
+          "unknown-credential-query-id-rpr-055":
+            "header.payload.signature~kb-header.kb-payload.kb-signature",
+        },
       };
 
-      const tamperedAuthorizationResponse = await createAuthorizationResponse({
-        authorization_encrypted_response_alg:
-          metadata.authorization_encrypted_response_alg,
-        authorization_encrypted_response_enc:
-          metadata.authorization_encrypted_response_enc,
-        callbacks: {
-          ...partialCallbacks,
-          encryptJwe: getEncryptJweCallback(),
+      log.info(
+        "→ Posting an encrypted response with an unprocessable credential query result...",
+      );
+      const processingErrorJwe = await encryptResponsePayload(
+        payloadWithUnknownCredential,
+      );
+      const formBody = new URLSearchParams({ response: processingErrorJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
         },
-        config: ioWalletSdkConfig,
-        requestObject,
-        rpJwks: { jwks: metadata.jwks },
-        vp_token: tamperedVpToken,
-      } as CreateAuthorizationResponseVersionedOptions);
-
-      const formBody = new URLSearchParams({
-        response: tamperedAuthorizationResponse.jarm.responseJwe,
-      });
-      const response = await postToResponseUri(responseUri, {
-        body: formBody.toString(),
-      });
+      );
 
       log.debug(`  Response status: ${response.status}`);
-      log.info("→ Validating RP rejected the tampered SD-JWT...");
+      log.info("→ Validating RP returned a controlled error response...");
       expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject response processing errors without an internal server error",
+      ).toBeLessThan(500);
 
       testSuccess = true;
     } finally {
@@ -682,6 +1041,106 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
       log.debug(`  Response status: ${response.status}`);
       log.info("→ Validating RP rejected the invalid claims...");
       expect(response.ok).toBe(false);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-67 — Response parsing errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-67: Relying Party Response | RP returns an error response for response parsing errors", async () => {
+    const log = baseLog.withTag("RPR-67");
+    const DESCRIPTION =
+      "RP returned an error response when authorization response parsing failed";
+    log.start("Conformance test: Relying Party Response parsing errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      log.info(
+        "→ Posting an encrypted response whose plaintext is not JSON...",
+      );
+      const unparsableJwe = await encryptRawResponsePayload(
+        "{ this-is-not-valid-json",
+      );
+      const formBody = new URLSearchParams({ response: unparsableJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info("→ Validating RP returned a controlled error response...");
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject parsing failures without an internal server error",
+      ).toBeLessThan(500);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // RPR-68 — Response timeout errors
+  // -----------------------------------------------------------------------
+
+  test("RPR-68: Relying Party Response | RP returns an error response for timed-out authorization responses", async () => {
+    const log = baseLog.withTag("RPR-68");
+    const DESCRIPTION =
+      "RP returned an error response when the authorization response was expired";
+    log.start("Conformance test: Relying Party Response timeout errors");
+
+    let testSuccess = false;
+    try {
+      const authResult = await runAuthorizationStep(
+        testConfig.authorizeStepClass,
+      );
+      expect(authResult.success).toBe(true);
+      if (!authResult.response) {
+        throw new Error("auth request was not successful");
+      }
+
+      const expiredPayload = {
+        ...authResult.response.authorizationResponse
+          .authorizationResponsePayload,
+        exp: Math.floor(Date.now() / 1000) - 60,
+      };
+
+      log.info("→ Posting an encrypted response with an expired exp claim...");
+      const expiredJwe = await encryptResponsePayload(expiredPayload);
+      const formBody = new URLSearchParams({ response: expiredJwe });
+      const response = await postToResponseUri(
+        authResult.response.responseUri,
+        {
+          body: formBody.toString(),
+        },
+      );
+
+      log.debug(`  Response status: ${response.status}`);
+      log.info(
+        "→ Validating RP returned a controlled timeout error response...",
+      );
+      expect(response.ok).toBe(false);
+      expect(
+        response.status,
+        "RP must reject timed-out responses without an internal server error",
+      ).toBeLessThan(500);
 
       testSuccess = true;
     } finally {
