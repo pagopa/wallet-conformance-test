@@ -262,30 +262,34 @@ These guides cover:
 
 #### Testing the Presentation Flow
 
-##### Using Configuration File
+The presentation flow simulates your wallet presenting a credential to a Relying Party (Verifier). There are two ways to supply the authorization request URL that the RP generates (e.g. from a QR code):
 
-2. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
+- **Static URL** — paste it directly into `config.ini` or pass it via CLI.
+- **Dynamic script** — configure a shell script (`authorize_request_script`) that calls the RP's API and prints a fresh URL to `stdout` on every run. This is the recommended approach because most RPs generate a new URL per session.
 
-   ```ini
-   [presentation]
-   authorize_request_url = ...
-   ```
+Quick examples:
 
-3. Similarly, to test the presentation flow, you will use the `test:presentation` command:
-   ```bash
-   wct test:presentation [OPTIONS]
-   ```
+```ini
+# config.ini — static URL
+[presentation]
+authorize_request_url = https://rp.example.com/auth?client_id=...&request_uri=...&state=...
 
-##### Using Command-Line Options
+# config.ini — dynamic script (recommended)
+[presentation]
+authorize_request_script = ./scripts/presentation.example.sh
+```
 
-2. Alternatively, bypass the configuration file and specify parameters directly:
+```bash
+# CLI — static URL
+wct test:presentation --presentation-authorize-uri 'https://rp.example.com/auth?...'
 
-   ```bash
-   wct test:presentation --presentation-authorize-uri https://rp.example.com
-   ```
+# CLI — dynamic script
+wct test:presentation --presentation-authorize-script ./scripts/presentation.example.sh
+```
 
-> **Note**:
-> The credentials used during the presentation tests will include both the credentials saved during the issuance tests and the auto-generated PID (dc_sd_jwt_PersonIdentificationData).
+**📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Flow Testing Guide](./docs/presentation-testing.md)**.
+
+> **Note**: The credentials used during presentation tests include both the credentials saved during issuance tests and the auto-generated mock PID (`dc_sd_jwt_PersonIdentificationData`).
 
 #### Test Reports
 
