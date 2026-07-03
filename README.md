@@ -134,13 +134,13 @@ If you prefer using Docker, you can pull the official image from the GitHub Cont
 
 To run the tests, create a local directory (e.g., data) to store configuration and reports. Then, launch the container, mounting your local directory as a volume:
 
-1. Create a directory for your data
+First create a directory for your data:
 
 ```bash
 mkdir data
 ```
 
-1. Run the container
+Then run the container:
 
 ```bash
 docker run -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
