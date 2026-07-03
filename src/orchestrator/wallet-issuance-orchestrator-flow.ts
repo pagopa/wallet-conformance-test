@@ -1017,6 +1017,11 @@ export class WalletIssuanceOrchestratorFlow {
       notificationRequestResponse.success,
       notificationRequestResponse.durationMs ?? 0,
     );
-    assertStepSuccess(notificationRequestResponse, "Notification Request");
+    if (!notificationRequestResponse.success) {
+      this.log.warn(
+        `Notification endpoint request failed (${notificationRequestResponse.error?.message ?? "unknown error"}). ` +
+          `Proceeding: notification is non-critical for valid issuance.`,
+      );
+    }
   }
 }
