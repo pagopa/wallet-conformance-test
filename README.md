@@ -70,15 +70,13 @@ Alternatively, you can clone the repository and install locally:
    pnpm install
    ```
 
-4. Install the CLI globally using pnpm:
+4. Install the CLI globally using pnpm, this will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
 
    ```bash
    pnpm install -g
    ```
 
-This will make the `wct` command available system-wide. You can use this command or `pnpm` to launch test as described below.
-
-1. Verify the installation by checking the version:
+5. Verify the installation by checking the version:
 
    ```bash
    wct --version
