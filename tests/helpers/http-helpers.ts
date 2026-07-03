@@ -6,13 +6,19 @@ import { fetchWithConfig, loadConfigWithHierarchy } from "@/logic";
 
 export async function postToResponseUri(
   responseUri: string,
-  options?: { body?: string; contentType?: string; method?: string },
+  options?: {
+    body?: string;
+    contentType?: string;
+    headers?: Record<string, string>;
+    method?: string;
+  },
 ): Promise<Response> {
   const config = loadConfigWithHierarchy();
   const method = options?.method ?? "POST";
   return fetchWithConfig(config.network)(responseUri, {
     body: ["GET", "HEAD"].includes(method) ? undefined : options?.body,
     headers: {
+      ...options?.headers,
       "Content-Type":
         options?.contentType ?? "application/x-www-form-urlencoded",
     },

@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { resolveWorkspacePath } from "@/logic/runtime-paths";
+import { resolvePackageAssetPath } from "@/logic/runtime-paths";
 
 export function openDb(dbPath: string): DatabaseSync {
   if (dbPath !== ":memory:") {
@@ -16,7 +16,7 @@ export function openDb(dbPath: string): DatabaseSync {
 }
 
 export function resolveDbPath(): string {
-  return resolveWorkspacePath("data/wct.db");
+  return resolvePackageAssetPath("data/wct.db");
 }
 
 function initSchema(db: DatabaseSync): void {

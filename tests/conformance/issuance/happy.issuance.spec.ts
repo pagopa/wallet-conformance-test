@@ -60,6 +60,8 @@ testConfigs.forEach((testConfig) => {
     const sdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
     });
+    const shouldSkipTrustAnchorVerification =
+      orchestrator.getConfig().trust_anchor.verify === false;
 
     beforeAll(async () => {
       try {
@@ -137,36 +139,49 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-    test("CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed", async () => {
-      const log = baseLog.withTag("CI_003");
-      const DESCRIPTION = "Entity Configuration is cryptographically signed";
+    test(
+      "CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed",
+      { skip: shouldSkipTrustAnchorVerification },
+      async () => {
+        const log = baseLog.withTag("CI_003");
+        const DESCRIPTION = "Entity Configuration is cryptographically signed";
 
-      log.start(
-        "Conformance test: Verifying Entity Configuration JWT signature",
-      );
+        log.start(
+          "Conformance test: Verifying Entity Configuration JWT signature",
+        );
 
-      let testSuccess = false;
-      try {
-        log.debug("→ Validating response is present...");
-        expect(fetchMetadataResponse.response).toBeDefined();
+        let testSuccess = false;
+        try {
+          const config = orchestrator.getConfig();
+          const { credentialIssuer } =
+            await orchestrator.findCredentialConfig();
+          const entityClaims = await fetchMetadata({
+            callbacks: {
+              fetch: fetchWithConfig(config.network),
+              verifyJwt,
+            },
+            config: new IoWalletSdkConfig({
+              itWalletSpecsVersion: config.wallet.wallet_version,
+            }),
+            credentialIssuerUrl: credentialIssuer,
+          });
 
-        log.debug("→ Asserting response status...");
-        expect(fetchMetadataResponse.response?.status).toBe(200);
+          log.debug("→ Checking Entity Statement JWT is present...");
+          expect(entityClaims).toBeDefined();
 
-        log.debug("→ Checking Entity Statement JWT is present...");
-        expect(
-          fetchMetadataResponse.response?.discoveredVia === "federation",
-        ).toBeTruthy();
-
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          testSuccess = true;
+        } catch (e) {
+          log.error("Error fetching metadata:", e);
+          throw e;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test(
       "CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement",
-      { skip: process.env.CI === "true" },
+      { skip: shouldSkipTrustAnchorVerification },
       async () => {
         const log = baseLog.withTag("CI_004");
         const DESCRIPTION =
@@ -279,7 +294,7 @@ testConfigs.forEach((testConfig) => {
             metadata: z.any(),
             sub: z.string(),
           })
-          .passthrough()
+          .loose()
           .refine((data) => data.metadata !== undefined, {
             message: "metadata is missing",
           })
@@ -310,25 +325,14 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          const config = orchestrator.getConfig();
-          const { credentialIssuer } =
-            await orchestrator.findCredentialConfig();
-          const entityClaims = await fetchMetadata({
-            callbacks: {
-              fetch: fetchWithConfig(config.network),
-              verifyJwt,
-            },
-            config: new IoWalletSdkConfig({
-              itWalletSpecsVersion: config.wallet.wallet_version,
-            }),
-            credentialIssuerUrl: credentialIssuer,
-          });
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
 
           const result = z
             .object({
               metadata: z.any(),
             })
-            .passthrough()
+            .loose()
             .refine(
               (data) =>
                 data.metadata !== undefined &&
@@ -371,7 +375,7 @@ testConfigs.forEach((testConfig) => {
           .object({
             metadata: z.any(),
           })
-          .passthrough()
+          .loose()
           .refine(
             (data) =>
               data.metadata !== undefined &&
