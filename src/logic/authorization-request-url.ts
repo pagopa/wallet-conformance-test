@@ -8,36 +8,19 @@ const execFileAsync = promisify(execFile);
 export async function getAuthorizeRequestUrl(
   presentation: Config["presentation"],
 ): Promise<string> {
-  if (presentation.authorize_request_script) {
-    try {
-      const { stdout } = await execFileAsync(
-        presentation.authorize_request_script,
-        [],
-        { encoding: "utf8", timeout: 15_000 },
-      );
-
-      return parseAuthorizeRequestUrl(
-        stdout,
-        presentation.authorize_request_script,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Authorize request script ${presentation.authorize_request_script} failed: ${message}`,
-      );
-    }
+  const script = presentation.authorize_request_script;
+  if (script) {
+    return await runAuthorizeRequestScript(script);
   }
 
   return presentation.authorize_request_url;
 }
 
-function parseAuthorizeRequestUrl(output: string, scriptPath: string): string {
+function parseAuthorizeRequestUrl(output: string, script: string): string {
   const authorizeRequestUrl = output.trim();
 
   if (!authorizeRequestUrl) {
-    throw new Error(
-      `Authorize request script ${scriptPath} did not output a URL`,
-    );
+    throw new Error(`Authorize request script ${script} did not output a URL`);
   }
 
   try {
@@ -46,7 +29,21 @@ function parseAuthorizeRequestUrl(output: string, scriptPath: string): string {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Authorize request script ${scriptPath} output an invalid URL: ${message}`,
+      `Authorize request script ${script} output an invalid URL: ${message}`,
     );
+  }
+}
+
+async function runAuthorizeRequestScript(script: string) {
+  try {
+    const { stdout } = await execFileAsync(script, [], {
+      encoding: "utf8",
+      timeout: 15_000,
+    });
+
+    return parseAuthorizeRequestUrl(stdout, script);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Authorize request script ${script} failed: ${message}`);
   }
 }
