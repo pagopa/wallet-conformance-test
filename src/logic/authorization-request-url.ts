@@ -13,7 +13,7 @@ export async function getAuthorizeRequestUrl(
       const { stdout } = await execFileAsync(
         presentation.authorize_request_script,
         [],
-        { encoding: "utf8" },
+        { encoding: "utf8", timeout: 15_000 },
       );
 
       return parseAuthorizeRequestUrl(
