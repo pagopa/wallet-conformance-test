@@ -77,8 +77,16 @@ export class NotificationRequestDefaultStep extends StepFlow {
       log.debug(`Notification Response status: ${status}`);
 
       if (status !== 204) {
+        let errorBody: unknown = null;
+        try {
+          errorBody = await httpResponse.json();
+          log.debug("Notification endpoint error response body:", errorBody);
+        } catch {
+          // non-JSON body — swallow silently
+        }
+
         throw new Error(
-          `Notification Endpoint returned unexpected status ${status}. Expected 204 No Content.`,
+          `Notification Endpoint returned unexpected status ${status}. Expected 204 No Content.${errorBody ? ` Response body: ${JSON.stringify(errorBody)}` : ""}`,
         );
       }
 
