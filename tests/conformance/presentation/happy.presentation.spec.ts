@@ -44,6 +44,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
 
   const baseLog = orchestrator.getLog();
   const walletVersion = orchestrator.getConfig().wallet.wallet_version;
+  const shouldSkipTrustAnchorVerification =
+    orchestrator.getConfig().trust_anchor.verify === false;
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
   let fetchMetadataResult: FetchMetadataVpStepResponse;
@@ -655,7 +657,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
 
   test(
     "RPR-10: Authorization request parameters match OpenID Credential Verifier metadata.",
-    { skip: process.env.CI === "true" },
+    { skip: shouldSkipTrustAnchorVerification },
     async ({ skip }) => {
       const log = baseLog.withTag("RPR-10");
 

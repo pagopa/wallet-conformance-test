@@ -147,6 +147,7 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     options.refreshTokenDeferred,
   );
   applyEnvOption(env, "CONFIG_TRANSACTION_ID", options.transactionId);
+  applyEnvOption(env, "CONFIG_TRUST_ANCHOR_VERIFY", options.trustAnchorVerify);
 
   return env;
 }
@@ -228,6 +229,11 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--unsafe-tls",
       "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false (env: CONFIG_UNSAFE_TLS).",
+    )
+    .option(
+      "--trust-anchor-verify <bool>",
+      "Set to false to skip tests that require Trust Anchor verification (CI_003, CI_004, RPR-10). Defaults to true (env: CONFIG_TRUST_ANCHOR_VERIFY).",
+      (val) => val !== "false",
     )
     .option(
       "--tests <names>",
