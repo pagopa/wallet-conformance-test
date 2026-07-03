@@ -76,9 +76,7 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  async prepareBaseUrl(
-    authorizeRequestUrl: string,
-  ): Promise<string | undefined> {
+  prepareBaseUrl(authorizeRequestUrl: string): string | undefined {
     if (!this.config.presentation.verifier) {
       const clientId = new URL(authorizeRequestUrl).searchParams.get(
         "client_id",
@@ -152,7 +150,7 @@ export class WalletPresentationOrchestratorFlow {
     );
 
     this.printTestSuiteOnce(authorizeRequestUrl);
-    const baseUrl = await this.prepareBaseUrl(authorizeRequestUrl);
+    const baseUrl = this.prepareBaseUrl(authorizeRequestUrl);
 
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;

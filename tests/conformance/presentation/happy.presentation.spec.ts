@@ -38,7 +38,7 @@ import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
 
-describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
+describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   const orchestrator: WalletPresentationOrchestratorFlow =
     new WalletPresentationOrchestratorFlow(testConfig);
 
@@ -670,7 +670,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, async () => {
       let testSuccess = false;
       try {
         const config = orchestrator.getConfig();
-        const baseUrl = await orchestrator.prepareBaseUrl(readQrCodePayload());
+        const baseUrl = orchestrator.prepareBaseUrl(readQrCodePayload());
         if (!baseUrl) {
           log.warn(
             `  Skipping verifier metadata fetch: unsupported client_id format`,
