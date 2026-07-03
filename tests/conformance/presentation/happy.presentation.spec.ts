@@ -54,7 +54,6 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   function readQrCodePayload(): string {
     const qrCodePayload =
       authorizationRequestResult.response?.authorizeRequestUrl;
-    expect(qrCodePayload).toBeTruthy();
     if (!qrCodePayload) {
       throw new Error(
         "QR-Code payload is unavailable from the authorization request step",
