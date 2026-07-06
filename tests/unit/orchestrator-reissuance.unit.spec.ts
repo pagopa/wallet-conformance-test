@@ -13,9 +13,10 @@
 import { IssuerTestConfiguration } from "#/config/issuance-test-configuration";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { CredentialWithKey } from "@/types";
+
 import { loadCredentialsForPresentation } from "@/functions";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
-import type { CredentialWithKey } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Module-level mocks
