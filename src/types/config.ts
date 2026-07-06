@@ -23,6 +23,7 @@ export const configSchema = z.object({
      */
     callback_port: z.coerce.number().default(4000),
     certificate_subject: z.string().optional(),
+    credential_configuration_id_reissuance: z.string().optional(),
     credential_offer_uri: z
       .string()
       .url()
@@ -31,8 +32,8 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    refresh_token: z.string().optional(),
     refresh_token_deferred: z.string().optional(),
+    refresh_token_reissuance: z.string().optional(),
     save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     transaction_id_deferred: z.string().optional(),
