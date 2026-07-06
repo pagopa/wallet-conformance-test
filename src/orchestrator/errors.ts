@@ -78,8 +78,8 @@ export class ReissuanceCredentialConfigurationError extends OrchestratorError {
 export class ReissuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
-      "Re-Issuance Flow requires a refresh token. " +
-        "Set 'refresh_token_reissuance' under [issuance] in config.ini or pass --refresh-token-reissuance <token>.",
+      "Re-Issuance Flow requires a refresh token and credential configuration ID. " +
+        "Set 'refresh_token_reissuance' and 'credential_configuration_id_reissuance' under [issuance] in config.ini or pass --refresh-token-reissuance <token> --credential-configuration-id-reissuance <id>.",
       "REISSUANCE_PRECONDITION_FAILED",
     );
     this.name = "ReissuancePreconditionError";
