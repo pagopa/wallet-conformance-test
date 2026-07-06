@@ -295,10 +295,11 @@ Quick examples:
    wct test:presentation [OPTIONS]
    ```
 
-# config.ini — dynamic script (recommended)
+# config.ini
 
 [presentation]
-authorize_request_script = ./tests/scripts/presentation.example.sh
+authorize_request_url = ...
+authorize_request_script = ./tests/scripts/presentation.example.sh # dynamic script recommended
 
 ```
 
@@ -308,7 +309,7 @@ authorize_request_script = ./tests/scripts/presentation.example.sh
 wct test:presentation --presentation-authorize-script ./tests/scripts/presentation.example.sh
 ```
 
-**📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Flow Testing Guide](./docs/presentation-testing.md)**.
+**📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Testing Guide](./tests/docs/PRESENTATION-TESTING-GUIDE.md)**.
 
 > **Note**: The credentials used during presentation tests include both the credentials saved during issuance tests and the auto-generated mock PID (`dc_sd_jwt_PersonIdentificationData`).
 
