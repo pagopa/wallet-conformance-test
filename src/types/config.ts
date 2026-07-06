@@ -56,6 +56,7 @@ export const configSchema = z.object({
     user_agent: z.string().optional(),
   }),
   presentation: z.object({
+    authorize_request_script: z.string().optional(),
     authorize_request_url: z.string().url(),
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),

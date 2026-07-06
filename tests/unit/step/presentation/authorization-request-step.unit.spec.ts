@@ -64,6 +64,9 @@ function getCreateAuthorizationResponseOptions() {
 // Fixtures
 // ---------------------------------------------------------------------------
 
+const stubAuthorizeRequestUrl =
+  "https://verifier.example.com/authorize?client_id=https://verifier.example.com";
+
 /** Minimal Config that satisfies StepFlow constructor requirements. */
 const makeConfig = (): Config =>
   ({
@@ -75,8 +78,7 @@ const makeConfig = (): Config =>
     },
     network: { max_retries: 1, timeout: 10, user_agent: "test" },
     presentation: {
-      authorize_request_url:
-        "https://verifier.example.com/authorize?client_id=https://verifier.example.com",
+      authorize_request_url: stubAuthorizeRequestUrl,
       verifier: "https://verifier.example.com",
     },
     steps_mapping: { mapping: {} },
@@ -198,6 +200,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -226,6 +229,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -249,6 +253,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -269,6 +274,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -299,6 +305,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -320,6 +327,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -347,6 +355,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -371,6 +380,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -395,6 +405,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -424,6 +435,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       await expect(
         step.run({
+          authorizeRequestUrl: stubAuthorizeRequestUrl,
           credentials: [],
           verifierMetadata,
           walletAttestation: {} as never,
@@ -444,6 +456,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       const result = await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,
@@ -452,6 +465,7 @@ describe("AuthorizationRequestDefaultStep", () => {
       expect(result.success).toBe(true);
       expect(result.response).toMatchObject({
         authorizationResponse: stubAuthorizationResponse,
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         parsedQrCode: stubParsedQrCode,
         requestObject: stubRequestObject,
         responseUri: stubRequestObject.response_uri,
@@ -468,6 +482,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const step = makeStep();
       await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
         credentials: [],
         verifierMetadata,
         walletAttestation: {} as never,

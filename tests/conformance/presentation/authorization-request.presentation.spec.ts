@@ -24,6 +24,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { createQuietLogger, loadConfigWithHierarchy } from "@/logic";
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import { getEncryptJweCallback } from "@/logic/jwt";
 import { hasObjectProperties, partialCallbacks } from "@/logic/utils";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
@@ -101,6 +102,7 @@ describe(`[${testConfig.name}] Presentation Authorization Request Validation`, (
     const config = loadConfigWithHierarchy();
     const step = new StepClass(config, createQuietLogger());
     return step.run({
+      authorizeRequestUrl: await getAuthorizeRequestUrl(config.presentation),
       credentials,
       verifierMetadata,
       walletAttestation: attestationOverride ?? walletAttestationResponse,

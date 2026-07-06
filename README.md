@@ -290,6 +290,7 @@ These guides cover:
    ```ini
    [presentation]
    authorize_request_url = ...
+   authorize_request_script = ...
    ```
 
 2. Similarly, to test the presentation flow, you will use the `test:presentation` command:
@@ -300,11 +301,19 @@ These guides cover:
 
 ##### Using Command-Line Options
 
-1. Alternatively, bypass the configuration file and specify parameters directly:
+1. Alternatively, bypass the configuration file and specify parameters directly with the authorization url:
 
-   ```bash
-   wct test:presentation --presentation-authorize-uri https://rp.example.com
-   ```
+```bash
+wct test:presentation --presentation-authorize-uri https://rp.example.com
+```
+
+or pointing to a dynamic script that generates the authorization url:
+
+```bash
+wct test:presentation --presentation-authorize-script ./authorize.js
+```
+
+**📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Testing Guide](./tests/docs/PRESENTATION-TESTING-GUIDE.md)**.
 
 > **Note**:
 > The credentials used during the presentation tests will include both the credentials saved during the issuance tests and the auto-generated PID (dc_sd_jwt_PersonIdentificationData).
