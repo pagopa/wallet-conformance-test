@@ -669,6 +669,7 @@ export class WalletIssuanceOrchestratorFlow {
     if (!accessToken)
       throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
     // Retrieve credential identifier from the authorization details in the token response, if available.
+    // Give the first one because we only request one credential at a time in this test suite.
     const authorizationDetails = tokenResponse.response?.authorization_details;
     const firstCedentialIdentifier =
       authorizationDetails && authorizationDetails[0]?.credential_identifiers
