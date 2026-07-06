@@ -4,7 +4,6 @@ import * as https from "node:https";
 
 import { buildIssuerEntityConfiguration_V1_0 } from "@/functions/V1_0/mock-credentials";
 import { buildIssuerEntityConfiguration_V1_3 } from "@/functions/V1_3/mock-credentials";
-import { buildIssuerEntityConfiguration_V1_4 } from "@/functions/V1_4/mock-credentials";
 import { isMainModule } from "@/logic/entrypoint";
 import { createStatusListToken } from "@/logic/status-list";
 import {
@@ -46,7 +45,13 @@ export const createServer = (config: Config): express.Express => {
           jwt = await buildIssuerEntityConfiguration_V1_3(metadata, keyPair);
           break;
         case ItWalletSpecsVersion.V1_4:
-          jwt = await buildIssuerEntityConfiguration_V1_4(metadata, keyPair);
+          // V1_4 mock issuer entity configuration is identical to V1_3 —
+          // only the dumps directory differs, so fall back to the V1_3 builder.
+          jwt = await buildIssuerEntityConfiguration_V1_3(
+            metadata,
+            keyPair,
+            ItWalletSpecsVersion.V1_4,
+          );
           break;
         default:
           throw new Error(

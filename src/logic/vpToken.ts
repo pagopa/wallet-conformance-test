@@ -12,7 +12,6 @@ import { getDcqlQueryMatches, validateDcqlQuery } from "./dcql";
 import { parseMdoc } from "./mdoc";
 import { prepareCredentials_V1_0 } from "./v1_0/vpToken";
 import { prepareCredentials_V1_3 } from "./v1_3/vpToken";
-import { prepareCredentials_V1_4 } from "./v1_4/vpToken";
 
 /**
  * Builds a Verifiable Presentation (VP) token by selecting credentials based on a DCQL query.
@@ -75,7 +74,9 @@ export async function buildVpToken(
         );
         break;
       case ItWalletSpecsVersion.V1_4:
-        res = await prepareCredentials_V1_4(
+        // V1_4 vp_token preparation is identical to V1_3 (the logic is
+        // version-agnostic), so fall back to the V1_3 implementation.
+        res = await prepareCredentials_V1_3(
           match.valid_credentials,
           credentialQueryId,
           credentials,

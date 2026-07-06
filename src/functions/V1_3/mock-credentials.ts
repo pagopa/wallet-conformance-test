@@ -17,6 +17,12 @@ import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
 const { decode, encode, Tagged } = cbor;
 
+/**
+ * Builds the mocked Credential Issuer entity configuration.
+ *
+ * V1_4 reuses this implementation verbatim (only the dumps directory differs)
+ * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ */
 export async function buildIssuerEntityConfiguration_V1_3(
   metadata: {
     iss: string;
@@ -24,6 +30,7 @@ export async function buildIssuerEntityConfiguration_V1_3(
     trustAnchor: Config["trust_anchor"];
   },
   keyPair: KeyPair,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
 ): Promise<string> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const trust_marks = await getTrustMarks(
@@ -39,7 +46,7 @@ export async function buildIssuerEntityConfiguration_V1_3(
       trust_anchor_base_url: trustAnchorBaseUrl,
       trust_marks,
     },
-    ItWalletSpecsVersion.V1_3,
+    version,
   );
   return createFederationMetadata({
     claims: issClaims,
@@ -48,18 +55,21 @@ export async function buildIssuerEntityConfiguration_V1_3(
   });
 }
 
+/**
+ * Builds a mocked mDL MDOC credential.
+ *
+ * V1_4 reuses this implementation verbatim (only the dumps directory differs)
+ * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ */
 export async function buildMockMdlMdoc_V1_3(
   expiration: Date,
   deviceKey: KeyPairJwk,
   issuerCertificate: string,
   issuerKeyPair: KeyPair,
   issuerBaseUrl: string,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
-  const claims = loadJsonDumps(
-    "mDL.json",
-    { expiration },
-    ItWalletSpecsVersion.V1_3,
-  );
+  const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
   const document = await new Document("org.iso.18013.5.1.mDL")
     .addIssuerNameSpace("org.iso.18013.5.1", claims)
@@ -120,6 +130,12 @@ export async function buildMockMdlMdoc_V1_3(
   };
 }
 
+/**
+ * Builds a mocked PID SD-JWT credential.
+ *
+ * V1_4 reuses this implementation verbatim (only the dumps directory differs)
+ * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ */
 export async function buildMockSdJwt_V1_3(
   metadata: {
     iss: string;
@@ -130,6 +146,7 @@ export async function buildMockSdJwt_V1_3(
   unitKey: KeyPairJwk,
   certificate: string,
   keyPair: KeyPair,
+  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
@@ -137,12 +154,13 @@ export async function buildMockSdJwt_V1_3(
     federationTrustAnchor: metadata.trust,
     sub: metadata.iss,
     trustAnchorBaseUrl,
-    walletVersion: ItWalletSpecsVersion.V1_3,
+    walletVersion: version,
   });
 
   const issEntityConfiguration = await buildIssuerEntityConfiguration_V1_3(
     metadata,
     keyPair,
+    version,
   );
 
   const issuer = {
@@ -162,11 +180,7 @@ export async function buildMockSdJwt_V1_3(
     verifier,
   });
 
-  const claims = loadJsonDumps(
-    "pid.json",
-    { expiration },
-    ItWalletSpecsVersion.V1_3,
-  );
+  const claims = loadJsonDumps("pid.json", { expiration }, version);
 
   const disclosureFrame = {
     _sd: [
