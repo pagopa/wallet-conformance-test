@@ -147,7 +147,7 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   );
   applyEnvOption(
     env,
-    "env.CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
+    "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
     options.credentialConfigurationIdReissuance,
   );
   applyEnvOption(
