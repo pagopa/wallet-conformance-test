@@ -11,6 +11,7 @@ import { IssuerTestConfiguration } from "#/config/issuance-test-configuration";
 import { PresentationTestConfiguration } from "#/config/presentation-test-configuration";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 
@@ -55,6 +56,13 @@ vi.mock("@/logic", async (importOriginal) => {
     }),
   };
 });
+
+vi.mock("@/logic/authorization-request-url", () => ({
+  getAuthorizeRequestUrl: vi.fn(
+    async (presentation: { authorize_request_url: string }) =>
+      presentation.authorize_request_url,
+  ),
+}));
 
 vi.mock("@/functions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/functions")>();
@@ -473,6 +481,9 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(getAuthorizeRequestUrl).mockImplementation(
+      async (presentation) => presentation.authorize_request_url,
+    );
     orchestrator = new WalletPresentationOrchestratorFlow(
       PresentationTestConfiguration.createDefault(),
     );
@@ -481,6 +492,134 @@ describe("WalletPresentationOrchestratorFlow.presentation()", () => {
       "https://verifier.example.com/authorize?client_id=https://verifier.example.com";
     presentationConfig.tests_dir = "./tests/presentation";
     presentationConfig.verifier = "https://verifier.example.com";
+  });
+
+  test("resolves one dynamic authorize request URL per flow run when verifier is derived from client_id", async () => {
+    const config = orchestrator.getConfig();
+    const authorizeRequestUrl =
+      "https://rp.example.com/authorize?state=run-1&client_id=openid_federation:https://verifier.example.com";
+    config.presentation.authorize_request_script = "./dynamic-authorize-url.sh";
+    config.presentation.authorize_request_url = "";
+    delete config.presentation.verifier;
+
+    vi.mocked(getAuthorizeRequestUrl).mockResolvedValueOnce(
+      authorizeRequestUrl,
+    );
+
+    const fetchMetadataSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://verifier.example.com",
+        metadata: {
+          openid_credential_verifier: {
+            authorization_endpoint: "https://verifier.example.com/authorize",
+          },
+        },
+        sub: "https://verifier.example.com",
+      },
+      status: 200,
+    });
+    const authorizationRequestFailure = makeStepFailure(
+      "authorization request intentionally stopped after metadata fetch",
+    );
+
+    const fetchMetadataRun = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.fetchMetadataStep,
+        "run",
+      )
+      .mockResolvedValue(fetchMetadataSuccess);
+
+    const authorizationRequestRun = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.authorizationRequestStep,
+        "run",
+      )
+      .mockResolvedValue(authorizationRequestFailure);
+
+    const result = await orchestrator.presentation();
+
+    expect(getAuthorizeRequestUrl).toHaveBeenCalledTimes(1);
+    expect(fetchMetadataRun).toHaveBeenCalledWith({
+      baseUrl: "https://verifier.example.com",
+    });
+    expect(authorizationRequestRun).toHaveBeenCalledWith(
+      expect.objectContaining({ authorizeRequestUrl }),
+    );
+    expect(result.success).toBe(false);
+    expect(result.authorizationRequestResponse).toEqual(
+      authorizationRequestFailure,
+    );
+  });
+
+  test("resolves a fresh authorize request URL for each runThroughAuthorize execution", async () => {
+    const config = orchestrator.getConfig();
+    config.presentation.authorize_request_script = "./dynamic-authorize-url.sh";
+    config.presentation.authorize_request_url = "";
+    config.presentation.verifier = "https://verifier.example.com";
+
+    const firstAuthorizeRequestUrl =
+      "https://rp.example.com/authorize?state=run-1&client_id=https://verifier.example.com";
+    const secondAuthorizeRequestUrl =
+      "https://rp.example.com/authorize?state=run-2&client_id=https://verifier.example.com";
+
+    vi.mocked(getAuthorizeRequestUrl)
+      .mockResolvedValueOnce(firstAuthorizeRequestUrl)
+      .mockResolvedValueOnce(secondAuthorizeRequestUrl);
+
+    const fetchMetadataSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://verifier.example.com",
+        metadata: {
+          openid_credential_verifier: {
+            authorization_endpoint: "https://verifier.example.com/authorize",
+          },
+        },
+        sub: "https://verifier.example.com",
+      },
+      status: 200,
+    });
+    const authorizationRequestFailure = makeStepFailure(
+      "authorization request intentionally stopped after URL resolution",
+    );
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    const authorizationRequestRun = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.authorizationRequestStep,
+        "run",
+      )
+      .mockResolvedValue(authorizationRequestFailure);
+
+    await expect(orchestrator.runThroughAuthorize()).rejects.toThrow(
+      "authorization request intentionally stopped after URL resolution",
+    );
+    await expect(orchestrator.runThroughAuthorize()).rejects.toThrow(
+      "authorization request intentionally stopped after URL resolution",
+    );
+
+    expect(getAuthorizeRequestUrl).toHaveBeenCalledTimes(2);
+    expect(authorizationRequestRun).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        authorizeRequestUrl: firstAuthorizeRequestUrl,
+      }),
+    );
+    expect(authorizationRequestRun).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        authorizeRequestUrl: secondAuthorizeRequestUrl,
+      }),
+    );
   });
 
   test("uses normalized prefixed client_id from authorize_request_url when verifier is unset", async () => {

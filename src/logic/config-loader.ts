@@ -35,6 +35,7 @@ export interface CliOptions {
   logLevel?: string;
   maxRetries?: number;
   port?: number;
+  presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
   refreshToken?: string;
@@ -301,6 +302,17 @@ function normalizeRuntimePaths<TConfig extends Partial<Config>>(
     );
   }
 
+  if (
+    normalized.presentation &&
+    typeof normalized.presentation.authorize_request_script === "string"
+  ) {
+    normalized.presentation.authorize_request_script =
+      resolveConfigRelativePath(
+        normalized.presentation.authorize_request_script,
+        baseDir,
+      );
+  }
+
   return normalized;
 }
 
@@ -373,6 +385,9 @@ const buildPresentationConfig: ConfigSectionBuilder<Config["presentation"]> = (
 ) => ({
   ...(options.presentationAuthorizeUri && {
     authorize_request_url: options.presentationAuthorizeUri,
+  }),
+  ...(options.presentationAuthorizeScript && {
+    authorize_request_script: options.presentationAuthorizeScript,
   }),
   ...(options.presentationTestsDir && {
     tests_dir: options.presentationTestsDir,
@@ -512,6 +527,11 @@ function readCliOptionsFromEnv(): CliOptions {
     options,
     "presentationAuthorizeUri",
     "CONFIG_PRESENTATION_AUTHORIZE_URI",
+  );
+  readStringEnv(
+    options,
+    "presentationAuthorizeScript",
+    "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
   );
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
