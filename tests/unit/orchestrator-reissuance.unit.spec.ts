@@ -186,7 +186,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
 
   test("runs refresh-token path when refresh_token is configured", async () => {
     // Inject refresh_token into config
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -225,7 +226,7 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("token request receives grant_type=refresh_token and not PAR/authorize", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "test-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance = "test-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -280,7 +281,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("issuance() still uses authorization-code flow when refresh_token is set", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "irrelevant-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "irrelevant-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -340,7 +342,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("token failure returns partial response with fetchMetadataResponse and tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -365,7 +368,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("nonce failure returns partial response through tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -395,7 +399,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("credential failure returns partial response with all prior responses", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -432,7 +437,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("never throws — error is always captured in result.error", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing

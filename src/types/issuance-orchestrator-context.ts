@@ -10,6 +10,7 @@ import {
 } from "@/step/issuance";
 
 import { AttestationResponse } from "./attestation-response";
+import { CredentialWithKey } from "./credential";
 import { KeyPair } from "./key-pair";
 
 export interface DeferredIssuanceFlowResponse {
@@ -39,6 +40,7 @@ export interface ReissuanceFlowResponse {
   error?: Error;
   fetchMetadataResponse?: FetchMetadataStepResponse;
   nonceResponse?: NonceRequestResponse;
+  refreshedCredential?: CredentialWithKey;
   success: boolean;
   tokenResponse?: TokenRequestResponse;
   walletAttestationResponse?: AttestationResponse;

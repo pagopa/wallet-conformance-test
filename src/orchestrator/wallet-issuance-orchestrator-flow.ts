@@ -21,6 +21,7 @@ import {
   DeferredIssuancePreconditionError,
   IssuerMetadataError,
   OrchestratorError,
+  ReissuanceCredentialConfigurationError,
   ReissuancePreconditionError,
   StepOutputError,
 } from "@/orchestrator/errors";
@@ -281,6 +282,7 @@ export class WalletIssuanceOrchestratorFlow {
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
           credentialIssuer,
           dPoPKey,
           fetchMetadataResponse,
@@ -327,9 +329,29 @@ export class WalletIssuanceOrchestratorFlow {
     this.resetResponses();
 
     try {
-      const refreshToken = this.config.issuance.refresh_token;
-      if (!refreshToken) {
+      const refreshToken = this.config.issuance.refresh_token_reissuance;
+      const credentialIdentifier =
+        this.config.issuance.credential_configuration_id_reissuance;
+      if (!refreshToken || !credentialIdentifier) {
         throw new ReissuancePreconditionError();
+      }
+
+      if (
+        credentialIdentifier === this.issuanceConfig.credentialConfigurationId
+      ) {
+        throw new ReissuanceCredentialConfigurationError();
+      }
+
+      const allCredentials = await loadCredentialsForPresentation(
+        this.config,
+        this.log,
+      );
+
+      const refreshedCredential = allCredentials.find(
+        (cred) => cred.id === credentialIdentifier,
+      );
+      if (!refreshedCredential) {
+        throw new ReissuanceCredentialConfigurationError();
       }
 
       const {
@@ -347,6 +369,7 @@ export class WalletIssuanceOrchestratorFlow {
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialIdentifier,
           credentialIssuer,
           dPoPKey,
           fetchMetadataResponse,
@@ -357,6 +380,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialResponse,
         fetchMetadataResponse,
         nonceResponse,
+        refreshedCredential,
         success: true,
         tokenResponse,
         walletAttestationResponse,
@@ -689,12 +713,14 @@ export class WalletIssuanceOrchestratorFlow {
    */
   private async requestCredentialWithToken({
     accessToken,
+    credentialIdentifier,
     credentialIssuer,
     dPoPKey,
     fetchMetadataResponse,
     walletAttestationResponse,
   }: {
     accessToken: string;
+    credentialIdentifier: string;
     credentialIssuer: string;
     dPoPKey: KeyPair;
     fetchMetadataResponse: FetchMetadataStepResponse;
@@ -755,7 +781,7 @@ export class WalletIssuanceOrchestratorFlow {
     if (this.config.issuance.save_credential && firstCredential?.credential) {
       const savedPath = saveCredentialToDisk(
         this.config.wallet.credentials_storage_path,
-        this.issuanceConfig.credentialConfigurationId,
+        credentialIdentifier,
         firstCredential.credential,
         this.config.wallet.wallet_version,
       );
