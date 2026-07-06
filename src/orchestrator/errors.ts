@@ -64,11 +64,22 @@ export class IssuerMetadataError extends OrchestratorError {
   }
 }
 
+export class ReissuanceCredentialConfigurationError extends OrchestratorError {
+  constructor() {
+    super(
+      "Re-Issuance Flow requires a different credential configuration ID than the main issuance flow and it must be stored in local credentials. " +
+        "Set 'credential_configuration_id_reissuance' under [issuance] in config.ini or pass --credential-configuration-id-reissuance <id>.",
+      "REISSUANCE_CREDENTIAL_CONFIGURATION_MISMATCH",
+    );
+    this.name = "ReissuanceCredentialConfigurationError";
+  }
+}
+
 export class ReissuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
-      "Re-Issuance Flow requires a refresh token. " +
-        "Set 'refresh_token' under [issuance] in config.ini or pass --refresh-token <token>.",
+      "Re-Issuance Flow requires a refresh token and credential configuration ID. " +
+        "Set 'refresh_token_reissuance' and 'credential_configuration_id_reissuance' under [issuance] in config.ini or pass --refresh-token-reissuance <token> --credential-configuration-id-reissuance <id>.",
       "REISSUANCE_PRECONDITION_FAILED",
     );
     this.name = "ReissuancePreconditionError";

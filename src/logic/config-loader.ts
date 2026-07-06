@@ -25,6 +25,7 @@ import { deepMerge } from "./utils";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   bindAddress?: string;
+  credentialConfigurationIdReissuance?: string;
   credentialIssuerUri?: string;
   credentialOfferUri?: string;
   credentialTypes?: string;
@@ -38,8 +39,8 @@ export interface CliOptions {
   presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
-  refreshToken?: string;
   refreshTokenDeferred?: string;
+  refreshTokenReissuance?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
@@ -364,7 +365,13 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
-  ...(options.refreshToken && { refresh_token: options.refreshToken }),
+  ...(options.refreshTokenReissuance && {
+    refresh_token_reissuance: options.refreshTokenReissuance,
+  }),
+  ...(options.credentialConfigurationIdReissuance && {
+    credential_configuration_id_reissuance:
+      options.credentialConfigurationIdReissuance,
+  }),
   ...(options.refreshTokenDeferred && {
     refresh_token_deferred: options.refreshTokenDeferred,
   }),
@@ -551,7 +558,16 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationTestsDir",
     "CONFIG_PRESENTATION_TESTS_DIR",
   );
-  readStringEnv(options, "refreshToken", "CONFIG_REFRESH_TOKEN");
+  readStringEnv(
+    options,
+    "refreshTokenReissuance",
+    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+  );
+  readStringEnv(
+    options,
+    "credentialConfigurationIdReissuance",
+    "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
+  );
   readStringEnv(
     options,
     "refreshTokenDeferred",

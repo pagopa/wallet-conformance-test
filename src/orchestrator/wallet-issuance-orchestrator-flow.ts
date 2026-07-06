@@ -21,6 +21,7 @@ import {
   DeferredIssuancePreconditionError,
   IssuerMetadataError,
   OrchestratorError,
+  ReissuanceCredentialConfigurationError,
   ReissuancePreconditionError,
   StepOutputError,
 } from "@/orchestrator/errors";
@@ -327,9 +328,30 @@ export class WalletIssuanceOrchestratorFlow {
     this.resetResponses();
 
     try {
-      const refreshToken = this.config.issuance.refresh_token;
-      if (!refreshToken) {
+      const refreshToken = this.config.issuance.refresh_token_reissuance;
+      const credentialIdentifierReissuance =
+        this.config.issuance.credential_configuration_id_reissuance;
+      if (!refreshToken || !credentialIdentifierReissuance) {
         throw new ReissuancePreconditionError();
+      }
+
+      if (
+        credentialIdentifierReissuance ===
+        this.issuanceConfig.credentialConfigurationId
+      ) {
+        throw new ReissuanceCredentialConfigurationError();
+      }
+
+      const allCredentials = await loadCredentialsForPresentation(
+        this.config,
+        this.log,
+      );
+
+      const refreshedCredential = allCredentials.find(
+        (cred) => cred.id === credentialIdentifierReissuance,
+      );
+      if (!refreshedCredential) {
+        throw new ReissuanceCredentialConfigurationError();
       }
 
       const {
@@ -357,6 +379,7 @@ export class WalletIssuanceOrchestratorFlow {
         credentialResponse,
         fetchMetadataResponse,
         nonceResponse,
+        refreshedCredential,
         success: true,
         tokenResponse,
         walletAttestationResponse,
@@ -781,7 +804,7 @@ export class WalletIssuanceOrchestratorFlow {
     if (this.config.issuance.save_credential && firstCredential?.credential) {
       const savedPath = saveCredentialToDisk(
         this.config.wallet.credentials_storage_path,
-        this.issuanceConfig.credentialConfigurationId,
+        credentialIdentifier,
         firstCredential.credential,
         this.config.wallet.wallet_version,
       );

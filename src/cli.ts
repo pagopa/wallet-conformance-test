@@ -140,7 +140,16 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   applyEnvOption(env, "CONFIG_UNSAFE_TLS", options.unsafeTls);
   applyEnvOption(env, "TESTS", options.tests);
   applyEnvOption(env, "CONFIG_WALLET_VERSION", options.walletVersion);
-  applyEnvOption(env, "CONFIG_REFRESH_TOKEN", options.refreshToken);
+  applyEnvOption(
+    env,
+    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+    options.refreshTokenReissuance,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
+    options.credentialConfigurationIdReissuance,
+  );
   applyEnvOption(
     env,
     "CONFIG_REFRESH_TOKEN_DEFERRED",
@@ -244,8 +253,8 @@ function addCommonOptions(command: Command): Command {
       "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
     )
     .option(
-      "--refresh-token <token>",
-      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN)",
+      "--refresh-token-reissuance <token>",
+      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN_REISSUANCE)",
     )
     .option(
       "--refresh-token-deferred <token>",
@@ -254,6 +263,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--transaction-id <id>",
       "Transaction ID returned in the pending credential response, required for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
+    )
+    .option(
+      "--credential-configuration-id-reissuance <id>",
+      "Override the credential configuration ID used in the Re-Issuance Flow (env: CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE)",
     );
 }
 
