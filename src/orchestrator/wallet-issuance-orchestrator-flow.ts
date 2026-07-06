@@ -274,13 +274,13 @@ export class WalletIssuanceOrchestratorFlow {
         walletAttestationResponse,
       } = await this.runThroughToken();
 
-      const accessToken = tokenResponse.response?.access_token;
-      if (!accessToken)
-        throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
+      const { accessToken, credentialIdentifier } =
+        this.extractTokenCredentials(tokenResponse);
 
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialIdentifier,
           credentialIssuer,
           dPoPKey,
           fetchMetadataResponse,
@@ -340,13 +340,13 @@ export class WalletIssuanceOrchestratorFlow {
         walletAttestationResponse,
       } = await this.runThroughRefreshToken(refreshToken);
 
-      const accessToken = tokenResponse.response?.access_token;
-      if (!accessToken)
-        throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
+      const { accessToken, credentialIdentifier } =
+        this.extractTokenCredentials(tokenResponse);
 
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialIdentifier,
           credentialIssuer,
           dPoPKey,
           fetchMetadataResponse,
@@ -656,6 +656,30 @@ export class WalletIssuanceOrchestratorFlow {
     return { ...authorizeCtx, dPoPKey, tokenResponse };
   }
 
+  /**
+   * Extracts the access token and credential identifier from a token response.
+   * Falls back to the test configuration's credentialConfigurationId when
+   * the authorization details do not contain a credential_identifiers array.
+   */
+  private extractTokenCredentials(tokenResponse: TokenRequestResponse): {
+    accessToken: string;
+    credentialIdentifier: string;
+  } {
+    const accessToken = tokenResponse.response?.access_token;
+    if (!accessToken)
+      throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
+    // Retrieve credential identifier from the authorization details in the token response, if available.
+    // Give the first one because we only request one credential at a time in this test suite.
+    const authorizationDetails = tokenResponse.response?.authorization_details;
+    const firstCedentialIdentifier =
+      authorizationDetails && authorizationDetails[0]?.credential_identifiers
+        ? authorizationDetails[0]?.credential_identifiers[0]
+        : undefined;
+    const credentialIdentifier =
+      firstCedentialIdentifier ?? this.issuanceConfig.credentialConfigurationId;
+    return { accessToken, credentialIdentifier };
+  }
+
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
@@ -689,12 +713,14 @@ export class WalletIssuanceOrchestratorFlow {
    */
   private async requestCredentialWithToken({
     accessToken,
+    credentialIdentifier,
     credentialIssuer,
     dPoPKey,
     fetchMetadataResponse,
     walletAttestationResponse,
   }: {
     accessToken: string;
+    credentialIdentifier: string;
     credentialIssuer: string;
     dPoPKey: KeyPair;
     fetchMetadataResponse: FetchMetadataStepResponse;
@@ -730,7 +756,7 @@ export class WalletIssuanceOrchestratorFlow {
     const credentialResponse = await this.credentialRequestStep.run({
       accessToken,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
-      credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
+      credentialIdentifier,
       credentialIssuer: credentialIssuer,
       credentialRequestEndpoint:
         entityStatementClaims.metadata?.openid_credential_issuer

@@ -626,8 +626,10 @@ describe("Generate Mocked Credentials", () => {
       assurance_level: "high",
       trust_framework: "it_cie",
     });
+    expect(decoded.jwt?.payload?.date_of_expiry).toEqual(expect.any(String));
 
-    const dump = loadJsonDumps(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally omitted from spread
+    const { date_of_expiry: _ignored, ...dump } = loadJsonDumps(
       "pid.json",
       { expiration: new Date(Date.now()) },
       ItWalletSpecsVersion.V1_3,
@@ -648,7 +650,6 @@ describe("Generate Mocked Credentials", () => {
 
     expect(claimsFromDecoded).toEqual({
       ...dump,
-      date_of_expiry: expect.any(String),
     });
   });
 
