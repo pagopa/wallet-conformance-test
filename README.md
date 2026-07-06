@@ -289,21 +289,23 @@ The presentation flow simulates your wallet presenting a credential to a Relying
 
 Quick examples:
 
-2. Similarly, to test the presentation flow, you will use the `test:presentation` command:
+1. Similarly, to test the presentation flow, you will use the `test:presentation` command:
 
    ```bash
    wct test:presentation [OPTIONS]
    ```
 
 # config.ini — dynamic script (recommended)
+
 [presentation]
-authorize_request_script = ./scripts/presentation.example.sh
+authorize_request_script = ./tests/scripts/presentation.example.sh
+
 ```
 
 1. Alternatively, bypass the configuration file and specify parameters directly:
 
 # CLI — dynamic script
-wct test:presentation --presentation-authorize-script ./scripts/presentation.example.sh
+wct test:presentation --presentation-authorize-script ./tests/scripts/presentation.example.sh
 ```
 
 **📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Flow Testing Guide](./docs/presentation-testing.md)**.
