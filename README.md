@@ -283,35 +283,40 @@ These guides cover:
 
 #### Testing the Presentation Flow
 
-The presentation flow simulates your wallet presenting a credential to a Relying Party (Verifier). There are two ways to supply the authorization request URL that the RP generates (e.g. from a QR code):
+##### Using Configuration File
 
 1. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
 
-Quick examples:
+   ```ini
+   [presentation]
+   authorize_request_url = ...
+   authorize_request_script = ...
+   ```
 
-1. Similarly, to test the presentation flow, you will use the `test:presentation` command:
+2. Similarly, to test the presentation flow, you will use the `test:presentation` command:
 
    ```bash
    wct test:presentation [OPTIONS]
    ```
 
-# config.ini
+##### Using Command-Line Options
 
-[presentation]
-authorize_request_url = ...
-authorize_request_script = ./tests/scripts/presentation.example.sh # dynamic script recommended
+1. Alternatively, bypass the configuration file and specify parameters directly with the authorization url:
 
+```bash
+wct test:presentation --presentation-authorize-uri https://rp.example.com
 ```
 
-1. Alternatively, bypass the configuration file and specify parameters directly:
+or pointing to a dynamic script that generates the authorization url:
 
-# CLI — dynamic script
-wct test:presentation --presentation-authorize-script ./tests/scripts/presentation.example.sh
+```bash
+wct test:presentation --presentation-authorize-script ./authorize.js
 ```
 
 **📖 For full details** — including how to write and adapt the authorize script, all CLI options, environment variables, and credential sources — see the **[Presentation Testing Guide](./tests/docs/PRESENTATION-TESTING-GUIDE.md)**.
 
-> **Note**: The credentials used during presentation tests include both the credentials saved during issuance tests and the auto-generated mock PID (`dc_sd_jwt_PersonIdentificationData`).
+> **Note**:
+> The credentials used during the presentation tests will include both the credentials saved during the issuance tests and the auto-generated PID (dc_sd_jwt_PersonIdentificationData).
 
 #### Test Reports
 
