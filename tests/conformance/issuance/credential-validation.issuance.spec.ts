@@ -181,9 +181,12 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        if (!ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+        if (
+          !ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3) &&
+          !ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)
+        ) {
           log.debug(
-            "CI_034 skipped: Wallet Key Attestation is only used for v1.3 credential requests",
+            "CI_034 skipped: Wallet Key Attestation is only used for v1.3+ credential requests",
           );
           testSuccess = true;
           return;
@@ -313,7 +316,7 @@ testConfigs.forEach((testConfig) => {
           },
         });
 
-        // Build a v1.3 credential request if possible (batch requires v1.3)
+        // Build a key-attestation credential request if possible (batch requires v1.3+)
         const batchRequest = await createCredentialRequest({
           callbacks: {
             hash: partialCallbacks.hash,
@@ -701,9 +704,9 @@ testConfigs.forEach((testConfig) => {
             | Record<string, unknown>
             | undefined;
           const requiredStatusField =
-            specVersion === ItWalletSpecsVersion.V1_3
+            specVersion !== ItWalletSpecsVersion.V1_0
               ? {
-                  message: "V1.3 MUST contain 'status_list'",
+                  message: "V1.3+ MUST contain 'status_list'",
                   value: statusList,
                 }
               : {
@@ -711,7 +714,7 @@ testConfigs.forEach((testConfig) => {
                   value: statusAssertion,
                 };
           const statusTypeChecks =
-            specVersion === ItWalletSpecsVersion.V1_3
+            specVersion !== ItWalletSpecsVersion.V1_0
               ? [
                   {
                     actual: typeof statusList?.["idx"],
@@ -738,7 +741,7 @@ testConfigs.forEach((testConfig) => {
           }
 
           log.debug(
-            specVersion === ItWalletSpecsVersion.V1_3
+            specVersion !== ItWalletSpecsVersion.V1_0
               ? "  ✅ Credential contains a status claim referencing a status list"
               : "  ✅ Credential contains a status assertion",
           );

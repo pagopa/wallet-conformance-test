@@ -182,6 +182,7 @@ The `wallet_version` setting (under the `[wallet]` section) controls which versi
 | ------ | -------------------------------------------------------------------------------------------------- |
 | `V1_0` | Targets the 1.0.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.0.2/en/). |
 | `V1_3` | Targets the 1.3.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.3.3/en/). |
+| `V1_4` | Targets the 1.4.x [specification](https://italia.github.io/eid-wallet-it-docs/releases/1.4.3/en/). |
 
 Set it in your `config.ini`:
 
@@ -204,7 +205,7 @@ CONFIG_WALLET_VERSION=V1_3 wct test:issuance
 CONFIG_WALLET_VERSION=V1_3 wct test:presentation
 ```
 
-> **Tip**: Use `V1_3` when testing against issuers or relying parties that implement the latest specification revision. Use `V1_0` for services that still target the first stable release.
+> **Tip**: Use `V1_4` or `V1_3` when testing against issuers or relying parties that implement a recent specification revision. Use `V1_0` for services that still target the first stable release.
 
 ### TLS Unsafe Mode
 
@@ -458,7 +459,7 @@ When running tests, the tool creates a sample PID credential containing fictiona
 
   `trust_framework: "it_cie"` reflects that PID issuance is gated on the CIE identity infrastructure. `assurance_level: "high"` corresponds to LoA High (eIDAS High), the level required for PID issuance. Look under /dumps folder for more detail.
 
-> **Note (V1_3 only)**: The `verification` claim is specific to the V1.3 data model. V1_0 uses a different PID data model and does not include this claim.
+> **Note (V1_3 and V1_4 only)**: The `verification` claim is specific to the V1.3+ data model. V1_0 uses a different PID data model and does not include this claim.
 
 ## 🔐 Local Federation Servers
 

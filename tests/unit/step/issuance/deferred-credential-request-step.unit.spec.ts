@@ -148,4 +148,19 @@ describe("DeferredCredentialRequestDefaultStep", () => {
       credentials: [{ credential: "mock-credential" }],
     });
   });
+
+  it("returns success:true when 202 response transaction_id matches the sent one (V1_4)", async () => {
+    // V1_4 reuses the V1_3 pending schema (`interval` + `transaction_id`); the
+    // V1_0 pending schema instead requires `lead_time` and is `.strict()`, so
+    // this also guards against V1_4 silently falling back to the V1_0 schema.
+    stubFetch(202, { interval: 5, transaction_id: "original-txn-id" });
+
+    const step = makeStep("V1_4");
+    const result = await step.run(baseOptions);
+
+    expect(result.success).toBe(true);
+    expect(result.response).toMatchObject({
+      transaction_id: "original-txn-id",
+    });
+  });
 });

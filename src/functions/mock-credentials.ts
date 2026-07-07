@@ -29,10 +29,7 @@ import {
   buildMockMdlMdoc_V1_0,
   buildMockSdJwt_V1_0,
 } from "./V1_0/mock-credentials";
-import {
-  buildMockMdlMdoc_V1_3,
-  buildMockSdJwt_V1_3,
-} from "./V1_3/mock-credentials";
+import { buildMockMdlMdoc, buildMockSdJwt } from "./V1_3/mock-credentials";
 
 const { Tagged } = cbor;
 
@@ -69,12 +66,14 @@ export async function createMockMdlMdoc(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedMdoc = await buildMockMdlMdoc_V1_3(
+    case ItWalletSpecsVersion.V1_4:
+      mockedMdoc = await buildMockMdlMdoc(
         expiration,
         deviceKey,
         issuerCertificate,
         issuerKeyPair,
         issuerBaseUrl,
+        version,
       );
       break;
     default:
@@ -130,12 +129,14 @@ export async function createMockSdJwt(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedSdjwt = await buildMockSdJwt_V1_3(
+    case ItWalletSpecsVersion.V1_4:
+      mockedSdjwt = await buildMockSdJwt(
         metadata,
         expiration,
         unitKey,
         certificate,
         keyPair,
+        version,
       );
       break;
     default:

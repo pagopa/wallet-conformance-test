@@ -132,9 +132,11 @@ export class DeferredCredentialRequestDefaultStep extends StepFlow {
 
     const body: unknown = await httpResponse.json();
 
-    const schema = this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)
-      ? zCredentialResponseV1_3
-      : zCredentialResponseV1_0;
+    const schema =
+      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3) ||
+      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)
+        ? zCredentialResponseV1_3
+        : zCredentialResponseV1_0;
 
     const parsedResponse = schema.parse(body);
 

@@ -132,6 +132,24 @@ const buildAttestationOptions = async (
       };
       return attestationOptions;
     }
+    case ItWalletSpecsVersion.V1_4: {
+      const x5c = await loadWalletProviderCertificate(
+        wallet,
+        trust,
+        providerKeyPair,
+      );
+      const attestationOptions: WalletAttestationOptions = {
+        ...commonOptions,
+        signer: { ...signerBase, method: "x5c", x5c },
+        status: {
+          status_list: {
+            idx: 0,
+            uri: `${wpBaseUrl}/status-list`,
+          },
+        },
+      };
+      return attestationOptions;
+    }
     default:
       throw new Error(
         `unimplemented wallet_version for attestation: ${wallet.wallet_version}`,
