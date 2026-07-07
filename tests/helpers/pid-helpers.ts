@@ -42,6 +42,12 @@ export const assertPidJwtPayloadClaims = (
       "verification must be a non-null object in the JWT payload (V1.3 domestic extension)",
     ).toBe(true);
   }
+
+  const expiryKey = isV1_0 ? "expiry_date" : "date_of_expiry";
+  expect(
+    payload[expiryKey],
+    `${expiryKey} must be present as a disclosure`,
+  ).toBeDefined();
 };
 
 export const assertPidSdDisclosures = (
@@ -100,12 +106,6 @@ export const assertPidSdDisclosures = (
       `nationalities entry "${String(code)}" must be an ISO 3166-1 alpha-2 code`,
     ).toBe(true);
   }
-
-  const expiryKey = isV1_0 ? "expiry_date" : "date_of_expiry";
-  expect(
-    disclosureMap.get(expiryKey),
-    `${expiryKey} must be present as a disclosure`,
-  ).toBeDefined();
 
   const pan = disclosureMap.get("personal_administrative_number");
   const tic = disclosureMap.get("tax_id_code");

@@ -148,6 +148,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
+      expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
       issuer: getLocalWpBaseUrl(this.config.wallet.port),
       keyStorage: ["iso_18045_moderate"],
       signer: {

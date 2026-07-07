@@ -23,6 +23,7 @@ import { StepFlow, type StepResponse } from "@/step/step-flow";
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateAuthorizationResponseResult;
+  authorizeRequestUrl: string;
   parsedQrCode: ParsedQrCode;
   requestObject: ParsedAuthorizeRequestResult["payload"];
   requestObjectFetch?: RequestObjectFetchDetails;
@@ -32,6 +33,11 @@ export interface AuthorizationRequestExecuteStepResponse {
 }
 
 export interface AuthorizationRequestOptions {
+  /**
+   * Authorization request URL for this execution.
+   */
+  authorizeRequestUrl: string;
+
   /**
    * Credentials along with their associated DPoP keys.
    */
@@ -78,8 +84,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
-      const authorizeRequestUrl =
-        this.config.presentation.authorize_request_url;
+      const authorizeRequestUrl = options.authorizeRequestUrl;
+
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
 
       const walletNonce = crypto.randomUUID();
@@ -169,6 +175,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       return {
         authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
+        authorizeRequestUrl,
         parsedQrCode,
         requestObject,
         requestObjectFetch,

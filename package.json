@@ -16,6 +16,7 @@
     "bin",
     "config.example.ini",
     "dist",
+    "docs",
     "dumps",
     "vitest.common.js",
     "vitest.issuance.config.js",
