@@ -603,52 +603,52 @@ describe("Generate Mocked Credentials", () => {
     });
   });
 
-  it.each([
-    ItWalletSpecsVersion.V1_3,
-    ItWalletSpecsVersion.V1_4,
-  ])("should create a mock SD-JWT PID version 1.3.3 and 1.4.x", async (version) => {
-    const credential = await createMockSdJwt(
-      metadata,
-      backupDir,
-      backupDir,
-      version,
-    );
+  it.each([ItWalletSpecsVersion.V1_3, ItWalletSpecsVersion.V1_4])(
+    "should create a mock SD-JWT PID version 1.3.3 and 1.4.x",
+    async (version) => {
+      const credential = await createMockSdJwt(
+        metadata,
+        backupDir,
+        backupDir,
+        version,
+      );
 
-    const decoded = await new SDJwtVcInstance({
-      hasher: digest,
-    }).decode(credential.compact);
+      const decoded = await new SDJwtVcInstance({
+        hasher: digest,
+      }).decode(credential.compact);
 
-    expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
+      expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
 
-    expect(decoded.jwt?.payload?.verification).toEqual({
-      assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
-      trust_framework: "it_cie",
-    });
+      expect(decoded.jwt?.payload?.verification).toEqual({
+        assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
+        trust_framework: "it_cie",
+      });
 
-    const dump = loadJsonDumps(
-      "pid.json",
-      { expiration: new Date(Date.now()) },
-      version,
-    );
+      const dump = loadJsonDumps(
+        "pid.json",
+        { expiration: new Date(Date.now()) },
+        version,
+      );
 
-    const claimsFromDecoded = decoded.disclosures?.reduce(
-      (prev, disclosure) => {
-        if (!disclosure.key) {
-          throw new Error("Disclosure key is required");
-        }
-        return {
-          ...prev,
-          [disclosure.key]: disclosure.value,
-        };
-      },
-      {},
-    );
+      const claimsFromDecoded = decoded.disclosures?.reduce(
+        (prev, disclosure) => {
+          if (!disclosure.key) {
+            throw new Error("Disclosure key is required");
+          }
+          return {
+            ...prev,
+            [disclosure.key]: disclosure.value,
+          };
+        },
+        {},
+      );
 
-    expect(claimsFromDecoded).toEqual({
-      ...dump,
-      date_of_expiry: expect.any(String),
-    });
-  });
+      expect(claimsFromDecoded).toEqual({
+        ...dump,
+        date_of_expiry: expect.any(String),
+      });
+    },
+  );
 
   it.each([
     ItWalletSpecsVersion.V1_0,
