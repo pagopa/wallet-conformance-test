@@ -685,10 +685,7 @@ describe("Generate Mocked Credentials", () => {
       {},
     );
 
-    expect(claimsFromDecoded).toEqual({
-      ...dump,
-      date_of_expiry: expect.any(String),
-    });
+    expect(claimsFromDecoded).toEqual(dump);
   });
 
   it.each([
