@@ -190,6 +190,7 @@ export async function buildMockSdJwt(
       "family_name",
       "given_name",
       "birthdate",
+      "date_of_expiry",
       "place_of_birth",
       "nationalities",
       "personal_administrative_number",
