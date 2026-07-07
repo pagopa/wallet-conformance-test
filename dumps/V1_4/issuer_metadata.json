@@ -258,7 +258,6 @@
       "nonce_endpoint": "{{issuer_base_url}}/nonce",
       "status_list_aggregation_endpoint": "{{issuer_base_url}}/status",
       "notification_endpoint": "{{issuer_base_url}}/notification",
-      "status_attestation_endpoint": "{{issuer_base_url}}/status",
       "trust_frameworks_supported": [
         "it_cie",
         "eudi_wallet",

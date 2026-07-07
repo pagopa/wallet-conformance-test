@@ -29,10 +29,7 @@ import {
   buildMockMdlMdoc_V1_0,
   buildMockSdJwt_V1_0,
 } from "./V1_0/mock-credentials";
-import {
-  buildMockMdlMdoc_V1_3,
-  buildMockSdJwt_V1_3,
-} from "./V1_3/mock-credentials";
+import { buildMockMdlMdoc, buildMockSdJwt } from "./V1_3/mock-credentials";
 
 const { Tagged } = cbor;
 
@@ -69,24 +66,14 @@ export async function createMockMdlMdoc(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedMdoc = await buildMockMdlMdoc_V1_3(
-        expiration,
-        deviceKey,
-        issuerCertificate,
-        issuerKeyPair,
-        issuerBaseUrl,
-      );
-      break;
     case ItWalletSpecsVersion.V1_4:
-      // V1_4 mock mDL generation is identical to V1_3 — only the dumps
-      // directory differs, so fall back to the V1_3 builder.
-      mockedMdoc = await buildMockMdlMdoc_V1_3(
+      mockedMdoc = await buildMockMdlMdoc(
         expiration,
         deviceKey,
         issuerCertificate,
         issuerKeyPair,
         issuerBaseUrl,
-        ItWalletSpecsVersion.V1_4,
+        version,
       );
       break;
     default:
@@ -142,24 +129,14 @@ export async function createMockSdJwt(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedSdjwt = await buildMockSdJwt_V1_3(
-        metadata,
-        expiration,
-        unitKey,
-        certificate,
-        keyPair,
-      );
-      break;
     case ItWalletSpecsVersion.V1_4:
-      // V1_4 mock PID generation is identical to V1_3 — only the dumps
-      // directory differs, so fall back to the V1_3 builder.
-      mockedSdjwt = await buildMockSdJwt_V1_3(
+      mockedSdjwt = await buildMockSdJwt(
         metadata,
         expiration,
         unitKey,
         certificate,
         keyPair,
-        ItWalletSpecsVersion.V1_4,
+        version,
       );
       break;
     default:

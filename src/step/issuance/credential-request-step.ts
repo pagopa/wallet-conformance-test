@@ -19,6 +19,7 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { randomUUID } from "node:crypto";
 
 import {
+  assertNever,
   buildJwksPath,
   createAndSaveKeys,
   createKeys,
@@ -267,42 +268,44 @@ export class CredentialRequestDefaultStep extends StepFlow {
       });
     }
 
-    const keyAttestation = await this.createKeyAttestation(
-      options.walletAttestation,
-      credentialKeyPair,
-    );
-
-    this.log.debug("Key Attestation JWT created:", keyAttestation);
-
-    const keyAttestationOptions = {
-      ...commonOptions,
-      keyAttestation,
-      signers: [
-        {
-          alg: "ES256" as const,
-          method: "jwk" as const,
-          publicJwk: credentialKeyPair.publicKey,
-        },
-      ],
-    };
-
     if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
       return createCredentialRequest({
-        ...keyAttestationOptions,
+        ...(await this.buildKeyAttestationOptions(
+          options,
+          credentialKeyPair,
+          commonOptions,
+        )),
         config: this.ioWalletSdkConfig,
       } satisfies CredentialRequestOptionsV1_3);
     }
 
     if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)) {
       return createCredentialRequest({
-        ...keyAttestationOptions,
+        ...(await this.buildKeyAttestationOptions(
+          options,
+          credentialKeyPair,
+          commonOptions,
+        )),
         config: this.ioWalletSdkConfig,
       } satisfies CredentialRequestOptionsV1_4);
     }
 
-    throw new Error(
-      `unimplemented wallet_version for credential request: ${this.ioWalletSdkConfig.itWalletSpecsVersion}`,
-    );
+    // isVersion()'s `this is IoWalletSdkConfig<W>` predicate narrows the SDK
+    // config generic above but can't prove the negative case, so this branch
+    // still sees the full ItWalletSpecsVersion union. Switching over the known
+    // members here makes the `default` provably unreachable (`never`) today —
+    // adding a new spec version without a matching isVersion() branch above
+    // breaks that exhaustiveness and fails the build instead of failing at runtime.
+    switch (this.ioWalletSdkConfig.itWalletSpecsVersion) {
+      case ItWalletSpecsVersion.V1_0:
+      case ItWalletSpecsVersion.V1_3:
+      case ItWalletSpecsVersion.V1_4:
+        throw new Error(
+          `unimplemented wallet_version for credential request: ${this.ioWalletSdkConfig.itWalletSpecsVersion}`,
+        );
+      default:
+        return assertNever(this.ioWalletSdkConfig.itWalletSpecsVersion);
+    }
   }
 
   private async buildDPoP(
@@ -331,6 +334,33 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const { jwt } = await createTokenDPoP(dpopOptions);
 
     return jwt;
+  }
+
+  private async buildKeyAttestationOptions<
+    T extends BaseCredentialRequestOptions,
+  >(
+    options: CredentialRequestStepOptions,
+    credentialKeyPair: KeyPair,
+    commonOptions: T,
+  ) {
+    const keyAttestation = await this.createKeyAttestation(
+      options.walletAttestation,
+      credentialKeyPair,
+    );
+
+    this.log.debug("Key Attestation JWT created:", keyAttestation);
+
+    return {
+      ...commonOptions,
+      keyAttestation,
+      signers: [
+        {
+          alg: "ES256" as const,
+          method: "jwk" as const,
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      ],
+    };
   }
 
   private async fetchCredential(

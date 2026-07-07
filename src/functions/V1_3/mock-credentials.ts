@@ -20,17 +20,18 @@ const { decode, encode, Tagged } = cbor;
 /**
  * Builds the mocked Credential Issuer entity configuration.
  *
- * V1_4 reuses this implementation verbatim (only the dumps directory differs)
- * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
  */
-export async function buildIssuerEntityConfiguration_V1_3(
+export async function buildIssuerEntityConfiguration(
   metadata: {
     iss: string;
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
   },
   keyPair: KeyPair,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<string> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const trust_marks = await getTrustMarks(
@@ -58,16 +59,17 @@ export async function buildIssuerEntityConfiguration_V1_3(
 /**
  * Builds a mocked mDL MDOC credential.
  *
- * V1_4 reuses this implementation verbatim (only the dumps directory differs)
- * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
  */
-export async function buildMockMdlMdoc_V1_3(
+export async function buildMockMdlMdoc(
   expiration: Date,
   deviceKey: KeyPairJwk,
   issuerCertificate: string,
   issuerKeyPair: KeyPair,
   issuerBaseUrl: string,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
   const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
@@ -133,10 +135,9 @@ export async function buildMockMdlMdoc_V1_3(
 /**
  * Builds a mocked PID SD-JWT credential.
  *
- * V1_4 reuses this implementation verbatim (only the dumps directory differs)
- * — pass `ItWalletSpecsVersion.V1_4` as `version` instead of duplicating this function.
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
  */
-export async function buildMockSdJwt_V1_3(
+export async function buildMockSdJwt(
   metadata: {
     iss: string;
     trust: Config["trust"];
@@ -146,7 +147,9 @@ export async function buildMockSdJwt_V1_3(
   unitKey: KeyPairJwk,
   certificate: string,
   keyPair: KeyPair,
-  version: ItWalletSpecsVersion = ItWalletSpecsVersion.V1_3,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
@@ -157,7 +160,7 @@ export async function buildMockSdJwt_V1_3(
     walletVersion: version,
   });
 
-  const issEntityConfiguration = await buildIssuerEntityConfiguration_V1_3(
+  const issEntityConfiguration = await buildIssuerEntityConfiguration(
     metadata,
     keyPair,
     version,
@@ -214,7 +217,7 @@ export async function buildMockSdJwt_V1_3(
       vct,
       "vct#integrity": vctIntegrity,
       verification: {
-        assurance_level: "high",
+        assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
         trust_framework: "it_cie",
       },
       ...claims,

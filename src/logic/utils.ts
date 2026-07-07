@@ -374,6 +374,14 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
 export const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
 
 /**
+ * Exhaustiveness helper for `switch` statements over a closed union: passing any
+ * reachable value here is a compile error, so an unhandled case surfaces at build time.
+ */
+export function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${String(x)}`);
+}
+
+/**
  * Assertion function checking some object's keys are actually defined (not null or undefined)
  * @param object The object whose properties must be checked
  * @param keys The object's keys that must be defined

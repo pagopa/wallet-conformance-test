@@ -618,7 +618,7 @@ describe("Generate Mocked Credentials", () => {
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
 
     expect(decoded.jwt?.payload?.verification).toEqual({
-      assurance_level: "high",
+      assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
       trust_framework: "it_cie",
     });
 
@@ -662,7 +662,7 @@ describe("Generate Mocked Credentials", () => {
     expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
 
     expect(decoded.jwt?.payload?.verification).toEqual({
-      assurance_level: "high",
+      assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
       trust_framework: "it_cie",
     });
 
