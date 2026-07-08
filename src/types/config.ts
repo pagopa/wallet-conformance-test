@@ -16,7 +16,14 @@ const zBooleanFromString = z.union([z.boolean(), z.stringbool()]);
  */
 export const configSchema = z.object({
   issuance: z.object({
+    /**
+     * Port on which the local OAuth2 callback server listens.
+     * The `redirect_uri` used in PAR and token requests is
+     * `http://localhost:{callback_port}/cb`.
+     */
+    callback_port: z.coerce.number().default(4000),
     certificate_subject: z.string().optional(),
+    credential_configuration_id_reissuance: z.string().optional(),
     credential_offer_uri: z
       .string()
       .url()
@@ -25,9 +32,11 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    refresh_token: z.string().optional(),
+    refresh_token_deferred: z.string().optional(),
+    refresh_token_reissuance: z.string().optional(),
     save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
+    transaction_id_deferred: z.string().optional(),
     url: z.string().url(),
   }),
   issuer: z.object({
@@ -47,6 +56,7 @@ export const configSchema = z.object({
     user_agent: z.string().optional(),
   }),
   presentation: z.object({
+    authorize_request_script: z.string().optional(),
     authorize_request_url: z.string().url(),
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
@@ -77,6 +87,7 @@ export const configSchema = z.object({
   trust_anchor: z.object({
     port: z.coerce.number(),
     tls_cert_dir: z.string().optional(),
+    verify: zBooleanFromString.optional().default(true),
   }),
   wallet: z.object({
     backup_storage_path: z.string(),

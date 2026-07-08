@@ -1,8 +1,12 @@
 {
   "name": "@pagopa/it-wallet-conformance-tool",
   "description": "Automated conformance testing for IT Wallet ecosystem services",
+  "repository": {
+    "url": "https://github.com/pagopa/wallet-conformance-test",
+    "type": "git"
+  },
   "packageManager": "pnpm@10.23.0",
-  "version": "1.1.5",
+  "version": "1.2.1",
   "type": "module",
   "main": "./dist/cli.js",
   "engines": {
@@ -12,6 +16,7 @@
     "bin",
     "config.example.ini",
     "dist",
+    "docs",
     "dumps",
     "vitest.common.js",
     "vitest.issuance.config.js",
@@ -40,7 +45,7 @@
     "test:issuance": "vitest run --config vitest.issuance.config.js",
     "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
     "test:presentation": "vitest run --config vitest.presentation.config.js",
-    "prepublish": "pnpm build"
+    "prepack": "pnpm build"
   },
   "keywords": [
     "wallet",

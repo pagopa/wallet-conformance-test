@@ -353,7 +353,7 @@ testConfigs.forEach((testConfig) => {
         const negativeOrchestrator = new WalletIssuanceOrchestratorFlow(
           testConfig,
         );
-        negativeOrchestrator.getConfig().issuance.refresh_token =
+        negativeOrchestrator.getConfig().issuance.refresh_token_reissuance =
           "invalid-refresh-token-ci-096";
 
         const result = await negativeOrchestrator.reissuance();
@@ -416,7 +416,7 @@ testConfigs.forEach((testConfig) => {
         expect(
           issuedRefreshToken,
           "Issuer reused the input refresh token instead of generating a new one",
-        ).not.toBe(orchestrator.getConfig().issuance.refresh_token);
+        ).not.toBe(orchestrator.getConfig().issuance.refresh_token_reissuance);
         expect(
           issuedRefreshToken.length,
           "Refresh token must have at least 128 bits of encoded entropy",

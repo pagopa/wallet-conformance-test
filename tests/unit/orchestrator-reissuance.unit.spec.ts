@@ -13,6 +13,9 @@
 import { IssuerTestConfiguration } from "#/config/issuance-test-configuration";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { CredentialWithKey } from "@/types";
+
+import { loadCredentialsForPresentation } from "@/functions";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 
 // ---------------------------------------------------------------------------
@@ -23,7 +26,7 @@ vi.mock("@/logic", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/logic")>();
   return {
     ...actual,
-    loadConfigWithHierarchy: vi.fn().mockReturnValue({
+    loadConfigWithHierarchy: vi.fn().mockImplementation(() => ({
       issuance: {
         credential_offer_uri: "",
         credential_types: ["dc_sd_jwt_PersonIdentificationData"],
@@ -50,7 +53,7 @@ vi.mock("@/logic", async (importOriginal) => {
         credentials_storage_path: "./credentials",
         wallet_version: "1.0",
       },
-    }),
+    })),
   };
 });
 
@@ -90,6 +93,24 @@ vi.mock("@pagopa/io-wallet-oauth2", async (importOriginal) => {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const REISSUANCE_CREDENTIAL_ID = "reissuance-credential-id";
+
+function makeReissuanceCredential(id: string): CredentialWithKey {
+  return {
+    credential: "mock-credential-jwt",
+    dpopJwk: {
+      crv: "P-256",
+      d: "mock-d",
+      kid: "mock-kid",
+      kty: "EC",
+      x: "mock-x",
+      y: "mock-y",
+    },
+    id,
+    typ: "dc+sd-jwt",
+  };
+}
 
 function makeStepFailure(message: string) {
   return {
@@ -186,7 +207,13 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
 
   test("runs refresh-token path when refresh_token is configured", async () => {
     // Inject refresh_token into config
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -225,7 +252,12 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("token request receives grant_type=refresh_token and not PAR/authorize", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "test-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance = "test-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -280,7 +312,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("issuance() still uses authorization-code flow when refresh_token is set", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "irrelevant-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "irrelevant-token";
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -340,7 +373,13 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("token failure returns partial response with fetchMetadataResponse and tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -365,7 +404,13 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("nonce failure returns partial response through tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -395,7 +440,13 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("credential failure returns partial response with all prior responses", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -432,7 +483,13 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("never throws — error is always captured in result.error", async () => {
-    orchestrator.getConfig().issuance.refresh_token = "my-refresh-token";
+    orchestrator.getConfig().issuance.refresh_token_reissuance =
+      "my-refresh-token";
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
+      makeReissuanceCredential(REISSUANCE_CREDENTIAL_ID),
+    ]);
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing

@@ -25,6 +25,7 @@ import { deepMerge } from "./utils";
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
   bindAddress?: string;
+  credentialConfigurationIdReissuance?: string;
   credentialIssuerUri?: string;
   credentialOfferUri?: string;
   credentialTypes?: string;
@@ -35,14 +36,18 @@ export interface CliOptions {
   logLevel?: string;
   maxRetries?: number;
   port?: number;
+  presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
-  refreshToken?: string;
+  refreshTokenDeferred?: string;
+  refreshTokenReissuance?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
   timeout?: number;
+  transactionId?: string;
   trustAnchorCertDir?: string;
+  trustAnchorVerify?: boolean;
   unsafeTls?: boolean;
   walletVersion?: string;
 }
@@ -298,6 +303,17 @@ function normalizeRuntimePaths<TConfig extends Partial<Config>>(
     );
   }
 
+  if (
+    normalized.presentation &&
+    typeof normalized.presentation.authorize_request_script === "string"
+  ) {
+    normalized.presentation.authorize_request_script =
+      resolveConfigRelativePath(
+        normalized.presentation.authorize_request_script,
+        baseDir,
+      );
+  }
+
   return normalized;
 }
 
@@ -349,7 +365,19 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
-  ...(options.refreshToken && { refresh_token: options.refreshToken }),
+  ...(options.refreshTokenReissuance && {
+    refresh_token_reissuance: options.refreshTokenReissuance,
+  }),
+  ...(options.credentialConfigurationIdReissuance && {
+    credential_configuration_id_reissuance:
+      options.credentialConfigurationIdReissuance,
+  }),
+  ...(options.refreshTokenDeferred && {
+    refresh_token_deferred: options.refreshTokenDeferred,
+  }),
+  ...(options.transactionId && {
+    transaction_id_deferred: options.transactionId,
+  }),
   ...(options.saveCredential !== undefined && {
     save_credential: options.saveCredential,
   }),
@@ -364,6 +392,9 @@ const buildPresentationConfig: ConfigSectionBuilder<Config["presentation"]> = (
 ) => ({
   ...(options.presentationAuthorizeUri && {
     authorize_request_url: options.presentationAuthorizeUri,
+  }),
+  ...(options.presentationAuthorizeScript && {
+    authorize_request_script: options.presentationAuthorizeScript,
   }),
   ...(options.presentationTestsDir && {
     tests_dir: options.presentationTestsDir,
@@ -398,6 +429,9 @@ const buildTrustAnchorConfig: ConfigSectionBuilder<Config["trust_anchor"]> = (
   ...(options.port !== undefined && { port: options.port }),
   ...(options.trustAnchorCertDir !== undefined && {
     tls_cert_dir: options.trustAnchorCertDir,
+  }),
+  ...(options.trustAnchorVerify !== undefined && {
+    verify: options.trustAnchorVerify,
   }),
 });
 
@@ -501,6 +535,11 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationAuthorizeUri",
     "CONFIG_PRESENTATION_AUTHORIZE_URI",
   );
+  readStringEnv(
+    options,
+    "presentationAuthorizeScript",
+    "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
+  );
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
   readNumberEnv(options, "maxRetries", "CONFIG_MAX_RETRIES");
@@ -519,10 +558,26 @@ function readCliOptionsFromEnv(): CliOptions {
     "presentationTestsDir",
     "CONFIG_PRESENTATION_TESTS_DIR",
   );
-  readStringEnv(options, "refreshToken", "CONFIG_REFRESH_TOKEN");
+  readStringEnv(
+    options,
+    "refreshTokenReissuance",
+    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+  );
+  readStringEnv(
+    options,
+    "credentialConfigurationIdReissuance",
+    "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
+  );
+  readStringEnv(
+    options,
+    "refreshTokenDeferred",
+    "CONFIG_REFRESH_TOKEN_DEFERRED",
+  );
+  readStringEnv(options, "transactionId", "CONFIG_TRANSACTION_ID");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");
   readBooleanEnv(options, "unsafeTls", "CONFIG_UNSAFE_TLS");
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
+  readBooleanEnv(options, "trustAnchorVerify", "CONFIG_TRUST_ANCHOR_VERIFY");
   readStringEnv(options, "bindAddress", "OIDF_SERVERS_BIND_ADDRESS");
   readStringEnv(options, "walletVersion", "CONFIG_WALLET_VERSION");
 

@@ -18,6 +18,16 @@ import { packageRoot, readPackageVersion } from "@/logic/runtime-paths";
 const nodeRequire = createRequire(import.meta.url);
 const experimentalWarningFlag = "--disable-warning=ExperimentalWarning";
 
+function applyEnvOption(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  value: boolean | number | string | undefined,
+): void {
+  if (value !== undefined) {
+    env[key] = String(value);
+  }
+}
+
 function ensureExperimentalWarningsDisabled(): void {
   if (
     process.env.NODE_OPTIONS?.split(/\s+/).includes(experimentalWarningFlag)
@@ -87,61 +97,66 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   if (options.fileIni) {
     env.CONFIG_FILE_INI = resolve(process.cwd(), options.fileIni);
   }
-  if (options.credentialIssuerUri) {
-    env.CONFIG_CREDENTIAL_ISSUER_URI = options.credentialIssuerUri;
-  }
-  if (options.credentialOfferUri) {
-    env.CONFIG_CREDENTIAL_OFFER_URI = options.credentialOfferUri;
-  }
-  if (options.presentationAuthorizeUri) {
-    env.CONFIG_PRESENTATION_AUTHORIZE_URI = options.presentationAuthorizeUri;
-  }
-  if (options.credentialTypes) {
-    env.CONFIG_CREDENTIAL_TYPES = options.credentialTypes;
-  }
-  if (options.timeout !== undefined) {
-    env.CONFIG_TIMEOUT = options.timeout.toString();
-  }
-  if (options.maxRetries !== undefined) {
-    env.CONFIG_MAX_RETRIES = options.maxRetries.toString();
-  }
-  if (options.logLevel) {
-    env.CONFIG_LOG_LEVEL = options.logLevel;
-  }
-  if (options.logFile) {
-    env.CONFIG_LOG_FILE = options.logFile;
-  }
-  if (options.port !== undefined) {
-    env.CONFIG_PORT = options.port.toString();
-  }
-  if (options.saveCredential !== undefined) {
-    env.CONFIG_SAVE_CREDENTIAL = options.saveCredential.toString();
-  }
-  if (options.issuanceTestsDir) {
-    env.CONFIG_ISSUANCE_TESTS_DIR = options.issuanceTestsDir;
-  }
-  if (options.issuanceCertificateSubject) {
-    env.CONFIG_ISSUANCE_CERTIFICATE_SUBJECT =
-      options.issuanceCertificateSubject;
-  }
-  if (options.presentationTestsDir) {
-    env.CONFIG_PRESENTATION_TESTS_DIR = options.presentationTestsDir;
-  }
-  if (options.stepsMapping) {
-    env.CONFIG_STEPS_MAPPING = options.stepsMapping;
-  }
-  if (options.unsafeTls) {
-    env.CONFIG_UNSAFE_TLS = "true";
-  }
-  if (options.tests) {
-    env.TESTS = options.tests;
-  }
-  if (options.walletVersion) {
-    env.CONFIG_WALLET_VERSION = options.walletVersion;
-  }
-  if (options.refreshToken) {
-    env.CONFIG_REFRESH_TOKEN = options.refreshToken;
-  }
+
+  applyEnvOption(
+    env,
+    "CONFIG_CREDENTIAL_ISSUER_URI",
+    options.credentialIssuerUri,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_CREDENTIAL_OFFER_URI",
+    options.credentialOfferUri,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_PRESENTATION_AUTHORIZE_URI",
+    options.presentationAuthorizeUri,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
+    options.presentationAuthorizeScript,
+  );
+  applyEnvOption(env, "CONFIG_CREDENTIAL_TYPES", options.credentialTypes);
+  applyEnvOption(env, "CONFIG_TIMEOUT", options.timeout);
+  applyEnvOption(env, "CONFIG_MAX_RETRIES", options.maxRetries);
+  applyEnvOption(env, "CONFIG_LOG_LEVEL", options.logLevel);
+  applyEnvOption(env, "CONFIG_LOG_FILE", options.logFile);
+  applyEnvOption(env, "CONFIG_PORT", options.port);
+  applyEnvOption(env, "CONFIG_SAVE_CREDENTIAL", options.saveCredential);
+  applyEnvOption(env, "CONFIG_ISSUANCE_TESTS_DIR", options.issuanceTestsDir);
+  applyEnvOption(
+    env,
+    "CONFIG_ISSUANCE_CERTIFICATE_SUBJECT",
+    options.issuanceCertificateSubject,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_PRESENTATION_TESTS_DIR",
+    options.presentationTestsDir,
+  );
+  applyEnvOption(env, "CONFIG_STEPS_MAPPING", options.stepsMapping);
+  applyEnvOption(env, "CONFIG_UNSAFE_TLS", options.unsafeTls);
+  applyEnvOption(env, "TESTS", options.tests);
+  applyEnvOption(env, "CONFIG_WALLET_VERSION", options.walletVersion);
+  applyEnvOption(
+    env,
+    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+    options.refreshTokenReissuance,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
+    options.credentialConfigurationIdReissuance,
+  );
+  applyEnvOption(
+    env,
+    "CONFIG_REFRESH_TOKEN_DEFERRED",
+    options.refreshTokenDeferred,
+  );
+  applyEnvOption(env, "CONFIG_TRANSACTION_ID", options.transactionId);
+  applyEnvOption(env, "CONFIG_TRUST_ANCHOR_VERIFY", options.trustAnchorVerify);
 
   return env;
 }
@@ -171,6 +186,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--presentation-authorize-uri <uri>",
       "Override the presentation authorize URL (env: CONFIG_PRESENTATION_AUTHORIZE_URI)",
+    )
+    .option(
+      "--presentation-authorize-script <path>",
+      "Override the presentation authorize script path (env: CONFIG_PRESENTATION_AUTHORIZE_SCRIPT)",
     )
     .option(
       "--credential-types <types>",
@@ -221,16 +240,33 @@ function addCommonOptions(command: Command): Command {
       "Disable TLS certificate verification (for local self-signed certs). Sets tls_reject_unauthorized=false (env: CONFIG_UNSAFE_TLS).",
     )
     .option(
+      "--trust-anchor-verify <bool>",
+      "Set to false to skip tests that require Trust Anchor verification (CI_003, CI_004, RPR-10). Defaults to true (env: CONFIG_TRUST_ANCHOR_VERIFY).",
+      (val) => val !== "false",
+    )
+    .option(
       "--tests <names>",
       "Comma separated list of test names, only the specified tests will be run (env: TESTS)",
     )
     .option(
       "--wallet-version <version>",
-      "Override the IT Wallet specification version (V1_0, V1_3) (env: CONFIG_WALLET_VERSION)",
+      "Override the IT Wallet specification version (V1_0, V1_3, V1_4) (env: CONFIG_WALLET_VERSION)",
     )
     .option(
-      "--refresh-token <token>",
-      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN)",
+      "--refresh-token-reissuance <token>",
+      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN_REISSUANCE)",
+    )
+    .option(
+      "--refresh-token-deferred <token>",
+      "DPoP-bound Refresh Token used to obtain a new access token for the Deferred Issuance Flow (env: CONFIG_REFRESH_TOKEN_DEFERRED)",
+    )
+    .option(
+      "--transaction-id <id>",
+      "Transaction ID returned in the pending credential response, required for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
+    )
+    .option(
+      "--credential-configuration-id-reissuance <id>",
+      "Override the credential configuration ID used in the Re-Issuance Flow (env: CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE)",
     );
 }
 

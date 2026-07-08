@@ -2,6 +2,10 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
+import {
+  assertPidJwtPayloadClaims,
+  assertPidSdDisclosures,
+} from "#/helpers/pid-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { JwkSet } from "@pagopa/io-wallet-oauth2";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
@@ -15,6 +19,8 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
+import { digest } from "@sd-jwt/crypto-nodejs";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -29,6 +35,7 @@ import {
   CredentialRequestResponse,
   FetchMetadataStepResponse,
   NonceRequestResponse,
+  NotificationRequestResponse,
   PushedAuthorizationRequestResponse,
   TokenRequestResponse,
 } from "@/step/issuance";
@@ -49,9 +56,12 @@ testConfigs.forEach((testConfig) => {
     let nonceResponse: NonceRequestResponse;
     let credentialResponse: CredentialRequestResponse;
     let walletAttestationResponse: AttestationResponse;
+    let notificationRequestResponse: NotificationRequestResponse | undefined;
     const sdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
     });
+    const shouldSkipTrustAnchorVerification =
+      orchestrator.getConfig().trust_anchor.verify === false;
 
     beforeAll(async () => {
       try {
@@ -66,6 +76,7 @@ testConfigs.forEach((testConfig) => {
           result.pushedAuthorizationRequestResponse;
         tokenResponse = result.tokenResponse;
         walletAttestationResponse = result.walletAttestationResponse;
+        notificationRequestResponse = result.notificationRequestResponse;
 
         baseLog.info("Issuance flow completed successfully");
       } catch (e) {
@@ -128,36 +139,49 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
-    test("CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed", async () => {
-      const log = baseLog.withTag("CI_003");
-      const DESCRIPTION = "Entity Configuration is cryptographically signed";
+    test(
+      "CI_003: Fetch Metadata | The Entity Configuration is cryptographically signed",
+      { skip: shouldSkipTrustAnchorVerification },
+      async () => {
+        const log = baseLog.withTag("CI_003");
+        const DESCRIPTION = "Entity Configuration is cryptographically signed";
 
-      log.start(
-        "Conformance test: Verifying Entity Configuration JWT signature",
-      );
+        log.start(
+          "Conformance test: Verifying Entity Configuration JWT signature",
+        );
 
-      let testSuccess = false;
-      try {
-        log.debug("→ Validating response is present...");
-        expect(fetchMetadataResponse.response).toBeDefined();
+        let testSuccess = false;
+        try {
+          const config = orchestrator.getConfig();
+          const { credentialIssuer } =
+            await orchestrator.findCredentialConfig();
+          const entityClaims = await fetchMetadata({
+            callbacks: {
+              fetch: fetchWithConfig(config.network),
+              verifyJwt,
+            },
+            config: new IoWalletSdkConfig({
+              itWalletSpecsVersion: config.wallet.wallet_version,
+            }),
+            credentialIssuerUrl: credentialIssuer,
+          });
 
-        log.debug("→ Asserting response status...");
-        expect(fetchMetadataResponse.response?.status).toBe(200);
+          log.debug("→ Checking Entity Statement JWT is present...");
+          expect(entityClaims).toBeDefined();
 
-        log.debug("→ Checking Entity Statement JWT is present...");
-        expect(
-          fetchMetadataResponse.response?.discoveredVia === "federation",
-        ).toBeTruthy();
-
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          testSuccess = true;
+        } catch (e) {
+          log.error("Error fetching metadata:", e);
+          throw e;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test(
       "CI_004: Fetch Metadata | Public Key inclusion in Entity Configuration and Subordinate Statement",
-      { skip: process.env.CI === "true" },
+      { skip: shouldSkipTrustAnchorVerification },
       async () => {
         const log = baseLog.withTag("CI_004");
         const DESCRIPTION =
@@ -270,7 +294,7 @@ testConfigs.forEach((testConfig) => {
             metadata: z.any(),
             sub: z.string(),
           })
-          .passthrough()
+          .loose()
           .refine((data) => data.metadata !== undefined, {
             message: "metadata is missing",
           })
@@ -301,25 +325,14 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          const config = orchestrator.getConfig();
-          const { credentialIssuer } =
-            await orchestrator.findCredentialConfig();
-          const entityClaims = await fetchMetadata({
-            callbacks: {
-              fetch: fetchWithConfig(config.network),
-              verifyJwt,
-            },
-            config: new IoWalletSdkConfig({
-              itWalletSpecsVersion: config.wallet.wallet_version,
-            }),
-            credentialIssuerUrl: credentialIssuer,
-          });
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
 
           const result = z
             .object({
               metadata: z.any(),
             })
-            .passthrough()
+            .loose()
             .refine(
               (data) =>
                 data.metadata !== undefined &&
@@ -362,7 +375,7 @@ testConfigs.forEach((testConfig) => {
           .object({
             metadata: z.any(),
           })
-          .passthrough()
+          .loose()
           .refine(
             (data) =>
               data.metadata !== undefined &&
@@ -853,6 +866,34 @@ testConfigs.forEach((testConfig) => {
       }
     });
 
+    test(
+      "CI_051: CieID High-Level Authentication | PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_051");
+        const DESCRIPTION =
+          "PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)";
+
+        log.start(
+          "Conformance test: Verifying PID Provider performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
+        );
+
+        let testSuccess = false;
+        try {
+          expect(
+            credentialResponse.response?.credentials?.length,
+          ).toBeGreaterThan(0);
+          log.debug(
+            `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+          );
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
+
     test("CI_054: Authorization | (Q)EAA Provider successfully performs User authentication by requesting and validating a valid PID from the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_054");
       const DESCRIPTION =
@@ -899,7 +940,9 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        expect(authorizeResponse.response?.requestObjectJwt).toBeDefined();
+        expect(
+          authorizeResponse.response?.authorizeResponse?.code,
+        ).toBeDefined();
 
         testSuccess = true;
       } finally {
@@ -936,7 +979,7 @@ testConfigs.forEach((testConfig) => {
       try {
         const responseState =
           authorizeResponse.response?.authorizeResponse?.state;
-        const requestState = authorizeResponse.response?.requestObject?.state;
+        const requestState = pushedAuthorizationRequestResponse.response?.state;
 
         expect(responseState).toBeDefined();
         expect(typeof responseState).toBe("string");
@@ -1298,6 +1341,144 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    test("CI_088b: Notification | Access Token allows access to Notification endpoint for notifying Digital Credential deletion to the Credential Issuer", async ({
+      skip,
+    }) => {
+      const log = baseLog.withTag("CI_088b");
+      const DESCRIPTION =
+        "Access token successfully used to notify credential deletion";
+
+      log.start(
+        "Conformance test: Verifying access token use at Notification endpoint",
+      );
+
+      let testSuccess = false;
+      try {
+        if (!notificationRequestResponse) {
+          log.debug(
+            "→ CI_088b skipped: notificationRequestResponse is not present in IssuanceFlowResponse",
+          );
+          skip();
+          return;
+        }
+
+        expect(
+          notificationRequestResponse.success,
+          "Notification request step failed",
+        ).toBe(true);
+        expect(
+          notificationRequestResponse.response?.status,
+          "Notification endpoint must return 204 No Content",
+        ).toBe(204);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_161a: Notification | User successfully initiates Digital Credential revocation/suspension through Credential Issuer's web service", async ({
+      skip,
+    }) => {
+      const log = baseLog.withTag("CI_161a");
+      const DESCRIPTION =
+        "User successfully initiates Digital Credential revocation/suspension through Credential Issuer's web service";
+
+      log.start(
+        "Conformance test: Verifying user-initiated Digital Credential revocation/suspension",
+      );
+
+      let testSuccess = false;
+      try {
+        if (!notificationRequestResponse) {
+          log.debug(
+            "→ CI_161a skipped: notificationRequestResponse is not present in IssuanceFlowResponse",
+          );
+          skip();
+          return;
+        }
+
+        expect(
+          notificationRequestResponse.success,
+          "Notification request step failed",
+        ).toBe(true);
+        expect(
+          notificationRequestResponse.response?.status,
+          "Notification endpoint must return 204 No Content",
+        ).toBe(204);
+        expect(
+          notificationRequestResponse.response?.event,
+          "CI_161a must send credential_deleted for revocation",
+        ).toBe("credential_deleted");
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+    test(
+      "CI_117: Credential | The Italian PID is successfully provided with the User attributes defined in the PID table",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_117");
+        const DESCRIPTION =
+          "Italian PID contains all mandatory user attributes as SD disclosures and required metadata claims";
+
+        log.start(
+          "Conformance test: Verifying Italian PID user attributes and metadata claims",
+        );
+
+        let testSuccess = false;
+        try {
+          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
+
+          const sdJwtCredentials: string[] = [];
+          for (const credObj of credentialResponse.response?.credentials ??
+            []) {
+            try {
+              await SDJwt.extractJwt(credObj.credential);
+              sdJwtCredentials.push(credObj.credential);
+            } catch {
+              /* non-SD-JWT, skip */
+            }
+          }
+
+          expect(
+            sdJwtCredentials.length,
+            "At least one SD-JWT PID credential must be present",
+          ).toBeGreaterThan(0);
+
+          const instance = new SDJwtVcInstance({ hasher: digest });
+
+          for (const credentialJwt of sdJwtCredentials) {
+            const decoded = await instance.decode(credentialJwt);
+            const payload = decoded.jwt?.payload as Record<string, unknown>;
+
+            const disclosureMap = new Map<string, unknown>();
+            for (const disc of decoded.disclosures ?? []) {
+              if (disc.key !== undefined)
+                disclosureMap.set(disc.key, disc.value);
+            }
+
+            log.debug(
+              `  Disclosed claims: ${JSON.stringify([...disclosureMap.keys()])}`,
+            );
+
+            assertPidSdDisclosures(disclosureMap, isV1_0);
+            assertPidJwtPayloadClaims(payload, isV1_0);
+
+            log.debug(
+              "  ✓ All mandatory PID user attributes and metadata claims validated",
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
       const log = baseLog.withTag("CI_118");

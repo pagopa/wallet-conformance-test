@@ -3,7 +3,7 @@ import express from "express";
 import * as https from "node:https";
 
 import { buildIssuerEntityConfiguration_V1_0 } from "@/functions/V1_0/mock-credentials";
-import { buildIssuerEntityConfiguration_V1_3 } from "@/functions/V1_3/mock-credentials";
+import { buildIssuerEntityConfiguration } from "@/functions/V1_3/mock-credentials";
 import { isMainModule } from "@/logic/entrypoint";
 import { createStatusListToken } from "@/logic/status-list";
 import {
@@ -42,7 +42,12 @@ export const createServer = (config: Config): express.Express => {
           jwt = await buildIssuerEntityConfiguration_V1_0(metadata, keyPair);
           break;
         case ItWalletSpecsVersion.V1_3:
-          jwt = await buildIssuerEntityConfiguration_V1_3(metadata, keyPair);
+        case ItWalletSpecsVersion.V1_4:
+          jwt = await buildIssuerEntityConfiguration(
+            metadata,
+            keyPair,
+            config.wallet.wallet_version,
+          );
           break;
         default:
           throw new Error(
