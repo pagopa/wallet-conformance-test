@@ -1,32 +1,18 @@
-import type IssuerAuthClass from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
-
 import {
-  DeviceResponse,
-  IssuerSignedDocument,
-  MDLParseError,
-  MDoc,
-} from "@auth0/mdl";
-import * as issuerAuthModule from "@auth0/mdl/lib/mdoc/model/IssuerAuth.js";
-import { PresentationDefinition } from "@auth0/mdl/lib/mdoc/model/PresentationDefinition.js";
-import {
-  parseWithErrorHandling,
-  ValidationError,
-} from "@pagopa/io-wallet-utils";
-import cbor from "cbor";
+  CoseKey,
+  DeviceRequest,
+  DocRequest,
+  Holder,
+  IssuerSigned,
+  ItemsRequest,
+  MdlParseError,
+  SessionTranscript,
+} from "@owf/mdoc";
 import { DcqlQuery } from "dcql";
 
-import { issuerSignedSchema, VpTokenOptions } from "@/types";
+import { VpTokenOptions } from "@/types";
 
-const { decode } = cbor;
-
-type IssuerAuthConstructor = typeof IssuerAuthClass;
-interface IssuerAuthModule {
-  default: IssuerAuthConstructor | { default: IssuerAuthConstructor };
-}
-
-const IssuerAuth = resolveIssuerAuthConstructor(
-  issuerAuthModule as unknown as IssuerAuthModule,
-);
+import { mdocContext } from "./mdoc-context";
 
 interface DcqlMdocClaim {
   claim_name?: string;
@@ -48,102 +34,88 @@ export async function createVpTokenMdoc(
   options: VpTokenOptions,
 ): Promise<string> {
   const issuerSigned = parseMdoc(Buffer.from(options.credential, "base64url"));
+  const docType = issuerSigned.issuerAuth.mobileSecurityObject.docType;
 
-  const issuerMDoc = new MDoc([issuerSigned]);
   const walletNonce = Buffer.from(
     crypto.getRandomValues(new Uint8Array(16)),
   ).toString("base64url");
 
-  const presentationDefinition = convertDcqlToPresentationDefinition(
-    options.dcqlQuery,
-    issuerSigned.docType,
-  );
-  if (!presentationDefinition) {
+  const deviceRequest = convertDcqlToDeviceRequest(options.dcqlQuery, docType);
+  if (!deviceRequest) {
     return "";
   }
 
-  const deviceResponse = await DeviceResponse.from(issuerMDoc)
-    .usingPresentationDefinition(presentationDefinition)
-    .usingSessionTranscriptForOID4VP(
-      walletNonce,
-      options.client_id,
-      options.responseUri,
-      options.nonce,
-    )
-    .authenticateWithSignature(options.dpopJwk, "ES256")
-    .sign();
+  const sessionTranscript = await SessionTranscript.forOid4VpDraft18(
+    {
+      clientId: options.client_id,
+      mdocGeneratedNonce: walletNonce,
+      responseUri: options.responseUri,
+      verifierGeneratedNonce: options.nonce,
+    },
+    mdocContext,
+  );
 
-  return deviceResponse.encode().toString("base64url");
+  const deviceResponse = await Holder.createDeviceResponseForDeviceRequest(
+    {
+      deviceRequest,
+      issuerSigned: [issuerSigned],
+      sessionTranscript,
+      signature: {
+        signingKey: CoseKey.fromJwk(
+          options.dpopJwk as unknown as Record<string, unknown>,
+        ),
+      },
+    },
+    mdocContext,
+  );
+
+  return deviceResponse.encodedForOid4Vp;
 }
 
 /**
- * Parses a mobile document (mdoc) from a Buffer into an IssuerSignedDocument object.
+ * Parses a mobile document (mdoc) from a Buffer into an IssuerSigned object.
  *
- * This function attempts to decode the provided Buffer as a CBOR object and then validates its
- * structure against a predefined schema. It constructs an `IssuerSignedDocument` by processing
- * the issuer authentication data and namespaces. The function ensures that the mdoc conforms to
- * the expected format and version.
+ * This function attempts to decode the provided Buffer as a CBOR-encoded
+ * `IssuerSigned` structure, validating it against the schemas bundled with
+ * `@owf/mdoc`. It also ensures the Mobile Security Object declares the
+ * expected version.
  *
  * @param {Buffer} credential - The raw mdoc credential as a Buffer.
- * @returns {IssuerSignedDocument} The parsed mdoc as an `IssuerSignedDocument` object.
- * @throws {MDLParseError} If the credential buffer cannot be decoded or parsed as a valid mdoc.
- * @throws {ValidationError} If the decoded mdoc fails schema validation.
+ * @returns {IssuerSigned} The parsed mdoc as an `IssuerSigned` object.
+ * @throws {MdlParseError} If the credential buffer cannot be decoded or parsed as a valid mdoc.
  */
-export function parseMdoc(credential: Buffer): IssuerSignedDocument {
+export function parseMdoc(credential: Buffer): IssuerSigned {
   try {
-    const doc = parseWithErrorHandling(
-      issuerSignedSchema,
-      decode(credential),
-      "Error extracting issuer signed document",
-    );
+    const issuerSigned = IssuerSigned.decode(credential);
 
-    const issuerAuth = new IssuerAuth(
-      doc.issuerAuth[0],
-      doc.issuerAuth[1],
-      doc.issuerAuth[2],
-      doc.issuerAuth[3],
-    );
+    if (issuerSigned.issuerAuth.mobileSecurityObject.version !== "1.0")
+      throw new MdlParseError("The issuerAuth version must be '1.0'");
 
-    const nameSpaces = Object.entries(doc.nameSpaces).reduce(
-      (prev, [nameSpace, items]) => ({
-        ...prev,
-        [nameSpace]: items.map((item) => decode(item.value)),
-      }),
-      {},
-    );
-    if (issuerAuth.decodedPayload.version !== "1.0")
-      throw new MDLParseError("The issuerAuth version must be '1.0'");
-
-    return new IssuerSignedDocument(issuerAuth.decodedPayload.docType, {
-      ...doc,
-      issuerAuth,
-      nameSpaces,
-    });
+    return issuerSigned;
   } catch (e) {
-    if (e instanceof ValidationError) throw e;
+    if (e instanceof MdlParseError) throw e;
 
-    const err = e as Error;
-    throw new MDLParseError(`Unable to decode mdoc: ${err.message}`);
+    const message = e instanceof Error ? e.message : String(e);
+    throw new MdlParseError(`Unable to decode mdoc: ${message}`);
   }
 }
 
 /**
- * Converts a DCQL query into a Presentation Definition for mdoc.
+ * Converts a DCQL query into an ISO 18013-5 DeviceRequest for mdoc.
  *
- * This function searches the DCQL query for a credential request matching the provided `docType`.
- * If a match is found, it constructs a `PresentationDefinition` with an `input_descriptors` array
- * that specifies the requested fields (namespaces and their elements) based on the claims requested
- * in the DCQL query.
+ * This function searches the DCQL query for a credential request matching the
+ * provided `docType`. If a match is found, it constructs a `DeviceRequest`
+ * whose `ItemsRequest` lists the requested data elements (namespaces and
+ * their element identifiers) based on the claims requested in the DCQL query.
  *
  * @param {DcqlQuery.Input} query - The DCQL query containing the credential requests.
  * @param {string} docType - The document type to match in the DCQL query (e.g., "org.iso.18013.5.1.mDL").
- * @returns {PresentationDefinition} A `PresentationDefinition` object derived from the matching credential query.
- * @throws {Error} If no matching credential query is found for the given `docType` or if the DCQL query structure is invalid.
+ * @returns {DeviceRequest | undefined} A `DeviceRequest` derived from the matching credential query, or `undefined` when no request matches.
  */
-function convertDcqlToPresentationDefinition(
+function convertDcqlToDeviceRequest(
   query: DcqlQuery.Input,
   docType: string,
-): PresentationDefinition | undefined {
+): DeviceRequest | undefined {
   const credentialQuery = query.credentials?.find(
     (c) => c.format === "mso_mdoc" && c.meta?.doctype_value === docType,
   );
@@ -154,56 +126,27 @@ function convertDcqlToPresentationDefinition(
 
   // Extract namespaces and elements from claims
   const claims = credentialQuery.claims as readonly DcqlMdocClaim[] | undefined;
-  const fields =
-    claims
-      ?.map((claim) => {
-        if ((!claim.namespace || !claim.claim_name) && !claim.path) {
-          return null;
-        }
+  const namespaces = new Map<string, Map<string, boolean>>();
+  for (const claim of claims ?? []) {
+    const path =
+      claim.path ??
+      (claim.namespace && claim.claim_name
+        ? [claim.namespace, claim.claim_name]
+        : undefined);
 
-        return {
-          intent_to_retain: true,
-          path: claim.path
-            ? [claim.path.map((p) => `['${p}']`).join("")]
-            : [`['${claim.namespace}']`, `['${claim.claim_name}']`],
-        };
-      })
-      .filter((f) => f !== null) || [];
+    const [namespace, elementIdentifier] = path ?? [];
+    if (!namespace || !elementIdentifier) continue;
 
-  return {
-    id: credentialQuery.id,
-    input_descriptors: [
-      {
-        constraints: {
-          fields: fields,
-          limit_disclosure: "required",
-        },
-        format: {
-          mso_mdoc: {
-            alg: ["ES256"],
-          },
-        },
-        id: docType,
-      },
+    const elements = namespaces.get(namespace) ?? new Map<string, boolean>();
+    elements.set(elementIdentifier, true);
+    namespaces.set(namespace, elements);
+  }
+
+  return DeviceRequest.create({
+    docRequests: [
+      DocRequest.create({
+        itemsRequest: ItemsRequest.create({ docType, namespaces }),
+      }),
     ],
-  };
-}
-
-function resolveIssuerAuthConstructor(
-  module: IssuerAuthModule,
-): IssuerAuthConstructor {
-  if (typeof module.default === "function") {
-    return module.default;
-  }
-
-  if (
-    typeof module.default === "object" &&
-    module.default !== null &&
-    "default" in module.default &&
-    typeof module.default.default === "function"
-  ) {
-    return module.default.default;
-  }
-
-  throw new TypeError("Unable to load IssuerAuth constructor");
+  });
 }
