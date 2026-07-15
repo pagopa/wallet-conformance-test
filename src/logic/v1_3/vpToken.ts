@@ -3,7 +3,7 @@ import { CredentialWithKey, VpTokenOptions } from "@/types";
 import { createVpTokenMdoc } from "../mdoc";
 import { createVpTokenSdJwt } from "../sd-jwt";
 
-export async function prepareCredentials_V1_3(
+export async function prepareCredentials(
   validCredentials: { input_credential_index: number }[],
   credentialQueryId: string,
   credentials: CredentialWithKey[],

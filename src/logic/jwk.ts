@@ -1,9 +1,15 @@
-import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
+  Jwk,
+  type JwtSigner,
+  type VerifyJwtCallback,
+} from "@pagopa/io-wallet-oauth2";
+import {
+  fetchAndValidateTrustChain,
   jsonWebKeySchema,
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import * as x509 from "@peculiar/x509";
 import {
   calculateJwkThumbprint,
   decodeJwt,
@@ -16,7 +22,7 @@ import { writeFileSync } from "node:fs";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 import { loadCertificate } from "./pem";
-import { buildCertPath } from "./utils";
+import { buildCertPath, partialCallbacks } from "./utils";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
@@ -94,7 +100,10 @@ export async function createKeys(): Promise<KeyPair> {
  * @returns The extracted public JWK.
  * @throws An error if the signer method is not supported.
  */
-export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
+export async function jwkFromSigner(
+  signer: JwtSigner,
+  payload?: Parameters<VerifyJwtCallback>[1]["payload"],
+): Promise<Jwk> {
   const { didUrl, kid, trustChain } = signer as {
     didUrl?: string;
     kid?: string;
@@ -117,10 +126,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
       );
     case "federation":
       if (!kid) throw new Error("missing signer key's kid");
-      if (!trustChain || !trustChain.length) {
-        throw new Error("missing signer's trust chain");
-      }
-      return jwkFromTrustChain(trustChain, kid);
+      return await jwkFromFederation(kid, trustChain, payload);
     case "jwk":
       return parseWithErrorHandling(
         jsonWebKeySchema,
@@ -162,6 +168,26 @@ async function jwkFromCertificateChain(
     throw new Error("missing x5c certificate");
   }
 
+  if (x5c.length > 1) {
+    const certs = x5c.map(
+      (certB64) => new x509.X509Certificate(Buffer.from(certB64, "base64")),
+    );
+    for (let i = 0; i < certs.length - 1; i++) {
+      const cert = certs[i];
+      const issuerCert = certs[i + 1];
+      if (!cert || !issuerCert) break;
+      const valid = await cert.verify({
+        publicKey: issuerCert,
+        signatureOnly: true,
+      });
+      if (!valid) {
+        throw new Error(
+          `x5c certificate chain signature invalid at index ${i}`,
+        );
+      }
+    }
+  }
+
   const pem = convertBase64DerToPem(x5c[0] as string);
   const key = await importX509(pem, alg, { extractable: true });
   const jwk = await exportJWK(key);
@@ -177,14 +203,30 @@ async function jwkFromCertificateChain(
 
 /**
  * Extracts a JWK from a trust chain array based on the signer's KID.
+ * Also cryptographically verifies the entity configuration self-signature.
  *
  * @param trustChain An array of JWTs representing the trust chain.
  * @param signerKid The KID of the signer to look for in the trust chain.
  * @returns The JWK found in the trust chain.
- * @throws An error if the trust chain is empty or the key is not found.
+ * @throws An error if the trust chain is empty, the entity config signature is invalid,
+ *         or the key is not found.
  */
-function jwkFromTrustChain(trustChain: string[], signerKid: string): Jwk {
-  const entityConfigurationJwt = trustChain[0];
+async function jwkFromFederation(
+  signerKid: string,
+  trustChain?: string[],
+  payload?: Parameters<VerifyJwtCallback>[1]["payload"],
+): Promise<Jwk> {
+  const ecTrustChain =
+    trustChain ??
+    (await (() => {
+      if (!payload?.iss) throw new Error("missing iss in payload");
+      return fetchAndValidateTrustChain(payload.iss, {
+        callbacks: {
+          ...partialCallbacks,
+        },
+      });
+    })());
+  const entityConfigurationJwt = ecTrustChain ? ecTrustChain[0] : undefined;
   if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
   const keys: Jwk[] = [];

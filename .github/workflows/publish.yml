@@ -1,10 +1,6 @@
 name: Publish package to npm
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
-
   workflow_dispatch:
 
 permissions:
@@ -19,6 +15,7 @@ jobs:
   publish:
     name: Publish npm package
     runs-on: ubuntu-latest
+    environment: prod
     env:
       HUSKY: "0"
 
@@ -45,27 +42,8 @@ jobs:
           npm install --global npm@^11.15.0
           npm --version
 
-      - name: Validate release tag
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
-            echo "::error::This workflow must run from a version tag (for example v1.2.3)." >&2
-            exit 1
-          fi
-
-          package_version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
-          expected_tag="v${package_version}"
-
-          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
-            echo "::error::Git tag ${GITHUB_REF_NAME} does not match expected tag ${expected_tag} for package.json version ${package_version}." >&2
-            exit 1
-          fi
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
 
       - name: Publish package
         run: npm publish --access public --provenance

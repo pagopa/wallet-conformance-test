@@ -296,3 +296,130 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
     expect((x5c ?? []).length).toBeGreaterThan(0);
   });
 });
+
+describe("Wallet Attestation V1_4 Unit Test", () => {
+  const config = loadConfigWithHierarchy();
+  const walletV1_4 = {
+    ...config.wallet,
+    wallet_version: ItWalletSpecsVersion.V1_4,
+  };
+
+  test("Generate New Wallet Attestation V1_4 with x5c and status_list", async () => {
+    const attestationPath = buildAttestationPath(walletV1_4);
+
+    // Remove existing attestation to force new generation
+    rmSync(attestationPath, { force: true });
+
+    const response = await loadAttestation({
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_4,
+    });
+
+    expect(response.attestation).toBeDefined();
+    expect(response.created).toBe(true);
+
+    const providerKeyPair = readFileSync(
+      `${walletV1_4.backup_storage_path}/wallet_provider_jwks`,
+      "utf-8",
+    );
+    const unitKeyPair = readFileSync(
+      `${walletV1_4.backup_storage_path}/wallet_unit_jwks`,
+      "utf-8",
+    );
+    const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
+    const providerKey = await importJWK(providerJWK, "ES256");
+
+    const jwt = await jwtVerify(response.attestation, providerKey);
+
+    // Verify standard header fields
+    expect(jwt.protectedHeader.typ).toBe("oauth-client-attestation+jwt");
+    expect(jwt.protectedHeader.alg).toBe("ES256");
+    expect(jwt.protectedHeader.kid).toBe(providerJWK.kid);
+
+    // V1_4: x5c MUST be present as a non-empty array of base64-DER strings
+    const x5c = jwt.protectedHeader.x5c as string[] | undefined;
+    expect(x5c).toBeDefined();
+    expect(Array.isArray(x5c)).toBe(true);
+    expect((x5c ?? []).length).toBeGreaterThan(0);
+    // Each entry must be a base64 string (no PEM headers)
+    for (const entry of x5c ?? []) {
+      expect(typeof entry).toBe("string");
+      expect(entry).not.toContain("-----BEGIN");
+    }
+
+    // V1_4: aal / authenticatorAssuranceLevel MUST NOT be in payload
+    expect((jwt.payload as Record<string, unknown>).aal).toBeUndefined();
+
+    // V1_4: status.status_list is mandatory
+    const status = jwt.payload.status as
+      | undefined
+      | { status_list: { idx: number; uri: string } };
+    expect(status?.status_list).toBeDefined();
+    expect(typeof status?.status_list.idx).toBe("number");
+    expect(typeof status?.status_list.uri).toBe("string");
+
+    // Verify payload claims
+    expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
+    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(jwt.payload.sub).toBe(unitThumbprint);
+    expect(jwt.payload.wallet_link).toBe(
+      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+    );
+    expect(jwt.payload.wallet_name).toBe(walletV1_4.wallet_name);
+  });
+
+  test("Load Existing Wallet Attestation V1_4", async () => {
+    const response = await loadAttestation({
+      trust: config.trust,
+      trustAnchor: config.trust_anchor,
+      wallet: walletV1_4,
+    });
+
+    // Should load from disk (not create a new one)
+    expect(response.created).toBe(false);
+
+    const attestation = readFileSync(buildAttestationPath(walletV1_4), "utf-8");
+    expect(response.attestation).toBe(attestation);
+
+    const providerKeyPair = readFileSync(
+      `${walletV1_4.backup_storage_path}/wallet_provider_jwks`,
+      "utf-8",
+    );
+    const unitKeyPair = readFileSync(
+      `${walletV1_4.backup_storage_path}/wallet_unit_jwks`,
+      "utf-8",
+    );
+    const providerJWK = (JSON.parse(providerKeyPair) as KeyPair).publicKey;
+    const unitJWK: Jwk = JSON.parse(unitKeyPair).publicKey;
+    const unitThumbprint = await calculateJwkThumbprint({
+      hashAlgorithm: HashAlgorithm.Sha256,
+      hashCallback: partialCallbacks.hash,
+      jwk: unitJWK,
+    });
+    const providerKey = await importJWK(providerJWK, "ES256");
+    const jwt = await jwtVerify(attestation, providerKey);
+
+    expect(providerJWK.kid).toBe(jwt.protectedHeader.kid);
+    expect(unitJWK).toStrictEqual((jwt.payload.cnf as { jwk: Jwk }).jwk);
+    expect(unitThumbprint).toBe(jwt.payload.sub);
+
+    // Verify x5c still present and valid
+    const x5c = jwt.protectedHeader.x5c as string[] | undefined;
+    expect(x5c).toBeDefined();
+    expect(Array.isArray(x5c)).toBe(true);
+    expect((x5c ?? []).length).toBeGreaterThan(0);
+
+    // Verify status.status_list still present
+    const status = jwt.payload.status as
+      | undefined
+      | { status_list: { idx: number; uri: string } };
+    expect(status?.status_list).toBeDefined();
+  });
+});

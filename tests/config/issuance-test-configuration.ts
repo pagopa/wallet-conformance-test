@@ -3,6 +3,7 @@ import {
   AuthorizeDefaultStep,
   CredentialRequestDefaultStep,
   NonceRequestDefaultStep,
+  NotificationRequestDefaultStep,
   PushedAuthorizationRequestDefaultStep,
   TokenRequestDefaultStep,
 } from "@/step/issuance";
@@ -18,6 +19,7 @@ export class IssuerTestConfiguration {
   public readonly fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
   public readonly name: string;
   public readonly nonceRequestStepClass: typeof NonceRequestDefaultStep;
+  public readonly notificationRequestStepClass: typeof NotificationRequestDefaultStep;
   public readonly pushedAuthorizationRequestStepClass: typeof PushedAuthorizationRequestDefaultStep;
   public readonly tokenRequestStepClass: typeof TokenRequestDefaultStep;
 
@@ -28,6 +30,7 @@ export class IssuerTestConfiguration {
     fetchMetadataStepClass: typeof FetchMetadataDefaultStep;
     name: string;
     nonceRequestStepClass: typeof NonceRequestDefaultStep;
+    notificationRequestStepClass: typeof NotificationRequestDefaultStep;
     pushedAuthorizationRequestStepClass: typeof PushedAuthorizationRequestDefaultStep;
     tokenRequestStepClass: typeof TokenRequestDefaultStep;
   }) {
@@ -41,6 +44,7 @@ export class IssuerTestConfiguration {
     this.tokenRequestStepClass = config.tokenRequestStepClass;
     this.nonceRequestStepClass = config.nonceRequestStepClass;
     this.credentialRequestStepClass = config.credentialRequestStepClass;
+    this.notificationRequestStepClass = config.notificationRequestStepClass;
   }
 
   static createCustom(
@@ -57,6 +61,7 @@ export class IssuerTestConfiguration {
       fetchMetadataStepClass: FetchMetadataDefaultStep,
       name: "Issuance Happy Flow",
       nonceRequestStepClass: NonceRequestDefaultStep,
+      notificationRequestStepClass: NotificationRequestDefaultStep,
       pushedAuthorizationRequestStepClass:
         PushedAuthorizationRequestDefaultStep,
       tokenRequestStepClass: TokenRequestDefaultStep,

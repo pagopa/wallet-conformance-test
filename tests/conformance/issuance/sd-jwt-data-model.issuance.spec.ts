@@ -2,6 +2,10 @@
 
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
+import {
+  assertPidJwtPayloadClaims,
+  assertPidSdDisclosures,
+} from "#/helpers/pid-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import {
   IoWalletSdkConfig,
@@ -33,6 +37,9 @@ testConfigs.forEach((testConfig) => {
   describe(`[${testConfig.name}] SD-JWT VC Data Model Tests`, () => {
     const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
+    const sdkConfig = new IoWalletSdkConfig({
+      itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
+    });
 
     let credentialResponse: CredentialRequestResponse;
     let credentialIssuer: string;
@@ -1396,5 +1403,68 @@ testConfigs.forEach((testConfig) => {
         log.testCompleted(DESCRIPTION, testSuccess);
       }
     });
+
+    test(
+      "CI_136: Additional PID Claims | Additional claims data is successfully incorporated when required",
+      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_136");
+        const DESCRIPTION =
+          "Italian PID contains all mandatory user attributes as SD disclosures and required metadata claims";
+
+        log.start(
+          "Conformance test: Verifying Italian PID user attributes and metadata claims",
+        );
+
+        let testSuccess = false;
+        try {
+          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
+
+          const sdJwtCredentials: string[] = [];
+          for (const credObj of credentialResponse.response?.credentials ??
+            []) {
+            try {
+              await SDJwt.extractJwt(credObj.credential);
+              sdJwtCredentials.push(credObj.credential);
+            } catch {
+              /* non-SD-JWT, skip */
+            }
+          }
+
+          expect(
+            sdJwtCredentials.length,
+            "At least one SD-JWT PID credential must be present",
+          ).toBeGreaterThan(0);
+
+          const instance = new SDJwtVcInstance({ hasher: digest });
+
+          for (const credentialJwt of sdJwtCredentials) {
+            const decoded = await instance.decode(credentialJwt);
+            const payload = decoded.jwt?.payload as Record<string, unknown>;
+
+            const disclosureMap = new Map<string, unknown>();
+            for (const disc of decoded.disclosures ?? []) {
+              if (disc.key !== undefined)
+                disclosureMap.set(disc.key, disc.value);
+            }
+
+            log.debug(
+              `  Disclosed claims: ${JSON.stringify([...disclosureMap.keys()])}`,
+            );
+
+            assertPidSdDisclosures(disclosureMap, isV1_0);
+            assertPidJwtPayloadClaims(payload, isV1_0);
+
+            log.debug(
+              "  ✓ All mandatory PID user attributes and metadata claims validated",
+            );
+          }
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
   });
 });

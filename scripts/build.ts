@@ -22,18 +22,19 @@ await esbuild.build({
   packages: "external",
 });
 
-const testEntryPoints = await Array.fromAsync(
+const entryPoints = await Array.fromAsync(
   glob([
     "tests/conformance/**/*.spec.ts",
     "tests/global-setup.ts",
     "tests/setup-tls.ts",
+    "src/report/reporter.ts",
   ]),
 );
 
 await esbuild.build({
   ...common,
   entryNames: "[dir]/[name]",
-  entryPoints: testEntryPoints,
+  entryPoints,
   external: ["vitest"],
   outbase: ".",
   outdir: "dist",

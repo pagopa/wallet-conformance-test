@@ -5,6 +5,7 @@ import {
   type CreateAuthorizationResponseResult,
   type CreateAuthorizationResponseVersionedOptions,
   fetchAuthorizationRequest,
+  type FetchAuthorizationRequestOptions,
   type Openid4vpAuthorizationRequestHeader,
   parseAuthorizeRequest,
   ParsedAuthorizeRequestResult,
@@ -15,19 +16,28 @@ import { DcqlQuery } from "dcql";
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
 import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { partialCallbacks } from "@/logic/utils";
+import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateAuthorizationResponseResult;
+  authorizeRequestUrl: string;
   parsedQrCode: ParsedQrCode;
   requestObject: ParsedAuthorizeRequestResult["payload"];
+  requestObjectFetch?: RequestObjectFetchDetails;
   responseUri: string;
+  walletMetadata: WalletMetadata;
+  walletNonce: string;
 }
 
 export interface AuthorizationRequestOptions {
+  /**
+   * Authorization request URL for this execution.
+   */
+  authorizeRequestUrl: string;
+
   /**
    * Credentials along with their associated DPoP keys.
    */
@@ -48,6 +58,17 @@ export type AuthorizationRequestStepResponse = StepResponse & {
   response?: AuthorizationRequestExecuteStepResponse;
 };
 
+interface RequestObjectFetchDetails {
+  body?: string;
+  contentType?: string;
+  method: string;
+  url: string;
+}
+
+type WalletMetadata = NonNullable<
+  FetchAuthorizationRequestOptions["walletMetadata"]
+>;
+
 /**
  * Implementation of the Authorization Request Step for OpenID4VP flow.
  * This step handles fetching the authorization request, building the VP token,
@@ -63,14 +84,33 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
     log.debug("Starting authorization request step...");
 
     return this.execute<AuthorizationRequestExecuteStepResponse>(async () => {
-      const authorizeRequestUrl =
-        this.config.presentation.authorize_request_url;
+      const authorizeRequestUrl = options.authorizeRequestUrl;
+
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
+
+      const walletNonce = crypto.randomUUID();
+      const walletMetadata = buildWalletMetadata();
+      let requestObjectFetch: RequestObjectFetchDetails | undefined;
+
+      const fetchCallback = fetchWithConfig(this.config.network, {
+        onRequest: ({ body, headers, method, url }) => {
+          requestObjectFetch = {
+            body: typeof body === "string" ? body : undefined,
+            contentType: headers.get("content-type") ?? undefined,
+            method,
+            url,
+          };
+        },
+      });
+
       const { parsedQrCode, requestObjectJwt } =
         await fetchAuthorizationRequest({
           authorizeRequestUrl,
-          callbacks: { fetch },
+          callbacks: { fetch: fetchCallback },
+          walletMetadata,
+          walletNonce,
         });
+
       log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
       log.debug("Request Object JWT:", requestObjectJwt);
 
@@ -135,9 +175,13 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       return {
         authorizationRequestHeader: parsedAuthorizeRequest.header,
         authorizationResponse,
+        authorizeRequestUrl,
         parsedQrCode,
         requestObject,
+        requestObjectFetch,
         responseUri,
+        walletMetadata,
+        walletNonce,
       };
     });
   }
@@ -145,4 +189,30 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   tag(): string {
     return AuthorizationRequestDefaultStep.tag;
   }
+}
+
+function buildWalletMetadata(): WalletMetadata {
+  const walletClientIdPrefixesSupported = [
+    "redirect_uri",
+    "x509_san_dns",
+    "x509_san_uri",
+  ];
+
+  const walletVpFormatsSupported: WalletMetadata["vp_formats_supported"] = {
+    "dc+sd-jwt": {
+      "kb-jwt_alg_values": ["ES256"],
+      "sd-jwt_alg_values": ["ES256"],
+    },
+    mso_mdoc: {
+      alg: ["ES256"],
+    },
+  };
+
+  return {
+    client_id_prefixes_supported: walletClientIdPrefixesSupported,
+    request_object_signing_alg_values_supported: ["ES256"],
+    response_modes_supported: ["direct_post.jwt"],
+    response_types_supported: ["vp_token"],
+    vp_formats_supported: walletVpFormatsSupported,
+  };
 }

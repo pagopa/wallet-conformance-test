@@ -14,6 +14,7 @@ import { createLogger } from "@/logic/logs";
 import { resolveWorkspacePath } from "@/logic/runtime-paths";
 import {
   FetchMetadataDefaultStep,
+  NotificationRequestDefaultStep,
   PushedAuthorizationRequestDefaultStep,
   TokenRequestDefaultStep,
 } from "@/step/issuance";
@@ -125,6 +126,11 @@ function buildIssuanceTestConfigurations(
         customSteps,
         "nonceRequest",
         NonceRequestDefaultStep,
+      ),
+      notificationRequestStepClass: getStepClass(
+        customSteps,
+        "notificationRequest",
+        NotificationRequestDefaultStep,
       ),
       pushedAuthorizationRequestStepClass: getStepClass(
         customSteps,

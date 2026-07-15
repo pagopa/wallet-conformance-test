@@ -515,6 +515,56 @@ and returns the authorization code.
 
 ---
 
+## NotificationRequestDefaultStep
+
+**Tag**: `NOTIFICATION_REQUEST`
+
+**Purpose**: Sends a `credential_deleted` notification (or any `NotificationEvent`) to the issuer's `notification_endpoint`. Must be called after the Credential Request step using the same `dPoPKey` that was bound to the access token at the Token Endpoint.
+
+**Input** (`NotificationRequestStepOptions`):
+```typescript
+{
+  accessToken: string;          // DPoP-bound access token from TokenRequestStep (used as Authorization: DPoP <token>)
+  dPoPKey: KeyPair;             // Same ephemeral key pair returned by TokenRequestStep.response.dPoPKey
+  event: NotificationEvent;     // "credential_accepted" | "credential_deleted" | "credential_failure"
+  notificationEndpoint: string; // URL from metadata.openid_credential_issuer.notification_endpoint
+  notificationId: string;       // notification_id from CredentialRequestStep.response.notification_id
+}
+```
+
+**Output** (`NotificationRequestResponse`):
+```typescript
+{
+  success: boolean;
+  error?: Error;
+  durationMs?: number;
+  response?: {
+    status: number;  // Expected: 204
+  }
+}
+```
+
+**Expected HTTP status**: `204 No Content`. Any other status is treated as a step failure.
+
+**Headers sent**:
+| Header          | Value                          |
+|-----------------|-------------------------------|
+| `Authorization` | `DPoP <accessToken>`          |
+| `DPoP`          | DPoP proof JWT (POST, htu = notificationEndpoint) |
+| `Content-Type`  | `application/json`            |
+
+**Request body**:
+```json
+{
+  "notification_id": "<notification_id>",
+  "event": "credential_deleted"
+}
+```
+
+**Note**: The DPoP proof is built using `createTokenDPoP` with `htm: "POST"` and `htu: notificationEndpoint`, using the same `dPoPKey` that was used during the Token Request. This ensures the proof is bound to the access token already issued.
+
+---
+
 # Presentation Flow Steps
 
 ## Quick Reference

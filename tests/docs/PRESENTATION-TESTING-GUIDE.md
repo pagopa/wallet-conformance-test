@@ -6,6 +6,20 @@ You will keep your own test code in a separate folder (`my-example/`) alongside 
 
 ---
 
+## Overview
+
+The presentation flow simulates a wallet presenting a credential to a Relying Party (RP / Verifier). The tool:
+
+1. Fetches the RP's federation metadata.
+2. Parses the authorization request (the URL normally encoded in a QR code).
+3. Builds a VP (Verifiable Presentation) token from the locally available credentials.
+4. Sends the authorization response to the RP's `response_uri`.
+5. Follows the redirect and collects the `response_code`.
+
+The credentials available for presentation include the **auto-generated mock PID** (`dc_sd_jwt_PersonIdentificationData`) and any credentials saved during previous issuance test runs.
+
+---
+
 ## Prerequisites
 
 - **Node.js ≥ 22.19.0** — [download](https://nodejs.org/en/about/previous-releases)
@@ -70,7 +84,70 @@ The `config.example.ini` template includes all available options (wallet configu
 anchors, logging, network timeouts, etc.) with sensible defaults. You only need to change what
 differs from the example.
 
-> **`authorize_request_url`** is mandatory. If it is missing, `definePresentationTest()` will fail configuration validation and throw an error before tests run.
+### `authorize_request_url` — static URL
+
+The simplest approach: paste the full authorization request URL directly into `config.ini`.
+
+```ini
+[presentation]
+authorize_request_url = https://rp.example.com/auth?client_id=https://rp.example.com&request_uri=https://rp.example.com/auth/request/abc123&state=abc123
+```
+
+> **Limitation**: Most Relying Parties generate a **fresh URL per session**, so a static URL
+> typically expires after one use. The full presentation suite runs several spec files
+> (`happy`, `authorization-request`, `redirect-uri`), each of which executes the orchestrator
+> flow independently — meaning the same URL would be consumed on the first spec and already
+> expired by the time the next one runs.
+>
+> A static `authorize_request_url` is therefore only reliable when you limit the run to the
+> **happy flow test alone**:
+>
+> ```bash
+> wct test:presentation --tests HappyFlowPresentation
+> ```
+>
+> For any other scenario — running the full suite or automating in CI — use
+> [`authorize_request_script`](#authorize_request_script--dynamic-url-via-script) instead, so
+> a fresh URL is fetched before each spec.
+
+### `authorize_request_script` — dynamic URL via script
+
+When the RP creates a new authorization request on every run (the standard case), configure a
+script that calls the RP's API and prints the resulting URL to `stdout`. The tool
+executes this script before each test run and uses the URL it outputs. The script must be executable and can be any kind of script (bash, Python, Node.js, etc.) as long as it meets the contract below.
+
+```ini
+[presentation]
+authorize_request_script = ./tests/scripts/presentation.example.sh
+```
+
+Contract for the script:
+
+| Requirement    | Detail                                                               |
+| -------------- | -------------------------------------------------------------------- |
+| **Executable** | The file must be executable (`chmod +x`).                            |
+| **Stdout**     | Print exactly one line: the full authorization request URL.          |
+| **Exit code**  | Exit `0` on success; any non-zero exit code is treated as a failure. |
+| **Timeout**    | The tool waits up to **15 seconds** for the script to complete.      |
+| **Stderr**     | Written to the tool's own stderr for debugging; not parsed.          |
+
+#### Example script
+
+The repository ships a ready-to-use example at [`tests/scripts/presentation.example.sh`](../tests/scripts/presentation.example.sh).
+
+### Mutual exclusivity
+
+`authorize_request_url` and `authorize_request_script` are **mutually exclusive**. If both are
+set, `authorize_request_script` takes precedence. You must provide at least one of them.
+
+### Optional settings
+
+```ini
+[presentation]
+# Optional: explicit RP Verifier base URL when the federation metadata
+# domain differs from the authorize_request_url domain.
+verifier = https://rp.example.com
+```
 
 ---
 
@@ -115,11 +192,8 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
 
   // Run the full presentation flow once before all assertions.
   beforeAll(async () => {
-    ({
-      fetchMetadataResult,
-      authorizationRequestResult,
-      redirectUriResult,
-    } = await orchestrator.presentation());
+    ({ fetchMetadataResult, authorizationRequestResult, redirectUriResult } =
+      await orchestrator.presentation());
   });
 
   // Register the summary hook (prints pass/fail counts after the suite).
@@ -144,7 +218,8 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
     let testSuccess = false;
     try {
       expect(
-        authorizationRequestResult.response?.authorizationResponse.authorizationResponsePayload.vp_token,
+        authorizationRequestResult.response?.authorizationResponse
+          .authorizationResponsePayload.vp_token,
         "VP token must be present in authorization response",
       ).toBeDefined();
       testSuccess = true;
@@ -175,8 +250,7 @@ describe(`[${testConfig.name}] My Presentation Tests`, () => {
       ).toBe(true);
 
       // Presentation was accepted if response code is present
-      const isAccepted =
-        redirectUriResult.response?.responseCode !== undefined;
+      const isAccepted = redirectUriResult.response?.responseCode !== undefined;
       expect(isAccepted, "verifier should return a response code").toBe(true);
 
       testSuccess = true;
@@ -222,26 +296,66 @@ TypeScript path aliases (`#/`, `@/`) are resolved relative to that project root.
 
 ```bash
 cd my-test/wallet-conformance-test
-
-wct test:presentation \
-  --file-ini           ../my-example/config.ini \
-  --presentation-tests-dir ../my-example \
-  --presentation-authorize-uri 'https://your-verifier.example.com/authorize?....'
 ```
 
-`--presentation-authorize-uri` point to your authorize url Relying Party (Verifier) (generally url included in QR code).
+### Using `config.ini`
 
-> **`--presentation-authorize-uri`** is mandatory. If it is missing, `definePresentationTest()` will throw an error when you run the tests.
+When `authorize_request_url` or `authorize_request_script` is already set in `config.ini`, no
+extra flags are needed:
 
-| Option | Description |
-|---|---|
-| `--file-ini <path>` | Path to your `config.ini`, relative to `wallet-conformance-test/` |
-| `--presentation-tests-dir <path>` | Directory where Vitest looks for `*.presentation.spec.ts` files |
-| `--presentation-authorize-uri <uri>` | presentation authorize URL |
+```bash
+# Static URL (from config.ini)
+wct test:presentation --file-ini ../my-example/config.ini --presentation-tests-dir ../my-example
 
-> Both paths are resolved relative to `wallet-conformance-test/` (your current working directory).
-> The `../my-example` examples above work because `my-example/` is a sibling of
-> `wallet-conformance-test/` inside `my-test/`.
+# Dynamic URL via script (from config.ini)
+wct test:presentation --file-ini ../my-example/config.ini --presentation-tests-dir ../my-example
+```
+
+### Using CLI Options
+
+Override configuration at runtime without editing `config.ini`:
+
+```bash
+# Static URL
+wct test:presentation \
+  --file-ini                    ../my-example/config.ini \
+  --presentation-tests-dir      ../my-example \
+  --presentation-authorize-uri  'https://your-verifier.example.com/authorize?....'
+
+# Dynamic URL via script
+wct test:presentation \
+  --file-ini                       ../my-example/config.ini \
+  --presentation-tests-dir         ../my-example \
+  --presentation-authorize-script  ./tests/scripts/presentation.example.sh
+```
+
+`--presentation-authorize-uri` points to the authorize URL of the Relying Party (Verifier)
+(generally the URL encoded in a QR code).
+
+### Using Environment Variables
+
+```bash
+# Static URL
+CONFIG_PRESENTATION_AUTHORIZE_URI='https://rp.example.com/auth?...' \
+  wct test:presentation --file-ini ../my-example/config.ini --presentation-tests-dir ../my-example
+
+# Dynamic URL via script
+CONFIG_PRESENTATION_AUTHORIZE_SCRIPT=./tests/scripts/presentation.example.sh \
+  wct test:presentation --file-ini ../my-example/config.ini --presentation-tests-dir ../my-example
+```
+
+### CLI Reference
+
+| Option                                   | Environment Variable                   | Config key (`[presentation]`) | Description                                                       |
+| ---------------------------------------- | -------------------------------------- | ----------------------------- | ----------------------------------------------------------------- |
+| `--file-ini <path>`                      | —                                      | —                             | Path to your `config.ini`, relative to `wallet-conformance-test/` |
+| `--presentation-tests-dir <path>`        | `CONFIG_PRESENTATION_TESTS_DIR`        | `tests_dir`                   | Directory where Vitest looks for `*.presentation.spec.ts` files   |
+| `--presentation-authorize-uri <url>`     | `CONFIG_PRESENTATION_AUTHORIZE_URI`    | `authorize_request_url`       | Static authorization request URL                                  |
+| `--presentation-authorize-script <path>` | `CONFIG_PRESENTATION_AUTHORIZE_SCRIPT` | `authorize_request_script`    | Path to a script that outputs the URL dynamically                 |
+
+> Both `--file-ini` and `--presentation-tests-dir` paths are resolved relative to
+> `wallet-conformance-test/` (your current working directory). The `../my-example` examples above
+> work because `my-example/` is a sibling of `wallet-conformance-test/` inside `my-test/`.
 
 ---
 
@@ -282,11 +396,11 @@ export class MyRedirectStep extends RedirectUriDefaultStep {
 The class **must** extend one of the base classes listed in the table below. The auto-discovery
 system identifies the correct configuration slot by walking the prototype chain.
 
-| Base class | Flow slot |
-|---|---|
-| `FetchMetadataVpDefaultStep` | Fetch RP metadata |
+| Base class                        | Flow slot                                 |
+| --------------------------------- | ----------------------------------------- |
+| `FetchMetadataVpDefaultStep`      | Fetch RP metadata                         |
 | `AuthorizationRequestDefaultStep` | Authorization request & VP token creation |
-| `RedirectUriDefaultStep` | Send authorization response to verifier |
+| `RedirectUriDefaultStep`          | Send authorization response to verifier   |
 
 All base classes are exported from `@/step/presentation`.
 
@@ -338,8 +452,7 @@ test("RPR_006 — handle declined presentation gracefully", async () => {
       redirectUriResult.response?.responseCode === undefined &&
       redirectUriResult.response?.redirectUri === undefined;
 
-    const isAccepted =
-      redirectUriResult.response?.responseCode !== undefined;
+    const isAccepted = redirectUriResult.response?.responseCode !== undefined;
 
     // Test should pass if request succeeded regardless of accept/decline
     expect(
@@ -385,8 +498,12 @@ export class MalformedVpTokenStep extends AuthorizationRequestDefaultStep {
       const result = await super.run(options);
 
       // Tamper with the VP token for negative testing
-      if (result.response?.authorizationResponse.authorizationResponsePayload.vp_token) {
-        result.response?.authorizationResponse.authorizationResponsePayload.vp_token = "malformed.token.here";
+      if (
+        result.response?.authorizationResponse.authorizationResponsePayload
+          .vp_token
+      ) {
+        result.response?.authorizationResponse.authorizationResponsePayload.vp_token =
+          "malformed.token.here";
       }
 
       return result;

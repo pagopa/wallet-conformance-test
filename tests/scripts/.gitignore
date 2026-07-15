@@ -1,0 +1,6 @@
+# Ignore everything
+*
+!.gitignore
+
+# But keep this file
+!presentation.example.sh

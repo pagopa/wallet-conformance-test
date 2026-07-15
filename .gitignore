@@ -49,3 +49,6 @@ config.ini
 # Filenames are KSUID-based (collision-resistant) and must never be committed
 *.cert.pem
 *.key.pem
+
+# generated report files
+conformance-report-*
