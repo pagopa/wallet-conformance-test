@@ -67,7 +67,7 @@ export default async function setup() {
       `Credential Issuer server running at https://${bindAddress}:${miPort}`,
     );
   } catch (error) {
-    await Promise.all([
+    await Promise.allSettled([
       closeServer(trustAnchorHttpsServer),
       closeServer(wpHttpsServer),
       closeServer(miHttpsServer),
@@ -122,10 +122,16 @@ function startServer(
   const rejectStart = (error: Error) => reject(error);
 
   server.once("error", rejectStart);
-  server.listen(port, bindAddress, () => {
+
+  try {
+    server.listen(port, bindAddress, () => {
+      server.off("error", rejectStart);
+      resolve(undefined);
+    });
+  } catch (error) {
     server.off("error", rejectStart);
-    resolve(undefined);
-  });
+    reject(error);
+  }
 
   return promise;
 }
