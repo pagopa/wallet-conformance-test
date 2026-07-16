@@ -51,38 +51,81 @@ export default async function setup() {
 
   const bindAddress = config.network.bind_address;
 
-  trustAnchorServer = trustAnchorHttpsServer.listen(taPort, bindAddress, () => {
+  try {
+    await startServer(trustAnchorHttpsServer, taPort, bindAddress);
     baseLog.info(
       `Trust anchor server running at https://${bindAddress}:${taPort} (cert: ${certPath})`,
     );
-  });
 
-  walletProviderServer = wpHttpsServer.listen(wpPort, bindAddress, () => {
+    await startServer(wpHttpsServer, wpPort, bindAddress);
     baseLog.info(
       `Wallet provider server running at https://${bindAddress}:${wpPort}`,
     );
-  });
 
-  mockIssuerServer = miHttpsServer.listen(miPort, bindAddress, () => {
+    await startServer(miHttpsServer, miPort, bindAddress);
     baseLog.info(
       `Credential Issuer server running at https://${bindAddress}:${miPort}`,
     );
-  });
+  } catch (error) {
+    await Promise.all([
+      closeServer(trustAnchorHttpsServer),
+      closeServer(wpHttpsServer),
+      closeServer(miHttpsServer),
+    ]);
+    throw error;
+  }
+
+  trustAnchorServer = trustAnchorHttpsServer;
+  walletProviderServer = wpHttpsServer;
+  mockIssuerServer = miHttpsServer;
 
   // teardown
   return async () => {
-    const closeServer = (server: https.Server, name: string) =>
-      new Promise<void>((resolve) => {
-        server.close(() => {
-          baseLog.info(`${name} stopped`);
-          resolve();
-        });
-      });
-
     await Promise.all([
-      closeServer(trustAnchorServer, "Trust anchor"),
-      closeServer(walletProviderServer, "Wallet provider"),
-      closeServer(mockIssuerServer, "Credential Issuer"),
+      closeServer(trustAnchorServer).then(() =>
+        baseLog.info("Trust anchor stopped"),
+      ),
+      closeServer(walletProviderServer).then(() =>
+        baseLog.info("Wallet provider stopped"),
+      ),
+      closeServer(mockIssuerServer).then(() =>
+        baseLog.info("Credential Issuer stopped"),
+      ),
     ]);
   };
+}
+
+function closeServer(server: https.Server): Promise<void> {
+  if (!server.listening) {
+    return Promise.resolve();
+  }
+
+  const { promise, reject, resolve } = Promise.withResolvers<undefined>();
+  server.close((error) => {
+    if (error) {
+      reject(error);
+      return;
+    }
+
+    resolve(undefined);
+  });
+
+  return promise;
+}
+
+function startServer(
+  server: https.Server,
+  port: number,
+  bindAddress: string,
+): Promise<void> {
+  const { promise, reject, resolve } = Promise.withResolvers<undefined>();
+  const rejectStart = (error: Error) => reject(error);
+
+  server.once("error", rejectStart);
+  server.listen(port, bindAddress, () => {
+    server.off("error", rejectStart);
+    resolve(undefined);
+  });
+
+  return promise;
 }
