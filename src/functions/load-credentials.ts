@@ -191,9 +191,11 @@ export async function parseCredentialStatus(
       return sdJwtPayload.status as StatusClaim;
     }
     case "mso_mdoc": {
-      const mdocPayloadTag = decode(
-        credential.parsed.issuerSigned.issuerAuth.payload,
-      );
+      const issuerAuthPayload = credential.parsed.issuerAuth.payload;
+      if (!issuerAuthPayload)
+        throw new Error("could not extract payload from mdoc");
+
+      const mdocPayloadTag = decode(Buffer.from(issuerAuthPayload));
       if (
         !mdocPayloadTag.value ||
         !mdocPayloadTag.tag ||
