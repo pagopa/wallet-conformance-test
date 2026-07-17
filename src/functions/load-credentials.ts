@@ -207,7 +207,7 @@ export async function parseCredentialStatus(
 
       if (!mdocPayload.location_status) return null;
 
-      return mdocPayload.status as StatusClaim;
+      return mdocPayload.location_status as StatusClaim;
     }
     default:
       return null;

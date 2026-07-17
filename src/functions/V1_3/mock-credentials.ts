@@ -94,7 +94,7 @@ export async function buildMockMdlMdoc(
       24,
       encode({
         ...decode(decode(issuerSigned.issuerAuth[2]).value),
-        status: {
+        location_status: {
           status_list: {
             idx: 0,
             uri: `${issuerBaseUrl}/status-list`,
