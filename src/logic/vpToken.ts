@@ -94,12 +94,24 @@ export function parseCredentialFromMdoc(
     throw new Error("missing DeviceSignedDocument from MDoc DeviceResponse");
   }
 
+  // DCQL expects namespaces as { namespace: { claimName: value } }, while the
+  // parsed mdoc stores them as { namespace: IssuerSignedItem[] }.
+  const namespaces = Object.fromEntries(
+    Object.entries(document.issuerSigned.nameSpaces).map(
+      ([namespace, items]) => [
+        namespace,
+        Object.fromEntries(
+          items.map((item) => [item.elementIdentifier, item.elementValue]),
+        ),
+      ],
+    ),
+  ) as DcqlMdocCredential["namespaces"];
+
   return {
     credential_format: "mso_mdoc",
     cryptographic_holder_binding: true,
     doctype: document.docType,
-    namespaces: document.issuerSigned
-      .nameSpaces as unknown as DcqlMdocCredential["namespaces"],
+    namespaces,
   };
 }
 

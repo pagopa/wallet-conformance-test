@@ -205,7 +205,7 @@ export async function parseCredentialStatus(
       if (typeof mdocPayload !== "object")
         throw new Error("parsed mdoc has malformed payload");
 
-      if (!mdocPayload.status) return null;
+      if (!mdocPayload.location_status) return null;
 
       return mdocPayload.status as StatusClaim;
     }

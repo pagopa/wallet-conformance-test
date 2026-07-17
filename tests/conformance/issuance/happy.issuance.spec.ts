@@ -586,7 +586,7 @@ testConfigs.forEach((testConfig) => {
           | undefined
           | {
               claims: { path: string[] }[];
-              format: "dc+sd-jwt" | "mso_doc";
+              format: "dc+sd-jwt" | "mso_mdoc";
               vct?: string;
             } =
           fetchMetadataResponse.response?.entityStatementClaims.metadata
@@ -611,9 +611,17 @@ testConfigs.forEach((testConfig) => {
             credentials: [
               {
                 ...credentialSchema,
-                claims: credentialSchema.claims.map((claim) => ({
-                  path: claim.path,
-                })),
+                claims: credentialSchema.claims.map((claim) => {
+                  if (credentialSchema.format === "dc+sd-jwt")
+                    return {
+                      path: claim.path,
+                    };
+                  if (credentialSchema.format === "mso_mdoc")
+                    return {
+                      claim_name: claim.path[1],
+                      namespace: claim.path[0],
+                    };
+                }),
                 id: "0",
               },
             ],
