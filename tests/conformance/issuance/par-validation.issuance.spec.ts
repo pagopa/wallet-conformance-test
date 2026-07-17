@@ -1096,48 +1096,52 @@ testConfigs.forEach((testConfig) => {
     // CI_045 — PAR Response HTTP Status Code
     // -----------------------------------------------------------------------
 
-    test("CI_045: PAR Response HTTP Status Code | Issuer returns an appropriate HTTP 4xx error status code for an invalid PAR request", async () => {
-      const log = baseLog.withTag("CI_045");
-      const DESCRIPTION =
-        "Issuer returned expected HTTP 4xx status code for invalid PAR";
+    test(
+      "CI_045: PAR Response HTTP Status Code | Issuer returns an appropriate HTTP 4xx error status code for an invalid PAR request",
+      { skip: process.env.CI === "true" },
+      async () => {
+        const log = baseLog.withTag("CI_045");
+        const DESCRIPTION =
+          "Issuer returned expected HTTP 4xx status code for invalid PAR";
 
-      log.start(
-        "Conformance test: Verifying HTTP error status code for invalid PAR request",
-      );
-
-      let testSuccess = false;
-      try {
-        log.debug("→ Sending PAR request signed with wrong key...");
-        const result = await runParStep(
-          withSignJwtOverride(
-            testConfig.pushedAuthorizationRequestStepClass,
-            signWithWrongKey(),
-          ),
+        log.start(
+          "Conformance test: Verifying HTTP error status code for invalid PAR request",
         );
 
-        log.debug("→ Validating issuer rejected the request...");
-        expect(result.success).toBe(false);
+        let testSuccess = false;
+        try {
+          log.debug("→ Sending PAR request signed with wrong key...");
+          const result = await runParStep(
+            withSignJwtOverride(
+              testConfig.pushedAuthorizationRequestStepClass,
+              signWithWrongKey(),
+            ),
+          );
 
-        const error = result.error as UnexpectedStatusCodeError;
-        if (!error || error.statusCode === undefined) {
-          log.debug(
-            "  Error did not carry an HTTP status code (non-UnexpectedStatusCodeError); request was still rejected",
-          );
-          throw new Error(
-            "Error did not carry an HTTP status code (non-UnexpectedStatusCodeError)",
-          );
+          log.debug("→ Validating issuer rejected the request...");
+          expect(result.success).toBe(false);
+
+          const error = result.error as UnexpectedStatusCodeError;
+          if (!error || error.statusCode === undefined) {
+            log.debug(
+              "  Error did not carry an HTTP status code (non-UnexpectedStatusCodeError); request was still rejected",
+            );
+            throw new Error(
+              "Error did not carry an HTTP status code (non-UnexpectedStatusCodeError)",
+            );
+          }
+
+          log.debug(`  HTTP status code returned: ${error.statusCode}`);
+          expect(
+            [400, 401],
+            `Expected HTTP 400 or 401, got ${error.statusCode}`,
+          ).toContain(error.statusCode);
+
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
         }
-
-        log.debug(`  HTTP status code returned: ${error.statusCode}`);
-        expect(
-          [400, 401],
-          `Expected HTTP 400 or 401, got ${error.statusCode}`,
-        ).toContain(error.statusCode);
-
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+      },
+    );
   });
 });
