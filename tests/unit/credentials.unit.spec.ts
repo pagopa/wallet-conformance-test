@@ -679,9 +679,10 @@ describe("Generate Mocked Credentials", () => {
     expect(parsedCompact.issuerAuth.mobileSecurityObject.docType).toEqual(
       parsed.issuerAuth.mobileSecurityObject.docType,
     );
+    expect(parsed.issuerAuth.payload).not.toBeNull();
     expect(
-      Buffer.from(parsedCompact.issuerAuth.payload ?? []).toString(),
-    ).toEqual(Buffer.from(parsed.issuerAuth.payload ?? []).toString());
+      Buffer.from(parsedCompact.issuerAuth.payload ?? []).toString("base64"),
+    ).toEqual(Buffer.from(parsed.issuerAuth.payload ?? []).toString("base64"));
   });
 });
 
