@@ -7,19 +7,19 @@ import {
   BaseCredentialRequestOptions,
   createCredentialRequest,
   CredentialRequest,
-  CredentialRequestOptions,
+  CredentialRequestOptionsV1_3,
+  CredentialRequestOptionsV1_4,
   CredentialResponse,
   fetchCredentialResponse,
   FetchCredentialResponseOptions,
   ImmediateCredentialResponse,
   WalletProvider,
 } from "@pagopa/io-wallet-oid4vci";
-import {
-  IoWalletSdkConfig,
-  ItWalletSpecsVersion,
-} from "@pagopa/io-wallet-utils";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { randomUUID } from "node:crypto";
 
 import {
+  assertNever,
   buildJwksPath,
   createAndSaveKeys,
   createKeys,
@@ -49,11 +49,6 @@ export interface CredentialRequestStepOptions {
   accessToken: string;
 
   /**
-   * Credential Issuer Base URL
-   */
-  baseUrl: string;
-
-  /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
    */
   clientId: string;
@@ -72,6 +67,11 @@ export interface CredentialRequestStepOptions {
    * Identifier of the credential to request, used to select the credential from the issuer metadata,
    */
   credentialIdentifier: string;
+
+  /**
+   * Credential Issuer Base URL
+   */
+  credentialIssuer: string;
 
   /**
    * Credential Request Endpoint URL, it will be loaded from the issuer metadata
@@ -101,6 +101,13 @@ export interface CredentialRequestStepOptions {
    */
   walletAttestation: Omit<AttestationResponse, "created">;
 }
+/**
+ * The parameter type of `WalletProvider.createItKeyAttestationJwt`, derived
+ * directly from the SDK so it never drifts from the installed version.
+ */
+export type KeyAttestationOptions = Parameters<
+  WalletProvider["createItKeyAttestationJwt"]
+>[0];
 
 /**
  * Flow step to request a credential from the issuer's credential endpoint.
@@ -108,6 +115,19 @@ export interface CredentialRequestStepOptions {
  */
 export class CredentialRequestDefaultStep extends StepFlow {
   static readonly tag = "CREDENTIAL_REQUEST";
+
+  /**
+   * Optional overrides merged into the key attestation options before signing.
+   * Intended for conformance tests that need to submit non-standard security
+   * claim values (e.g. unsupported keyStorage / userAuthentication levels) to
+   * verify that the Credential Issuer enforces its security requirements.
+   *
+   * When set, fields in this object replace the corresponding defaults computed
+   * inside `createKeyAttestation`. The SDK does not perform runtime Zod
+   * validation on these fields, so intentionally non-compliant string values
+   * will reach the issuer inside the signed JWT.
+   */
+  protected keyAttestationOverrides?: Partial<KeyAttestationOptions>;
 
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
@@ -123,13 +143,14 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     const provider = new WalletProvider(this.ioWalletSdkConfig);
 
-    return provider.createItKeyAttestationJwt({
+    const defaults: KeyAttestationOptions = {
       attestedKeys: [credentialKeyPair.publicKey],
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
+      expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
       issuer: getLocalWpBaseUrl(this.config.wallet.port),
-      keyStorage: ["iso_18045_basic"],
+      keyStorage: ["iso_18045_moderate"],
       signer: {
         alg: "ES256",
         kid: providerKey.publicKey.kid,
@@ -138,12 +159,17 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       status: {
         status_list: {
-          idx: 0,
-          uri: `${getLocalWpBaseUrl(this.config.wallet.port)}/status-list`,
+          idx: 4373,
+          uri: `https://iwuitncdnst01.blob.core.windows.net/status-lists/ae783554-e4cd-4646-a73e-337a0062c60d`,
         },
       },
-      userAuthentication: ["iso_18045_basic"],
-    });
+      userAuthentication: ["iso_18045_moderate"],
+    };
+
+    return provider.createItKeyAttestationJwt({
+      ...defaults,
+      ...this.keyAttestationOverrides,
+    } as KeyAttestationOptions);
   }
 
   async run(
@@ -214,7 +240,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       },
       clientId: options.clientId,
       credential_identifier: options.credentialIdentifier,
-      issuerIdentifier: options.baseUrl,
+      issuerIdentifier: options.credentialIssuer,
       nonce: options.nonce,
     };
 
@@ -231,38 +257,56 @@ export class CredentialRequestDefaultStep extends StepFlow {
       } satisfies typeof baseOptions.callbacks,
     };
 
-    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
-      const keyAttestation = await this.createKeyAttestation(
-        options.walletAttestation,
-        credentialKeyPair,
-      );
-
-      this.log.debug("Key Attestation JWT created:", keyAttestation);
-
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) {
       return createCredentialRequest({
         ...commonOptions,
         config: this.ioWalletSdkConfig,
-        keyAttestation,
-        signers: [
-          {
-            alg: "ES256",
-            method: "jwk" as const,
-            publicJwk: credentialKeyPair.publicKey,
-          },
-        ],
-      } satisfies CredentialRequestOptions);
+        signer: {
+          alg: "ES256",
+          method: "jwk" as const,
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      });
     }
 
-    return createCredentialRequest({
-      ...commonOptions,
-      config: this
-        .ioWalletSdkConfig as IoWalletSdkConfig<ItWalletSpecsVersion.V1_0>,
-      signer: {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: credentialKeyPair.publicKey,
-      },
-    });
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+      return createCredentialRequest({
+        ...(await this.buildKeyAttestationOptions(
+          options,
+          credentialKeyPair,
+          commonOptions,
+        )),
+        config: this.ioWalletSdkConfig,
+      } satisfies CredentialRequestOptionsV1_3);
+    }
+
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)) {
+      return createCredentialRequest({
+        ...(await this.buildKeyAttestationOptions(
+          options,
+          credentialKeyPair,
+          commonOptions,
+        )),
+        config: this.ioWalletSdkConfig,
+      } satisfies CredentialRequestOptionsV1_4);
+    }
+
+    // isVersion()'s `this is IoWalletSdkConfig<W>` predicate narrows the SDK
+    // config generic above but can't prove the negative case, so this branch
+    // still sees the full ItWalletSpecsVersion union. Switching over the known
+    // members here makes the `default` provably unreachable (`never`) today —
+    // adding a new spec version without a matching isVersion() branch above
+    // breaks that exhaustiveness and fails the build instead of failing at runtime.
+    switch (this.ioWalletSdkConfig.itWalletSpecsVersion) {
+      case ItWalletSpecsVersion.V1_0:
+      case ItWalletSpecsVersion.V1_3:
+      case ItWalletSpecsVersion.V1_4:
+        throw new Error(
+          `unimplemented wallet_version for credential request: ${this.ioWalletSdkConfig.itWalletSpecsVersion}`,
+        );
+      default:
+        return assertNever(this.ioWalletSdkConfig.itWalletSpecsVersion);
+    }
   }
 
   private async buildDPoP(
@@ -276,6 +320,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         ...partialCallbacks,
         signJwt: signJwtCallback([dPoPKey.privateKey]),
       },
+      jti: randomUUID(),
       signer: {
         alg: "ES256",
         method: "jwk",
@@ -290,6 +335,33 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const { jwt } = await createTokenDPoP(dpopOptions);
 
     return jwt;
+  }
+
+  private async buildKeyAttestationOptions<
+    T extends BaseCredentialRequestOptions,
+  >(
+    options: CredentialRequestStepOptions,
+    credentialKeyPair: KeyPair,
+    commonOptions: T,
+  ) {
+    const keyAttestation = await this.createKeyAttestation(
+      options.walletAttestation,
+      credentialKeyPair,
+    );
+
+    this.log.debug("Key Attestation JWT created:", keyAttestation);
+
+    return {
+      ...commonOptions,
+      keyAttestation,
+      signers: [
+        {
+          alg: "ES256" as const,
+          method: "jwk" as const,
+          publicJwk: credentialKeyPair.publicKey,
+        },
+      ],
+    };
   }
 
   private async fetchCredential(

@@ -1,5 +1,10 @@
-import { Jwk, type JwtSigner } from "@pagopa/io-wallet-oauth2";
 import {
+  Jwk,
+  type JwtSigner,
+  type VerifyJwtCallback,
+} from "@pagopa/io-wallet-oauth2";
+import {
+  fetchAndValidateTrustChain,
   jsonWebKeySchema,
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
@@ -17,7 +22,7 @@ import { writeFileSync } from "node:fs";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 import { loadCertificate } from "./pem";
-import { buildCertPath } from "./utils";
+import { buildCertPath, partialCallbacks } from "./utils";
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
@@ -95,7 +100,10 @@ export async function createKeys(): Promise<KeyPair> {
  * @returns The extracted public JWK.
  * @throws An error if the signer method is not supported.
  */
-export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
+export async function jwkFromSigner(
+  signer: JwtSigner,
+  payload?: Parameters<VerifyJwtCallback>[1]["payload"],
+): Promise<Jwk> {
   const { didUrl, kid, trustChain } = signer as {
     didUrl?: string;
     kid?: string;
@@ -118,10 +126,7 @@ export async function jwkFromSigner(signer: JwtSigner): Promise<Jwk> {
       );
     case "federation":
       if (!kid) throw new Error("missing signer key's kid");
-      if (!trustChain || !trustChain.length) {
-        throw new Error("missing signer's trust chain");
-      }
-      return await jwkFromTrustChain(trustChain, kid);
+      return await jwkFromFederation(kid, trustChain, payload);
     case "jwk":
       return parseWithErrorHandling(
         jsonWebKeySchema,
@@ -206,11 +211,22 @@ async function jwkFromCertificateChain(
  * @throws An error if the trust chain is empty, the entity config signature is invalid,
  *         or the key is not found.
  */
-async function jwkFromTrustChain(
-  trustChain: string[],
+async function jwkFromFederation(
   signerKid: string,
+  trustChain?: string[],
+  payload?: Parameters<VerifyJwtCallback>[1]["payload"],
 ): Promise<Jwk> {
-  const entityConfigurationJwt = trustChain[0];
+  const ecTrustChain =
+    trustChain ??
+    (await (() => {
+      if (!payload?.iss) throw new Error("missing iss in payload");
+      return fetchAndValidateTrustChain(payload.iss, {
+        callbacks: {
+          ...partialCallbacks,
+        },
+      });
+    })());
+  const entityConfigurationJwt = ecTrustChain ? ecTrustChain[0] : undefined;
   if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
   const keys: Jwk[] = [];

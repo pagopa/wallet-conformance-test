@@ -1,5 +1,5 @@
 /* eslint-disable max-lines-per-function */
-import { IssuerSignedDocument } from "@auth0/mdl";
+import { IssuerSigned } from "@owf/mdoc";
 import {
   addSecondsToDate,
   dateToSeconds,
@@ -315,7 +315,7 @@ describe("Load Mocked Credentials", async () => {
       if (!mDL || mDL.typ !== "mso_mdoc") {
         throw new Error("Expected to find the PID in sd-jwt format");
       }
-      const issuerAuth = mDL.parsed.issuerSigned.issuerAuth;
+      const issuerAuth = mDL.parsed.issuerAuth;
 
       it("should pass all the expiration checks", () => {
         expect(
@@ -367,7 +367,7 @@ describe("Load Mocked Credentials", async () => {
 
       describe("mdoc expiration checks", () => {
         const mDocExpiration =
-          issuerAuth.decodedPayload.validityInfo.validUntil;
+          issuerAuth.mobileSecurityObject.validityInfo.validUntil;
         it("should return false because it's past the mdoc expiration", async () => {
           // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(mDocExpiration) - 1) * 1000);
@@ -396,7 +396,9 @@ describe("Load Mocked Credentials", async () => {
       });
 
       describe("certificate expiration checks", () => {
-        const certExpiration = issuerAuth.certificate.notAfter;
+        const certExpiration = new X509Certificate(
+          Buffer.from(issuerAuth.certificate).toString("base64"),
+        ).notAfter;
 
         it("should return false because it's past the certificate expiration", async () => {
           // Set system time to a second before expiration
@@ -474,52 +476,49 @@ describe("Load Mocked Credentials", async () => {
     });
   });
 
-  it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])(
-    "should regenerate expired credentials",
-    async (version) => {
-      rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
-        force: true,
+  it.each([
+    ItWalletSpecsVersion.V1_0,
+    ItWalletSpecsVersion.V1_3,
+    ItWalletSpecsVersion.V1_4,
+  ])("should regenerate expired credentials", async (version) => {
+    rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
+      force: true,
+    });
+    rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
+    config.wallet.wallet_version = version;
+    const logger = createLogger();
+
+    // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
+    const date = new Date(2015, 1, 1);
+    // Advance by 2 years + 60 s to clear the 30-second clock-skew tolerance
+    // used in the credential expiry check (exp < Date.now() - 30 s).
+    const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2 + 60);
+
+    try {
+      vi.useFakeTimers();
+
+      vi.setSystemTime(date);
+      const credentials = await loadCredentialsForPresentation(config, logger);
+
+      vi.setSystemTime(twoYearsLater);
+      const regenerated = await loadCredentialsForPresentation(config, logger);
+
+      const isSomeCredentialTheSame = credentials.some((curr) => {
+        const corresponding = regenerated.find((cred) => cred.id === curr.id);
+        if (!corresponding)
+          throw new Error(
+            `Expected to find a corresponding credential to ${curr.id} in the regenerated batch`,
+          );
+
+        return curr.credential === corresponding.credential;
       });
-      rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
-      config.wallet.wallet_version = version;
-      const logger = createLogger();
 
-      // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
-      const date = new Date(2015, 1, 1);
-      const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2);
-
-      try {
-        vi.useFakeTimers();
-
-        vi.setSystemTime(date);
-        const credentials = await loadCredentialsForPresentation(
-          config,
-          logger,
-        );
-
-        vi.setSystemTime(twoYearsLater);
-        const regenerated = await loadCredentialsForPresentation(
-          config,
-          logger,
-        );
-
-        const isSomeCredentialTheSame = credentials.some((curr) => {
-          const corresponding = regenerated.find((cred) => cred.id === curr.id);
-          if (!corresponding)
-            throw new Error(
-              `Expected to find a corresponding credential to ${curr.id} in the regenerated batch`,
-            );
-
-          return curr.credential === corresponding.credential;
-        });
-
-        //We expect all the credentials to be different
-        expect(isSomeCredentialTheSame).toBe(false);
-      } finally {
-        vi.useRealTimers();
-      }
-    },
-  );
+      //We expect all the credentials to be different
+      expect(isSomeCredentialTheSame).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("Generate Mocked Credentials", () => {
@@ -606,81 +605,90 @@ describe("Generate Mocked Credentials", () => {
     });
   });
 
-  it("should create a mock SD-JWT PID version 1.3.3", async () => {
-    const credential = await createMockSdJwt(
-      metadata,
-      backupDir,
-      backupDir,
-      ItWalletSpecsVersion.V1_3,
-    );
-
-    const decoded = await new SDJwtVcInstance({
-      hasher: digest,
-    }).decode(credential.compact);
-
-    expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
-
-    expect(decoded.jwt?.payload?.verification).toEqual({
-      assurance_level: "high",
-      trust_framework: "it_cie",
-    });
-
-    const dump = loadJsonDumps(
-      "pid.json",
-      { expiration: new Date(Date.now()) },
-      ItWalletSpecsVersion.V1_3,
-    );
-
-    const claimsFromDecoded = decoded.disclosures?.reduce(
-      (prev, disclosure) => {
-        if (!disclosure.key) {
-          throw new Error("Disclosure key is required");
-        }
-        return {
-          ...prev,
-          [disclosure.key]: disclosure.value,
-        };
-      },
-      {},
-    );
-
-    expect(claimsFromDecoded).toEqual({
-      ...dump,
-      date_of_expiry: expect.any(String),
-    });
-  });
-
-  it.each([ItWalletSpecsVersion.V1_0, ItWalletSpecsVersion.V1_3])(
-    "should create a mock MDOC using existing keys",
+  it.each([ItWalletSpecsVersion.V1_3, ItWalletSpecsVersion.V1_4])(
+    "should create a mock SD-JWT PID version 1.3.3 and 1.4.x",
     async (version) => {
-      const credential = await createMockMdlMdoc(
-        "CN=test_issuer",
-        iss,
+      const credential = await createMockSdJwt(
+        metadata,
         backupDir,
         backupDir,
         version,
       );
 
-      expect(credential.typ).toBe("mso_mdoc");
+      const decoded = await new SDJwtVcInstance({
+        hasher: digest,
+      }).decode(credential.compact);
 
-      const parsed = credential.parsed as IssuerSignedDocument;
-      expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
-      expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
+      expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
 
-      const parsedCompact = parseMdoc(
-        Buffer.from(credential.compact, "base64url"),
+      expect(decoded.jwt?.payload?.verification).toEqual({
+        assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
+        trust_framework: "it_cie",
+      });
+
+      const dump = loadJsonDumps(
+        "pid.json",
+        { expiration: new Date(Date.now()) },
+        version,
       );
-      expect(parsedCompact.docType).toEqual(parsed.docType);
-      expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
-        parsed.issuerSigned.issuerAuth.payload.toString(),
+
+      const claimsFromDecoded = decoded.disclosures?.reduce(
+        (prev, disclosure) => {
+          if (!disclosure.key) {
+            throw new Error("Disclosure key is required");
+          }
+          return {
+            ...prev,
+            [disclosure.key]: disclosure.value,
+          };
+        },
+        {},
       );
+
+      expect(claimsFromDecoded).toEqual({
+        ...dump,
+        date_of_expiry: expect.any(String),
+      });
     },
   );
+
+  it.each([
+    ItWalletSpecsVersion.V1_0,
+    ItWalletSpecsVersion.V1_3,
+    ItWalletSpecsVersion.V1_4,
+  ])("should create a mock MDOC using existing keys", async (version) => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      iss,
+      backupDir,
+      backupDir,
+      version,
+    );
+
+    expect(credential.typ).toBe("mso_mdoc");
+
+    const parsed = credential.parsed as IssuerSigned;
+    expect(parsed.issuerAuth.mobileSecurityObject.docType).toBe(
+      "org.iso.18013.5.1.mDL",
+    );
+    expect(parsed.getIssuerNamespace("org.iso.18013.5.1")).toBeDefined();
+
+    const parsedCompact = parseMdoc(
+      Buffer.from(credential.compact, "base64url"),
+    );
+    expect(parsedCompact.issuerAuth.mobileSecurityObject.docType).toEqual(
+      parsed.issuerAuth.mobileSecurityObject.docType,
+    );
+    expect(parsed.issuerAuth.payload).not.toBeNull();
+    expect(
+      Buffer.from(parsedCompact.issuerAuth.payload ?? []).toString("base64"),
+    ).toEqual(Buffer.from(parsed.issuerAuth.payload ?? []).toString("base64"));
+  });
 });
 
 describe("Parse Credential's Status", () => {
   afterAll(() => {
-    for (const version of ["V1_0", "V1_3"]) {
+    for (const version of ["V1_0", "V1_3", "V1_4"]) {
       rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
         force: true,
       });
@@ -753,6 +761,39 @@ describe("Parse Credential's Status", () => {
       backupDir,
       backupDir,
       ItWalletSpecsVersion.V1_3,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: `${iss}/status-list`,
+      },
+    });
+  });
+
+  it("should retrieve status from SD-JWT (V1_4)", async () => {
+    const credential = await createMockSdJwt(
+      metadata,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_4,
+    );
+    const status = await parseCredentialStatus(credential.compact);
+    expect(status).toEqual({
+      status_list: {
+        idx: 0,
+        uri: `${metadata.iss}/status-list`,
+      },
+    });
+  });
+
+  it("should retrieve status from MDOC (V1_4)", async () => {
+    const credential = await createMockMdlMdoc(
+      "CN=test_issuer",
+      iss,
+      backupDir,
+      backupDir,
+      ItWalletSpecsVersion.V1_4,
     );
     const status = await parseCredentialStatus(credential.compact);
     expect(status).toEqual({

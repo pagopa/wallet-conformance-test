@@ -18,10 +18,13 @@ const envKeys = [
   "CONFIG_MAX_RETRIES",
   "CONFIG_PRESENTATION_TESTS_DIR",
   "CONFIG_PORT",
+  "CONFIG_REFRESH_TOKEN_DEFERRED",
   "CONFIG_SAVE_CREDENTIAL",
   "CONFIG_STEPS_MAPPING",
   "CONFIG_TIMEOUT",
+  "CONFIG_TRANSACTION_ID",
   "CONFIG_UNSAFE_TLS",
+  "CONFIG_WALLET_VERSION",
   "NODE_TLS_REJECT_UNAUTHORIZED",
 ];
 
@@ -110,10 +113,80 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
       ),
     });
   });
+
+  it("should override wallet_version from CONFIG_WALLET_VERSION environment variable", () => {
+    process.env.CONFIG_WALLET_VERSION = "V1_3";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.wallet.wallet_version).toBe("V1_3");
+  });
+
+  it("should override wallet_version via direct CliOptions without touching other wallet fields", () => {
+    const config = loadConfigWithHierarchy(
+      { walletVersion: "V1_3" },
+      DEFAULT_INI,
+    );
+
+    expect(config.wallet.wallet_version).toBe("V1_3");
+    expect(config.wallet.wallet_id).toBe("wallet_cli_instance");
+    expect(config.wallet.backup_storage_path).toBe(
+      path.join(packageRoot, "data/backup"),
+    );
+  });
+
+  it("should reject invalid wallet_version values through the config schema", () => {
+    process.env.CONFIG_WALLET_VERSION = "INVALID_VERSION";
+
+    expect(() => loadConfigWithHierarchy(null, DEFAULT_INI)).toThrow(
+      /Configuration validation failed/,
+    );
+  });
+
+  it("should map refresh_token_deferred from CONFIG_REFRESH_TOKEN_DEFERRED environment variable", () => {
+    process.env.CONFIG_REFRESH_TOKEN_DEFERRED = "my-deferred-refresh-token";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.issuance.refresh_token_deferred).toBe(
+      "my-deferred-refresh-token",
+    );
+  });
+
+  it("should map transaction_id from CONFIG_TRANSACTION_ID environment variable", () => {
+    process.env.CONFIG_TRANSACTION_ID = "deferred-txn-42";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(config.issuance.transaction_id_deferred).toBe("deferred-txn-42");
+  });
+
+  it("should map refresh_token_deferred from direct CliOptions", () => {
+    const config = loadConfigWithHierarchy(
+      { refreshTokenDeferred: "cli-deferred-token" },
+      DEFAULT_INI,
+    );
+
+    expect(config.issuance.refresh_token_deferred).toBe("cli-deferred-token");
+  });
+
+  it("should map transaction_id from direct CliOptions", () => {
+    const config = loadConfigWithHierarchy(
+      { transactionId: "cli-txn-id" },
+      DEFAULT_INI,
+    );
+
+    expect(config.issuance.transaction_id_deferred).toBe("cli-txn-id");
+  });
 });
 
 describe("loadConfigWithHierarchy – path resolution", () => {
   it("should resolve package fallback data paths under the package root", () => {
+    // An empty local config.ini in the CWD takes priority over any config.ini
+    // that may exist in the package root (e.g. a developer's local config),
+    // ensuring only the default config.example.ini paths are in effect.
+    writeFileSync(path.join(process.cwd(), "config.ini"), "");
+
     const config = loadConfigWithHierarchy({}, DEFAULT_INI);
 
     expect(config.wallet.backup_storage_path).toBe(

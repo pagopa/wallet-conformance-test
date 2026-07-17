@@ -61,6 +61,7 @@ testConfigs.forEach((testConfig) => {
         authorizationEndpoint,
         baseUrl: credentialIssuer,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
+        credentialIdentifier: testConfig.credentialConfigurationId,
         credentials: [],
         requestUri: requestUri ?? "",
         rpMetadata: entityClaims?.metadata?.openid_credential_verifier,

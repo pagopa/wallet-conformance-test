@@ -25,7 +25,7 @@ import {
 import { resolvePackageAssetPath } from "./runtime-paths";
 
 export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
-export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365;
+export const VALIDITY_MS = 1000 * 60 * 60 * 24 * 365 * 2; // 2 years
 
 // Re-export config loading functions
 export {
@@ -44,11 +44,28 @@ export const partialCallbacks: Pick<
   verifyJwt: async (signer, jwt) => verifyJwt(signer, jwt),
 };
 
-export function fetchWithConfig(network: Config["network"]): Fetch {
-  return (input, init) => {
+interface FetchWithConfigOptions {
+  onRequest?: (request: FetchWithConfigRequest) => Promise<void> | void;
+  onResponse?: (response: Response) => Promise<void> | void;
+}
+
+interface FetchWithConfigRequest {
+  body: RequestInit["body"] | undefined;
+  headers: Headers;
+  method: string;
+  url: string;
+}
+
+export function fetchWithConfig(
+  network: Config["network"],
+  options?: FetchWithConfigOptions,
+): Fetch {
+  return async (input, init) => {
+    const request = input instanceof Request ? input : undefined;
+
     // Normalize all HeadersInit variants (plain object, Headers instance, tuple array)
     // and set required headers last so callers cannot override them.
-    const headers = new Headers(init?.headers);
+    const headers = new Headers(init?.headers ?? request?.headers);
     if (network.user_agent) {
       headers.set("User-Agent", network.user_agent);
     }
@@ -60,7 +77,16 @@ export function fetchWithConfig(network: Config["network"]): Fetch {
       ? AbortSignal.any([timeoutSignal, init.signal])
       : timeoutSignal;
 
-    return fetch(input, { ...init, headers, signal });
+    await options?.onRequest?.({
+      body: init?.body,
+      headers,
+      method: (init?.method ?? request?.method ?? "GET").toUpperCase(),
+      url: request?.url ?? input.toString(),
+    });
+
+    const response = await fetch(input, { ...init, headers, signal });
+    await options?.onResponse?.(response);
+    return response;
   };
 }
 
@@ -346,6 +372,14 @@ export const validateProviderKeyPair = (keyPair: KeyPair): void => {
 
 /** Matches a `client_id` that carries a custom scheme prefix (e.g. `openid_federation:https://…`). */
 export const CLIENT_ID_PREFIX_RE = /^[^:]+:(https?:\/\/)/;
+
+/**
+ * Exhaustiveness helper for `switch` statements over a closed union: passing any
+ * reachable value here is a compile error, so an unhandled case surfaces at build time.
+ */
+export function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${String(x)}`);
+}
 
 /**
  * Assertion function checking some object's keys are actually defined (not null or undefined)

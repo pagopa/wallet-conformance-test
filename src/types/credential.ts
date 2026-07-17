@@ -1,4 +1,4 @@
-import { IssuerSignedDocument } from "@auth0/mdl";
+import { IssuerSigned } from "@owf/mdoc";
 import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery, DcqlQueryResult } from "dcql";
 import z from "zod";
@@ -13,7 +13,7 @@ export type Credential = {
       typ: "dc+sd-jwt";
     }
   | {
-      parsed: IssuerSignedDocument;
+      parsed: IssuerSigned;
       typ: "mso_mdoc";
     }
 );
@@ -33,7 +33,7 @@ export type DcqlMatchSuccess = Extract<
   { success: true }
 >;
 
-export type StatusClaim = StatusClaimV1_0 | StatusClaimV1_3;
+export type StatusClaim = StatusClaimV1_0 | StatusListClaim;
 
 export interface StatusClaimV1_0 {
   status_assertion: {
@@ -41,7 +41,10 @@ export interface StatusClaimV1_0 {
   };
 }
 
-export interface StatusClaimV1_3 {
+export type StatusClaimV1_3 = StatusListClaim;
+
+export type StatusClaimV1_4 = StatusListClaim;
+export interface StatusListClaim {
   status_list: {
     idx: number;
     uri: string;

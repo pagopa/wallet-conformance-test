@@ -6,15 +6,17 @@ import {
 import { fetchWithConfig } from "@/logic";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
-export type RedirectUriExecuteStepResponse =
-  | {
-      redirectUri: undefined;
-      responseCode: undefined;
-    }
-  | {
-      redirectUri: URL;
-      responseCode: string;
-    };
+export type RedirectUriExecuteStepResponse = RedirectUriHttpResponseMetadata &
+  (
+    | {
+        redirectUri: undefined;
+        responseCode: undefined;
+      }
+    | {
+        redirectUri: URL;
+        responseCode: string;
+      }
+  );
 
 export interface RedirectUriOptions {
   authorizationResponse: CreateAuthorizationResponseResult;
@@ -24,6 +26,11 @@ export interface RedirectUriOptions {
 export type RedirectUriStepResponse = StepResponse & {
   response?: RedirectUriExecuteStepResponse;
 };
+
+interface RedirectUriHttpResponseMetadata {
+  contentType: string | undefined;
+  status: number | undefined;
+}
 
 /**
  * Implementation of the Redirect URI Step for OpenID4VP flow.
@@ -43,12 +50,22 @@ export class RedirectUriDefaultStep extends StepFlow {
         );
       }
 
+      let contentType: string | undefined;
+      let status: number | undefined;
+
+      const fetchCallback = fetchWithConfig(this.config.network, {
+        onResponse: (response) => {
+          contentType = response.headers.get("content-type") ?? undefined;
+          status = response.status;
+        },
+      });
+
       log.info(`Fetching authorization response from: ${options.responseUri}`);
       const { redirect_uri } = await fetchAuthorizationResponse({
         authorizationResponseJarm:
           options.authorizationResponse.jarm.responseJwe,
         callbacks: {
-          fetch: fetchWithConfig(this.config.network),
+          fetch: fetchCallback,
         },
         presentationResponseUri: options.responseUri,
       });
@@ -57,8 +74,10 @@ export class RedirectUriDefaultStep extends StepFlow {
 
       if (!redirect_uri) {
         return {
+          contentType,
           redirectUri: undefined,
           responseCode: undefined,
+          status,
         };
       }
 
@@ -70,8 +89,10 @@ export class RedirectUriDefaultStep extends StepFlow {
       }
 
       return {
+        contentType,
         redirectUri,
         responseCode,
+        status,
       };
     });
   }

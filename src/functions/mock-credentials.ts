@@ -1,9 +1,7 @@
-import { IssuerSignedDocument } from "@auth0/mdl";
+import { DateOnly, IssuerSigned } from "@owf/mdoc";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
-import cbor from "cbor";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import z from "zod";
 
 import { CredentialNamespaceNotFoundError } from "@/errors";
 import {
@@ -29,12 +27,7 @@ import {
   buildMockMdlMdoc_V1_0,
   buildMockSdJwt_V1_0,
 } from "./V1_0/mock-credentials";
-import {
-  buildMockMdlMdoc_V1_3,
-  buildMockSdJwt_V1_3,
-} from "./V1_3/mock-credentials";
-
-const { Tagged } = cbor;
+import { buildMockMdlMdoc, buildMockSdJwt } from "./V1_3/mock-credentials";
 
 export async function createMockMdlMdoc(
   subject: string,
@@ -69,12 +62,14 @@ export async function createMockMdlMdoc(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedMdoc = await buildMockMdlMdoc_V1_3(
+    case ItWalletSpecsVersion.V1_4:
+      mockedMdoc = await buildMockMdlMdoc(
         expiration,
         deviceKey,
         issuerCertificate,
         issuerKeyPair,
         issuerBaseUrl,
+        version,
       );
       break;
     default:
@@ -130,12 +125,14 @@ export async function createMockSdJwt(
       );
       break;
     case ItWalletSpecsVersion.V1_3:
-      mockedSdjwt = await buildMockSdJwt_V1_3(
+    case ItWalletSpecsVersion.V1_4:
+      mockedSdjwt = await buildMockSdJwt(
         metadata,
         expiration,
         unitKey,
         certificate,
         keyPair,
+        version,
       );
       break;
     default:
@@ -157,13 +154,13 @@ export async function createMockSdJwt(
  * @throws {Error} In case the claim is not found
  */
 export function getCredentialMdocExpiration(
-  document: IssuerSignedDocument,
+  document: IssuerSigned,
   path: {
     claimName: string;
     namespace: string;
   },
 ): Date {
-  const claims = document.issuerSigned.nameSpaces[path.namespace];
+  const claims = document.getIssuerNamespace(path.namespace);
   if (!claims)
     throw new CredentialNamespaceNotFoundError(
       "Specified namespace not found in credential",
@@ -173,11 +170,11 @@ export function getCredentialMdocExpiration(
     (claim) => claim.elementIdentifier === path.claimName,
   )?.elementValue;
 
-  const dateString = z
-    .instanceof(Tagged)
-    .transform(({ value }) => value)
-    .pipe(zDateOrDateTime)
-    .parse(claimValue);
+  if (claimValue instanceof Date) return claimValue;
+
+  const dateString = zDateOrDateTime.parse(
+    claimValue instanceof DateOnly ? claimValue.toString() : claimValue,
+  );
   return new Date(dateString);
 }
 
@@ -215,7 +212,7 @@ export function getCredentialSdJwtExpiration(
  * @throws {Error} In case the claim is not found
  */
 export function isCredentialMdocExpired(
-  document: IssuerSignedDocument,
+  document: IssuerSigned,
   path?: {
     claimName: string;
     namespace: string;
@@ -237,14 +234,16 @@ export function isCredentialMdocExpired(
       now - CLOCK_SKEW_TOLERANCE_MS;
 
   const exp =
-    document.issuerSigned.issuerAuth.decodedPayload.validityInfo.validUntil.getTime();
+    document.issuerAuth.mobileSecurityObject.validityInfo.validUntil.getTime();
   const isMDocExpired = checks.mdoc && exp < now - CLOCK_SKEW_TOLERANCE_MS;
 
   const isCertExpired =
     checks.cert &&
-    hasX509CertificateExpired(document.issuerSigned.issuerAuth.certificate);
+    hasX509CertificateExpired(
+      Buffer.from(document.issuerAuth.certificate).toString("base64"),
+    );
 
-  const mDocChain = document.issuerSigned.issuerAuth.x5chain;
+  const mDocChain = document.issuerAuth.x5chain;
   const isTrustChainExpired =
     checks.x5chain &&
     mDocChain !== undefined &&

@@ -1,8 +1,12 @@
 {
   "name": "@pagopa/it-wallet-conformance-tool",
   "description": "Automated conformance testing for IT Wallet ecosystem services",
+  "repository": {
+    "url": "https://github.com/pagopa/wallet-conformance-test",
+    "type": "git"
+  },
   "packageManager": "pnpm@10.23.0",
-  "version": "1.1.5",
+  "version": "1.2.1",
   "type": "module",
   "main": "./dist/cli.js",
   "engines": {
@@ -12,13 +16,14 @@
     "bin",
     "config.example.ini",
     "dist",
+    "docs",
     "dumps",
     "vitest.common.js",
     "vitest.issuance.config.js",
     "vitest.presentation.config.js"
   ],
   "bin": {
-    "wct": "./bin/wct"
+    "wct": "bin/wct"
   },
   "scripts": {
     "build": "node scripts/build.ts --production",
@@ -40,7 +45,7 @@
     "test:issuance": "vitest run --config vitest.issuance.config.js",
     "test:issuance:ui": "vitest --config vitest.issuance.config.js --ui",
     "test:presentation": "vitest run --config vitest.presentation.config.js",
-    "prepublish": "pnpm build"
+    "prepack": "pnpm build"
   },
   "keywords": [
     "wallet",
@@ -65,8 +70,13 @@
     "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "puppeteer"
+    ]
+  },
   "dependencies": {
-    "@auth0/mdl": "^3.0.0",
+    "@owf/mdoc": "^0.7.0",
     "@pagopa/io-wallet-oauth2": "1.5.2",
     "@pagopa/io-wallet-oid-federation": "1.5.2",
     "@pagopa/io-wallet-oid4vci": "1.5.2",
@@ -86,6 +96,7 @@
     "express": "^5.2.1",
     "ini": "^5.0.0",
     "jose": "^6.1.0",
+    "puppeteer": "^25.1.0",
     "vitest": "^3.2.4",
     "zod": "^4.3.6"
   }

@@ -1,8 +1,7 @@
-import { DataItem, Document } from "@auth0/mdl";
+import { DeviceKey, Issuer, SignatureAlgorithm } from "@owf/mdoc";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import cbor from "cbor";
 import { decodeJwt } from "jose";
 
 import {
@@ -11,19 +10,26 @@ import {
   getTrustMarks,
   loadJsonDumps,
 } from "@/logic";
+import { mdocContext } from "@/logic/mdoc-context";
 import { generateSRIHash } from "@/logic/sd-jwt";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
 
-const { decode, encode, Tagged } = cbor;
-
-export async function buildIssuerEntityConfiguration_V1_3(
+/**
+ * Builds the mocked Credential Issuer entity configuration.
+ *
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
+ */
+export async function buildIssuerEntityConfiguration(
   metadata: {
     iss: string;
     trust: Config["trust"];
     trustAnchor: Config["trust_anchor"];
   },
   keyPair: KeyPair,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<string> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const trust_marks = await getTrustMarks(
@@ -39,7 +45,7 @@ export async function buildIssuerEntityConfiguration_V1_3(
       trust_anchor_base_url: trustAnchorBaseUrl,
       trust_marks,
     },
-    ItWalletSpecsVersion.V1_3,
+    version,
   );
   return createFederationMetadata({
     claims: issClaims,
@@ -48,79 +54,64 @@ export async function buildIssuerEntityConfiguration_V1_3(
   });
 }
 
-export async function buildMockMdlMdoc_V1_3(
+/**
+ * Builds a mocked mDL MDOC credential.
+ *
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
+ */
+export async function buildMockMdlMdoc(
   expiration: Date,
   deviceKey: KeyPairJwk,
   issuerCertificate: string,
   issuerKeyPair: KeyPair,
   issuerBaseUrl: string,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
-  const claims = loadJsonDumps(
-    "mDL.json",
-    { expiration },
-    ItWalletSpecsVersion.V1_3,
-  );
+  const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
-  const document = await new Document("org.iso.18013.5.1.mDL")
-    .addIssuerNameSpace("org.iso.18013.5.1", claims)
-    .useDigestAlgorithm("SHA-256")
-    .addValidityInfo({
-      signed: new Date(),
-      validFrom: new Date(),
-      validUntil: expiration,
-    })
-    .addDeviceKeyInfo({ deviceKey })
+  const issuerSigned = await new Issuer("org.iso.18013.5.1.mDL", mdocContext)
+    .addIssuerNamespace("org.iso.18013.5.1", claims)
     .sign({
-      alg: "ES256",
-      issuerCertificate,
-      issuerPrivateKey: issuerKeyPair.privateKey,
+      algorithm: SignatureAlgorithm.ES256,
+      certificates: [new Uint8Array(Buffer.from(issuerCertificate, "base64"))],
+      deviceKeyInfo: {
+        deviceKey: DeviceKey.fromJwk(
+          deviceKey as unknown as Record<string, unknown>,
+        ) as DeviceKey,
+      },
+      digestAlgorithm: "SHA-256",
+      signingKey: issuerKeyPair.privateKey as unknown as Record<
+        string,
+        unknown
+      >,
+      status: {
+        statusList: {
+          idx: 0,
+          uri: `${issuerBaseUrl}/status-list`,
+        },
+      },
+      validityInfo: {
+        signed: new Date(),
+        validFrom: new Date(),
+        validUntil: expiration,
+      },
     });
 
-  const issuerSigned = document.prepare().get("issuerSigned");
-  const payloadWithStatus = encode(
-    new Tagged(
-      24,
-      encode({
-        ...decode(decode(issuerSigned.issuerAuth[2]).value),
-        status: {
-          status_list: {
-            idx: 0,
-            uri: `${issuerBaseUrl}/status-list`,
-          },
-        },
-      }),
-    ),
-  );
-  issuerSigned.issuerAuth[2] = payloadWithStatus;
-  Object.assign(document.issuerSigned.issuerAuth, {
-    payload: payloadWithStatus,
-  });
-
-  const nameSpaces = new Map<string, InstanceType<typeof Tagged>[]>();
-  for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
-    string,
-    DataItem[]
-  >) {
-    nameSpaces.set(
-      namespace,
-      items.map((item) => new Tagged(24, item.buffer)),
-    );
-  }
-
-  const cborIssuerSigned = encode({
-    issuerAuth: issuerSigned["issuerAuth"],
-    nameSpaces,
-  });
-  const compact = cborIssuerSigned.toString("base64url");
-
   return {
-    compact,
-    parsed: document,
+    compact: issuerSigned.encodedForOid4Vci,
+    parsed: issuerSigned,
     typ: "mso_mdoc",
   };
 }
 
-export async function buildMockSdJwt_V1_3(
+/**
+ * Builds a mocked PID SD-JWT credential.
+ *
+ * Shared by V1_3 and V1_4 — only the dumps directory differs between them.
+ */
+export async function buildMockSdJwt(
   metadata: {
     iss: string;
     trust: Config["trust"];
@@ -130,6 +121,9 @@ export async function buildMockSdJwt_V1_3(
   unitKey: KeyPairJwk,
   certificate: string,
   keyPair: KeyPair,
+  version:
+    | ItWalletSpecsVersion.V1_3
+    | ItWalletSpecsVersion.V1_4 = ItWalletSpecsVersion.V1_3,
 ): Promise<Credential> {
   const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(metadata.trustAnchor);
   const taEntityConfiguration = await createSubordinateTrustAnchorMetadata({
@@ -137,12 +131,13 @@ export async function buildMockSdJwt_V1_3(
     federationTrustAnchor: metadata.trust,
     sub: metadata.iss,
     trustAnchorBaseUrl,
-    walletVersion: ItWalletSpecsVersion.V1_3,
+    walletVersion: version,
   });
 
-  const issEntityConfiguration = await buildIssuerEntityConfiguration_V1_3(
+  const issEntityConfiguration = await buildIssuerEntityConfiguration(
     metadata,
     keyPair,
+    version,
   );
 
   const issuer = {
@@ -162,11 +157,7 @@ export async function buildMockSdJwt_V1_3(
     verifier,
   });
 
-  const claims = loadJsonDumps(
-    "pid.json",
-    { expiration },
-    ItWalletSpecsVersion.V1_3,
-  );
+  const claims = loadJsonDumps("pid.json", { expiration }, version);
 
   const disclosureFrame = {
     _sd: [
@@ -200,7 +191,7 @@ export async function buildMockSdJwt_V1_3(
       vct,
       "vct#integrity": vctIntegrity,
       verification: {
-        assurance_level: "high",
+        assurance_level: "https://trust-anchor.eid-wallet.example.it/loa/high",
         trust_framework: "it_cie",
       },
       ...claims,

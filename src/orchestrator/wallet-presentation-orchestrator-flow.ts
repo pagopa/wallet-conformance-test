@@ -4,6 +4,7 @@ import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federa
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import { createLogger, loadConfigWithHierarchy } from "@/logic";
+import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import {
   FetchMetadataVpDefaultStep,
   FetchMetadataVpStepResponse,
@@ -75,12 +76,11 @@ export class WalletPresentationOrchestratorFlow {
     return this.log;
   }
 
-  prepareBaseUrl(): string | undefined {
+  prepareBaseUrl(authorizeRequestUrl: string): string | undefined {
     if (!this.config.presentation.verifier) {
-      const authorizeUrl = new URL(
-        this.config.presentation.authorize_request_url,
+      const clientId = new URL(authorizeRequestUrl).searchParams.get(
+        "client_id",
       );
-      const clientId = authorizeUrl.searchParams.get("client_id");
 
       if (!clientId) {
         throw new Error(
@@ -145,9 +145,12 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   async runThroughAuthorize(): Promise<RunThroughAuthorizeVpContext> {
-    this.printTestSuiteOnce();
+    const authorizeRequestUrl = await getAuthorizeRequestUrl(
+      this.config.presentation,
+    );
 
-    const baseUrl = this.prepareBaseUrl();
+    this.printTestSuiteOnce(authorizeRequestUrl);
+    const baseUrl = this.prepareBaseUrl(authorizeRequestUrl);
 
     let fetchMetadataResponse: FetchMetadataVpStepResponse | undefined;
     let verifierMetadata: ItWalletCredentialVerifierMetadata | undefined;
@@ -180,6 +183,7 @@ export class WalletPresentationOrchestratorFlow {
       credentials,
       verifierMetadata,
       walletAttestationResponse,
+      authorizeRequestUrl,
     );
     this.log.flowStep(
       2,
@@ -202,9 +206,11 @@ export class WalletPresentationOrchestratorFlow {
     credentials: CredentialWithKey[],
     verifierMetadata: ItWalletCredentialVerifierMetadata | undefined,
     walletAttestation: AttestationResponse,
+    authorizeRequestUrl: string,
   ) {
     const authorizationRequestResponse =
       await this.authorizationRequestStep.run({
+        authorizeRequestUrl,
         credentials,
         verifierMetadata,
         walletAttestation,
@@ -260,13 +266,13 @@ export class WalletPresentationOrchestratorFlow {
     return new URL(url).href.replace(/\/+$/, "");
   }
 
-  private printTestSuiteOnce(): void {
+  private printTestSuiteOnce(target: string): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
     this.log.testSuite({
       profile: this.presentationConfig.name,
       specsVersion: this.config.wallet.wallet_version,
-      target: this.config.presentation.authorize_request_url,
+      target: decodeURIComponent(target),
       title: this.presentationConfig.name,
     });
 

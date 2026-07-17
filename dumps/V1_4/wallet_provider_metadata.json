@@ -1,0 +1,39 @@
+{
+  "authority_hints": [
+    "{{trust_anchor_base_url}}"
+  ],
+  "trust_marks": "{{trust_marks}}",
+  "iss": "{{wallet_provider_base_url}}",
+  "sub": "{{wallet_provider_base_url}}",
+  "jwks": {
+    "keys": ["{{public_key}}"]
+  },
+  "metadata": {
+    "federation_entity": {
+      "homepage_uri": "https://io.italia.it",
+      "logo_uri": "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+      "organization_name": "PagoPa S.p.A.",
+      "policy_uri": "https://io.italia.it/privacy-policy",
+      "tos_uri": "https://io.italia.it/privacy-policy"
+    },
+    "wallet_solution": {
+      "logo_uri": "https://io.italia.it/assets/img/io-it-logo-blue.svg",
+      "jwks": {
+        "keys": ["{{public_key}}"]
+      },
+      "wallet_metadata": {
+        "authorization_endpoint": "{{wallet_provider_base_url}}/authorize",
+        "client_id_prefixes_supported": ["openid_federation", "x509_hash"],
+        "credential_offer_endpoint": "{{wallet_provider_base_url}}/credential_offer",
+        "request_object_signing_alg_values_supported": ["ES256", "ES384", "ES512"],
+        "response_types_supported": ["vp_token"],
+        "response_modes_supported": ["query"],
+        "vp_formats_supported": {
+          "dc+sd-jwt": {},
+          "mso_mdoc": {}
+        },
+        "wallet_name": "{{wallet_name}}"
+      }
+    }
+  }
+}
