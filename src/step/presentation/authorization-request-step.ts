@@ -15,8 +15,11 @@ import { DcqlQuery } from "dcql";
 
 import type { AttestationResponse, CredentialWithKey } from "@/types";
 
-import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
+import { createVerifyJwtCallback, getEncryptJweCallback } from "@/logic/jwt";
+import {
+  fetchWithConfig,
+  partialCallbacksWithTrustAnchorUrls,
+} from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
@@ -115,7 +118,11 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       log.debug("Request Object JWT:", requestObjectJwt);
 
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
-        callbacks: { verifyJwt },
+        callbacks: {
+          verifyJwt: createVerifyJwtCallback({
+            trustAnchorUrls: this.config.trust.federation_trust_anchors,
+          }),
+        },
         config: this.ioWalletSdkConfig,
         requestObjectJwt,
       });
@@ -155,7 +162,9 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
           options.verifierMetadata?.authorization_encrypted_response_enc ||
           undefined,
         callbacks: {
-          ...partialCallbacks,
+          ...partialCallbacksWithTrustAnchorUrls(
+            this.config.trust.federation_trust_anchors,
+          ),
           encryptJwe: getEncryptJweCallback(),
         },
         config: this.ioWalletSdkConfig,

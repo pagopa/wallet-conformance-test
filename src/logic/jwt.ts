@@ -11,6 +11,10 @@ import { CompactEncrypt, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
 import { jwkFromSigner } from "./jwk";
 
+export interface VerifyJwtCallbackOptions {
+  trustAnchorUrls?: string[];
+}
+
 /**
  * Creates a callback function for signing JWTs.
  *
@@ -73,29 +77,37 @@ export const signCallback: SignCallback = async ({ jwk, toBeSigned }) => {
  * @param jwt The JWT to verify.
  * @returns A promise that resolves to an object containing the verification result.
  */
-export const verifyJwt: VerifyJwtCallback = async (signer, jwt) => {
-  let publicJwk: Jwk;
-  try {
-    publicJwk = await jwkFromSigner(signer, jwt.payload);
-  } catch {
-    return { verified: false };
-  }
+export function createVerifyJwtCallback(
+  options: VerifyJwtCallbackOptions = {},
+): VerifyJwtCallback {
+  return async (signer, jwt) => {
+    let publicJwk: Jwk;
+    try {
+      publicJwk = await jwkFromSigner(signer, jwt.payload, {
+        trustAnchorUrls: options.trustAnchorUrls,
+      });
+    } catch {
+      return { verified: false };
+    }
 
-  const key = await importJWK(publicJwk as JWK, signer.alg);
+    const key = await importJWK(publicJwk as JWK, signer.alg);
 
-  try {
-    await jwtVerify(jwt.compact, key);
+    try {
+      await jwtVerify(jwt.compact, key);
 
-    return {
-      signerJwk: publicJwk as Jwk,
-      verified: true,
-    };
-  } catch {
-    return {
-      verified: false,
-    };
-  }
-};
+      return {
+        signerJwk: publicJwk as Jwk,
+        verified: true,
+      };
+    } catch {
+      return {
+        verified: false,
+      };
+    }
+  };
+}
+
+export const verifyJwt: VerifyJwtCallback = createVerifyJwtCallback();
 
 /**
  * Returns a callback function for JWE encryption.
