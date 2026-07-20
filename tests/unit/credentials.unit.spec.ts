@@ -1,5 +1,5 @@
 /* eslint-disable max-lines-per-function */
-import { IssuerSignedDocument } from "@auth0/mdl";
+import { IssuerSigned } from "@owf/mdoc";
 import {
   addSecondsToDate,
   dateToSeconds,
@@ -315,7 +315,7 @@ describe("Load Mocked Credentials", async () => {
       if (!mDL || mDL.typ !== "mso_mdoc") {
         throw new Error("Expected to find the PID in sd-jwt format");
       }
-      const issuerAuth = mDL.parsed.issuerSigned.issuerAuth;
+      const issuerAuth = mDL.parsed.issuerAuth;
 
       it("should pass all the expiration checks", () => {
         expect(
@@ -367,7 +367,7 @@ describe("Load Mocked Credentials", async () => {
 
       describe("mdoc expiration checks", () => {
         const mDocExpiration =
-          issuerAuth.decodedPayload.validityInfo.validUntil;
+          issuerAuth.mobileSecurityObject.validityInfo.validUntil;
         it("should return false because it's past the mdoc expiration", async () => {
           // Set system time to a second before expiration
           vi.setSystemTime((dateToSeconds(mDocExpiration) - 1) * 1000);
@@ -396,7 +396,9 @@ describe("Load Mocked Credentials", async () => {
       });
 
       describe("certificate expiration checks", () => {
-        const certExpiration = issuerAuth.certificate.notAfter;
+        const certExpiration = new X509Certificate(
+          Buffer.from(issuerAuth.certificate).toString("base64"),
+        ).notAfter;
 
         it("should return false because it's past the certificate expiration", async () => {
           // Set system time to a second before expiration
@@ -665,17 +667,22 @@ describe("Generate Mocked Credentials", () => {
 
     expect(credential.typ).toBe("mso_mdoc");
 
-    const parsed = credential.parsed as IssuerSignedDocument;
-    expect(parsed.docType).toBe("org.iso.18013.5.1.mDL");
-    expect(parsed.getIssuerNameSpace("org.iso.18013.5.1")).toBeDefined();
+    const parsed = credential.parsed as IssuerSigned;
+    expect(parsed.issuerAuth.mobileSecurityObject.docType).toBe(
+      "org.iso.18013.5.1.mDL",
+    );
+    expect(parsed.getIssuerNamespace("org.iso.18013.5.1")).toBeDefined();
 
     const parsedCompact = parseMdoc(
       Buffer.from(credential.compact, "base64url"),
     );
-    expect(parsedCompact.docType).toEqual(parsed.docType);
-    expect(parsedCompact.issuerSigned.issuerAuth.payload.toString()).toEqual(
-      parsed.issuerSigned.issuerAuth.payload.toString(),
+    expect(parsedCompact.issuerAuth.mobileSecurityObject.docType).toEqual(
+      parsed.issuerAuth.mobileSecurityObject.docType,
     );
+    expect(parsed.issuerAuth.payload).not.toBeNull();
+    expect(
+      Buffer.from(parsedCompact.issuerAuth.payload ?? []).toString("base64"),
+    ).toEqual(Buffer.from(parsed.issuerAuth.payload ?? []).toString("base64"));
   });
 });
 
