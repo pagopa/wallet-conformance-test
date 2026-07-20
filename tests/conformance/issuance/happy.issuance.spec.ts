@@ -27,7 +27,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
 import { parseCredential } from "@/functions";
-import { fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
+import { createVerifyJwtCallback, fetchWithConfig, parseMdoc } from "@/logic";
 import { validateDcqlQuery } from "@/logic/dcql";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
@@ -158,7 +158,9 @@ testConfigs.forEach((testConfig) => {
           const entityClaims = await fetchMetadata({
             callbacks: {
               fetch: fetchWithConfig(config.network),
-              verifyJwt,
+              verifyJwt: createVerifyJwtCallback({
+                trustAnchorUrls: config.trust.federation_trust_anchors,
+              }),
             },
             config: new IoWalletSdkConfig({
               itWalletSpecsVersion: config.wallet.wallet_version,

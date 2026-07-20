@@ -29,7 +29,11 @@ import {
 import { decodeJwt, decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
-import { fetchWithConfig, partialCallbacks, verifyJwt } from "@/logic";
+import {
+  createVerifyJwtCallback,
+  fetchWithConfig,
+  partialCallbacksWithTrustAnchorUrls,
+} from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
@@ -681,7 +685,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         const entityClaims = await fetchMetadata({
           callbacks: {
             fetch: fetchWithConfig(config.network),
-            verifyJwt,
+            verifyJwt: createVerifyJwtCallback({
+              trustAnchorUrls: config.trust.federation_trust_anchors,
+            }),
           },
           config: new IoWalletSdkConfig({
             itWalletSpecsVersion: walletVersion,
@@ -754,8 +760,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
           await validateTrustChain([...trustChain], {
             callbacks: {
               fetch: fetchWithConfig(config.network),
-              hash: partialCallbacks.hash,
-              verifyJwt: partialCallbacks.verifyJwt,
+              ...partialCallbacksWithTrustAnchorUrls(
+                config.trust.federation_trust_anchors,
+              ),
             },
           });
           log.debug("  ✅ Trust chain signature verification passed");
