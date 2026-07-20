@@ -586,6 +586,7 @@ testConfigs.forEach((testConfig) => {
           | undefined
           | {
               claims: { path: string[] }[];
+              credential_metadata?: { claims: { path: string[] }[] };
               format: "dc+sd-jwt" | "mso_doc";
               vct?: string;
             } =
@@ -596,6 +597,15 @@ testConfigs.forEach((testConfig) => {
         if (!credentialSchema)
           throw new Error(
             "missing credential type from issuer's supported credentials list",
+          );
+
+        const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
+        const claims = isV1_0
+          ? credentialSchema.claims
+          : credentialSchema.credential_metadata?.claims;
+        if (!claims)
+          throw new Error(
+            "missing claims from issuer's supported credential configuration",
           );
 
         const queryResult = await validateDcqlQuery(
@@ -611,7 +621,7 @@ testConfigs.forEach((testConfig) => {
             credentials: [
               {
                 ...credentialSchema,
-                claims: credentialSchema.claims.map((claim) => ({
+                claims: claims.map((claim) => ({
                   path: claim.path,
                 })),
                 id: "0",
