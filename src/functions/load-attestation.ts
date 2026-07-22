@@ -50,7 +50,7 @@ const resolveTaEntityConfiguration = (
     walletVersion,
   });
 
-interface LoadAttestationOptions {
+export interface LoadAttestationOptions {
   trust: Config["trust"];
   trustAnchor: Config["trust_anchor"];
   wallet: Config["wallet"];
@@ -157,11 +157,10 @@ const buildAttestationOptions = async (
   }
 };
 
-const createAttestation = async (
+export const createAttestation = async (
   { trust, trustAnchor, wallet }: LoadAttestationOptions,
   providerKeyPair: KeyPair,
   unitKeyPair: KeyPair,
-  attestationPath: string,
 ): Promise<string> => {
   validateProviderKeyPair(providerKeyPair);
 
@@ -194,8 +193,21 @@ const createAttestation = async (
   const provider = new WalletProvider(
     new IoWalletSdkConfig({ itWalletSpecsVersion: wallet.wallet_version }),
   );
-  const attestation =
-    await provider.createItWalletAttestationJwt(attestationOptions);
+
+  return provider.createItWalletAttestationJwt(attestationOptions);
+};
+
+const createAndSaveAttestation = async (
+  options: LoadAttestationOptions,
+  providerKeyPair: KeyPair,
+  unitKeyPair: KeyPair,
+  attestationPath: string,
+): Promise<string> => {
+  const attestation = await createAttestation(
+    options,
+    providerKeyPair,
+    unitKeyPair,
+  );
 
   writeFileSync(attestationPath, attestation);
   return attestation;
@@ -259,7 +271,7 @@ export const loadAttestation = async (
     }
   }
 
-  const attestation = await createAttestation(
+  const attestation = await createAndSaveAttestation(
     options,
     providerKeyPair,
     unitKeyPair,

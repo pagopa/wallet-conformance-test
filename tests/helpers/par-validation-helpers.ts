@@ -8,13 +8,17 @@ import {
 import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
 import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 
-import { partialCallbacks, signJwtCallback } from "@/logic";
+import {
+  createAttestation,
+  LoadAttestationOptions,
+} from "@/functions/load-attestation";
+import { createKeys, partialCallbacks, signJwtCallback } from "@/logic";
 import {
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
   PushedAuthorizationRequestStepOptions,
 } from "@/step/issuance/pushed-authorization-request-step";
-import { AttestationResponse, KeyPairJwk } from "@/types";
+import { AttestationResponse, KeyPair, KeyPairJwk } from "@/types";
 
 /**
  * Options to build a custom OAuth-Client-Attestation-PoP JWT for negative tests.
@@ -181,38 +185,22 @@ export async function createExpiredAttestationResponse(): Promise<
  * When the issuer tries to resolve the trust chain for this attestation it will
  * find an unregistered key and should reject the PAR request.
  */
-export async function createFakeAttestationResponse(): Promise<
-  Omit<AttestationResponse, "created">
-> {
-  const { privateKey, publicKey } = await generateKeyPair("ES256", {
-    extractable: true,
-  });
-  const privateJwk = await exportJWK(privateKey);
-  const publicJwk = await exportJWK(publicKey);
-  const kid = "fake-unregistered-key-id";
-
-  const fakeKey: { privateKey: KeyPairJwk; publicKey: KeyPairJwk } = {
-    privateKey: { ...privateJwk, kid, kty: "EC" as const },
-    publicKey: { ...publicJwk, kid, kty: "EC" as const },
-  };
-
-  // Build a minimal wallet-attestation JWT signed by the unregistered key.
-  // The trust_chain header would reference this key which the TA cannot resolve.
-  const signingKey = await importJWK(privateJwk, "ES256");
-  const fakeAttestation = await new SignJWT({
-    cnf: { jwk: fakeKey.publicKey },
-    iss: "https://wallet-provider.example.fake",
-    sub: "fake-wallet-instance",
-  })
-    .setProtectedHeader({ alg: "ES256", kid })
-    .setIssuedAt()
-    .setExpirationTime("1h")
-    .sign(signingKey);
+export async function createFakeAttestationResponse(
+  options: LoadAttestationOptions,
+  { provider, unit }: { provider?: KeyPair; unit?: KeyPair },
+): Promise<Omit<AttestationResponse, "created">> {
+  const providerKeyPair = provider ?? (await createKeys());
+  const unitKeyPair = unit ?? (await createKeys());
+  const attestation = await createAttestation(
+    options,
+    providerKeyPair,
+    unitKeyPair,
+  );
 
   return {
-    attestation: fakeAttestation,
-    providerKey: fakeKey,
-    unitKey: fakeKey,
+    attestation: attestation,
+    providerKey: providerKeyPair,
+    unitKey: unitKeyPair,
   };
 }
 
