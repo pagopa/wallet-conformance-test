@@ -22,7 +22,11 @@ import { writeFileSync } from "node:fs";
 import { KeyPair, KeyPairJwk } from "@/types";
 
 import { loadCertificate } from "./pem";
-import { buildCertPath, partialCallbacks } from "./utils";
+import { buildCertPath, partialCallbacksWithTrustAnchorUrls } from "./utils";
+
+interface JwkFromSignerOptions {
+  trustAnchorUrls?: string[];
+}
 
 /**
  * Generates a new cryptographic key pair (ECDSA with P-256 curve) and saves it to a file.
@@ -103,6 +107,7 @@ export async function createKeys(): Promise<KeyPair> {
 export async function jwkFromSigner(
   signer: JwtSigner,
   payload?: Parameters<VerifyJwtCallback>[1]["payload"],
+  options: JwkFromSignerOptions = {},
 ): Promise<Jwk> {
   const { didUrl, kid, trustChain } = signer as {
     didUrl?: string;
@@ -126,7 +131,12 @@ export async function jwkFromSigner(
       );
     case "federation":
       if (!kid) throw new Error("missing signer key's kid");
-      return await jwkFromFederation(kid, trustChain, payload);
+      return await jwkFromFederation(
+        kid,
+        trustChain,
+        payload,
+        options.trustAnchorUrls,
+      );
     case "jwk":
       return parseWithErrorHandling(
         jsonWebKeySchema,
@@ -215,15 +225,19 @@ async function jwkFromFederation(
   signerKid: string,
   trustChain?: string[],
   payload?: Parameters<VerifyJwtCallback>[1]["payload"],
+  trustAnchorUrls?: string[],
 ): Promise<Jwk> {
   const ecTrustChain =
     trustChain ??
     (await (() => {
       if (!payload?.iss) throw new Error("missing iss in payload");
+      const trustedAnchors = toNonEmptyTrustAnchorUrls(trustAnchorUrls);
       return fetchAndValidateTrustChain(payload.iss, {
         callbacks: {
-          ...partialCallbacks,
+          ...partialCallbacksWithTrustAnchorUrls(trustAnchorUrls),
+          fetch,
         },
+        ...(trustedAnchors ? { trustAnchorUrls: trustedAnchors } : {}),
       });
     })());
   const entityConfigurationJwt = ecTrustChain ? ecTrustChain[0] : undefined;
@@ -255,4 +269,14 @@ async function jwkFromFederation(
   if (!federationJwk) throw new Error("key not found in trust chain");
 
   return federationJwk;
+}
+
+function toNonEmptyTrustAnchorUrls(
+  trustAnchorUrls: string[] | undefined,
+): [string, ...string[]] | undefined {
+  if (!trustAnchorUrls || trustAnchorUrls.length === 0) {
+    return undefined;
+  }
+
+  return trustAnchorUrls as [string, ...string[]];
 }

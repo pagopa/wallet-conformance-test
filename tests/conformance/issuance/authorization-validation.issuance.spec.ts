@@ -1,3 +1,5 @@
+/* eslint-disable max-lines-per-function */
+
 import { defineIssuanceTest } from "#/config/test-metadata";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { beforeAll, describe, expect, test } from "vitest";
@@ -191,5 +193,49 @@ testConfigs.forEach((testConfig) => {
       },
       { timeout: 120e3 },
     );
+
+    // -----------------------------------------------------------------------
+    // CI_059 — Authorization Response HTTP Status Code
+    // -----------------------------------------------------------------------
+
+    test("CI_059: Authorization Response HTTP Status Code | Issuer returns an appropriate HTTP 4xx error status code for an invalid authorization request", async () => {
+      const log = baseLog.withTag("CI_059");
+      const DESCRIPTION =
+        "Issuer returned expected HTTP 4xx status code for invalid authorization request";
+
+      log.start(
+        "Conformance test: Verifying HTTP error status code for invalid authorization request",
+      );
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          "→ Sending GET authorization request without request_uri (should be rejected)...",
+        );
+        const url = new URL(authorizationEndpoint);
+        url.searchParams.set(
+          "client_id",
+          walletAttestationResponse.unitKey.publicKey.kid ?? "",
+        );
+
+        const response = await fetch(url.toString(), { redirect: "manual" });
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(
+          response.ok,
+          `Expected issuer to reject the request, got HTTP ${response.status}`,
+        ).toBe(false);
+
+        log.debug(`  HTTP status code returned: ${response.status}`);
+        expect(
+          [400, 401, 403],
+          `Expected HTTP 400, 401, or 403, got ${response.status}`,
+        ).toContain(response.status);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
   });
 });
