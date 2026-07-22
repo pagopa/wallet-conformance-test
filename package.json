@@ -76,7 +76,7 @@
     ]
   },
   "dependencies": {
-    "@auth0/mdl": "^3.0.0",
+    "@owf/mdoc": "^0.7.0",
     "@pagopa/io-wallet-oauth2": "1.5.2",
     "@pagopa/io-wallet-oid-federation": "1.5.2",
     "@pagopa/io-wallet-oid4vci": "1.5.2",

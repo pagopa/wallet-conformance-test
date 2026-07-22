@@ -27,7 +27,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
 import { parseCredential } from "@/functions";
-import { coseKeyToJwk, fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
+import { fetchWithConfig, parseMdoc, verifyJwt } from "@/logic";
 import { validateDcqlQuery } from "@/logic/dcql";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
@@ -1314,10 +1314,10 @@ testConfigs.forEach((testConfig) => {
                 Buffer.from(credential.credential, "base64url"),
               );
               const deviceKey =
-                mdocDoc.issuerSigned.issuerAuth.decodedPayload.deviceKeyInfo
+                mdocDoc.issuerAuth.mobileSecurityObject.deviceKeyInfo
                   ?.deviceKey;
               if (deviceKey !== undefined) {
-                boundKeyJwk = coseKeyToJwk(deviceKey);
+                boundKeyJwk = deviceKey.jwk;
               }
               detectedFormat = "mso_mdoc";
               log.debug("  Format: mdoc-CBOR");

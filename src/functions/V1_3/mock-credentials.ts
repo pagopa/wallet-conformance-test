@@ -1,8 +1,7 @@
-import { DataItem, Document } from "@auth0/mdl";
+import { DeviceKey, Issuer, SignatureAlgorithm } from "@owf/mdoc";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest, ES256, generateSalt } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
-import cbor from "cbor";
 import { decodeJwt } from "jose";
 
 import {
@@ -11,11 +10,10 @@ import {
   getTrustMarks,
   loadJsonDumps,
 } from "@/logic";
+import { mdocContext } from "@/logic/mdoc-context";
 import { generateSRIHash } from "@/logic/sd-jwt";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, Credential, KeyPair, KeyPairJwk } from "@/types";
-
-const { decode, encode, Tagged } = cbor;
 
 /**
  * Builds the mocked Credential Issuer entity configuration.
@@ -73,61 +71,37 @@ export async function buildMockMdlMdoc(
 ): Promise<Credential> {
   const claims = loadJsonDumps("mDL.json", { expiration }, version);
 
-  const document = await new Document("org.iso.18013.5.1.mDL")
-    .addIssuerNameSpace("org.iso.18013.5.1", claims)
-    .useDigestAlgorithm("SHA-256")
-    .addValidityInfo({
-      signed: new Date(),
-      validFrom: new Date(),
-      validUntil: expiration,
-    })
-    .addDeviceKeyInfo({ deviceKey })
+  const issuerSigned = await new Issuer("org.iso.18013.5.1.mDL", mdocContext)
+    .addIssuerNamespace("org.iso.18013.5.1", claims)
     .sign({
-      alg: "ES256",
-      issuerCertificate,
-      issuerPrivateKey: issuerKeyPair.privateKey,
+      algorithm: SignatureAlgorithm.ES256,
+      certificates: [new Uint8Array(Buffer.from(issuerCertificate, "base64"))],
+      deviceKeyInfo: {
+        deviceKey: DeviceKey.fromJwk(
+          deviceKey as unknown as Record<string, unknown>,
+        ) as DeviceKey,
+      },
+      digestAlgorithm: "SHA-256",
+      signingKey: issuerKeyPair.privateKey as unknown as Record<
+        string,
+        unknown
+      >,
+      status: {
+        statusList: {
+          idx: 0,
+          uri: `${issuerBaseUrl}/status-list`,
+        },
+      },
+      validityInfo: {
+        signed: new Date(),
+        validFrom: new Date(),
+        validUntil: expiration,
+      },
     });
 
-  const issuerSigned = document.prepare().get("issuerSigned");
-  const payloadWithStatus = encode(
-    new Tagged(
-      24,
-      encode({
-        ...decode(decode(issuerSigned.issuerAuth[2]).value),
-        location_status: {
-          status_list: {
-            idx: 0,
-            uri: `${issuerBaseUrl}/status-list`,
-          },
-        },
-      }),
-    ),
-  );
-  issuerSigned.issuerAuth[2] = payloadWithStatus;
-  Object.assign(document.issuerSigned.issuerAuth, {
-    payload: payloadWithStatus,
-  });
-
-  const nameSpaces = new Map<string, InstanceType<typeof Tagged>[]>();
-  for (const [namespace, items] of issuerSigned["nameSpaces"] as Map<
-    string,
-    DataItem[]
-  >) {
-    nameSpaces.set(
-      namespace,
-      items.map((item) => new Tagged(24, item.buffer)),
-    );
-  }
-
-  const cborIssuerSigned = encode({
-    issuerAuth: issuerSigned["issuerAuth"],
-    nameSpaces,
-  });
-  const compact = cborIssuerSigned.toString("base64url");
-
   return {
-    compact,
-    parsed: document,
+    compact: issuerSigned.encodedForOid4Vci,
+    parsed: issuerSigned,
     typ: "mso_mdoc",
   };
 }
