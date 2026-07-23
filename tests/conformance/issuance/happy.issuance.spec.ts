@@ -589,7 +589,7 @@ testConfigs.forEach((testConfig) => {
           | {
               claims: { path: string[] }[];
               credential_metadata?: { claims: { path: string[] }[] };
-              format: "dc+sd-jwt" | "mso_doc";
+              format: "dc+sd-jwt" | "mso_mdoc";
               vct?: string;
             } =
           fetchMetadataResponse.response?.entityStatementClaims.metadata
@@ -623,9 +623,17 @@ testConfigs.forEach((testConfig) => {
             credentials: [
               {
                 ...credentialSchema,
-                claims: claims.map((claim) => ({
-                  path: claim.path,
-                })),
+                claims: credentialSchema.claims.map((claim) => {
+                  if (credentialSchema.format === "dc+sd-jwt")
+                    return {
+                      path: claim.path,
+                    };
+                  if (credentialSchema.format === "mso_mdoc")
+                    return {
+                      claim_name: claim.path[1],
+                      namespace: claim.path[0],
+                    };
+                }),
                 id: "0",
               },
             ],
@@ -1393,6 +1401,7 @@ testConfigs.forEach((testConfig) => {
     // CREDENTIAL REQUEST TESTS
     // ============================================================================
 
+    // eslint-disable-next-line complexity
     test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
       const log = baseLog.withTag("CI_084");
       const DESCRIPTION =
@@ -1428,27 +1437,57 @@ testConfigs.forEach((testConfig) => {
           []) {
           expect(credential.credential).toBeDefined();
 
-          const sdJwt = await SDJwt.extractJwt(credential.credential);
-          const payload = sdJwt.payload as
-            | undefined
-            | { cnf?: { jkt?: string; jwk?: object } };
+          // Resolve the key-binding JWK from either SD-JWT VC (cnf.jwk) or
+          // mdoc-CBOR (deviceKeyInfo.deviceKey converted from COSE_Key).
+          let boundKeyJwk: JsonWebKey | undefined;
+          let detectedFormat: "dc+sd-jwt" | "mso_mdoc" | undefined;
 
-          expect(
-            payload?.cnf,
-            "SD-JWT credential must contain cnf claim for key binding",
-          ).toBeDefined();
-
-          const confirmationJwk = payload?.cnf?.jwk;
-          expect(
-            confirmationJwk,
-            "SD-JWT credential cnf claim must contain either jkt or jwk",
-          ).toBeDefined();
-          if (!confirmationJwk) {
-            throw new Error(
-              "SD-JWT credential cnf claim must contain either jkt or jwk",
+          try {
+            const sdJwt = await SDJwt.extractJwt(credential.credential);
+            detectedFormat = "dc+sd-jwt";
+            const payload = sdJwt.payload as
+              | undefined
+              | { cnf?: { jwk?: JsonWebKey } };
+            boundKeyJwk = payload?.cnf?.jwk;
+            log.debug("  Format: SD-JWT VC");
+          } catch (err: unknown) {
+            log.debug(
+              `  Not SD-JWT VC (${err instanceof Error ? err.message : String(err)}), trying mdoc-CBOR...`,
             );
           }
-          const credentialJkt = await calculateJwkThumbprint(confirmationJwk);
+
+          if (detectedFormat === undefined) {
+            try {
+              const mdocDoc = parseMdoc(
+                Buffer.from(credential.credential, "base64url"),
+              );
+              const deviceKey =
+                mdocDoc.issuerAuth.mobileSecurityObject.deviceKeyInfo
+                  ?.deviceKey;
+              if (deviceKey !== undefined) {
+                boundKeyJwk = deviceKey.jwk;
+              }
+              detectedFormat = "mso_mdoc";
+              log.debug("  Format: mdoc-CBOR");
+            } catch (err: unknown) {
+              log.error(
+                `  Credential is neither SD-JWT VC nor mdoc-CBOR: ${err instanceof Error ? err.message : String(err)}`,
+              );
+            }
+          }
+
+          if (detectedFormat === "dc+sd-jwt" && boundKeyJwk === undefined) {
+            throw new Error(
+              "SD-JWT credential is missing cnf.jwk — key binding cannot be verified",
+            );
+          }
+
+          expect(
+            boundKeyJwk,
+            "Credential must be bound to the wallet key via cnf.jwk (SD-JWT VC) or deviceKeyInfo.deviceKey (mdoc-CBOR)",
+          ).toBeDefined();
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const credentialJkt = await calculateJwkThumbprint(boundKeyJwk!);
           log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
           expect(credentialJkt).toBe(expectedJkt);
         }
