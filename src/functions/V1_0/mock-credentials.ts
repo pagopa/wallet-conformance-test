@@ -92,7 +92,7 @@ export async function buildMockMdlMdoc_V1_0(
       24,
       encode({
         ...decode(decode(Buffer.from(originalAuth.payload ?? [])).value),
-        location_status: {
+        status: {
           status_assertion: {
             credential_hash_alg: "sha-256",
           },
