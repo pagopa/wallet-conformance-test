@@ -843,7 +843,9 @@ testConfigs.forEach((testConfig) => {
     // CI_035 — Wallet Provider Trust Chain Evaluation
     // -----------------------------------------------------------------------
 
-    test("CI_035: Wallet Provider Trust Chain Evaluation | Credential Issuer successfully evaluates the Wallet Provider trust chain", async ({ skip }) => {
+    test("CI_035: Wallet Provider Trust Chain Evaluation | Credential Issuer successfully evaluates the Wallet Provider trust chain", async ({
+      skip,
+    }) => {
       const log = baseLog.withTag("CI_035");
       const DESCRIPTION =
         "Wallet Provider trust chain was successfully evaluated by the Credential Issuer";
