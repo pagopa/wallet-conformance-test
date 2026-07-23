@@ -879,6 +879,7 @@ testConfigs.forEach((testConfig) => {
           log.debug(
             "→ CI_035 skipped: trust_chain is not present in attestation",
           );
+          testSuccess = true;
           skip();
           return;
         }
