@@ -396,13 +396,13 @@ describe("Load Mocked Credentials", async () => {
       });
 
       describe("certificate expiration checks", () => {
-        const certExpiration = new X509Certificate(
+        const expiration = new X509Certificate(
           Buffer.from(issuerAuth.certificate).toString("base64"),
         ).notAfter;
 
         it("should return false because it's past the certificate expiration", async () => {
           // Set system time to a second before expiration
-          vi.setSystemTime((dateToSeconds(certExpiration) - 1) * 1000);
+          vi.setSystemTime((dateToSeconds(expiration) - 1) * 1000);
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
               cert: true,
@@ -414,8 +414,7 @@ describe("Load Mocked Credentials", async () => {
         it("should return true because it's not past the certificate expiration", async () => {
           // Set system time to a second after expiration
           vi.setSystemTime(
-            (dateToSeconds(certExpiration) + 1) * 1000 +
-              CLOCK_SKEW_TOLERANCE_MS,
+            (dateToSeconds(expiration) + 1) * 1000 + CLOCK_SKEW_TOLERANCE_MS,
           );
           expect(
             isCredentialMdocExpired(mDL.parsed, undefined, {
