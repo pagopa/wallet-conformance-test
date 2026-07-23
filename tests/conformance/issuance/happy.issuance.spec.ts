@@ -23,7 +23,6 @@ import { digest } from "@sd-jwt/crypto-nodejs";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
-import { skip } from "node:test";
 import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
@@ -844,7 +843,7 @@ testConfigs.forEach((testConfig) => {
     // CI_035 — Wallet Provider Trust Chain Evaluation
     // -----------------------------------------------------------------------
 
-    test("CI_035: Wallet Provider Trust Chain Evaluation | Credential Issuer successfully evaluates the Wallet Provider trust chain", async () => {
+    test("CI_035: Wallet Provider Trust Chain Evaluation | Credential Issuer successfully evaluates the Wallet Provider trust chain", async ({ skip }) => {
       const log = baseLog.withTag("CI_035");
       const DESCRIPTION =
         "Wallet Provider trust chain was successfully evaluated by the Credential Issuer";
