@@ -89,7 +89,11 @@ export class RedirectUriDefaultStep extends StepFlow {
       }
 
       // Fetch the redirect uri endpoint
-      await fetch(redirectUri);
+      await fetch(redirectUri).catch((e) => {
+        log.debug(
+          `Error fetching redirect_uri endpoint at ${redirectUri}. Details: ${JSON.stringify(e)}`,
+        );
+      });
 
       return {
         contentType,
