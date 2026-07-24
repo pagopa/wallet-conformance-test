@@ -1,8 +1,11 @@
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import {
+  fetchAndValidateTrustChain,
+  itWalletEntityStatementClaimsSchema,
+} from "@pagopa/io-wallet-oid-federation";
+import { createFetcher, parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 
-import { fetchWithRetries } from "@/logic/utils";
+import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
 import { recordSessionEntityNameFromEntityConfiguration } from "@/report/session-runtime";
 
 import { StepFlow, StepResponse } from "../step-flow";
@@ -10,8 +13,6 @@ import { StepFlow, StepResponse } from "../step-flow";
 export interface FetchMetadataVpExecuteResponse {
   // Entity statement metadata is version-dependent and consumed structurally by orchestrators/tests.
   entityStatementClaims?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  headers?: Headers;
-  status: number;
 }
 
 export interface FetchMetadataVpOptions {
@@ -29,17 +30,29 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     options: FetchMetadataVpOptions,
   ): Promise<FetchMetadataVpStepResponse> {
     const log = this.log;
-    const url = `${options.baseUrl}/.well-known/openid-federation`;
+    const url = options.baseUrl;
 
     log.info("Discovering metadata...");
     log.info(`Fetching Relying Party metadata from ${url}`);
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
-      const res = await fetchWithRetries(url, this.config.network);
-      log.info(
-        `Request completed with status ${res.response.status} after ${res.attempts} failed attempts`,
-      );
-      const entityStatementJwt = await res.response.text();
+      const res = await fetchAndValidateTrustChain(url, {
+        callbacks: {
+          ...partialCallbacks,
+          fetch: createFetcher(fetchWithConfig(this.config.network)),
+        },
+        trustAnchorUrls: this.config.trust.federation_trust_anchors as [
+          string,
+          ...string[],
+        ],
+      });
+      log.info(`Fetched Relying Party metadata from ${url} successfully`);
+      const entityStatementJwt = res[0];
+      if (!entityStatementJwt) {
+        throw new Error(
+          "Error in trust chain evaluation, neither the base jwt has been fetched",
+        );
+      }
 
       log.info("Parsing entity statement JWT...");
 
@@ -73,8 +86,6 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
 
       return {
         entityStatementClaims,
-        headers: res.response.headers,
-        status: res.response.status,
       };
     });
   }

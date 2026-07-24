@@ -88,6 +88,13 @@ export class RedirectUriDefaultStep extends StepFlow {
         throw new Error("Response code is missing in the redirect URI");
       }
 
+      // Fetch the redirect uri endpoint
+      await fetch(redirectUri).catch((e) => {
+        log.debug(
+          `Error fetching redirect_uri endpoint at ${redirectUri}. Details: ${JSON.stringify(e)}`,
+        );
+      });
+
       return {
         contentType,
         redirectUri,
