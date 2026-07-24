@@ -88,6 +88,9 @@ export class RedirectUriDefaultStep extends StepFlow {
         throw new Error("Response code is missing in the redirect URI");
       }
 
+      // Fetch the redirect uri endpoint
+      await fetch(redirectUri);
+
       return {
         contentType,
         redirectUri,
