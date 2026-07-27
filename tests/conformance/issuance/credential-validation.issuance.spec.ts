@@ -154,12 +154,14 @@ testConfigs.forEach((testConfig) => {
 
     async function runCredentialStep(
       StepClass: typeof CredentialRequestDefaultStep,
+      batchSize?: number,
     ): Promise<CredentialRequestResponse> {
       const nonce = await fetchFreshNonce();
       const config = loadConfigWithHierarchy();
       const step = new StepClass(config, baseLog);
       return step.run({
         accessToken,
+        batchSize,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
         credentialIdentifier: credentialConfigurationId,
         credentialIssuer: credentialIssuer,
@@ -771,8 +773,15 @@ testConfigs.forEach((testConfig) => {
         log.debug(
           "→ Running first credential request to capture its key pair...",
         );
+        const metadataBatchSize =
+          fetchMetadataResponse.response?.entityStatementClaims.metadata
+            ?.openid_credential_issuer?.batch_credential_issuance?.batch_size;
+        const batchSize = ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)
+          ? 1
+          : metadataBatchSize;
         const result1 = await runCredentialStep(
           testConfig.credentialRequestStepClass,
+          batchSize,
         );
 
         log.debug(
@@ -780,6 +789,7 @@ testConfigs.forEach((testConfig) => {
         );
         const result2 = await runCredentialStep(
           testConfig.credentialRequestStepClass,
+          batchSize,
         );
 
         expect(result1.success, "First credential request must succeed").toBe(
@@ -789,32 +799,56 @@ testConfigs.forEach((testConfig) => {
           true,
         );
 
-        const credKey1 = result1.response?.credentialKeyPair.publicKey;
-        const credKey2 = result2.response?.credentialKeyPair.publicKey;
+        const credKeys1 =
+          result1.response?.credentialKeyPairs.map(
+            (credentialKeyPair) => credentialKeyPair.publicKey,
+          ) ?? [];
+        const credKeys2 =
+          result2.response?.credentialKeyPairs.map(
+            (credentialKeyPair) => credentialKeyPair.publicKey,
+          ) ?? [];
         const walletKey = walletAttestationResponse.unitKey.publicKey;
 
         expect(
-          credKey1,
-          "First credential response must contain a key pair",
-        ).toBeDefined();
+          credKeys1.length,
+          "First credential response must contain key pairs",
+        ).toBeGreaterThan(0);
         expect(
-          credKey2,
-          "Second credential response must contain a key pair",
-        ).toBeDefined();
+          credKeys2.length,
+          "Second credential response must contain key pairs",
+        ).toBeGreaterThan(0);
+        expect(
+          result1.response?.credentials.length,
+          "First credential response must contain one credential per key pair",
+        ).toBe(credKeys1.length);
+        expect(
+          result2.response?.credentials.length,
+          "Second credential response must contain one credential per key pair",
+        ).toBe(credKeys2.length);
 
-        log.debug(`  First credential key kid:  ${credKey1?.kid}`);
-        log.debug(`  Second credential key kid: ${credKey2?.kid}`);
+        const keyIds1 = credKeys1.map((key) => key.kid);
+        const keyIds2 = credKeys2.map((key) => key.kid);
+
+        log.debug(`  First credential key kids:  ${keyIds1.join(", ")}`);
+        log.debug(`  Second credential key kids: ${keyIds2.join(", ")}`);
         log.debug(`  Wallet attestation key kid: ${walletKey.kid}`);
 
-        expect(
-          credKey1?.kid,
-          "Credential key MUST differ from wallet attestation key (key separation)",
-        ).not.toBe(walletKey.kid);
+        expect(new Set(keyIds1).size).toBe(keyIds1.length);
+        expect(new Set(keyIds2).size).toBe(keyIds2.length);
 
-        expect(
-          credKey1?.kid,
-          "Each credential request MUST use a freshly generated key (unlinkability)",
-        ).not.toBe(credKey2?.kid);
+        for (const credentialKey of [...credKeys1, ...credKeys2]) {
+          expect(
+            credentialKey.kid,
+            "Credential key MUST differ from wallet attestation key (key separation)",
+          ).not.toBe(walletKey.kid);
+        }
+
+        for (const firstRunKeyId of keyIds1) {
+          expect(
+            keyIds2,
+            "Each credential request MUST use freshly generated keys (unlinkability)",
+          ).not.toContain(firstRunKeyId);
+        }
 
         testSuccess = true;
       } finally {

@@ -35,7 +35,7 @@ import { KeyPair } from "@/types/key-pair";
 import { StepFlow, StepResponse } from "../step-flow";
 
 export type CredentialRequestExecuteResponse = ImmediateCredentialResponse & {
-  credentialKeyPair: KeyPair;
+  credentialKeyPairs: KeyPair[];
 };
 
 export type CredentialRequestResponse = StepResponse & {
@@ -47,6 +47,13 @@ export interface CredentialRequestStepOptions {
    * Access Token fetched during the TokenRequestStep
    */
   accessToken: string;
+
+  /**
+   * Number of credentials to request for this single credential identifier.
+   * Applies only to IT-Wallet v1.3/v1.4 batch credential issuance; v1.0 always
+   * remains a single-proof request.
+   */
+  batchSize?: number;
 
   /**
    * Client ID of the OAuth2 Client, it will be loaded from the wallet attestation public key kid
@@ -131,9 +138,14 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
   async createKeyAttestation(
     walletAttestation: CredentialRequestStepOptions["walletAttestation"],
-    credentialKeyPair: KeyPair,
+    credentialKeyPairs: KeyPair[],
   ): Promise<string> {
     const { providerKey } = walletAttestation;
+    const [firstCredentialKeyPair, ...otherCredentialKeyPairs] =
+      credentialKeyPairs;
+    if (!firstCredentialKeyPair) {
+      throw new Error("At least one credential key pair is required");
+    }
 
     const x5c = await loadWalletProviderCertificate(
       this.config.wallet,
@@ -144,7 +156,12 @@ export class CredentialRequestDefaultStep extends StepFlow {
     const provider = new WalletProvider(this.ioWalletSdkConfig);
 
     const defaults: KeyAttestationOptions = {
-      attestedKeys: [credentialKeyPair.publicKey],
+      attestedKeys: [
+        firstCredentialKeyPair.publicKey,
+        ...otherCredentialKeyPairs.map(
+          (credentialKeyPair) => credentialKeyPair.publicKey,
+        ),
+      ],
       callbacks: {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
@@ -179,16 +196,19 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     log.debug("Starting Credential Request Step");
 
-    log.info("Generating new key pair for credential...");
-    const credentialKeyPair = await this.generateCredentialKeyPair(
+    const batchSize = this.getCredentialBatchSize(options);
+
+    log.info(`Generating ${batchSize} new key pair(s) for credential...`);
+    const credentialKeyPairs = await this.generateCredentialKeyPairs(
       options.credentialIdentifier,
+      batchSize,
     );
 
     return this.execute<CredentialRequestExecuteResponse>(async () => {
       log.info("Creating the Credential Request...");
       const credentialRequest = await this.buildCredentialRequest(
         options,
-        credentialKeyPair,
+        credentialKeyPairs,
       );
       log.debug(
         "Credential Request:",
@@ -208,18 +228,27 @@ export class CredentialRequestDefaultStep extends StepFlow {
       log.debug(
         `Credential request credentialIdentifier: ${options.credentialIdentifier}`,
       );
+      log.debug(`Credential request batchSize: ${batchSize}`);
       const credentialResponse = await this.fetchCredential(
         options,
         credentialRequest,
         dpop,
       );
+      if (
+        "credentials" in credentialResponse &&
+        credentialResponse.credentials.length !== credentialKeyPairs.length
+      ) {
+        throw new Error(
+          `credential response contains ${credentialResponse.credentials.length} credential(s), expected ${credentialKeyPairs.length}`,
+        );
+      }
       log.debug(
         "Credential Response:",
         JSON.stringify(credentialResponse, null, 2),
       );
 
       return {
-        credentialKeyPair,
+        credentialKeyPairs,
         ...credentialResponse,
       } as CredentialRequestExecuteResponse;
     });
@@ -229,14 +258,33 @@ export class CredentialRequestDefaultStep extends StepFlow {
     return CredentialRequestDefaultStep.tag;
   }
 
+  private buildCredentialKeyPairIdentifier(
+    credentialIdentifier: string,
+    batchSize: number,
+    index: number,
+  ): string {
+    return batchSize === 1
+      ? credentialIdentifier
+      : `${credentialIdentifier}-${index}`;
+  }
+
   private async buildCredentialRequest(
     options: CredentialRequestStepOptions,
-    credentialKeyPair: KeyPair,
+    credentialKeyPairs: KeyPair[],
   ): Promise<CredentialRequest> {
+    const [credentialKeyPair] = credentialKeyPairs;
+    if (!credentialKeyPair) {
+      throw new Error("At least one credential key pair is required");
+    }
+
     const baseOptions = {
       callbacks: {
         hash: partialCallbacks.hash,
-        signJwt: signJwtCallback([credentialKeyPair.privateKey]),
+        signJwt: signJwtCallback(
+          credentialKeyPairs.map(
+            (credentialKeyPair) => credentialKeyPair.privateKey,
+          ),
+        ),
       },
       clientId: options.clientId,
       credential_identifier: options.credentialIdentifier,
@@ -273,7 +321,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       return createCredentialRequest({
         ...(await this.buildKeyAttestationOptions(
           options,
-          credentialKeyPair,
+          credentialKeyPairs,
           commonOptions,
         )),
         config: this.ioWalletSdkConfig,
@@ -284,7 +332,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
       return createCredentialRequest({
         ...(await this.buildKeyAttestationOptions(
           options,
-          credentialKeyPair,
+          credentialKeyPairs,
           commonOptions,
         )),
         config: this.ioWalletSdkConfig,
@@ -341,12 +389,12 @@ export class CredentialRequestDefaultStep extends StepFlow {
     T extends BaseCredentialRequestOptions,
   >(
     options: CredentialRequestStepOptions,
-    credentialKeyPair: KeyPair,
+    credentialKeyPairs: KeyPair[],
     commonOptions: T,
   ) {
     const keyAttestation = await this.createKeyAttestation(
       options.walletAttestation,
-      credentialKeyPair,
+      credentialKeyPairs,
     );
 
     this.log.debug("Key Attestation JWT created:", keyAttestation);
@@ -354,13 +402,12 @@ export class CredentialRequestDefaultStep extends StepFlow {
     return {
       ...commonOptions,
       keyAttestation,
-      signers: [
-        {
-          alg: "ES256" as const,
-          method: "jwk" as const,
-          publicJwk: credentialKeyPair.publicKey,
-        },
-      ],
+      maxBatchSize: this.getCredentialBatchSize(options),
+      signers: credentialKeyPairs.map((credentialKeyPair) => ({
+        alg: "ES256" as const,
+        method: "jwk" as const,
+        publicJwk: credentialKeyPair.publicKey,
+      })),
     };
   }
 
@@ -383,14 +430,44 @@ export class CredentialRequestDefaultStep extends StepFlow {
   private async generateCredentialKeyPair(
     credentialIdentifier: string,
   ): Promise<KeyPair> {
-    if (!this.config.issuance.save_credential) {
-      return createKeys();
-    }
+    if (!this.config.issuance.save_credential) return createKeys();
 
     const jwksPath = buildJwksPath(
       `${this.config.wallet.backup_storage_path}/${credentialIdentifier}`,
     );
 
     return createAndSaveKeys(jwksPath);
+  }
+
+  private async generateCredentialKeyPairs(
+    credentialIdentifier: string,
+    batchSize: number,
+  ): Promise<KeyPair[]> {
+    return Promise.all(
+      Array.from({ length: batchSize }, (_, index) =>
+        this.generateCredentialKeyPair(
+          this.buildCredentialKeyPairIdentifier(
+            credentialIdentifier,
+            batchSize,
+            index,
+          ),
+        ),
+      ),
+    );
+  }
+
+  private getCredentialBatchSize(
+    options: CredentialRequestStepOptions,
+  ): number {
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) return 1;
+
+    const batchSize = options.batchSize ?? 1;
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error(
+        "credential request batchSize must be a positive integer",
+      );
+    }
+
+    return batchSize;
   }
 }

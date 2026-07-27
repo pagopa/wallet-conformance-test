@@ -347,6 +347,7 @@ export function saveCredentialToDisk(
   credentialConfigurationId: string,
   credential: string,
   version: ItWalletSpecsVersion,
+  filenameSuffix?: string,
 ): null | string {
   try {
     const credentialsPath = path.resolve(credentialsStoragePath, version);
@@ -356,7 +357,7 @@ export function saveCredentialToDisk(
       mkdirSync(credentialsPath, { recursive: true });
     }
 
-    const filePath = `${credentialsPath}/${credentialConfigurationId}`;
+    const filePath = `${credentialsPath}/${credentialConfigurationId}${filenameSuffix ?? ""}`;
     writeFileSync(filePath, credential);
 
     return filePath;

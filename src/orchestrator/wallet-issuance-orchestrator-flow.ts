@@ -4,7 +4,10 @@ import {
   createClientAttestationPopJwt,
 } from "@pagopa/io-wallet-oauth2";
 import { resolveCredentialOffer } from "@pagopa/io-wallet-oid4vci";
-import { IoWalletSdkConfig } from "@pagopa/io-wallet-utils";
+import {
+  IoWalletSdkConfig,
+  ItWalletSpecsVersion,
+} from "@pagopa/io-wallet-utils";
 import { randomUUID } from "node:crypto";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
@@ -692,7 +695,7 @@ export class WalletIssuanceOrchestratorFlow {
     if (!accessToken)
       throw new StepOutputError(TokenRequestDefaultStep.tag, "access_token");
     // Retrieve credential identifier from the authorization details in the token response, if available.
-    // Give the first one because we only request one credential at a time in this test suite.
+    // Give the first one because batch issuance still targets a single credential identifier.
     const authorizationDetails = tokenResponse.response?.authorization_details;
     const firstCedentialIdentifier =
       authorizationDetails && authorizationDetails[0]?.credential_identifiers
@@ -701,6 +704,13 @@ export class WalletIssuanceOrchestratorFlow {
     const credentialIdentifier =
       firstCedentialIdentifier ?? this.issuanceConfig.credentialConfigurationId;
     return { accessToken, credentialIdentifier };
+  }
+
+  private getCredentialBatchSize(
+    metadataBatchSize: number | undefined,
+  ): number {
+    if (this.sdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) return 1;
+    return metadataBatchSize ?? 1;
   }
 
   private printTestSuiteOnce(): void {
@@ -776,8 +786,14 @@ export class WalletIssuanceOrchestratorFlow {
     if (!nonce)
       throw new StepOutputError(NonceRequestDefaultStep.tag, "c_nonce");
 
+    const credentialBatchSize = this.getCredentialBatchSize(
+      entityStatementClaims.metadata?.openid_credential_issuer
+        ?.batch_credential_issuance?.batch_size,
+    );
+
     const credentialResponse = await this.credentialRequestStep.run({
       accessToken,
+      batchSize: credentialBatchSize,
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentialIdentifier,
       credentialIssuer: credentialIssuer,
@@ -798,20 +814,24 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(credentialResponse, "Credential Request");
 
-    // Save credential to disk if configured
-    // Currently, only the first credential is saved because we support requesting one at a time
-    const firstCredential = credentialResponse.response?.credentials?.[0];
-    if (this.config.issuance.save_credential && firstCredential?.credential) {
-      const savedPath = saveCredentialToDisk(
-        this.config.wallet.credentials_storage_path,
-        credentialIdentifier,
-        firstCredential.credential,
-        this.config.wallet.wallet_version,
-      );
-      if (savedPath) {
-        this.log.info(`Credential saved to disk: ${savedPath}`);
-      } else {
-        this.log.error("Failed to save credential to disk");
+    const credentials = credentialResponse.response?.credentials ?? [];
+    const shouldUseBatchFilenames = credentials.length > 1;
+    if (this.config.issuance.save_credential) {
+      for (const [index, credential] of credentials.entries()) {
+        if (!credential.credential) continue;
+
+        const savedPath = saveCredentialToDisk(
+          this.config.wallet.credentials_storage_path,
+          credentialIdentifier,
+          credential.credential,
+          this.config.wallet.wallet_version,
+          shouldUseBatchFilenames ? `-${index}` : undefined,
+        );
+        if (savedPath) {
+          this.log.info(`Credential saved to disk: ${savedPath}`);
+        } else {
+          this.log.error("Failed to save credential to disk");
+        }
       }
     }
 

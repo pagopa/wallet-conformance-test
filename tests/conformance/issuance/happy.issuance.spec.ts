@@ -572,17 +572,14 @@ testConfigs.forEach((testConfig) => {
             `credential request failed: ${credentialResponse.error}`,
           );
 
-        const key = credentialResponse.response.credentialKeyPair.publicKey;
-        const credential = credentialResponse.response.credentials[0];
-        if (!credential) throw new Error("credential response was empty");
-
-        expect(credential.credential).toBeDefined();
-
-        const parsed = await parseCredential(credential.credential);
-        expect(parsed.credential).toBeDefined();
-        if (!parsed.credential) throw new Error("credential parsing failed");
-
-        log.info("  Successfully extracted credential");
+        const credentials = credentialResponse.response.credentials;
+        const credentialKeyPairs =
+          credentialResponse.response.credentialKeyPairs;
+        expect(credentials.length).toBeGreaterThan(0);
+        expect(
+          credentials.length,
+          "Credential response must contain one credential per generated proof key",
+        ).toBe(credentialKeyPairs.length);
 
         const credentialSchema:
           | undefined
@@ -610,28 +607,42 @@ testConfigs.forEach((testConfig) => {
             "missing claims from issuer's supported credential configuration",
           );
 
-        const queryResult = await validateDcqlQuery(
-          [
-            {
-              credential: credential.credential,
-              dpopJwk: key,
-              id: "0",
-              typ: parsed.credential.typ,
-            },
-          ],
-          {
-            credentials: [
+        for (const [index, credential] of credentials.entries()) {
+          const credentialKeyPair = credentialKeyPairs[index];
+          expect(credentialKeyPair).toBeDefined();
+          if (!credentialKeyPair) throw new Error("credential key missing");
+
+          expect(credential.credential).toBeDefined();
+
+          const parsed = await parseCredential(credential.credential);
+          expect(parsed.credential).toBeDefined();
+          if (!parsed.credential) throw new Error("credential parsing failed");
+
+          log.info(`  Successfully extracted credential ${index + 1}`);
+
+          const queryResult = await validateDcqlQuery(
+            [
               {
-                ...credentialSchema,
-                claims: claims.map((claim) => ({
-                  path: claim.path,
-                })),
-                id: "0",
+                credential: credential.credential,
+                dpopJwk: credentialKeyPair.publicKey,
+                id: `${index}`,
+                typ: parsed.credential.typ,
               },
             ],
-          } as DcqlQuery.Input,
-        );
-        expect(queryResult.can_be_satisfied).toBe(true);
+            {
+              credentials: [
+                {
+                  ...credentialSchema,
+                  claims: claims.map((claim) => ({
+                    path: claim.path,
+                  })),
+                  id: `${index}`,
+                },
+              ],
+            } as DcqlQuery.Input,
+          );
+          expect(queryResult.can_be_satisfied).toBe(true);
+        }
 
         testSuccess = true;
       } finally {
@@ -1419,18 +1430,30 @@ testConfigs.forEach((testConfig) => {
           `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
         );
 
-        const credentialPublicKey =
-          credentialResponse.response?.credentialKeyPair?.publicKey;
-        expect(credentialPublicKey).toBeDefined();
+        const credentialPublicKeys =
+          credentialResponse.response?.credentialKeyPairs.map(
+            (credentialKeyPair) => credentialKeyPair.publicKey,
+          ) ?? [];
+        expect(credentialPublicKeys.length).toBeGreaterThan(0);
 
-        if (!credentialPublicKey) {
-          log.error("  Credential public key is undefined");
+        if (credentialPublicKeys.length === 0) {
+          log.error("  Credential public keys are undefined");
           testSuccess = false;
           return;
         }
 
-        const expectedJkt = await calculateJwkThumbprint(credentialPublicKey);
-        log.debug(`  Expected JWK Thumbprint: ${expectedJkt}`);
+        const expectedJkts = new Set(
+          await Promise.all(
+            credentialPublicKeys.map((credentialPublicKey) =>
+              calculateJwkThumbprint(credentialPublicKey),
+            ),
+          ),
+        );
+        log.debug(
+          `  Expected JWK Thumbprints: ${[...expectedJkts].join(", ")}`,
+        );
+
+        const credentialJkts = new Set<string>();
 
         for (const credential of credentialResponse.response?.credentials ??
           []) {
@@ -1458,8 +1481,11 @@ testConfigs.forEach((testConfig) => {
           }
           const credentialJkt = await calculateJwkThumbprint(confirmationJwk);
           log.debug(`  Credential JWK Thumbprint: ${credentialJkt}`);
-          expect(credentialJkt).toBe(expectedJkt);
+          expect(expectedJkts.has(credentialJkt)).toBe(true);
+          credentialJkts.add(credentialJkt);
         }
+
+        expect(credentialJkts.size).toBe(expectedJkts.size);
 
         testSuccess = true;
       } finally {
