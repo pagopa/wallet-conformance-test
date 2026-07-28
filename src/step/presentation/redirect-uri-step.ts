@@ -20,6 +20,7 @@ export type RedirectUriExecuteStepResponse = RedirectUriHttpResponseMetadata &
 
 export interface RedirectUriOptions {
   authorizationResponse: CreateAuthorizationResponseResult;
+  redirect_uris?: string[];
   responseUri: string;
 }
 
@@ -82,10 +83,22 @@ export class RedirectUriDefaultStep extends StepFlow {
       }
 
       const redirectUri = new URL(redirect_uri);
+      const redirectUriNoQuery = redirect_uri.split("?")[0];
       const responseCode = redirectUri.searchParams.get("response_code");
       log.debug("Extracted response_code:", responseCode);
       if (!responseCode) {
         throw new Error("Response code is missing in the redirect URI");
+      }
+      if (!redirectUriNoQuery) {
+        throw new Error("Error removing query params from the redirect URI");
+      }
+      if (
+        options.redirect_uris &&
+        !options.redirect_uris.includes(redirectUriNoQuery)
+      ) {
+        throw new Error(
+          "Redirect URI not included in the verifier's redirect_uris metadata",
+        );
       }
 
       // Fetch the redirect uri endpoint

@@ -112,11 +112,15 @@ export class WalletPresentationOrchestratorFlow {
     this.resetResponses();
 
     try {
-      const { authorizationRequestResponse, fetchMetadataResponse } =
-        await this.runThroughAuthorize();
+      const {
+        authorizationRequestResponse,
+        fetchMetadataResponse,
+        verifierMetadata,
+      } = await this.runThroughAuthorize();
 
       const redirectUriResponse = await this.executeRedirectUri(
         authorizationRequestResponse,
+        verifierMetadata,
       );
       this.log.flowStep(
         3,
@@ -224,6 +228,7 @@ export class WalletPresentationOrchestratorFlow {
 
   private async executeRedirectUri(
     authorizationRequestResponse: AuthorizationRequestStepResponse,
+    verifierMetadata?: ItWalletCredentialVerifierMetadata,
   ) {
     if (!authorizationRequestResponse.response) {
       throw new Error("Authorization Request response is missing");
@@ -232,11 +237,26 @@ export class WalletPresentationOrchestratorFlow {
     const redirectUriResponse = await this.redirectUriStep.run({
       authorizationResponse:
         authorizationRequestResponse.response.authorizationResponse,
+      redirect_uris: this.extractRedirectUris(verifierMetadata),
       responseUri: authorizationRequestResponse.response.responseUri,
     });
     this._redirectUriResponse = redirectUriResponse;
     assertStepSuccess(redirectUriResponse, "Redirect URI");
     return redirectUriResponse;
+  }
+
+  private extractRedirectUris(
+    metadata: ItWalletCredentialVerifierMetadata | undefined,
+  ): string[] | undefined {
+    const redirectUris = metadata?.redirect_uris;
+    if (
+      Array.isArray(redirectUris) &&
+      redirectUris.every((uri) => typeof uri === "string")
+    ) {
+      return redirectUris;
+    }
+
+    return undefined;
   }
 
   private extractVerifierMetadata(
