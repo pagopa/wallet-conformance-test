@@ -235,9 +235,9 @@ export class WalletPresentationOrchestratorFlow {
     }
 
     const redirectUriResponse = await this.redirectUriStep.run({
+      allowedRedirectUris: this.extractRedirectUris(verifierMetadata),
       authorizationResponse:
         authorizationRequestResponse.response.authorizationResponse,
-      redirect_uris: this.extractRedirectUris(verifierMetadata),
       responseUri: authorizationRequestResponse.response.responseUri,
     });
     this._redirectUriResponse = redirectUriResponse;
@@ -245,18 +245,37 @@ export class WalletPresentationOrchestratorFlow {
     return redirectUriResponse;
   }
 
+  /**
+   * Reads the `redirect_uris` the verifier attests in its (Trust Chain validated) metadata.
+   * The field is not part of the `openid_credential_verifier` schema, so it arrives untyped
+   * and every entry must be checked at runtime. Malformed entries are dropped instead of
+   * discarding the whole list, so a single bad entry cannot disable the redirect_uri check.
+   */
   private extractRedirectUris(
     metadata: ItWalletCredentialVerifierMetadata | undefined,
   ): string[] | undefined {
     const redirectUris = metadata?.redirect_uris;
-    if (
-      Array.isArray(redirectUris) &&
-      redirectUris.every((uri) => typeof uri === "string")
-    ) {
-      return redirectUris;
+    if (redirectUris === undefined) {
+      return undefined;
     }
 
-    return undefined;
+    if (!Array.isArray(redirectUris)) {
+      this.log.warn(
+        "Verifier metadata declares a non-array redirect_uris: ignoring it.",
+      );
+      return undefined;
+    }
+
+    const declaredRedirectUris = redirectUris.filter(
+      (uri): uri is string => typeof uri === "string",
+    );
+    if (declaredRedirectUris.length !== redirectUris.length) {
+      this.log.warn(
+        `Verifier metadata declares ${redirectUris.length - declaredRedirectUris.length} non-string redirect_uris entries: ignoring them.`,
+      );
+    }
+
+    return declaredRedirectUris;
   }
 
   private extractVerifierMetadata(

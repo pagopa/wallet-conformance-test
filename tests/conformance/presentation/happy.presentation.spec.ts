@@ -147,6 +147,27 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(matchesMetadataBase).toBe(true);
       log.debug("  ✅ redirect_uri uses a metadata-declared base URL");
 
+      // Stricter requirement: to prevent endpoint mix-up attacks, a redirect_uri the
+      // wallet is asked to follow MUST be one of those attested in the RP's
+      // redirect_uris metadata. Verified by the redirect step, which refuses to follow
+      // an unattested target; undefined means the RP attests no redirect_uris at all.
+      const redirectUriAttested =
+        redirectUriResult.response?.redirectUriAttested;
+      if (redirectUriAttested === undefined) {
+        log.warn(
+          "  ⚠️ RP attests no redirect_uris in its openid_credential_verifier metadata: cannot verify that the returned redirect_uri belongs to the RP",
+        );
+      }
+
+      // `undefined` (nothing attested) cannot fail the requirement, only `false` can.
+      expect(
+        redirectUriAttested ?? true,
+        "redirect_uri must be one of those attested in the RP's redirect_uris metadata, obtained from its Trust Chain",
+      ).toBe(true);
+      if (redirectUriAttested) {
+        log.debug("  ✅ redirect_uri is attested in the RP's redirect_uris");
+      }
+
       testSuccess = true;
     } finally {
       log.testCompleted(DESCRIPTION, testSuccess);

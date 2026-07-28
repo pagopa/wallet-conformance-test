@@ -3,6 +3,11 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
 
+import { normalizeUriBasePath } from "@/logic";
+
+// Re-exported so specs keep a single import site for URI comparison helpers.
+export { normalizeUriBasePath };
+
 export interface RequestedPresentation {
   format: string;
   id: string;
@@ -75,12 +80,6 @@ export function normalizePresentationArray(
   }
 
   return presentations;
-}
-
-export function normalizeUriBasePath(uri: string): string {
-  const url = new URL(uri);
-  const pathname = url.pathname.replace(/\/+$/, "");
-  return `${url.origin}${pathname}`;
 }
 
 export function readDcqlClaimPaths(

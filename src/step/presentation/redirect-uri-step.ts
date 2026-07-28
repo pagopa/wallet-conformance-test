@@ -3,24 +3,35 @@ import {
   fetchAuthorizationResponse,
 } from "@pagopa/io-wallet-oid4vp";
 
-import { fetchWithConfig } from "@/logic";
+import { fetchWithConfig, uriMatchesDeclaredBasePaths } from "@/logic";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
 export type RedirectUriExecuteStepResponse = RedirectUriHttpResponseMetadata &
   (
     | {
         redirectUri: undefined;
+        redirectUriAttested: undefined;
         responseCode: undefined;
       }
     | {
         redirectUri: URL;
+        /**
+         * Whether the returned `redirect_uri` matches one of the base paths attested
+         * in the verifier's `redirect_uris` metadata. `undefined` when the verifier
+         * declares no `redirect_uris`, i.e. the requirement could not be verified.
+         */
+        redirectUriAttested: boolean | undefined;
         responseCode: string;
       }
   );
 
 export interface RedirectUriOptions {
+  /**
+   * Base paths attested in the verifier's `redirect_uris` metadata, obtained from its
+   * Trust Chain. When omitted, the returned `redirect_uri` cannot be validated.
+   */
+  allowedRedirectUris?: string[];
   authorizationResponse: CreateAuthorizationResponseResult;
-  redirect_uris?: string[];
   responseUri: string;
 }
 
@@ -77,40 +88,38 @@ export class RedirectUriDefaultStep extends StepFlow {
         return {
           contentType,
           redirectUri: undefined,
+          redirectUriAttested: undefined,
           responseCode: undefined,
           status,
         };
       }
 
       const redirectUri = new URL(redirect_uri);
-      const redirectUriNoQuery = redirect_uri.split("?")[0];
+      const redirectUriAttested = this.checkRedirectUriIsAttested(
+        redirect_uri,
+        options.allowedRedirectUris,
+      );
+
       const responseCode = redirectUri.searchParams.get("response_code");
       log.debug("Extracted response_code:", responseCode);
       if (!responseCode) {
         throw new Error("Response code is missing in the redirect URI");
       }
-      if (!redirectUriNoQuery) {
-        throw new Error("Error removing query params from the redirect URI");
-      }
-      if (
-        options.redirect_uris &&
-        !options.redirect_uris.includes(redirectUriNoQuery)
-      ) {
-        throw new Error(
-          "Redirect URI not included in the verifier's redirect_uris metadata",
-        );
-      }
 
-      // Fetch the redirect uri endpoint
-      await fetch(redirectUri).catch((e) => {
-        log.debug(
-          `Error fetching redirect_uri endpoint at ${redirectUri}. Details: ${JSON.stringify(e)}`,
-        );
-      });
+      // An unattested redirect target must not be followed: the wallet cannot tell it
+      // apart from an endpoint mix-up attack.
+      if (redirectUriAttested !== false) {
+        await fetch(redirectUri).catch((e) => {
+          log.debug(
+            `Error fetching redirect_uri endpoint at ${redirectUri}. Details: ${JSON.stringify(e)}`,
+          );
+        });
+      }
 
       return {
         contentType,
         redirectUri,
+        redirectUriAttested,
         responseCode,
         status,
       };
@@ -119,5 +128,39 @@ export class RedirectUriDefaultStep extends StepFlow {
 
   tag(): string {
     return RedirectUriDefaultStep.tag;
+  }
+
+  /**
+   * Checks the returned `redirect_uri` against the base paths attested in the verifier's
+   * `redirect_uris` metadata, as required to prevent endpoint mix-up attacks.
+   * @returns `true` on a match, `false` on a mismatch, `undefined` when the verifier
+   * attests no `redirect_uris` and the requirement therefore cannot be verified.
+   */
+  private checkRedirectUriIsAttested(
+    redirectUri: string,
+    allowedRedirectUris: string[] | undefined,
+  ): boolean | undefined {
+    const log = this.log;
+
+    if (!allowedRedirectUris || allowedRedirectUris.length === 0) {
+      log.warn(
+        "Verifier metadata attests no redirect_uris: cannot verify that the returned redirect_uri belongs to the Relying Party. Skipping the check.",
+      );
+      return undefined;
+    }
+
+    log.debug(
+      `Validating redirect_uri against ${allowedRedirectUris.length} attested redirect_uris: ${allowedRedirectUris.join(", ")}`,
+    );
+
+    if (!uriMatchesDeclaredBasePaths(redirectUri, allowedRedirectUris)) {
+      log.error(
+        `Redirect URI "${redirectUri}" does not match any redirect_uri attested in the verifier's metadata (${allowedRedirectUris.join(", ")}). Not following the redirect.`,
+      );
+      return false;
+    }
+
+    log.debug("redirect_uri matches an attested redirect_uri");
+    return true;
   }
 }
