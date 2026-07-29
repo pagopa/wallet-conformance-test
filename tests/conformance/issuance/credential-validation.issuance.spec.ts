@@ -49,6 +49,7 @@ import { FetchMetadataStepResponse } from "@/step/issuance";
 import {
   CredentialRequestDefaultStep,
   CredentialRequestResponse,
+  getCredentialResponseCredentials,
 } from "@/step/issuance/credential-request-step";
 import { AttestationResponse, RunThroughTokenContext } from "@/types";
 
@@ -675,7 +676,7 @@ testConfigs.forEach((testConfig) => {
         log.debug("→ Validating credential was successfully issued...");
         expect(result.success).toBe(true);
 
-        const credentials = result.response?.credentials;
+        const credentials = getCredentialResponseCredentials(result.response);
         expect(credentials?.length).toBeGreaterThan(0);
         log.debug(`  Credentials received: ${credentials?.length}`);
 
@@ -818,11 +819,11 @@ testConfigs.forEach((testConfig) => {
           "Second credential response must contain key pairs",
         ).toBeGreaterThan(0);
         expect(
-          result1.response?.credentials.length,
+          getCredentialResponseCredentials(result1.response).length,
           "First credential response must contain one credential per key pair",
         ).toBe(credKeys1.length);
         expect(
-          result2.response?.credentials.length,
+          getCredentialResponseCredentials(result2.response).length,
           "Second credential response must contain one credential per key pair",
         ).toBe(credKeys2.length);
 

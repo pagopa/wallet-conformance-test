@@ -34,6 +34,8 @@ import {
   AuthorizeStepResponse,
   CredentialRequestResponse,
   FetchMetadataStepResponse,
+  getCredentialResponseCredentials,
+  getCredentialResponseTransactionId,
   NonceRequestResponse,
   NotificationRequestResponse,
   PushedAuthorizationRequestResponse,
@@ -558,7 +560,9 @@ testConfigs.forEach((testConfig) => {
       },
     );
 
-    test("CI_014: Credential | Credential Object Compilation", async () => {
+    test("CI_014: Credential | Credential Object Compilation", async ({
+      skip,
+    }) => {
       const log = baseLog.withTag("CI_014");
       const DESCRIPTION = "Credential Object is properly compiled";
 
@@ -572,10 +576,22 @@ testConfigs.forEach((testConfig) => {
             `credential request failed: ${credentialResponse.error}`,
           );
 
-        const credentials = credentialResponse.response.credentials;
+        const credentials = getCredentialResponseCredentials(
+          credentialResponse.response,
+        );
+        const transactionId = getCredentialResponseTransactionId(
+          credentialResponse.response,
+        );
+        if (transactionId) {
+          log.debug(
+            `  Received transaction ID: ${transactionId} so can skip the CI_161a test for revocation/suspension`,
+          );
+          skip();
+        }
+        expect(credentials.length).toBeGreaterThan(0);
+
         const credentialKeyPairs =
           credentialResponse.response.credentialKeyPairs;
-        expect(credentials.length).toBeGreaterThan(0);
         expect(
           credentials.length,
           "Credential response must contain one credential per generated proof key",
@@ -1047,12 +1063,11 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          expect(
-            credentialResponse.response?.credentials?.length,
-          ).toBeGreaterThan(0);
-          log.debug(
-            `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+          const credentials = getCredentialResponseCredentials(
+            credentialResponse.response,
           );
+          expect(credentials.length).toBeGreaterThan(0);
+          log.debug(`  Credentials received: ${credentials.length}`);
 
           testSuccess = true;
         } finally {
@@ -1412,7 +1427,9 @@ testConfigs.forEach((testConfig) => {
     // CREDENTIAL REQUEST TESTS
     // ============================================================================
 
-    test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async () => {
+    test("CI_084: Credential | When all validation checks succeed, Credential Issuer creates a new Credential cryptographically bound to the validated key material and provides it to the Wallet Instance", async ({
+      skip,
+    }) => {
       const log = baseLog.withTag("CI_084");
       const DESCRIPTION =
         "Credential is cryptographically bound to Wallet Instance key";
@@ -1423,12 +1440,20 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        expect(
-          credentialResponse.response?.credentials?.length,
-        ).toBeGreaterThan(0);
-        log.debug(
-          `  Credentials received: ${credentialResponse.response?.credentials?.length}`,
+        const credentials = getCredentialResponseCredentials(
+          credentialResponse.response,
         );
+        const transactionId = getCredentialResponseTransactionId(
+          credentialResponse.response,
+        );
+        if (transactionId) {
+          log.debug(
+            `  Received transaction ID: ${transactionId} so can skip the CI_161a test for revocation/suspension`,
+          );
+          skip();
+        }
+        expect(credentials.length).toBeGreaterThan(0);
+        log.debug(`  Credentials received: ${credentials.length}`);
 
         const credentialPublicKeys =
           credentialResponse.response?.credentialKeyPairs.map(
@@ -1455,8 +1480,7 @@ testConfigs.forEach((testConfig) => {
 
         const credentialJkts = new Set<string>();
 
-        for (const credential of credentialResponse.response?.credentials ??
-          []) {
+        for (const credential of credentials) {
           expect(credential.credential).toBeDefined();
 
           const sdJwt = await SDJwt.extractJwt(credential.credential);
@@ -1585,8 +1609,9 @@ testConfigs.forEach((testConfig) => {
           const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
 
           const sdJwtCredentials: string[] = [];
-          for (const credObj of credentialResponse.response?.credentials ??
-            []) {
+          for (const credObj of getCredentialResponseCredentials(
+            credentialResponse.response,
+          )) {
             try {
               await SDJwt.extractJwt(credObj.credential);
               sdJwtCredentials.push(credObj.credential);
@@ -1631,7 +1656,9 @@ testConfigs.forEach((testConfig) => {
       },
     );
 
-    test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async () => {
+    test("CI_118: Credential | (Q)EAA are Issued to a Wallet Instance in SD-JWT VC or mdoc-CBOR data format.", async ({
+      skip,
+    }) => {
       const log = baseLog.withTag("CI_118");
       const DESCRIPTION =
         "Credential is in valid format (SD-JWT VC or mdoc-CBOR)";
@@ -1643,8 +1670,20 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         let hasValidFormat = false;
-        for (const credential of credentialResponse.response?.credentials ??
-          []) {
+        const credentials = getCredentialResponseCredentials(
+          credentialResponse.response,
+        );
+        const transactionId = getCredentialResponseTransactionId(
+          credentialResponse.response,
+        );
+        if (transactionId) {
+          log.debug(
+            `  Received transaction ID: ${transactionId} so can skip the CI_161a test for revocation/suspension`,
+          );
+          skip();
+        }
+
+        for (const credential of credentials) {
           try {
             await SDJwt.extractJwt(credential.credential);
             log.debug("  Format: SD-JWT VC");

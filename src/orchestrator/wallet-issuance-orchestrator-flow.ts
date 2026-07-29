@@ -37,6 +37,9 @@ import {
   DeferredCredentialRequestResponse,
   FetchMetadataDefaultStep,
   FetchMetadataStepResponse,
+  getCredentialResponseCredentials,
+  getCredentialResponseNotificationId,
+  getCredentialResponseTransactionId,
   NonceRequestDefaultStep,
   NonceRequestResponse,
   NotificationRequestDefaultStep,
@@ -814,7 +817,9 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(credentialResponse, "Credential Request");
 
-    const credentials = credentialResponse.response?.credentials ?? [];
+    const credentials = getCredentialResponseCredentials(
+      credentialResponse.response,
+    );
     const shouldUseBatchFilenames = credentials.length > 1;
     if (this.config.issuance.save_credential) {
       for (const [index, credential] of credentials.entries()) {
@@ -1054,7 +1059,14 @@ export class WalletIssuanceOrchestratorFlow {
   }): Promise<void> {
     if (this.config.issuance.save_credential) return;
 
-    const notificationId = credentialResponse.response?.notification_id;
+    const transactionId = getCredentialResponseTransactionId(
+      credentialResponse.response,
+    );
+    if (transactionId) return;
+
+    const notificationId = getCredentialResponseNotificationId(
+      credentialResponse.response,
+    );
     if (!notificationId) return;
 
     this.log.info(

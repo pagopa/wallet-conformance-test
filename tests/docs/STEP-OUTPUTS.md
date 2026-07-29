@@ -471,22 +471,31 @@ and returns the authorization code.
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: {
-    // ImmediateCredentialResponse fields
-    credentials: [                         // Non-empty array (at least one element guaranteed)
-      { credential: string },              // credential: the issued token (SD-JWT, mDOC, …)
-      ...{ credential: string }[]
-    ];
-    notification_id?: string;             // Optional notification ID for deferred status
+  response?: (
+    | {
+        // ImmediateCredentialResponse fields
+        credentials: [                       // Non-empty array (at least one element guaranteed)
+          { credential: string },            // credential: the issued token (SD-JWT, mDOC, …)
+          ...{ credential: string }[]
+        ];
+        notification_id?: string;            // Optional notification ID for credential notifications
+      }
+    | {
+        // DeferredCredentialResponse fields
+        transaction_id: string;              // Use with deferred_credential_endpoint
+        interval?: number;
+        lead_time?: number;
+      }
+  ) & {
     // Step-added field
-    credentialKeyPairs: [                  // Ordered key pairs generated for the submitted proofs
+    credentialKeyPairs: [                    // Ordered key pairs generated for the submitted proofs
       {
         publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
         privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
       },
       ...KeyPair[]
     ];
-  }
+  };
 }
 ```
 
@@ -513,10 +522,10 @@ and returns the authorization code.
 
 **Common Assertions**:
 - `response.success === true`
-- `response.response?.credentials` is a non-empty array
-- `response.response?.credentials[0].credential` is a non-empty string (JWT or mDOC)
+- if `"credentials" in response.response`, `response.response.credentials` is a non-empty array
+- if `"transaction_id" in response.response`, the issuer returned a deferred credential response
 - `response.response?.credentialKeyPairs` contains one public/private key pair per returned credential
-- `response.response?.credentials.length === response.response?.credentialKeyPairs.length`
+- for immediate responses, `response.response.credentials.length === response.response.credentialKeyPairs.length`
 
 **Note**: Use `createCredentialRequestOverrides` to test negative cases (e.g., wrong proofType, invalid nonce). When `batchSize` is greater than one, every proof uses a distinct key pair and the array order matches the generated signers.
 

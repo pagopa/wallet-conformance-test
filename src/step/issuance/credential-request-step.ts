@@ -34,7 +34,7 @@ import { KeyPair } from "@/types/key-pair";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
-export type CredentialRequestExecuteResponse = ImmediateCredentialResponse & {
+export type CredentialRequestExecuteResponse = CredentialResponse & {
   credentialKeyPairs: KeyPair[];
 };
 
@@ -108,6 +108,14 @@ export interface CredentialRequestStepOptions {
    */
   walletAttestation: Omit<AttestationResponse, "created">;
 }
+
+export type DeferredCredentialRequestExecuteResponse =
+  CredentialRequestExecuteResponse &
+    Extract<CredentialResponse, { transaction_id: string }>;
+
+export type ImmediateCredentialRequestExecuteResponse =
+  CredentialRequestExecuteResponse & ImmediateCredentialResponse;
+
 /**
  * The parameter type of `WalletProvider.createItKeyAttestationJwt`, derived
  * directly from the SDK so it never drifts from the installed version.
@@ -470,4 +478,40 @@ export class CredentialRequestDefaultStep extends StepFlow {
 
     return batchSize;
   }
+}
+
+export function getCredentialResponseCredentials(
+  response: CredentialRequestExecuteResponse | undefined,
+): ImmediateCredentialResponse["credentials"] {
+  return isImmediateCredentialRequestResponse(response)
+    ? response.credentials
+    : [];
+}
+
+export function getCredentialResponseNotificationId(
+  response: CredentialRequestExecuteResponse | undefined,
+): string | undefined {
+  return isImmediateCredentialRequestResponse(response)
+    ? response.notification_id
+    : undefined;
+}
+
+export function getCredentialResponseTransactionId(
+  response: CredentialRequestExecuteResponse | undefined,
+): string | undefined {
+  return isDeferredCredentialRequestResponse(response)
+    ? response.transaction_id
+    : undefined;
+}
+
+export function isDeferredCredentialRequestResponse(
+  response: CredentialRequestExecuteResponse | undefined,
+): response is DeferredCredentialRequestExecuteResponse {
+  return response !== undefined && "transaction_id" in response;
+}
+
+export function isImmediateCredentialRequestResponse(
+  response: CredentialRequestExecuteResponse | undefined,
+): response is ImmediateCredentialRequestExecuteResponse {
+  return response !== undefined && "credentials" in response;
 }

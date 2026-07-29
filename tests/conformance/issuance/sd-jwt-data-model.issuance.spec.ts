@@ -21,7 +21,10 @@ import z from "zod";
 
 import { fetchWithConfig } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
-import { CredentialRequestResponse } from "@/step/issuance";
+import {
+  CredentialRequestResponse,
+  getCredentialResponseCredentials,
+} from "@/step/issuance";
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
@@ -90,7 +93,9 @@ testConfigs.forEach((testConfig) => {
 
     async function getSdJwtCredentials(): Promise<string[]> {
       const result: string[] = [];
-      for (const credObj of credentialResponse.response?.credentials ?? []) {
+      for (const credObj of getCredentialResponseCredentials(
+        credentialResponse.response,
+      )) {
         try {
           await SDJwt.extractJwt(credObj.credential);
           result.push(credObj.credential);
@@ -1421,8 +1426,9 @@ testConfigs.forEach((testConfig) => {
           const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
 
           const sdJwtCredentials: string[] = [];
-          for (const credObj of credentialResponse.response?.credentials ??
-            []) {
+          for (const credObj of getCredentialResponseCredentials(
+            credentialResponse.response,
+          )) {
             try {
               await SDJwt.extractJwt(credObj.credential);
               sdJwtCredentials.push(credObj.credential);
