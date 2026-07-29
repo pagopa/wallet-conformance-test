@@ -94,12 +94,18 @@ export function parseCredentialFromMdoc(
     throw new Error("missing DeviceSignedDocument from MDoc DeviceResponse");
   }
 
+  const namespaces = Object.fromEntries(
+    [...document.issuerNamespaces.issuerNamespaces.keys()].map((namespace) => [
+      namespace,
+      document.getPrettyClaims(namespace) ?? {},
+    ]),
+  );
+
   return {
     credential_format: "mso_mdoc",
     cryptographic_holder_binding: true,
-    doctype: document.docType,
-    namespaces: document.issuerSigned
-      .nameSpaces as unknown as DcqlMdocCredential["namespaces"],
+    doctype: document.issuerAuth.mobileSecurityObject.docType,
+    namespaces: namespaces as DcqlMdocCredential["namespaces"],
   };
 }
 

@@ -6,5 +6,4 @@ export * from "./fetch-with-retries-response";
 export * from "./issuance-orchestrator-context";
 export * from "./key-pair";
 export * from "./logger";
-export * from "./mdoc";
 export * from "./presentation-orchestrator-context";

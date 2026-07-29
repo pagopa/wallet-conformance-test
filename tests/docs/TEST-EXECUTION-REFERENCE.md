@@ -22,6 +22,12 @@ The issuance flow validates credential issuance conformance according to [Creden
 
 - **CI_009**: Inspects the `metadata` object inside the Entity Configuration and verifies that the `openid_credential_verifier` key is present. This sub-object is required when the Credential Issuer acts as a verifier during user authentication (i.e., when it requests a PID presentation from the Wallet Instance via OpenID4VP). Fails if the key is absent.
 
+- **CI_035**: Verifies that the Credential Issuer successfully evaluates the Wallet Provider's trust chain. It checks that the PAR request was accepted (indicating trust was established) and that the `trust_chain` embedded in the wallet attestation contains only non-expired JWTs.
+
+- **CI_036**: Verifies that the Credential Issuer retrieves federation metadata via the `.well-known/openid-federation` endpoint. Confirms that metadata was discovered via the federation and that the entity statement contains `openid_credential_issuer` metadata.
+
+- **CI_037**: Verifies that the Credential Issuer establishes trust in the Wallet Provider via the federation. Confirms that PAR was accepted and that the fetched entity statement includes `federation_entity` metadata.
+
 #### Credential Offer Tests
 
 - **CI_010**: Verifies that the `credential_offer_uri` (or the embedded `credential_offer`) has a valid structure. It checks that the URI starts with a recognized scheme (`openid-credential-offer://`, `haip-vci://`, or `https://`) and that the JSON offer can be successfully retrieved and parsed.
@@ -43,6 +49,10 @@ These are negative tests: each sends a deliberately malformed PAR request and ve
 - **CI_015c**: Sends a PAR Request Object where the `kid` header is set to `"wrong-kid-that-does-not-match"` even though the JWT is signed with the correct wallet key. Verifies that the issuer checks the `kid` header value against the key reference in the Wallet Attestation and rejects a mismatched identifier.
 
 - **CI_015d**: Signs a valid PAR Request Object, then decodes the payload, modifies the `aud` claim to `"https://tampered.example.com"`, re-encodes it, and reassembles the token (original signature is now invalid for the modified payload). Verifies that the issuer detects payload tampering through cryptographic signature verification.
+
+- **CI_017**: Sends a PAR request containing both `scope` and `authorization_details`. Verifies that the issuer correctly accepts the request, confirming it can interpret both parameters simultaneously.
+
+- **CI_017a**: Sends a PAR request where both `scope` and `authorization_details` reference the same credential type. Verifies that the issuer accepts the request, implying that `authorization_details` is honoured as the primary source of credential configuration.
 
 - **CI_019**: Sends a PAR Request Object signed with HMAC-SHA256 (`HS256`), a symmetric algorithm. Verifies that the issuer enforces the requirement for asymmetric algorithms only and rejects the request.
 
@@ -70,6 +80,8 @@ These are negative tests: each sends a deliberately malformed PAR request and ve
 
 - **CI_028c**: Builds a PoP JWT with `iat` 11 minutes in the past and `exp` 10 minutes in the past, making it already expired at request time. Verifies that the issuer validates the PoP expiration time and rejects an expired PoP.
 
+- **CI_030**: Sends a PAR request with a Wallet Attestation from a Wallet Provider that is not registered in the trust federation. Verifies that the issuer rejects the request, confirming it validates the Wallet Provider's membership in the federation.
+
 - **CI_031**: Sends a PAR request with a wallet attestation that has been tampered with (e.g., modified `sub` claim). Verifies that the issuer detects the invalid cryptographic signature of the attestation and rejects the request.
 
 - **CI_032**: Sends a PAR request with a wallet attestation that has already expired. Verifies that the issuer validates the attestation's expiration time (`exp` claim) and rejects the expired token.
@@ -94,6 +106,8 @@ These are positive checks run against the response of a successful PAR request.
 
 - **CI_044b**: Reads the `expires_in` field from the PAR response and asserts that it is a positive number. This value tells the wallet how many seconds the `request_uri` remains valid before it must start a new PAR.
 
+- **CI_045**: Sends an invalid PAR request (e.g., signed with the wrong key) and verifies that the issuer returns an appropriate HTTP 4xx status code (e.g., 400 or 401). This ensures the issuer provides standard OAuth 2.0 error signaling at the HTTP layer.
+
 - **CI_029**: Verifies that the Credential Issuer successfully resolves the Wallet Instance's trust chain and accepts a PAR request from a trusted wallet. The test checks that the PAR step returned a defined response with no error. It also decodes the wallet attestation JWT header: if a `trust_chain` array is embedded directly, the issuer resolved trust from there; otherwise, trust is resolved through the federation API endpoints (`.well-known/openid-federation`). Either path is accepted; what matters is that the issuer validated the attestation end-to-end and returned a successful PAR response.
 
 #### Authorization Request Validation Tests
@@ -105,6 +119,8 @@ These are positive checks run against the response of a successful PAR request.
 - **CI_049**: Verifies PAR–authorization correlation. Checks that the PAR response contained a `request_uri` matching the URN pattern `urn:ietf:params:oauth:request_uri:…`, and that the subsequent authorization step succeeded and returned an authorization `code`. If the issuer had not correctly associated the PAR session with the authorization request, the authorization would have failed.
 
 - **CI_050**: Sends an authorization request without a `request_uri` parameter (empty string). Verifies that the issuer rejects the request, enforcing the PAR-only flow where authorization requests must reference a previously submitted PAR via `request_uri`.
+
+- **CI_059**: Sends an invalid authorization request (e.g., missing `request_uri`) and verifies that the issuer returns an appropriate HTTP 4xx status code (e.g., 400, 401, or 403). This ensures consistent error reporting for authorization requests.
 
 #### Authorization Tests
 

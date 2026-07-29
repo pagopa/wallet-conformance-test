@@ -20,8 +20,8 @@ import {
   createAndSaveKeys,
   createAndSaveKeysWithX5C,
   loadOrCreateCertificateWithKey,
-  verifyJwt,
 } from ".";
+import { createVerifyJwtCallback, verifyJwt } from "./jwt";
 import { resolvePackageAssetPath } from "./runtime-paths";
 
 export const CLOCK_SKEW_TOLERANCE_MS = 30_000;
@@ -120,6 +120,15 @@ export async function fetchWithRetries(
   }
 
   throw new Error(`Request failed with no retries left: aborting`);
+}
+
+export function partialCallbacksWithTrustAnchorUrls(
+  trustAnchorUrls?: string[],
+): Pick<CallbackContext, "generateRandom" | "hash" | "verifyJwt"> {
+  return {
+    ...partialCallbacks,
+    verifyJwt: createVerifyJwtCallback({ trustAnchorUrls }),
+  };
 }
 
 /**

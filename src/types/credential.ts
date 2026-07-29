@@ -1,4 +1,4 @@
-import { IssuerSignedDocument } from "@auth0/mdl";
+import { IssuerSigned } from "@owf/mdoc";
 import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery, DcqlQueryResult } from "dcql";
 import z from "zod";
@@ -13,7 +13,7 @@ export type Credential = {
       typ: "dc+sd-jwt";
     }
   | {
-      parsed: IssuerSignedDocument;
+      parsed: IssuerSigned;
       typ: "mso_mdoc";
     }
 );

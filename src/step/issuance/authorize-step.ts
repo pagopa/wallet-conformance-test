@@ -15,8 +15,11 @@ import { platform } from "node:os";
 
 import { startCallbackServer } from "@/logic/callback-server";
 import { getCallbackRedirectUri } from "@/logic/constants";
-import { getEncryptJweCallback, verifyJwt } from "@/logic/jwt";
-import { fetchWithRetries, partialCallbacks } from "@/logic/utils";
+import { createVerifyJwtCallback, getEncryptJweCallback } from "@/logic/jwt";
+import {
+  fetchWithRetries,
+  partialCallbacksWithTrustAnchorUrls,
+} from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { AttestationResponse, CredentialWithKey } from "@/types";
 
@@ -133,7 +136,11 @@ export class AuthorizeDefaultStep extends StepFlow {
     const requestObjectJwt = await fetchAuthorize.response.text();
     this.log.debug("Request Object JWT fetched successfully", requestObjectJwt);
     const parsedAuthorizeRequest = await parseAuthorizeRequest({
-      callbacks: { verifyJwt },
+      callbacks: {
+        verifyJwt: createVerifyJwtCallback({
+          trustAnchorUrls: this.config.trust.federation_trust_anchors,
+        }),
+      },
       config: this.ioWalletSdkConfig,
       requestObjectJwt,
     });
@@ -202,7 +209,9 @@ export class AuthorizeDefaultStep extends StepFlow {
       authorization_encrypted_response_enc:
         options.rpMetadata.authorization_encrypted_response_enc,
       callbacks: {
-        ...partialCallbacks,
+        ...partialCallbacksWithTrustAnchorUrls(
+          this.config.trust.federation_trust_anchors,
+        ),
         encryptJwe: getEncryptJweCallback(),
       },
       config: this.ioWalletSdkConfig,
@@ -230,7 +239,9 @@ export class AuthorizeDefaultStep extends StepFlow {
     const sendAuthorizationResponseAndExtractCodeOptions = {
       authorizationResponseJarm: authorizationResponse.jarm.responseJwe,
       callbacks: {
-        verifyJwt,
+        verifyJwt: createVerifyJwtCallback({
+          trustAnchorUrls: this.config.trust.federation_trust_anchors,
+        }),
       },
       iss: options.baseUrl,
       presentationResponseUri: responseUri,
