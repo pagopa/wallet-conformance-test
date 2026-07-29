@@ -54,6 +54,7 @@ vi.mock("@/logic", async (importOriginal) => {
         wallet_version: "1.0",
       },
     }),
+    saveCredentialResponseBackup: vi.fn().mockReturnValue([]),
   };
 });
 

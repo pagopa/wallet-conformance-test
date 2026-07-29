@@ -13,14 +13,17 @@ import { randomUUID } from "node:crypto";
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
 import {
   createLogger,
+  CredentialResponseBackupPersistenceError,
   loadConfigWithHierarchy,
   partialCallbacks,
+  saveCredentialResponseBackup,
   saveCredentialToDisk,
   signJwtCallback,
 } from "@/logic";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import {
   CredentialConfigurationError,
+  CredentialResponseBackupError,
   DeferredIssuancePreconditionError,
   IssuerMetadataError,
   OrchestratorError,
@@ -183,7 +186,9 @@ export class WalletIssuanceOrchestratorFlow {
         await this.requestDeferredCredentialWithToken({
           accessToken,
           dPoPKey,
+          fallbackRefreshToken: refreshTokenDeferred,
           fetchMetadataResponse,
+          tokenResponse,
           transactionId,
         });
 
@@ -291,6 +296,7 @@ export class WalletIssuanceOrchestratorFlow {
           credentialIssuer,
           dPoPKey,
           fetchMetadataResponse,
+          tokenResponse,
           walletAttestationResponse,
         });
 
@@ -377,7 +383,9 @@ export class WalletIssuanceOrchestratorFlow {
           credentialIdentifier,
           credentialIssuer,
           dPoPKey,
+          fallbackRefreshToken: refreshToken,
           fetchMetadataResponse,
+          tokenResponse,
           walletAttestationResponse,
         });
 
@@ -716,6 +724,22 @@ export class WalletIssuanceOrchestratorFlow {
     return metadataBatchSize ?? 1;
   }
 
+  private getDeferredCredentialResponseNotificationId(
+    response: DeferredCredentialRequestResponse["response"],
+  ): string | undefined {
+    return response && "credentials" in response
+      ? response.notification_id
+      : undefined;
+  }
+
+  private getDeferredCredentialResponseTransactionId(
+    response: DeferredCredentialRequestResponse["response"],
+  ): string | undefined {
+    return response && "transaction_id" in response
+      ? response.transaction_id
+      : undefined;
+  }
+
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
@@ -752,14 +776,18 @@ export class WalletIssuanceOrchestratorFlow {
     credentialIdentifier,
     credentialIssuer,
     dPoPKey,
+    fallbackRefreshToken,
     fetchMetadataResponse,
+    tokenResponse,
     walletAttestationResponse,
   }: {
     accessToken: string;
     credentialIdentifier: string;
     credentialIssuer: string;
     dPoPKey: KeyPair;
+    fallbackRefreshToken?: string;
     fetchMetadataResponse: FetchMetadataStepResponse;
+    tokenResponse: TokenRequestResponse;
     walletAttestationResponse: AttestationResponse;
   }): Promise<{
     credentialResponse: CredentialRequestResponse;
@@ -817,6 +845,14 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(credentialResponse, "Credential Request");
 
+    this.saveCredentialResponseBackup({
+      accessToken,
+      credentialResponse,
+      dPoPKey,
+      fallbackRefreshToken,
+      tokenResponse,
+    });
+
     const credentials = getCredentialResponseCredentials(
       credentialResponse.response,
     );
@@ -850,12 +886,16 @@ export class WalletIssuanceOrchestratorFlow {
   private async requestDeferredCredentialWithToken({
     accessToken,
     dPoPKey,
+    fallbackRefreshToken,
     fetchMetadataResponse,
+    tokenResponse,
     transactionId,
   }: {
     accessToken: string;
     dPoPKey: KeyPair;
+    fallbackRefreshToken?: string;
     fetchMetadataResponse: FetchMetadataStepResponse;
+    tokenResponse: TokenRequestResponse;
     transactionId: string;
   }): Promise<DeferredCredentialRequestResponse> {
     const entityStatementClaims =
@@ -891,6 +931,14 @@ export class WalletIssuanceOrchestratorFlow {
       deferredCredentialResponse,
       "Deferred Credential Request",
     );
+
+    this.saveDeferredCredentialResponseBackup({
+      accessToken,
+      deferredCredentialResponse,
+      dPoPKey,
+      fallbackRefreshToken,
+      tokenResponse,
+    });
 
     this.saveFirstCredentialIfConfigured(deferredCredentialResponse);
 
@@ -1016,6 +1064,66 @@ export class WalletIssuanceOrchestratorFlow {
     };
   }
 
+  private saveCredentialResponseBackup({
+    accessToken,
+    credentialResponse,
+    dPoPKey,
+    fallbackRefreshToken,
+    tokenResponse,
+  }: {
+    accessToken: string;
+    credentialResponse: CredentialRequestResponse;
+    dPoPKey: KeyPair;
+    fallbackRefreshToken?: string;
+    tokenResponse: TokenRequestResponse;
+  }): void {
+    const transactionId = getCredentialResponseTransactionId(
+      credentialResponse.response,
+    );
+    const notificationId = getCredentialResponseNotificationId(
+      credentialResponse.response,
+    );
+
+    this.writeCredentialResponseBackup({
+      accessToken,
+      dPoPKey,
+      fallbackRefreshToken,
+      notificationId,
+      tokenResponse,
+      transactionId,
+    });
+  }
+
+  private saveDeferredCredentialResponseBackup({
+    accessToken,
+    deferredCredentialResponse,
+    dPoPKey,
+    fallbackRefreshToken,
+    tokenResponse,
+  }: {
+    accessToken: string;
+    deferredCredentialResponse: DeferredCredentialRequestResponse;
+    dPoPKey: KeyPair;
+    fallbackRefreshToken?: string;
+    tokenResponse: TokenRequestResponse;
+  }): void {
+    const transactionId = this.getDeferredCredentialResponseTransactionId(
+      deferredCredentialResponse.response,
+    );
+    const notificationId = this.getDeferredCredentialResponseNotificationId(
+      deferredCredentialResponse.response,
+    );
+
+    this.writeCredentialResponseBackup({
+      accessToken,
+      dPoPKey,
+      fallbackRefreshToken,
+      notificationId,
+      tokenResponse,
+      transactionId,
+    });
+  }
+
   private saveFirstCredentialIfConfigured(
     deferredCredentialResponse: DeferredCredentialRequestResponse,
   ): void {
@@ -1102,6 +1210,57 @@ export class WalletIssuanceOrchestratorFlow {
       this.log.warn(
         `Notification endpoint request failed (${notificationRequestResponse.error?.message ?? "unknown error"}). ` +
           `Proceeding: notification is non-critical for valid issuance.`,
+      );
+    }
+  }
+
+  private writeCredentialResponseBackup({
+    accessToken,
+    dPoPKey,
+    fallbackRefreshToken,
+    notificationId,
+    tokenResponse,
+    transactionId,
+  }: {
+    accessToken: string;
+    dPoPKey: KeyPair;
+    fallbackRefreshToken?: string;
+    notificationId?: string;
+    tokenResponse: TokenRequestResponse;
+    transactionId?: string;
+  }): void {
+    if (!transactionId && !notificationId) return;
+
+    try {
+      const savedPaths = saveCredentialResponseBackup(
+        this.config.wallet.backup_storage_path,
+        {
+          access_token: accessToken,
+          dpop_jwk: dPoPKey.privateKey,
+          notification_id: notificationId,
+          refresh_token:
+            tokenResponse.response?.refresh_token ?? fallbackRefreshToken,
+          transaction_id: transactionId,
+        },
+      );
+      for (const savedPath of savedPaths) {
+        this.log.info(`Credential Response backup saved to disk: ${savedPath}`);
+      }
+    } catch (error) {
+      if (error instanceof CredentialResponseBackupPersistenceError) {
+        throw new CredentialResponseBackupError(
+          error.identifierType,
+          error.operation,
+          error.safePath,
+          error,
+        );
+      }
+
+      throw new CredentialResponseBackupError(
+        transactionId ? "transaction_id" : "notification_id",
+        "write_file",
+        this.config.wallet.backup_storage_path,
+        error,
       );
     }
   }

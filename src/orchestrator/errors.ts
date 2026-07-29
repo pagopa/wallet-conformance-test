@@ -34,6 +34,35 @@ export class CredentialConfigurationError extends OrchestratorError {
   }
 }
 
+export class CredentialResponseBackupError extends OrchestratorError {
+  readonly identifierType: "notification_id" | "transaction_id";
+  readonly operation: "ensure_directory" | "validate_identifier" | "write_file";
+  readonly safePath: string;
+
+  constructor(
+    identifierType: "notification_id" | "transaction_id",
+    operation: "ensure_directory" | "validate_identifier" | "write_file",
+    safePath: string,
+    cause?: unknown,
+  ) {
+    const causeMessage =
+      cause instanceof Error
+        ? cause.message
+        : cause
+          ? String(cause)
+          : undefined;
+    super(
+      `Credential Response backup failed during ${operation} for ${identifierType} at '${safePath}'` +
+        (causeMessage ? `: ${causeMessage}` : ""),
+      "CREDENTIAL_RESPONSE_BACKUP_FAILED",
+    );
+    this.name = "CredentialResponseBackupError";
+    this.identifierType = identifierType;
+    this.operation = operation;
+    this.safePath = safePath;
+  }
+}
+
 export class DeferredIssuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
