@@ -24,6 +24,7 @@ import { deepMerge } from "./utils";
  */
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
+  batchCredentialConfigurationId?: string;
   bindAddress?: string;
   credentialConfigurationIdReissuance?: string;
   credentialIssuerUri?: string;
@@ -358,6 +359,9 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
   ...(options.credentialOfferUri && {
     credential_offer_uri: options.credentialOfferUri,
   }),
+  ...(options.batchCredentialConfigurationId && {
+    batch_credential_configuration_id: options.batchCredentialConfigurationId,
+  }),
   ...(options.credentialTypes && {
     credential_types: options.credentialTypes
       .split(",")
@@ -537,6 +541,11 @@ function readCliOptionsFromEnv(): CliOptions {
     "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
   );
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
+  readStringEnv(
+    options,
+    "batchCredentialConfigurationId",
+    "CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID",
+  );
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
   readNumberEnv(options, "maxRetries", "CONFIG_MAX_RETRIES");
   readStringEnv(options, "logLevel", "CONFIG_LOG_LEVEL");

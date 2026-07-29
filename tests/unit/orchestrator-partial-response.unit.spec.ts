@@ -26,6 +26,7 @@ import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presen
 const logicMocks = vi.hoisted(() => ({
   config: {
     issuance: {
+      batch_credential_configuration_id: undefined as string | undefined,
       credential_offer_uri: "",
       credential_types: ["dc_sd_jwt_PersonIdentificationData"],
       save_credential: false,
@@ -126,6 +127,7 @@ function makeStepSuccess<T>(response: T) {
 }
 
 function setMockConfig(options?: {
+  batchCredentialConfigurationId?: string;
   saveCredential?: boolean;
   walletVersion?: ItWalletSpecsVersion;
 }) {
@@ -133,6 +135,8 @@ function setMockConfig(options?: {
     ...logicMocks.config,
     issuance: {
       ...logicMocks.config.issuance,
+      batch_credential_configuration_id:
+        options?.batchCredentialConfigurationId,
       save_credential: options?.saveCredential ?? false,
     },
     wallet: {
@@ -494,6 +498,7 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
 
   test("forwards v1.3 metadata batch_size for the first token credential identifier and saves each returned credential", async () => {
     setMockConfig({
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       saveCredential: true,
       walletVersion: ItWalletSpecsVersion.V1_3,
     });
@@ -627,17 +632,33 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
 
   test.each([
     {
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       metadataBatchSize: 4,
       walletVersion: ItWalletSpecsVersion.V1_0,
     },
     {
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
       metadataBatchSize: undefined,
       walletVersion: ItWalletSpecsVersion.V1_3,
     },
+    {
+      batchCredentialConfigurationId: undefined,
+      metadataBatchSize: 4,
+      walletVersion: ItWalletSpecsVersion.V1_3,
+    },
+    {
+      batchCredentialConfigurationId: "mso_mdoc_CompanyBadge",
+      metadataBatchSize: 4,
+      walletVersion: ItWalletSpecsVersion.V1_4,
+    },
   ])(
-    "uses batch size one for walletVersion=$walletVersion and metadataBatchSize=$metadataBatchSize",
-    async ({ metadataBatchSize, walletVersion }) => {
-      setMockConfig({ walletVersion });
+    "uses batch size one for walletVersion=$walletVersion, metadataBatchSize=$metadataBatchSize and batchCredentialConfigurationId=$batchCredentialConfigurationId",
+    async ({
+      batchCredentialConfigurationId,
+      metadataBatchSize,
+      walletVersion,
+    }) => {
+      setMockConfig({ batchCredentialConfigurationId, walletVersion });
       const singleOrchestrator = new WalletIssuanceOrchestratorFlow(
         IssuerTestConfiguration.createDefault(),
       );

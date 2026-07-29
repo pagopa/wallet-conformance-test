@@ -119,6 +119,11 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     options.presentationAuthorizeScript,
   );
   applyEnvOption(env, "CONFIG_CREDENTIAL_TYPES", options.credentialTypes);
+  applyEnvOption(
+    env,
+    "CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID",
+    options.batchCredentialConfigurationId,
+  );
   applyEnvOption(env, "CONFIG_TIMEOUT", options.timeout);
   applyEnvOption(env, "CONFIG_MAX_RETRIES", options.maxRetries);
   applyEnvOption(env, "CONFIG_LOG_LEVEL", options.logLevel);
@@ -189,6 +194,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--credential-types <types>",
       "Comma-separated list of credential configuration IDs to test (env: CONFIG_CREDENTIAL_TYPES)",
+    )
+    .option(
+      "--batch-credential-configuration-id <id>",
+      "Credential configuration ID that enables batch issuance when present in the resolved credential offer/config (env: CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID)",
     )
     .option(
       "--timeout <seconds>",

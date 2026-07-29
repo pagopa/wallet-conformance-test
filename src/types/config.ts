@@ -16,6 +16,7 @@ const zBooleanFromString = z.union([z.boolean(), z.stringbool()]);
  */
 export const configSchema = z.object({
   issuance: z.object({
+    batch_credential_configuration_id: z.string().optional(),
     /**
      * Port on which the local OAuth2 callback server listens.
      * The `redirect_uri` used in PAR and token requests is

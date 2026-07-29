@@ -284,6 +284,7 @@ export class WalletIssuanceOrchestratorFlow {
     try {
       const {
         authorizeResponse,
+        credentialConfigurationIds,
         credentialIssuer,
         dPoPKey,
         fetchMetadataResponse,
@@ -298,6 +299,7 @@ export class WalletIssuanceOrchestratorFlow {
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialConfigurationIds,
           credentialIdentifier,
           credentialIssuer,
           dPoPKey,
@@ -386,6 +388,7 @@ export class WalletIssuanceOrchestratorFlow {
       const { credentialResponse, nonceResponse } =
         await this.requestCredentialWithToken({
           accessToken,
+          credentialConfigurationIds: [],
           credentialIdentifier,
           credentialIssuer,
           dPoPKey,
@@ -615,6 +618,7 @@ export class WalletIssuanceOrchestratorFlow {
 
     return {
       authorizationServer: entityStatementClaims.iss,
+      credentialConfigurationIds,
       credentialIssuer,
       fetchMetadataResponse,
       popAttestation,
@@ -725,9 +729,28 @@ export class WalletIssuanceOrchestratorFlow {
 
   private getCredentialBatchSize(
     metadataBatchSize: number | undefined,
+    credentialConfigurationIds: string[],
   ): number {
     if (this.sdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) return 1;
-    return metadataBatchSize ?? 1;
+    if (metadataBatchSize === undefined) return 1;
+
+    const batchCredentialConfigurationId =
+      this.config.issuance.batch_credential_configuration_id;
+    if (!batchCredentialConfigurationId) {
+      this.log.debug(
+        "Batch issuance disabled: batch_credential_configuration_id is not configured",
+      );
+      return 1;
+    }
+
+    if (!credentialConfigurationIds.includes(batchCredentialConfigurationId)) {
+      this.log.debug(
+        `Batch issuance disabled: ${batchCredentialConfigurationId} is not present in resolved credential_configuration_ids ${JSON.stringify(credentialConfigurationIds)}`,
+      );
+      return 1;
+    }
+
+    return metadataBatchSize;
   }
 
   private getDeferredCredentialResponseNotificationId(
@@ -807,6 +830,7 @@ export class WalletIssuanceOrchestratorFlow {
    */
   private async requestCredentialWithToken({
     accessToken,
+    credentialConfigurationIds,
     credentialIdentifier,
     credentialIssuer,
     dPoPKey,
@@ -816,6 +840,7 @@ export class WalletIssuanceOrchestratorFlow {
     walletAttestationResponse,
   }: {
     accessToken: string;
+    credentialConfigurationIds: string[];
     credentialIdentifier: string;
     credentialIssuer: string;
     dPoPKey: KeyPair;
@@ -854,6 +879,7 @@ export class WalletIssuanceOrchestratorFlow {
     const credentialBatchSize = this.getCredentialBatchSize(
       entityStatementClaims.metadata?.openid_credential_issuer
         ?.batch_credential_issuance?.batch_size,
+      credentialConfigurationIds,
     );
 
     const credentialResponse = await this.credentialRequestStep.run({
