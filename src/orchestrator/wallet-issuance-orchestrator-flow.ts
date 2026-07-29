@@ -15,6 +15,7 @@ import {
   createLogger,
   CredentialResponseBackupPersistenceError,
   loadConfigWithHierarchy,
+  loadTransactionCredentialResponseBackup,
   partialCallbacks,
   saveCredentialResponseBackup,
   saveCredentialToDisk,
@@ -150,33 +151,38 @@ export class WalletIssuanceOrchestratorFlow {
   /**
    * Executes the Deferred Issuance Flow.
    *
-   * Requires both `refresh_token_deferred` and `transaction_id` to be set in
-   * the issuance configuration (or passed via CLI / env). Fails fast without
-   * contacting any remote endpoint when either prerequisite is missing.
+   * Requires `transaction_id_deferred` to be set in the issuance configuration
+   * (or passed via CLI / env). Fails fast without contacting any remote
+   * endpoint when the transaction backup cannot be loaded and validated.
    *
    * The flow:
    *   1. Fetch issuer metadata.
    *   2. Load wallet attestation.
-   *   3. Request a new access token using the deferred refresh token.
+   *   3. Request a new access token using the backed-up refresh token and DPoP key.
    *   4. POST to `deferred_credential_endpoint` with the `transaction_id`.
    */
   async deferred(): Promise<DeferredIssuanceFlowResponse> {
     this.resetResponses();
 
     try {
-      const refreshTokenDeferred = this.config.issuance.refresh_token_deferred;
       const transactionId = this.config.issuance.transaction_id_deferred;
 
-      if (!refreshTokenDeferred || !transactionId) {
+      if (!transactionId) {
         throw new DeferredIssuancePreconditionError();
       }
+
+      const transactionBackup =
+        this.loadDeferredTransactionBackup(transactionId);
 
       const {
         dPoPKey,
         fetchMetadataResponse,
         tokenResponse,
         walletAttestationResponse,
-      } = await this.runThroughRefreshToken(refreshTokenDeferred);
+      } = await this.runThroughRefreshToken(
+        transactionBackup.refresh_token,
+        transactionBackup.dPoPKey,
+      );
 
       const accessToken = tokenResponse.response?.access_token;
       if (!accessToken)
@@ -186,7 +192,7 @@ export class WalletIssuanceOrchestratorFlow {
         await this.requestDeferredCredentialWithToken({
           accessToken,
           dPoPKey,
-          fallbackRefreshToken: refreshTokenDeferred,
+          fallbackRefreshToken: transactionBackup.refresh_token,
           fetchMetadataResponse,
           tokenResponse,
           transactionId,
@@ -740,6 +746,34 @@ export class WalletIssuanceOrchestratorFlow {
       : undefined;
   }
 
+  private loadDeferredTransactionBackup(transactionId: string): {
+    dPoPKey: KeyPair;
+    refresh_token: string;
+  } {
+    try {
+      return loadTransactionCredentialResponseBackup(
+        this.config.wallet.backup_storage_path,
+        transactionId,
+      );
+    } catch (error) {
+      if (error instanceof CredentialResponseBackupPersistenceError) {
+        throw new CredentialResponseBackupError(
+          error.identifierType,
+          error.operation,
+          error.safePath,
+          error,
+        );
+      }
+
+      throw new CredentialResponseBackupError(
+        "transaction_id",
+        "read_file",
+        this.config.wallet.backup_storage_path,
+        error,
+      );
+    }
+  }
+
   private printTestSuiteOnce(): void {
     if (this._suitePrinted) return;
     this._suitePrinted = true;
@@ -963,6 +997,7 @@ export class WalletIssuanceOrchestratorFlow {
    */
   private async runThroughRefreshToken(
     refreshToken: string,
+    dPoPKey?: KeyPair,
   ): Promise<RunThroughRefreshTokenContext> {
     this.printTestSuiteOnce();
     this.log.info("Starting Re-Issuance Flow...");
@@ -1029,8 +1064,6 @@ export class WalletIssuanceOrchestratorFlow {
       );
     }
 
-    // refresh_token is guaranteed non-null here — passed from reissuance()
-    // after a null-check guard.
     const accessTokenRequest: AccessTokenRequest = {
       grant_type: "refresh_token",
       refresh_token: refreshToken,
@@ -1039,6 +1072,7 @@ export class WalletIssuanceOrchestratorFlow {
     const tokenResponse = await this.tokenRequestStep.run({
       accessTokenEndpoint: tokenEndpoint,
       accessTokenRequest,
+      dPoPKey,
       popAttestation,
       walletAttestation: walletAttestationResponse,
     });
@@ -1052,12 +1086,12 @@ export class WalletIssuanceOrchestratorFlow {
     );
     assertStepSuccess(tokenResponse, "Re-Issuance Token Request");
 
-    const dPoPKey = tokenResponse.response?.dPoPKey;
-    if (!dPoPKey) throw new StepOutputError("TOKEN_REQUEST", "dPoPKey");
+    const responseDPoPKey = tokenResponse.response?.dPoPKey;
+    if (!responseDPoPKey) throw new StepOutputError("TOKEN_REQUEST", "dPoPKey");
 
     return {
       credentialIssuer,
-      dPoPKey,
+      dPoPKey: responseDPoPKey,
       fetchMetadataResponse,
       tokenResponse,
       walletAttestationResponse,

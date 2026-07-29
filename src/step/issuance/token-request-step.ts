@@ -42,6 +42,12 @@ export interface TokenRequestStepOptions {
   accessTokenRequest: AccessTokenRequest;
 
   /**
+   * Existing DPoP key pair to reuse for token binding.
+   * If omitted, this step generates a fresh ephemeral key pair.
+   */
+  dPoPKey?: KeyPair;
+
+  /**
    * Client attestation DPoP JWT used to authenticate the client at the
    * Access Token Endpoint (derived from the wallet attestation flow).
    *
@@ -51,12 +57,6 @@ export interface TokenRequestStepOptions {
    * the flow. Custom proofs must be coherent with the selected key pair.
    */
   dpopProof?: { jwt: string; signerJwk: Jwk };
-
-  /**
-   * Existing DPoP key pair to reuse for token binding.
-   * If omitted, this step generates a fresh ephemeral key pair.
-   */
-  dPoPKey?: KeyPair;
 
   /**
    * DPoP JWT used to authenticate the client,

@@ -36,12 +36,24 @@ export class CredentialConfigurationError extends OrchestratorError {
 
 export class CredentialResponseBackupError extends OrchestratorError {
   readonly identifierType: "notification_id" | "transaction_id";
-  readonly operation: "ensure_directory" | "validate_identifier" | "write_file";
+  readonly operation:
+    | "ensure_directory"
+    | "parse_file"
+    | "read_file"
+    | "validate_content"
+    | "validate_identifier"
+    | "write_file";
   readonly safePath: string;
 
   constructor(
     identifierType: "notification_id" | "transaction_id",
-    operation: "ensure_directory" | "validate_identifier" | "write_file",
+    operation:
+      | "ensure_directory"
+      | "parse_file"
+      | "read_file"
+      | "validate_content"
+      | "validate_identifier"
+      | "write_file",
     safePath: string,
     cause?: unknown,
   ) {
@@ -66,9 +78,9 @@ export class CredentialResponseBackupError extends OrchestratorError {
 export class DeferredIssuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
-      "Deferred Issuance Flow requires both a deferred refresh token and a transaction id. " +
-        "Set 'refresh_token_deferred' and 'transaction_id_deferred' under [issuance] in config.ini or " +
-        "pass --refresh-token-deferred <token> --transaction-id <id>.",
+      "Deferred Issuance Flow requires a transaction id. " +
+        "Set 'transaction_id_deferred' under [issuance] in config.ini or " +
+        "pass --transaction-id <id>.",
       "DEFERRED_ISSUANCE_PRECONDITION_FAILED",
     );
     this.name = "DeferredIssuancePreconditionError";

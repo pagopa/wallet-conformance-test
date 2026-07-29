@@ -2,13 +2,15 @@ import { randomUUID } from "node:crypto";
 import {
   chmodSync,
   existsSync,
+  readFileSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 
-import type { KeyPairJwk } from "@/types";
+import type { KeyPair, KeyPairJwk } from "@/types";
 
 import { ensureDir } from "./utils";
 
@@ -26,6 +28,9 @@ export type CredentialResponseBackupIdentifierType =
 
 export type CredentialResponseBackupOperation =
   | "ensure_directory"
+  | "parse_file"
+  | "read_file"
+  | "validate_content"
   | "validate_identifier"
   | "write_file";
 
@@ -102,6 +107,109 @@ export function saveCredentialResponseBackup(
     writeBackupFile(filePath, payload, target.identifierType);
     return filePath;
   });
+}
+
+const privateDpopJwkSchema = z
+  .object({
+    alg: z.literal("ES256"),
+    crv: z.literal("P-256"),
+    d: z.string().min(1),
+    kid: z.string().min(1),
+    kty: z.literal("EC"),
+    x: z.string().min(1),
+    y: z.string().min(1),
+  })
+  .passthrough();
+
+const transactionBackupSchema = z
+  .object({
+    access_token: z.string().optional(),
+    dpop_jwk: privateDpopJwkSchema,
+    refresh_token: z.string().min(1),
+    transaction_id: z.string().optional(),
+  })
+  .passthrough();
+
+export type DeferredTransactionBackup = z.infer<
+  typeof transactionBackupSchema
+> & {
+  dPoPKey: KeyPair;
+};
+
+export function loadTransactionCredentialResponseBackup(
+  backupStoragePath: string,
+  transactionId: string,
+): DeferredTransactionBackup {
+  const directory = path.join(backupStoragePath, "transactions");
+  const filePath = buildSafeBackupPath(
+    directory,
+    transactionId,
+    "transaction_id",
+  );
+
+  let payload: string;
+  try {
+    payload = readFileSync(filePath, "utf8");
+  } catch (cause) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause,
+      identifierType: "transaction_id",
+      operation: "read_file",
+      safePath: filePath,
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch (cause) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause,
+      identifierType: "transaction_id",
+      operation: "parse_file",
+      safePath: filePath,
+    });
+  }
+
+  const validation = transactionBackupSchema.safeParse(parsed);
+  if (!validation.success) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause: new Error("transaction backup content is invalid"),
+      identifierType: "transaction_id",
+      operation: "validate_content",
+      safePath: filePath,
+    });
+  }
+
+  if (
+    validation.data.transaction_id !== undefined &&
+    validation.data.transaction_id !== transactionId
+  ) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause: new Error("transaction_id does not match requested identifier"),
+      identifierType: "transaction_id",
+      operation: "validate_content",
+      safePath: filePath,
+    });
+  }
+
+  const privateKey = validation.data.dpop_jwk;
+  const publicKey = {
+    alg: privateKey.alg,
+    crv: privateKey.crv,
+    kid: privateKey.kid,
+    kty: privateKey.kty,
+    x: privateKey.x,
+    y: privateKey.y,
+  } as KeyPairJwk;
+
+  return {
+    ...validation.data,
+    dPoPKey: {
+      privateKey: privateKey as KeyPairJwk,
+      publicKey,
+    },
+  };
 }
 
 function assertSafeIdentifier(identifier: string): void {
