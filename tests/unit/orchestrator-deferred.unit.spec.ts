@@ -250,7 +250,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("does not call PAR or authorize steps", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -323,7 +322,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("deferred step is called with deferred_credential_endpoint and transaction_id", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-xyz";
 
     vi.spyOn(
@@ -357,7 +355,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("deferred step receives the same dPoPKey from the token request", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -387,7 +384,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:true with deferredCredentialResponse on immediate (200) response", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -417,7 +413,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:true with deferredCredentialResponse on still-pending (202) response", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -445,7 +440,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:false with IssuerMetadataError when deferred_credential_endpoint is missing", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -468,7 +462,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("token failure returns partial response with fetchMetadataResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -493,7 +486,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("deferred step failure returns partial response with tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -524,7 +516,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("never throws — error is always captured in result.error", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(

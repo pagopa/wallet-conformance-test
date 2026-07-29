@@ -39,7 +39,6 @@ export interface CliOptions {
   presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
-  refreshTokenDeferred?: string;
   refreshTokenReissuance?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
@@ -372,9 +371,6 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
     credential_configuration_id_reissuance:
       options.credentialConfigurationIdReissuance,
   }),
-  ...(options.refreshTokenDeferred && {
-    refresh_token_deferred: options.refreshTokenDeferred,
-  }),
   ...(options.transactionId && {
     transaction_id_deferred: options.transactionId,
   }),
@@ -567,11 +563,6 @@ function readCliOptionsFromEnv(): CliOptions {
     options,
     "credentialConfigurationIdReissuance",
     "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
-  );
-  readStringEnv(
-    options,
-    "refreshTokenDeferred",
-    "CONFIG_REFRESH_TOKEN_DEFERRED",
   );
   readStringEnv(options, "transactionId", "CONFIG_TRANSACTION_ID");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");

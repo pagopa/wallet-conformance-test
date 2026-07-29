@@ -150,11 +150,6 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
     options.credentialConfigurationIdReissuance,
   );
-  applyEnvOption(
-    env,
-    "CONFIG_REFRESH_TOKEN_DEFERRED",
-    options.refreshTokenDeferred,
-  );
   applyEnvOption(env, "CONFIG_TRANSACTION_ID", options.transactionId);
   applyEnvOption(env, "CONFIG_TRUST_ANCHOR_VERIFY", options.trustAnchorVerify);
 
@@ -257,12 +252,8 @@ function addCommonOptions(command: Command): Command {
       "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN_REISSUANCE)",
     )
     .option(
-      "--refresh-token-deferred <token>",
-      "DPoP-bound Refresh Token used to obtain a new access token for the Deferred Issuance Flow (env: CONFIG_REFRESH_TOKEN_DEFERRED)",
-    )
-    .option(
       "--transaction-id <id>",
-      "Transaction ID returned in the pending credential response, required for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
+      "Transaction ID selecting the saved transaction backup for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
     )
     .option(
       "--credential-configuration-id-reissuance <id>",
