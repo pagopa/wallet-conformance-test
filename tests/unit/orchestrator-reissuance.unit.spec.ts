@@ -4,8 +4,8 @@
  *
  * Verifies that:
  * - reissuance() returns a typed unsuccessful result (without calling
- *   PAR/authorize steps) when no refresh token is configured.
- * - reissuance() runs the refresh-token path when a refresh token is configured.
+ *   PAR/authorize steps) when no notification ID is configured.
+ * - reissuance() runs the refresh-token path using the notification backup.
  * - issuance() is unchanged and never calls reissuance() internally.
  * - reissuance() returns partial responses on token/nonce/credential failures.
  */
@@ -16,6 +16,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { CredentialWithKey } from "@/types";
 
 import { loadCredentialsForPresentation } from "@/functions";
+import {
+  CredentialResponseBackupPersistenceError,
+  loadNotificationCredentialResponseBackup,
+} from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +58,7 @@ vi.mock("@/logic", async (importOriginal) => {
         wallet_version: "1.0",
       },
     })),
+    loadNotificationCredentialResponseBackup: vi.fn(),
   };
 });
 
@@ -95,6 +100,35 @@ vi.mock("@pagopa/io-wallet-oauth2", async (importOriginal) => {
 // ---------------------------------------------------------------------------
 
 const REISSUANCE_CREDENTIAL_ID = "reissuance-credential-id";
+const REISSUANCE_NOTIFICATION_ID = "notification-reissuance-id";
+
+const notificationDPopKey = {
+  privateKey: {
+    alg: "ES256",
+    crv: "P-256",
+    d: "backup-d",
+    kid: "backup-kid",
+    kty: "EC",
+    x: "backup-x",
+    y: "backup-y",
+  },
+  publicKey: {
+    alg: "ES256",
+    crv: "P-256",
+    kid: "backup-kid",
+    kty: "EC",
+    x: "backup-x",
+    y: "backup-y",
+  },
+} as const;
+
+const notificationBackup = {
+  access_token: "previous-access-token",
+  dpop_jwk: notificationDPopKey.privateKey,
+  dPoPKey: notificationDPopKey,
+  notification_id: REISSUANCE_NOTIFICATION_ID,
+  refresh_token: "backup-refresh-token",
+};
 
 function makeReissuanceCredential(id: string): CredentialWithKey {
   return {
@@ -179,9 +213,12 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
     orchestrator = new WalletIssuanceOrchestratorFlow(
       IssuerTestConfiguration.createDefault(),
     );
+    vi.mocked(loadNotificationCredentialResponseBackup).mockReturnValue(
+      notificationBackup,
+    );
   });
 
-  test("returns typed unsuccessful result when no refresh token is configured", async () => {
+  test("returns typed unsuccessful result when no notification ID is configured", async () => {
     // PAR, authorize, and token steps must not be called — spy before running
     const parSpy = vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -194,21 +231,56 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
       "run",
     );
 
-    // No refresh_token in mock config — reissuance() must fail fast
+    // No notification_id in mock config — reissuance() must fail fast
     const result = await orchestrator.reissuance();
 
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain(
-      "Re-Issuance Flow requires a refresh token",
+      "Re-Issuance Flow requires a notification backup",
     );
+    expect(loadNotificationCredentialResponseBackup).not.toHaveBeenCalled();
     expect(parSpy).not.toHaveBeenCalled();
     expect(authorizeSpy).not.toHaveBeenCalled();
   });
 
-  test("runs refresh-token path when refresh_token is configured", async () => {
-    // Inject refresh_token into config
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "my-refresh-token";
+  test("fails fast with a structured error when notification backup cannot be loaded", async () => {
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
+    orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
+      REISSUANCE_CREDENTIAL_ID;
+    vi.mocked(loadNotificationCredentialResponseBackup).mockImplementation(
+      () => {
+        throw new CredentialResponseBackupPersistenceError({
+          identifierType: "notification_id",
+          operation: "validate_content",
+          safePath:
+            "/safe/backup/notifications/notification-reissuance-id.json",
+        });
+      },
+    );
+
+    const fetchSpy = vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    );
+
+    const result = await orchestrator.reissuance();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatchObject({
+      code: "CREDENTIAL_RESPONSE_BACKUP_FAILED",
+      identifierType: "notification_id",
+      operation: "validate_content",
+      safePath: "/safe/backup/notifications/notification-reissuance-id.json",
+    });
+    expect(loadCredentialsForPresentation).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("runs refresh-token path when notification backup is configured", async () => {
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
@@ -246,13 +318,18 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
     expect(result.tokenResponse).toEqual(tokenSuccess);
     expect(result.nonceResponse).toEqual(nonceSuccess);
     expect(result.credentialResponse).toEqual(credentialSuccess);
+    expect(loadNotificationCredentialResponseBackup).toHaveBeenCalledWith(
+      "./backup",
+      REISSUANCE_NOTIFICATION_ID,
+    );
     // PAR and authorize must not have been called
     expect(result).not.toHaveProperty("pushedAuthorizationRequestResponse");
     expect(result).not.toHaveProperty("authorizeResponse");
   });
 
-  test("token request receives grant_type=refresh_token and not PAR/authorize", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance = "test-token";
+  test("token request receives backed-up refresh token, backed-up DPoP key, and not PAR/authorize", async () => {
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
@@ -307,13 +384,14 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
     const tokenCallArg = tokenRunSpy.mock.calls[0]?.[0];
     expect(tokenCallArg?.accessTokenRequest).toMatchObject({
       grant_type: "refresh_token",
-      refresh_token: "test-token",
+      refresh_token: "backup-refresh-token",
     });
+    expect(tokenCallArg?.dPoPKey).toBe(notificationDPopKey);
   });
 
-  test("issuance() still uses authorization-code flow when refresh_token is set", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "irrelevant-token";
+  test("issuance() still uses authorization-code flow when notification_id_reissuance is set", async () => {
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
 
     vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -373,8 +451,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("token failure returns partial response with fetchMetadataResponse and tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "my-refresh-token";
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
@@ -404,8 +482,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("nonce failure returns partial response through tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "my-refresh-token";
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
@@ -440,8 +518,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("credential failure returns partial response with all prior responses", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "my-refresh-token";
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([
@@ -483,8 +561,8 @@ describe("WalletIssuanceOrchestratorFlow.reissuance()", () => {
   });
 
   test("never throws — error is always captured in result.error", async () => {
-    orchestrator.getConfig().issuance.refresh_token_reissuance =
-      "my-refresh-token";
+    orchestrator.getConfig().issuance.notification_id_reissuance =
+      REISSUANCE_NOTIFICATION_ID;
     orchestrator.getConfig().issuance.credential_configuration_id_reissuance =
       REISSUANCE_CREDENTIAL_ID;
     vi.mocked(loadCredentialsForPresentation).mockResolvedValueOnce([

@@ -147,8 +147,8 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   applyEnvOption(env, "CONFIG_WALLET_VERSION", options.walletVersion);
   applyEnvOption(
     env,
-    "CONFIG_REFRESH_TOKEN_REISSUANCE",
-    options.refreshTokenReissuance,
+    "CONFIG_NOTIFICATION_ID_REISSUANCE",
+    options.notificationIdReissuance,
   );
   applyEnvOption(
     env,
@@ -257,8 +257,8 @@ function addCommonOptions(command: Command): Command {
       "Override the IT Wallet specification version (V1_0, V1_3, V1_4) (env: CONFIG_WALLET_VERSION)",
     )
     .option(
-      "--refresh-token-reissuance <token>",
-      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN_REISSUANCE)",
+      "--notification-id-reissuance <id>",
+      "Notification ID selecting the saved notification backup for the Re-Issuance Flow (env: CONFIG_NOTIFICATION_ID_REISSUANCE)",
     )
     .option(
       "--transaction-id <id>",

@@ -33,7 +33,7 @@ export const configSchema = z.object({
       .or(z.string().startsWith("openid-credential-offer://"))
       .optional(),
     credential_types: z.array(z.string()).optional().default([]),
-    refresh_token_reissuance: z.string().optional(),
+    notification_id_reissuance: z.string().optional(),
     save_credential: zBooleanFromString.optional().default(false),
     tests_dir: z.string().default("./tests/issuance"),
     transaction_id_deferred: z.string().optional(),

@@ -15,6 +15,7 @@ import {
   createLogger,
   CredentialResponseBackupPersistenceError,
   loadConfigWithHierarchy,
+  loadNotificationCredentialResponseBackup,
   loadTransactionCredentialResponseBackup,
   partialCallbacks,
   saveCredentialResponseBackup,
@@ -348,12 +349,15 @@ export class WalletIssuanceOrchestratorFlow {
     this.resetResponses();
 
     try {
-      const refreshToken = this.config.issuance.refresh_token_reissuance;
+      const notificationId = this.config.issuance.notification_id_reissuance;
       const credentialIdentifierReissuance =
         this.config.issuance.credential_configuration_id_reissuance;
-      if (!refreshToken || !credentialIdentifierReissuance) {
+      if (!notificationId || !credentialIdentifierReissuance) {
         throw new ReissuancePreconditionError();
       }
+
+      const notificationBackup =
+        this.loadReissuanceNotificationBackup(notificationId);
 
       if (
         credentialIdentifierReissuance ===
@@ -380,7 +384,10 @@ export class WalletIssuanceOrchestratorFlow {
         fetchMetadataResponse,
         tokenResponse,
         walletAttestationResponse,
-      } = await this.runThroughRefreshToken(refreshToken);
+      } = await this.runThroughRefreshToken(
+        notificationBackup.refresh_token,
+        notificationBackup.dPoPKey,
+      );
 
       const { accessToken, credentialIdentifier } =
         this.extractTokenCredentials(tokenResponse);
@@ -392,7 +399,7 @@ export class WalletIssuanceOrchestratorFlow {
           credentialIdentifier,
           credentialIssuer,
           dPoPKey,
-          fallbackRefreshToken: refreshToken,
+          fallbackRefreshToken: notificationBackup.refresh_token,
           fetchMetadataResponse,
           tokenResponse,
           walletAttestationResponse,
@@ -790,6 +797,34 @@ export class WalletIssuanceOrchestratorFlow {
 
       throw new CredentialResponseBackupError(
         "transaction_id",
+        "read_file",
+        this.config.wallet.backup_storage_path,
+        error,
+      );
+    }
+  }
+
+  private loadReissuanceNotificationBackup(notificationId: string): {
+    dPoPKey: KeyPair;
+    refresh_token: string;
+  } {
+    try {
+      return loadNotificationCredentialResponseBackup(
+        this.config.wallet.backup_storage_path,
+        notificationId,
+      );
+    } catch (error) {
+      if (error instanceof CredentialResponseBackupPersistenceError) {
+        throw new CredentialResponseBackupError(
+          error.identifierType,
+          error.operation,
+          error.safePath,
+          error,
+        );
+      }
+
+      throw new CredentialResponseBackupError(
+        "notification_id",
         "read_file",
         this.config.wallet.backup_storage_path,
         error,

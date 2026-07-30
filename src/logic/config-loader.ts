@@ -36,11 +36,11 @@ export interface CliOptions {
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
+  notificationIdReissuance?: string;
   port?: number;
   presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
-  refreshTokenReissuance?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
@@ -368,8 +368,8 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
-  ...(options.refreshTokenReissuance && {
-    refresh_token_reissuance: options.refreshTokenReissuance,
+  ...(options.notificationIdReissuance && {
+    notification_id_reissuance: options.notificationIdReissuance,
   }),
   ...(options.credentialConfigurationIdReissuance && {
     credential_configuration_id_reissuance:
@@ -565,8 +565,8 @@ function readCliOptionsFromEnv(): CliOptions {
   );
   readStringEnv(
     options,
-    "refreshTokenReissuance",
-    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+    "notificationIdReissuance",
+    "CONFIG_NOTIFICATION_ID_REISSUANCE",
   );
   readStringEnv(
     options,

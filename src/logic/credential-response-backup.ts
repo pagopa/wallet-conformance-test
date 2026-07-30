@@ -121,95 +121,50 @@ const privateDpopJwkSchema = z
   })
   .passthrough();
 
-const transactionBackupSchema = z
+const loadableBackupSchema = z
   .object({
     access_token: z.string().optional(),
     dpop_jwk: privateDpopJwkSchema,
+    notification_id: z.string().optional(),
     refresh_token: z.string().min(1),
     transaction_id: z.string().optional(),
   })
   .passthrough();
 
-export type DeferredTransactionBackup = z.infer<
-  typeof transactionBackupSchema
+export type DeferredTransactionBackup = z.infer<typeof loadableBackupSchema> & {
+  dPoPKey: KeyPair;
+};
+
+export type ReissuanceNotificationBackup = z.infer<
+  typeof loadableBackupSchema
 > & {
   dPoPKey: KeyPair;
 };
+
+export function loadNotificationCredentialResponseBackup(
+  backupStoragePath: string,
+  notificationId: string,
+): ReissuanceNotificationBackup {
+  return loadCredentialResponseBackup({
+    backupStoragePath,
+    expectedIdentifierField: "notification_id",
+    identifier: notificationId,
+    identifierType: "notification_id",
+    subdirectory: "notifications",
+  });
+}
 
 export function loadTransactionCredentialResponseBackup(
   backupStoragePath: string,
   transactionId: string,
 ): DeferredTransactionBackup {
-  const directory = path.join(backupStoragePath, "transactions");
-  const filePath = buildSafeBackupPath(
-    directory,
-    transactionId,
-    "transaction_id",
-  );
-
-  let payload: string;
-  try {
-    payload = readFileSync(filePath, "utf8");
-  } catch (cause) {
-    throw new CredentialResponseBackupPersistenceError({
-      cause,
-      identifierType: "transaction_id",
-      operation: "read_file",
-      safePath: filePath,
-    });
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(payload);
-  } catch (cause) {
-    throw new CredentialResponseBackupPersistenceError({
-      cause,
-      identifierType: "transaction_id",
-      operation: "parse_file",
-      safePath: filePath,
-    });
-  }
-
-  const validation = transactionBackupSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new CredentialResponseBackupPersistenceError({
-      cause: new Error("transaction backup content is invalid"),
-      identifierType: "transaction_id",
-      operation: "validate_content",
-      safePath: filePath,
-    });
-  }
-
-  if (
-    validation.data.transaction_id !== undefined &&
-    validation.data.transaction_id !== transactionId
-  ) {
-    throw new CredentialResponseBackupPersistenceError({
-      cause: new Error("transaction_id does not match requested identifier"),
-      identifierType: "transaction_id",
-      operation: "validate_content",
-      safePath: filePath,
-    });
-  }
-
-  const privateKey = validation.data.dpop_jwk;
-  const publicKey = {
-    alg: privateKey.alg,
-    crv: privateKey.crv,
-    kid: privateKey.kid,
-    kty: privateKey.kty,
-    x: privateKey.x,
-    y: privateKey.y,
-  } as KeyPairJwk;
-
-  return {
-    ...validation.data,
-    dPoPKey: {
-      privateKey: privateKey as KeyPairJwk,
-      publicKey,
-    },
-  };
+  return loadCredentialResponseBackup({
+    backupStoragePath,
+    expectedIdentifierField: "transaction_id",
+    identifier: transactionId,
+    identifierType: "transaction_id",
+    subdirectory: "transactions",
+  });
 }
 
 function assertSafeIdentifier(identifier: string): void {
@@ -268,6 +223,86 @@ function ensureBackupDirectory(
       safePath: path.resolve(directory),
     });
   }
+}
+
+function loadCredentialResponseBackup({
+  backupStoragePath,
+  expectedIdentifierField,
+  identifier,
+  identifierType,
+  subdirectory,
+}: {
+  backupStoragePath: string;
+  expectedIdentifierField: CredentialResponseBackupIdentifierType;
+  identifier: string;
+  identifierType: CredentialResponseBackupIdentifierType;
+  subdirectory: string;
+}): z.infer<typeof loadableBackupSchema> & { dPoPKey: KeyPair } {
+  const directory = path.join(backupStoragePath, subdirectory);
+  const filePath = buildSafeBackupPath(directory, identifier, identifierType);
+  let payload: string;
+  try {
+    payload = readFileSync(filePath, "utf8");
+  } catch (cause) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause,
+      identifierType,
+      operation: "read_file",
+      safePath: filePath,
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch (cause) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause,
+      identifierType,
+      operation: "parse_file",
+      safePath: filePath,
+    });
+  }
+
+  const validation = loadableBackupSchema.safeParse(parsed);
+  if (!validation.success) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause: new Error(`${identifierType} backup content is invalid`),
+      identifierType,
+      operation: "validate_content",
+      safePath: filePath,
+    });
+  }
+
+  const payloadIdentifier = validation.data[expectedIdentifierField];
+  if (payloadIdentifier !== undefined && payloadIdentifier !== identifier) {
+    throw new CredentialResponseBackupPersistenceError({
+      cause: new Error(
+        `${expectedIdentifierField} does not match requested identifier`,
+      ),
+      identifierType,
+      operation: "validate_content",
+      safePath: filePath,
+    });
+  }
+
+  const privateKey = validation.data.dpop_jwk;
+  const publicKey = {
+    alg: privateKey.alg,
+    crv: privateKey.crv,
+    kid: privateKey.kid,
+    kty: privateKey.kty,
+    x: privateKey.x,
+    y: privateKey.y,
+  } as KeyPairJwk;
+
+  return {
+    ...validation.data,
+    dPoPKey: {
+      privateKey: privateKey as KeyPairJwk,
+      publicKey,
+    },
+  };
 }
 
 function writeBackupFile(
