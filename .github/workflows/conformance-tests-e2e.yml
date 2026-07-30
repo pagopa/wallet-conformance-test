@@ -54,6 +54,10 @@ jobs:
         shell: bash
         run: wct --version
 
+      - name: Run wct init
+        shell: bash
+        run: wct init
+
       # ── Issuance tests ──────────────────────────────────────────────────────
       - name: Run issuance tests
         shell: bash
