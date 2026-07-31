@@ -23,7 +23,8 @@ Il tool richiede **Node.js >= 22.19.0** e **pnpm**. È possibile verificare la v
 #### 3. Quale versione di IT-Wallet devo testare?
 Il tool supporta due versioni delle specifiche tecniche, configurabili nel file `config.ini` sotto la sezione `[wallet]`:
 - `V1_0`: Per servizi basati sulla specifica 1.0.x.
-- `V1_3`: Per servizi basati sulla specifica 1.3.x (raccomandata per nuovi sviluppi).
+- `V1_3`: Per servizi basati sulla specifica 1.3.x.
+- `V1_3`: Per servizi basati sulla specifica 1.4.x (raccomandata per nuovi sviluppi).
 
 #### 4. Come gestire i certificati TLS self-signed in ambiente di test?
 Se il servizio sotto test usa certificati non validati da una CA pubblica, è possibile attivare la modalità "Unsafe TLS" in tre modi:
