@@ -93,7 +93,9 @@ describe("readCertificate", () => {
 
   it("throws CertificateExpiredError for an expired certificate", async () => {
     const now = new Date(2020, 0, 1);
-    const twoYearsLater = addSecondsToDate(now, 3600 * 24 * 365 * 2);
+    // Certificate validity is exactly 2 years; advance by an extra 60s to clear
+    // the 30-second clock-skew tolerance applied in hasX509CertificateExpired.
+    const twoYearsLater = addSecondsToDate(now, 3600 * 24 * 365 * 2 + 60);
 
     vi.useFakeTimers();
     vi.setSystemTime(now);
