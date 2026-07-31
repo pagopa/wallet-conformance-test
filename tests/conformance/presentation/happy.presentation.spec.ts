@@ -10,7 +10,6 @@ import {
   normalizePresentationArray,
   normalizeUriBasePath,
   readDcqlClaimPaths,
-  readRelyingPartyIdentifier,
   readRequestedPresentation,
   readRequiredStringProperty,
   readSdJwtDisclosedClaimNames,
@@ -1926,13 +1925,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.response).toBeDefined();
 
       const response = authorizationRequestResult.response;
-      const requestObject = response?.requestObject;
+      const { requestObject, parsedQrCode } = response ?? {};
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
-      const relyingPartyIdentifier = readRelyingPartyIdentifier(
-        requestObject,
-        response?.parsedQrCode,
-      );
+      const relyingPartyIdentifier = requestObject?.client_id ?? parsedQrCode?.clientId;
+
       const nonce = readRequiredStringProperty(
         requestObject,
         "nonce",
@@ -1985,11 +1982,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.response).toBeDefined();
 
       const response = authorizationRequestResult.response;
-      const requestObject = response?.requestObject;
-      const relyingPartyIdentifier = readRelyingPartyIdentifier(
-        requestObject,
-        response?.parsedQrCode,
-      );
+      const { requestObject, parsedQrCode } = response ?? {};
+      const relyingPartyIdentifier = requestObject?.client_id ?? parsedQrCode?.clientId;
 
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;

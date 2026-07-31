@@ -1,4 +1,4 @@
-import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
+import { extractClientIdPrefix, ParsedAuthorizeRequestResult, ParsedQrCode } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
@@ -143,20 +143,6 @@ export function readDcqlCredentials(requestObject: unknown): unknown[] {
   }
 
   return credentials;
-}
-
-export function readRelyingPartyIdentifier(
-  requestObject: unknown,
-  parsedQrCode: unknown,
-): string {
-  if (requestObject && typeof requestObject === "object") {
-    const clientId = (requestObject as { client_id?: unknown }).client_id;
-    if (typeof clientId === "string" && clientId.length > 0) {
-      return extractClientIdPrefix(clientId).clientId;
-    }
-  }
-
-  return readRequiredStringProperty(parsedQrCode, "clientId", "parsedQrCode");
 }
 
 export function readRequestedPresentation(
