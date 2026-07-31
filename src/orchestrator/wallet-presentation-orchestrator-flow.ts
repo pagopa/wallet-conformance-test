@@ -85,9 +85,10 @@ export class WalletPresentationOrchestratorFlow {
       return this.normalizeBaseUrl(this.config.presentation.verifier);
     }
 
-    const parsedQrCode = createParsedQrCode(authorizeRequestUrl);
-
-    const clientId = parsedQrCode.clientId;
+    const parsedUrl = new URL(authorizeRequestUrl);
+    const clientId =
+      parsedUrl.searchParams.get("client_id") ??
+      createParsedQrCode(authorizeRequestUrl).clientId;
 
     // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
     const normalizedClientId = extractClientIdPrefix(clientId);
