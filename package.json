@@ -77,11 +77,11 @@
   },
   "dependencies": {
     "@owf/mdoc": "^0.7.0",
-    "@pagopa/io-wallet-oauth2": "1.5.2",
-    "@pagopa/io-wallet-oid-federation": "1.5.2",
-    "@pagopa/io-wallet-oid4vci": "1.5.2",
-    "@pagopa/io-wallet-oid4vp": "1.5.2",
-    "@pagopa/io-wallet-utils": "1.5.2",
+    "@pagopa/io-wallet-oauth2": "1.5.4",
+    "@pagopa/io-wallet-oid-federation": "1.5.4",
+    "@pagopa/io-wallet-oid4vci": "1.5.4",
+    "@pagopa/io-wallet-oid4vp": "1.5.4",
+    "@pagopa/io-wallet-utils": "1.5.4",
     "@peculiar/x509": "^1.14.3",
     "@sd-jwt/core": "^0.17.0",
     "@sd-jwt/crypto-nodejs": "^0.17.0",
@@ -98,6 +98,6 @@
     "jose": "^6.1.0",
     "puppeteer": "^25.1.0",
     "vitest": "^3.2.4",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   }
 }
