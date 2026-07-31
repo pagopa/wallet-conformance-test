@@ -63,7 +63,7 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
       const entityStatementJwt = await this.retrieveEntityStatementJwt(url);
-      
+
       if (!entityStatementJwt) {
         throw new Error(
           "Error in trust chain evaluation, neither the base jwt has been fetched",
