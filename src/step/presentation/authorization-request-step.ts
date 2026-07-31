@@ -23,6 +23,8 @@ import {
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
+const LOCAL_WALLET_PROVIDER_HOST = "wallet-provider.wct.example.org";
+
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
   authorizationResponse: CreateAuthorizationResponseResult;
@@ -92,7 +94,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
 
       const walletNonce = crypto.randomUUID();
-      const walletMetadata = buildWalletMetadata();
+      const walletMetadata = buildWalletMetadata(this.config.wallet.port);
       let requestObjectFetch: RequestObjectFetchDetails | undefined;
 
       const fetchCallback = fetchWithConfig(this.config.network, {
@@ -200,7 +202,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   }
 }
 
-function buildWalletMetadata(): WalletMetadata {
+function buildWalletMetadata(walletProviderPort: number): WalletMetadata {
   const walletClientIdPrefixesSupported = [
     "redirect_uri",
     "x509_san_dns",
@@ -218,6 +220,7 @@ function buildWalletMetadata(): WalletMetadata {
   };
 
   return {
+    authorization_endpoint: `https://${LOCAL_WALLET_PROVIDER_HOST}:${walletProviderPort}/authorize`,
     client_id_prefixes_supported: walletClientIdPrefixesSupported,
     request_object_signing_alg_values_supported: ["ES256"],
     response_modes_supported: ["direct_post.jwt"],
