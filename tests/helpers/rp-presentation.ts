@@ -1,4 +1,3 @@
-import { extractClientIdPrefix, ParsedAuthorizeRequestResult, ParsedQrCode } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";

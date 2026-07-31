@@ -1,5 +1,9 @@
 import { PresentationTestConfiguration } from "#/config";
-import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
+import {
+  ClientIdPrefix,
+  createParsedQrCode,
+  extractClientIdPrefix,
+} from "@pagopa/io-wallet-oid4vp";
 import { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import { loadAttestation, loadCredentialsForPresentation } from "@/functions";
@@ -77,35 +81,34 @@ export class WalletPresentationOrchestratorFlow {
   }
 
   prepareBaseUrl(authorizeRequestUrl: string): string | undefined {
-    if (!this.config.presentation.verifier) {
-      const clientId = new URL(authorizeRequestUrl).searchParams.get(
-        "client_id",
-      );
-
-      if (!clientId) {
-        throw new Error(
-          "client_id parameter not found in authorize_request_url and verifier not configured",
-        );
-      }
-
-      // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
-      const normalizedClientId = extractClientIdPrefix(clientId);
-
-      if (!normalizedClientId.clientId.startsWith("https://")) {
-        this.log.warn(
-          `Skipping verifier metadata fetch: unsupported client_id format "${clientId}" (normalized: "${normalizedClientId.clientId}"). Expected a plain HTTPS URL or a single-colon prefixed scheme resolving to an HTTPS URL. Configure presentation.verifier explicitly to bypass client_id-derived metadata lookup.`,
-        );
-        return undefined;
-      }
-
-      const baseUrl = this.normalizeBaseUrl(normalizedClientId.clientId);
-      this.log.debug(
-        `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl}`,
-      );
-      return baseUrl;
+    if (this.config.presentation.verifier) {
+      return this.normalizeBaseUrl(this.config.presentation.verifier);
     }
 
-    return this.normalizeBaseUrl(this.config.presentation.verifier);
+    const parsedQrCode = createParsedQrCode(authorizeRequestUrl);
+
+    const clientId = parsedQrCode.clientId;
+
+    // client_id may use a custom scheme prefix such as "openid_federation:https://example.com".
+    const normalizedClientId = extractClientIdPrefix(clientId);
+
+    if (
+      normalizedClientId.prefix === ClientIdPrefix.X509_HASH ||
+      !normalizedClientId.clientId.startsWith("https://")
+    ) {
+      this.log.warn(
+        `Skipping verifier metadata fetch: unsupported client_id format "${clientId}". ` +
+          `Expected a plain HTTPS URL or a single-colon prefixed scheme resolving to an HTTPS URL. ` +
+          `Configure presentation.verifier explicitly to bypass client_id-derived metadata lookup.`,
+      );
+      return undefined;
+    }
+
+    const baseUrl = this.normalizeBaseUrl(normalizedClientId.clientId);
+    this.log.debug(
+      `Using client_id from authorize_request_url as verifier baseUrl: ${baseUrl}`,
+    );
+    return baseUrl;
   }
 
   async presentation(): Promise<PresentationFlowResponse> {
@@ -285,6 +288,22 @@ export class WalletPresentationOrchestratorFlow {
       fetchMetadataResponse.response?.entityStatementClaims;
 
     return entityStatementClaims?.metadata.openid_credential_verifier;
+  }
+
+  /**
+   * Extracts the base URL (protocol + host) from a given URL string.
+   *
+   * @param urlString - The full URL string to parse.
+   * @returns The base URL (e.g., "https://continua.io.pagopa.it"), or `null` if the URL is invalid.
+   */
+  private getBaseUrl(urlString: string): string | undefined {
+    try {
+      const url = new URL(urlString);
+      return url.origin;
+    } catch (error) {
+      console.error("Invalid URL provided:", error);
+      return undefined;
+    }
   }
 
   private async loadWalletAttestation() {

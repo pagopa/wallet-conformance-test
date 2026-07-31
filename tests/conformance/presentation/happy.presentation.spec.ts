@@ -735,6 +735,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         const { clientId: rawClientId } = extractClientIdPrefix(
           parsedQrCode?.clientId ?? "",
         );
+
         log.debug(`  Metadata client_id: ${metadataClientId}`);
         log.debug(`  Request client_id:  ${rawClientId}`);
         expect(rawClientId).toBe(metadataClientId);
@@ -1925,10 +1926,11 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.response).toBeDefined();
 
       const response = authorizationRequestResult.response;
-      const { requestObject, parsedQrCode } = response ?? {};
+      const { parsedQrCode, requestObject } = response ?? {};
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
-      const relyingPartyIdentifier = requestObject?.client_id ?? parsedQrCode?.clientId;
+      const relyingPartyIdentifier =
+        requestObject?.client_id ?? parsedQrCode?.clientId;
 
       const nonce = readRequiredStringProperty(
         requestObject,
@@ -1982,8 +1984,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       expect(authorizationRequestResult.response).toBeDefined();
 
       const response = authorizationRequestResult.response;
-      const { requestObject, parsedQrCode } = response ?? {};
-      const relyingPartyIdentifier = requestObject?.client_id ?? parsedQrCode?.clientId;
+      const { parsedQrCode, requestObject } = response ?? {};
+      const relyingPartyIdentifier =
+        requestObject?.client_id ?? parsedQrCode?.clientId;
 
       const vpToken =
         response?.authorizationResponse.authorizationResponsePayload.vp_token;
