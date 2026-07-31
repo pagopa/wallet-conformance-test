@@ -20,7 +20,7 @@ import { AttestationResponse, KeyPair } from "@/types";
 
 export type TokenRequestExecuteResponse = AccessTokenResponse & {
   /**
-   * Ephemeral DPoP key pair generated for this issuance session.
+   * DPoP key pair selected for this token request.
    * This key MUST be reused in Credential Request for the DPoP proof there.
    */
   dPoPKey: KeyPair;
@@ -42,12 +42,19 @@ export interface TokenRequestStepOptions {
   accessTokenRequest: AccessTokenRequest;
 
   /**
+   * Existing DPoP key pair to reuse for token binding.
+   * If omitted, this step generates a fresh ephemeral key pair.
+   */
+  dPoPKey?: KeyPair;
+
+  /**
    * Client attestation DPoP JWT used to authenticate the client at the
    * Access Token Endpoint (derived from the wallet attestation flow).
    *
    * Note: this is NOT the DPoP key used for token binding. The token-binding
-   * DPoP is always created in this step using a fresh ephemeral key pair and
-   * returned as `dPoPKey` so it can be reused later in the flow.
+   * DPoP is created in this step using either the provided `dPoPKey` or a fresh
+   * ephemeral key pair, then returned as `dPoPKey` so it can be reused later in
+   * the flow. Custom proofs must be coherent with the selected key pair.
    */
   dpopProof?: { jwt: string; signerJwk: Jwk };
 
@@ -76,8 +83,12 @@ export class TokenRequestDefaultStep extends StepFlow {
     log.debug(`Starting Token Request Step`);
 
     return this.execute<TokenRequestExecuteResponse>(async () => {
-      log.info("Generating ephemeral DPoP key pair...");
-      const dPoPKey = await createKeys();
+      const dPoPKey = options.dPoPKey ?? (await createKeys());
+      if (options.dPoPKey) {
+        log.info("Reusing provided DPoP key pair...");
+      } else {
+        log.info("Generated ephemeral DPoP key pair...");
+      }
 
       log.info(`Fetching access token from: ${options.accessTokenEndpoint}`);
       const createTokenDPoPOptions: CreateTokenDPoPOptions = {

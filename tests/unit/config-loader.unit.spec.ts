@@ -18,7 +18,6 @@ const envKeys = [
   "CONFIG_MAX_RETRIES",
   "CONFIG_PRESENTATION_TESTS_DIR",
   "CONFIG_PORT",
-  "CONFIG_REFRESH_TOKEN_DEFERRED",
   "CONFIG_SAVE_CREDENTIAL",
   "CONFIG_STEPS_MAPPING",
   "CONFIG_TIMEOUT",
@@ -143,31 +142,12 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
     );
   });
 
-  it("should map refresh_token_deferred from CONFIG_REFRESH_TOKEN_DEFERRED environment variable", () => {
-    process.env.CONFIG_REFRESH_TOKEN_DEFERRED = "my-deferred-refresh-token";
-
-    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
-
-    expect(config.issuance.refresh_token_deferred).toBe(
-      "my-deferred-refresh-token",
-    );
-  });
-
   it("should map transaction_id from CONFIG_TRANSACTION_ID environment variable", () => {
     process.env.CONFIG_TRANSACTION_ID = "deferred-txn-42";
 
     const config = loadConfigWithHierarchy(null, DEFAULT_INI);
 
     expect(config.issuance.transaction_id_deferred).toBe("deferred-txn-42");
-  });
-
-  it("should map refresh_token_deferred from direct CliOptions", () => {
-    const config = loadConfigWithHierarchy(
-      { refreshTokenDeferred: "cli-deferred-token" },
-      DEFAULT_INI,
-    );
-
-    expect(config.issuance.refresh_token_deferred).toBe("cli-deferred-token");
   });
 
   it("should map transaction_id from direct CliOptions", () => {
