@@ -778,7 +778,7 @@ export class WalletIssuanceOrchestratorFlow {
 
   private loadDeferredTransactionBackup(transactionId: string): {
     dPoPKey: KeyPair;
-    refresh_token: string;
+    refresh_token?: string;
   } {
     try {
       return loadTransactionCredentialResponseBackup(
@@ -806,7 +806,7 @@ export class WalletIssuanceOrchestratorFlow {
 
   private loadReissuanceNotificationBackup(notificationId: string): {
     dPoPKey: KeyPair;
-    refresh_token: string;
+    refresh_token?: string;
   } {
     try {
       return loadNotificationCredentialResponseBackup(
@@ -1057,9 +1057,16 @@ export class WalletIssuanceOrchestratorFlow {
    * refresh-token token request. Does NOT run PAR or authorization steps.
    */
   private async runThroughRefreshToken(
-    refreshToken: string,
+    refreshToken: string | undefined,
     dPoPKey?: KeyPair,
   ): Promise<RunThroughRefreshTokenContext> {
+    if (!refreshToken) {
+      throw new OrchestratorError(
+        "Credential response backup does not contain a refresh token. Cannot perform the refresh-token flow.",
+        "CREDENTIAL_RESPONSE_BACKUP_REFRESH_TOKEN_MISSING",
+      );
+    }
+
     this.printTestSuiteOnce();
     this.log.info("Starting Re-Issuance Flow...");
 

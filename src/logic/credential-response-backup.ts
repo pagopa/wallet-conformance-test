@@ -119,17 +119,17 @@ const privateDpopJwkSchema = z
     x: z.string().min(1),
     y: z.string().min(1),
   })
-  .passthrough();
+  .loose();
 
 const loadableBackupSchema = z
   .object({
     access_token: z.string().optional(),
     dpop_jwk: privateDpopJwkSchema,
     notification_id: z.string().optional(),
-    refresh_token: z.string().min(1),
+    refresh_token: z.string().min(1).optional(),
     transaction_id: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type DeferredTransactionBackup = z.infer<typeof loadableBackupSchema> & {
   dPoPKey: KeyPair;
