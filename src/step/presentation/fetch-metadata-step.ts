@@ -30,10 +30,10 @@ export type FetchMetadataVpStepResponse = StepResponse & {
 export class FetchMetadataVpDefaultStep extends StepFlow {
   static readonly tag = "FETCH_METADATA_VP";
 
-  async retrieveEntityStatementJwt(url: string) {
+  async retrieveEntityStatementJwt(url: URL) {
     const isVerifyEnabled = this.config.trust_anchor.verify;
     if (isVerifyEnabled) {
-      const resValidateTrustChain = await fetchAndValidateTrustChain(url, {
+      const resValidateTrustChain = await fetchAndValidateTrustChain(url.href, {
         callbacks: {
           ...partialCallbacks,
           fetch: createFetcher(fetchWithConfig(this.config.network)),
@@ -47,7 +47,8 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     }
 
     // Skip validation trust chain, just fetch metadata
-    const response = await fetchWithRetries(url, this.config.network);
+    const wellKnownUrl = `${url.href}/.well-known/openid-federation`;
+    const response = await fetchWithRetries(wellKnownUrl, this.config.network);
     return await response.response.text();
   }
 
@@ -55,15 +56,14 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     options: FetchMetadataVpOptions,
   ): Promise<FetchMetadataVpStepResponse> {
     const log = this.log;
-    const url = options.baseUrl;
+    const url = new URL(options.baseUrl);
 
     log.info("Discovering metadata...");
     log.info(`Fetching Relying Party metadata from ${url}`);
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
-      log.info(`Fetching Relying Party metadata from ${url}`);
-
       const entityStatementJwt = await this.retrieveEntityStatementJwt(url);
+      
       if (!entityStatementJwt) {
         throw new Error(
           "Error in trust chain evaluation, neither the base jwt has been fetched",
