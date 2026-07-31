@@ -5,7 +5,11 @@ import {
 import { createFetcher, parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 
-import { fetchWithConfig, partialCallbacks } from "@/logic/utils";
+import {
+  fetchWithConfig,
+  fetchWithRetries,
+  partialCallbacks,
+} from "@/logic/utils";
 import { recordSessionEntityNameFromEntityConfiguration } from "@/report/session-runtime";
 
 import { StepFlow, StepResponse } from "../step-flow";
@@ -26,6 +30,27 @@ export type FetchMetadataVpStepResponse = StepResponse & {
 export class FetchMetadataVpDefaultStep extends StepFlow {
   static readonly tag = "FETCH_METADATA_VP";
 
+  async retrieveEntityStatementJwt(url: string) {
+    const isVerifyEnabled = this.config.trust_anchor.verify;
+    if (isVerifyEnabled) {
+      const resValidateTrustChain = await fetchAndValidateTrustChain(url, {
+        callbacks: {
+          ...partialCallbacks,
+          fetch: createFetcher(fetchWithConfig(this.config.network)),
+        },
+        trustAnchorUrls: this.config.trust.federation_trust_anchors as [
+          string,
+          ...string[],
+        ],
+      });
+      return resValidateTrustChain[0];
+    }
+
+    // Skip validation trust chain, just fetch metadata
+    const response = await fetchWithRetries(url, this.config.network);
+    return await response.response.text();
+  }
+
   async run(
     options: FetchMetadataVpOptions,
   ): Promise<FetchMetadataVpStepResponse> {
@@ -36,18 +61,9 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     log.info(`Fetching Relying Party metadata from ${url}`);
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
-      const res = await fetchAndValidateTrustChain(url, {
-        callbacks: {
-          ...partialCallbacks,
-          fetch: createFetcher(fetchWithConfig(this.config.network)),
-        },
-        trustAnchorUrls: this.config.trust.federation_trust_anchors as [
-          string,
-          ...string[],
-        ],
-      });
-      log.info(`Fetched Relying Party metadata from ${url} successfully`);
-      const entityStatementJwt = res[0];
+      log.info(`Fetching Relying Party metadata from ${url}`);
+
+      const entityStatementJwt = await this.retrieveEntityStatementJwt(url);
       if (!entityStatementJwt) {
         throw new Error(
           "Error in trust chain evaluation, neither the base jwt has been fetched",
