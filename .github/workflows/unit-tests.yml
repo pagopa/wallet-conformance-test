@@ -39,6 +39,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build
+        run: pnpm build
+
+      - name: Expose wct CLI
+        shell: bash
+        run: echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+
       - name: Run wct init
         shell: bash
         run: wct init
