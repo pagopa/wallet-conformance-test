@@ -448,6 +448,7 @@ and returns the authorization code.
     privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
   };
   nonce: string;                        // Nonce value from NonceRequestStep (response.nonce.nonce)
+  batchSize?: number;                   // Optional batch size for one credential identifier (v1.3/v1.4 only)
   walletAttestation: {                  // Wallet authentication (AttestationResponse without "created")
     attestation: string;                //   Compact JWT of the Wallet Attestation
     providerKey: KeyPair;               //   Wallet Provider key pair (EC P-256, JWK format)
@@ -470,19 +471,31 @@ and returns the authorization code.
   success: boolean;
   error?: Error;
   durationMs?: number;
-  response?: {
-    // ImmediateCredentialResponse fields
-    credentials: [                         // Non-empty array (at least one element guaranteed)
-      { credential: string },              // credential: the issued token (SD-JWT, mDOC, …)
-      ...{ credential: string }[]
-    ];
-    notification_id?: string;             // Optional notification ID for deferred status
+  response?: (
+    | {
+        // ImmediateCredentialResponse fields
+        credentials: [                       // Non-empty array (at least one element guaranteed)
+          { credential: string },            // credential: the issued token (SD-JWT, mDOC, …)
+          ...{ credential: string }[]
+        ];
+        notification_id?: string;            // Optional notification ID for credential notifications
+      }
+    | {
+        // DeferredCredentialResponse fields
+        transaction_id: string;              // Use with deferred_credential_endpoint
+        interval?: number;
+        lead_time?: number;
+      }
+  ) & {
     // Step-added field
-    credentialKeyPair: {                   // Key pair generated for this credential's proof (KeyPair)
-      publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
-      privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
-    };
-  }
+    credentialKeyPairs: [                    // Ordered key pairs generated for the submitted proofs
+      {
+        publicKey:  { kid: string; kty: "EC" | "RSA"; /* crv, x, y, … */ };
+        privateKey: { kid: string; kty: "EC" | "RSA"; /* crv, x, y, d, … */ };
+      },
+      ...KeyPair[]
+    ];
+  };
 }
 ```
 
@@ -497,21 +510,24 @@ and returns the authorization code.
         "credential": "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsImtpZCI6ImtleTox..."
       }
     ],
-    "credentialKeyPair": {
-      "publicKey": { "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "..." },
-      "privateKey": { "kty": "EC", "crv": "P-256", "d": "...", "x": "...", "y": "..." }
-    }
+    "credentialKeyPairs": [
+      {
+        "publicKey": { "kty": "EC", "crv": "P-256", "x": "...", "y": "...", "kid": "..." },
+        "privateKey": { "kty": "EC", "crv": "P-256", "d": "...", "x": "...", "y": "..." }
+      }
+    ]
   }
 }
 ```
 
 **Common Assertions**:
 - `response.success === true`
-- `response.response?.credentials` is a non-empty array
-- `response.response?.credentials[0].credential` is a non-empty string (JWT or mDOC)
-- `response.response?.credentialKeyPair` contains public and private key components
+- if `"credentials" in response.response`, `response.response.credentials` is a non-empty array
+- if `"transaction_id" in response.response`, the issuer returned a deferred credential response
+- `response.response?.credentialKeyPairs` contains one public/private key pair per returned credential
+- for immediate responses, `response.response.credentials.length === response.response.credentialKeyPairs.length`
 
-**Note**: Use `createCredentialRequestOverrides` to test negative cases (e.g., wrong proofType, invalid nonce).
+**Note**: Use `createCredentialRequestOverrides` to test negative cases (e.g., wrong proofType, invalid nonce). When `batchSize` is greater than one, every proof uses a distinct key pair and the array order matches the generated signers.
 
 ---
 

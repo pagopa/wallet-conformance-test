@@ -34,12 +34,53 @@ export class CredentialConfigurationError extends OrchestratorError {
   }
 }
 
+export class CredentialResponseBackupError extends OrchestratorError {
+  readonly identifierType: "notification_id" | "transaction_id";
+  readonly operation:
+    | "ensure_directory"
+    | "parse_file"
+    | "read_file"
+    | "validate_content"
+    | "validate_identifier"
+    | "write_file";
+  readonly safePath: string;
+
+  constructor(
+    identifierType: "notification_id" | "transaction_id",
+    operation:
+      | "ensure_directory"
+      | "parse_file"
+      | "read_file"
+      | "validate_content"
+      | "validate_identifier"
+      | "write_file",
+    safePath: string,
+    cause?: unknown,
+  ) {
+    const causeMessage =
+      cause instanceof Error
+        ? cause.message
+        : cause
+          ? String(cause)
+          : undefined;
+    super(
+      `Credential Response backup failed during ${operation} for ${identifierType} at '${safePath}'` +
+        (causeMessage ? `: ${causeMessage}` : ""),
+      "CREDENTIAL_RESPONSE_BACKUP_FAILED",
+    );
+    this.name = "CredentialResponseBackupError";
+    this.identifierType = identifierType;
+    this.operation = operation;
+    this.safePath = safePath;
+  }
+}
+
 export class DeferredIssuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
-      "Deferred Issuance Flow requires both a deferred refresh token and a transaction id. " +
-        "Set 'refresh_token_deferred' and 'transaction_id_deferred' under [issuance] in config.ini or " +
-        "pass --refresh-token-deferred <token> --transaction-id <id>.",
+      "Deferred Issuance Flow requires a transaction id. " +
+        "Set 'transaction_id_deferred' under [issuance] in config.ini or " +
+        "pass --transaction-id <id>.",
       "DEFERRED_ISSUANCE_PRECONDITION_FAILED",
     );
     this.name = "DeferredIssuancePreconditionError";
@@ -78,8 +119,9 @@ export class ReissuanceCredentialConfigurationError extends OrchestratorError {
 export class ReissuancePreconditionError extends OrchestratorError {
   constructor() {
     super(
-      "Re-Issuance Flow requires a refresh token and credential configuration ID. " +
-        "Set 'refresh_token_reissuance' and 'credential_configuration_id_reissuance' under [issuance] in config.ini or pass --refresh-token-reissuance <token> --credential-configuration-id-reissuance <id>.",
+      "Re-Issuance Flow requires a notification backup and credential configuration ID. " +
+        "Set 'notification_id_reissuance' and 'credential_configuration_id_reissuance' under [issuance] in config.ini or pass --notification-id-reissuance <id> --credential-configuration-id-reissuance <id>. " +
+        "The notification backup must contain a valid Refresh Token and DPoP private key.",
       "REISSUANCE_PRECONDITION_FAILED",
     );
     this.name = "ReissuancePreconditionError";
