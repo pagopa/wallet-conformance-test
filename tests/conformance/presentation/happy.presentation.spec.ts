@@ -38,6 +38,9 @@ import { FetchMetadataVpStepResponse } from "@/step/presentation";
 import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
+const SKIPPING_RP_METADATA_MSG =
+  "Skipping because Relying Party metadata was not fetched: client_id prefix is x509_hash or it has no HTTPS base URL";
+
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
 
@@ -51,7 +54,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     orchestrator.getConfig().trust_anchor.verify === false;
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
-  let fetchMetadataResult: FetchMetadataVpStepResponse;
+  let fetchMetadataResult: FetchMetadataVpStepResponse | undefined;
   let redirectUriResult: RedirectUriStepResponse;
 
   function readQrCodePayload(): string {
@@ -84,7 +87,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
   useTestSummary(baseLog, testConfig.name);
 
-  test("RPR-01: Relying Party issues a correct URL using the base url provided within its metadata.", () => {
+  test("RPR-01: Relying Party issues a correct URL using the base url provided within its metadata.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-01");
 
     log.start(
@@ -95,6 +100,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly issues an inspectable 302 redirect URL using a metadata-declared base URL";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
@@ -240,7 +251,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-03: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", () => {
+  test("RPR-03: Relying Party issues the QR-Code containing an URL using the base url provided within its metadata.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-03");
 
     log.start(
@@ -251,6 +264,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly issues QR-Code with URL from metadata and client_id matches issuer";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
@@ -634,7 +653,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-09: Relying Party accepts defaults to GET method.", () => {
+  test("RPR-09: Relying Party accepts defaults to GET method.", ({ skip }) => {
     const log = baseLog.withTag("RPR-09");
 
     log.start(
@@ -645,6 +664,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party supports GET method for request objects, defaults if not specified";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
@@ -837,7 +862,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-13: Authorization Response is encrypted for one of the Relying Party public keys.", () => {
+  test("RPR-13: Authorization Response is encrypted for one of the Relying Party public keys.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-13");
 
     log.start(
@@ -848,6 +875,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Authorization Response is encrypted with a public key declared by the Relying Party";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
@@ -980,7 +1013,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   test(
     "RPR-23: Relying Party supports all credential formats declared in vp_formats_supported metadata.",
     { skip: walletVersion === ItWalletSpecsVersion.V1_0 },
-    () => {
+    ({ skip }) => {
       const log = baseLog.withTag("RPR-23");
 
       log.start(
@@ -991,6 +1024,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         "Relying Party metadata declares usable credential presentation formats and requests only declared formats";
       let testSuccess = false;
       try {
+        if (!fetchMetadataResult) {
+          log.warn(SKIPPING_RP_METADATA_MSG);
+          skip();
+          return;
+        }
+
         expect(fetchMetadataResult.success).toBe(true);
         expect(authorizationRequestResult.success).toBe(true);
 
@@ -1422,7 +1461,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-82: Response Types | response_types_supported is set to vp_token when present", () => {
+  test("RPR-82: Response Types | response_types_supported is set to vp_token when present", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-82");
 
     log.start(
@@ -1433,6 +1474,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "response_types_supported is correctly set to vp_token when present";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
 
@@ -1566,7 +1613,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-85: Endpoint Security | request_uri is attested in verifier metadata request_uris.", () => {
+  test("RPR-85: Endpoint Security | request_uri is attested in verifier metadata request_uris.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-85");
 
     log.start(
@@ -1577,6 +1626,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "request_uri base path is present in client metadata request_uris";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
       expect(authorizationRequestResult.success).toBe(true);
@@ -2094,7 +2149,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-95: Response URI Security | response_uri is attested in verifier metadata response_uris.", () => {
+  test("RPR-95: Response URI Security | response_uri is attested in verifier metadata response_uris.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-95");
 
     log.start(
@@ -2105,6 +2162,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "response_uri base path is present in client metadata response_uris";
     let testSuccess = false;
     try {
+      if (!fetchMetadataResult) {
+        log.warn(SKIPPING_RP_METADATA_MSG);
+        skip();
+        return;
+      }
+
       expect(fetchMetadataResult.success).toBe(true);
       expect(fetchMetadataResult.response?.entityStatementClaims).toBeDefined();
       expect(authorizationRequestResult.success).toBe(true);
