@@ -32,8 +32,12 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
 
   async retrieveEntityStatementJwt(url: URL) {
     const isVerifyEnabled = this.config.trust_anchor.verify;
+    // Entity identifiers carry no trailing slash, but URL parsing adds one for
+    // origin-only URLs. Strip it while preserving any path segments.
+    const entityId = url.href.replace(/\/+$/, "");
+
     if (isVerifyEnabled) {
-      const resValidateTrustChain = await fetchAndValidateTrustChain(url.href, {
+      const resValidateTrustChain = await fetchAndValidateTrustChain(entityId, {
         callbacks: {
           ...partialCallbacks,
           fetch: createFetcher(fetchWithConfig(this.config.network)),
@@ -47,7 +51,7 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
     }
 
     // Skip validation trust chain, just fetch metadata
-    const wellKnownUrl = `${url.href}/.well-known/openid-federation`;
+    const wellKnownUrl = `${entityId}/.well-known/openid-federation`;
     const response = await fetchWithRetries(wellKnownUrl, this.config.network);
     return await response.response.text();
   }
