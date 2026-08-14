@@ -6,7 +6,7 @@ WORKDIR /wallet-conformance-test
 
 COPY package.json pnpm-lock.yaml ./
 
-RUN npm install -g pnpm \
+RUN npm install -g pnpm@10.23.0 \
     && pnpm install --frozen-lockfile \
     && pnpm rebuild
 
