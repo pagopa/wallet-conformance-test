@@ -11,8 +11,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "path";
 
 import { MissingFieldError } from "@/errors";
+import { LOCAL_WP_HOST } from "@/logic/wallet-provider-url";
 import { LOCAL_CI_HOST } from "@/servers/ci-server";
-import { LOCAL_WP_HOST } from "@/servers/wp-server";
 import { LOCAL_TA_HOST } from "@/trust-anchor/trust-anchor-resolver";
 import { Config, FetchWithRetriesResponse, KeyPair } from "@/types";
 

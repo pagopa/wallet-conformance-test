@@ -10,18 +10,22 @@ import {
   loadJwks,
   loadOrCreateServerCertificate,
 } from "@/logic/utils";
+import { loadWalletProviderCertificate } from "@/logic/wallet-provider";
+import {
+  appendWalletProviderPath,
+  getWalletProviderCertificateSubject,
+  resolveWalletProviderBaseUrl,
+} from "@/logic/wallet-provider-url";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config } from "@/types";
 
-export const LOCAL_WP_HOST = "wallet-provider.wct.example.org";
-export const getLocalWpBaseUrl = (port: number): string =>
-  `https://${LOCAL_WP_HOST}:${port}`;
+export { getLocalWpBaseUrl, LOCAL_WP_HOST } from "@/logic/wallet-provider-url";
 
 export const createServer = (config: Config): express.Express => {
   const app = express();
   app.use(express.json());
 
-  const wpBaseUrl = getLocalWpBaseUrl(config.wallet.port);
+  const wpBaseUrl = resolveWalletProviderBaseUrl(config.wallet);
 
   app.get("/.well-known/openid-federation", async (_req, res) => {
     try {
@@ -48,13 +52,25 @@ export const createServer = (config: Config): express.Express => {
 
   app.get("/status-list", async (_req, res) => {
     try {
+      const providerKeyPair = await loadJwks(
+        config.wallet.backup_storage_path,
+        buildJwksPath("wallet_provider"),
+      );
+      await loadWalletProviderCertificate(
+        config.wallet,
+        config.trust,
+        providerKeyPair,
+      );
       const jwt = await createStatusListToken({
         certFilename: "wallet_provider_cert",
-        certSubject: `CN=${LOCAL_WP_HOST}`,
+        certSubject: getWalletProviderCertificateSubject(wpBaseUrl),
         iss: wpBaseUrl,
         jwksFilename: "wallet_provider_jwks",
         jwksPath: config.wallet.backup_storage_path,
-        statusListEndpointUrl: `${wpBaseUrl}/status-list`,
+        statusListEndpointUrl: appendWalletProviderPath(
+          wpBaseUrl,
+          "status-list",
+        ),
       });
       res.type("application/statuslist+jwt").send(jwt);
     } catch (err) {
@@ -75,7 +91,7 @@ if (isMainModule(import.meta.url)) {
     )
     .then((server) =>
       server.listen(config.wallet.port, config.network.bind_address, () => {
-        const wpBaseUrl = getLocalWpBaseUrl(config.wallet.port);
+        const wpBaseUrl = resolveWalletProviderBaseUrl(config.wallet);
         console.log(
           `[Wallet Provider] ${wpBaseUrl} Server started
       PID: ${process.pid}

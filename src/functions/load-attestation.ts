@@ -26,7 +26,10 @@ import {
   signJwtCallback,
   validateProviderKeyPair,
 } from "@/logic";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import {
+  appendWalletProviderPath,
+  resolveWalletProviderBaseUrl,
+} from "@/logic/wallet-provider-url";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
   type AttestationResponse,
@@ -72,7 +75,7 @@ export const buildWpEntityConfiguration = async (
     trust_anchor_base_url: trustAnchorBaseUrl,
     trust_marks,
     wallet_name: wallet.wallet_name,
-    wallet_provider_base_url: getLocalWpBaseUrl(wallet.port),
+    wallet_provider_base_url: resolveWalletProviderBaseUrl(wallet),
   };
   const wpClaims = loadJsonDumps(
     "wallet_provider_metadata.json",
@@ -97,13 +100,13 @@ const buildAttestationOptions = async (
     ...partialCallbacks,
     signJwt: signJwtCallback([providerKeyPair.privateKey]),
   };
-  const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
+  const wpBaseUrl = resolveWalletProviderBaseUrl(wallet);
   const commonOptions = {
     callbacks,
     dpopJwkPublic: unitPublicKey,
     expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
     issuer: wpBaseUrl,
-    walletLink: `${wpBaseUrl}/wallet`,
+    walletLink: appendWalletProviderPath(wpBaseUrl, "wallet"),
     walletName: wallet.wallet_name,
   };
   const signerBase = {
@@ -144,7 +147,7 @@ const buildAttestationOptions = async (
         status: {
           status_list: {
             idx: 0,
-            uri: `${wpBaseUrl}/status-list`,
+            uri: appendWalletProviderPath(wpBaseUrl, "status-list"),
           },
         },
       };
@@ -170,7 +173,7 @@ export const createAttestation = async (
     resolveTaEntityConfiguration(
       trust,
       providerKeyPair.publicKey,
-      getLocalWpBaseUrl(wallet.port),
+      resolveWalletProviderBaseUrl(wallet),
       trustAnchorBaseUrl,
       wallet.wallet_version,
     ),
@@ -244,6 +247,13 @@ export const loadAttestation = async (
     try {
       const attestation = readFileSync(attestationPath, "utf-8");
       const attestationJwt = await SDJwt.extractJwt(attestation);
+      if (
+        attestationJwt.payload?.iss !== resolveWalletProviderBaseUrl(wallet)
+      ) {
+        throw new Error(
+          "wallet attestation issuer does not match configuration",
+        );
+      }
       // Since, at version 0.17.0, the SDJwt.extractJwt method dosn't check for WIA expiration,
       // it must be done manually
       const exp = attestationJwt.payload?.exp;

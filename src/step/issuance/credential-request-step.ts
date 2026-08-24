@@ -28,7 +28,7 @@ import {
   partialCallbacks,
   signJwtCallback,
 } from "@/logic";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import { resolveWalletProviderBaseUrl } from "@/logic/wallet-provider-url";
 import { AttestationResponse } from "@/types/attestation-response";
 import { KeyPair } from "@/types/key-pair";
 
@@ -174,7 +174,7 @@ export class CredentialRequestDefaultStep extends StepFlow {
         signJwt: signJwtCallback([providerKey.privateKey]),
       },
       expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
-      issuer: getLocalWpBaseUrl(this.config.wallet.port),
+      issuer: resolveWalletProviderBaseUrl(this.config.wallet),
       keyStorage: ["iso_18045_moderate"],
       signer: {
         alg: "ES256",

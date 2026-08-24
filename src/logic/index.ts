@@ -12,3 +12,4 @@ export * from "./status-list";
 export * from "./utils";
 export * from "./vpToken";
 export * from "./wallet-provider";
+export * from "./wallet-provider-url";

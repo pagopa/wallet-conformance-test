@@ -2,17 +2,21 @@ import * as x509 from "@peculiar/x509";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { getLocalWpBaseUrl, LOCAL_WP_HOST } from "@/servers/wp-server";
-import { Config, KeyPair } from "@/types";
+import type { Config, KeyPair } from "@/types";
 
 import { createKeys } from "./jwk";
 import {
   createSignedCertificate,
-  hasSanExtension,
+  hasWalletProviderCertificateIdentity,
   hasX509CertificateExpired,
   pemToBase64Der,
 } from "./pem";
-import { buildCertPath, buildJwksPath, ensureDir, loadJwks } from "./utils";
+import { buildJwksPath, ensureDir, loadJwks } from "./utils";
+import {
+  getWalletProviderCertificateSubject,
+  getWalletProviderHostname,
+  resolveWalletProviderBaseUrl,
+} from "./wallet-provider-url";
 
 /** Filenames for persisted intermediate artefacts */
 const CA_INTERMEDIATE_CERT = "ca_intermediate_cert";
@@ -57,22 +61,20 @@ export async function loadWalletProviderCertificate(
     path.join(caCertPath, CA_INTERMEDIATE_CERT),
   );
   const wpCertPath = path.resolve(path.join(backupPath, WALLET_PROVIDER_CERT));
-  const taCertPath = path.resolve(
-    path.join(backupPath, buildCertPath("trust_anchor")),
-  );
 
   // ── Try loading the cached chain ──────────────────────────────────────
   const wpIntermediateCachedCert = loadCachedCert(wpIntermediateCertPath);
   const wpCachedCert = loadCachedCert(wpCertPath);
-  const taCachedCert = loadCachedCert(taCertPath);
 
   if (
     wpCachedCert &&
-    hasSanExtension(wpCachedCert) &&
-    wpIntermediateCachedCert &&
-    taCachedCert
+    hasWalletProviderCertificateIdentity(
+      wpCachedCert,
+      resolveWalletProviderBaseUrl(wallet),
+    ) &&
+    wpIntermediateCachedCert
   ) {
-    return [wpCachedCert, wpIntermediateCachedCert, taCachedCert];
+    return [wpCachedCert, wpIntermediateCachedCert];
   }
 
   // ── Invalidate stale artefacts ────────────────────────────────────────
@@ -91,7 +93,8 @@ export async function loadWalletProviderCertificate(
 
   // ── wpIntermediateCert: signed by TA, attests KY1 (isCA = true) ─────────────────────
   const taSubject = trust.certificate_subject;
-  const wpSubject = `CN=${LOCAL_WP_HOST}`;
+  const wpBaseUrl = resolveWalletProviderBaseUrl(wallet);
+  const wpSubject = getWalletProviderCertificateSubject(wpBaseUrl);
 
   const wpIntermediateCert = await createSignedCertificate(
     taKeyPair,
@@ -107,8 +110,6 @@ export async function loadWalletProviderCertificate(
   ).toString("base64");
 
   // ── CA2: signed by KY1, attests providerKeyPair / KY2 (leaf) ─────────
-  const wpBaseUrl = getLocalWpBaseUrl(wallet.port);
-
   const wpCert = await createSignedCertificate(
     wpIntermediateKeyPair,
     wpSubject,
@@ -118,7 +119,7 @@ export async function loadWalletProviderCertificate(
     [
       new x509.SubjectAlternativeNameExtension(
         [
-          { type: "dns", value: LOCAL_WP_HOST },
+          { type: "dns", value: getWalletProviderHostname(wpBaseUrl) },
           { type: "url", value: wpBaseUrl },
         ],
         false,
