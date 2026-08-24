@@ -6,6 +6,7 @@ import { loadConfigWithHierarchy } from "@/logic";
 import * as pem from "@/logic/pem";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
+import { appendWalletProviderPath } from "@/logic/wallet-provider-url";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
 
@@ -63,6 +64,19 @@ describe("status-list endpoint tests", () => {
       });
     },
   );
+});
+
+describe("Wallet Provider status-list URL composition", () => {
+  it("preserves a configured Wallet Provider path without duplicate slashes", () => {
+    expect(
+      appendWalletProviderPath(
+        "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/",
+        "/status-list",
+      ),
+    ).toBe(
+      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/status-list",
+    );
+  });
 });
 
 describe("createStatusListToken", () => {

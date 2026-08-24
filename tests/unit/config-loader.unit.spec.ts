@@ -8,6 +8,7 @@ import {
   readPackageVersion,
 } from "@/logic/config-loader";
 import { packageRoot, resolveLocalConfigPath } from "@/logic/runtime-paths";
+import { resolveWalletProviderBaseUrl } from "@/logic/wallet-provider-url";
 
 const DEFAULT_INI = path.join(packageRoot, "config.example.ini");
 const envKeys = [
@@ -23,6 +24,7 @@ const envKeys = [
   "CONFIG_TIMEOUT",
   "CONFIG_TRANSACTION_ID",
   "CONFIG_UNSAFE_TLS",
+  "CONFIG_WALLET_PROVIDER_BASE_URL",
   "CONFIG_WALLET_VERSION",
   "NODE_TLS_REJECT_UNAUTHORIZED",
 ];
@@ -131,6 +133,48 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
     expect(config.wallet.wallet_id).toBe("wallet_cli_instance");
     expect(config.wallet.backup_storage_path).toBe(
       path.join(packageRoot, "data/backup"),
+    );
+  });
+
+  it("should resolve the configured Wallet Provider identifier from the environment", () => {
+    process.env.CONFIG_WALLET_PROVIDER_BASE_URL =
+      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/";
+
+    const config = loadConfigWithHierarchy(null, DEFAULT_INI);
+
+    expect(resolveWalletProviderBaseUrl(config.wallet)).toBe(
+      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
+    );
+  });
+
+  it("should prefer the direct CLI Wallet Provider identifier over INI and environment values", () => {
+    process.env.CONFIG_WALLET_PROVIDER_BASE_URL = "https://env.example/wallet";
+    writeFileSync(
+      path.join(process.cwd(), "config.ini"),
+      "[wallet]\nwallet_provider_base_url = https://ini.example/wallet\n",
+    );
+
+    const config = loadConfigWithHierarchy(
+      {
+        walletProviderBaseUrl: "https://cli.example/wallet/",
+      },
+      DEFAULT_INI,
+    );
+
+    expect(resolveWalletProviderBaseUrl(config.wallet)).toBe(
+      "https://cli.example/wallet",
+    );
+  });
+
+  it.each([
+    "http://insecure.example/wallet",
+    "https://example.test/wallet?query=value",
+    "https://example.test/wallet#fragment",
+  ])("should reject an invalid Wallet Provider identifier: %s", (value) => {
+    process.env.CONFIG_WALLET_PROVIDER_BASE_URL = value;
+
+    expect(() => loadConfigWithHierarchy(null, DEFAULT_INI)).toThrow(
+      /Configuration validation failed/,
     );
   });
 

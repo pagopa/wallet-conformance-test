@@ -5,6 +5,7 @@ import { createKeys } from "@/logic/jwk";
 import {
   createSignedCertificate,
   hasSanExtension,
+  hasWalletProviderCertificateIdentity,
   OID_SUBJECT_ALTERNATIVE_NAME,
 } from "@/logic/pem";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
@@ -13,6 +14,7 @@ describe("wallet_provider_cert SAN", () => {
   let certWithSan: x509.X509Certificate;
   let certWithSanDerBase64: string;
   let certWithoutSanDerBase64: string;
+  let certWithCustomIdentityDerBase64: string;
 
   beforeAll(async () => {
     const issuerKp = await createKeys();
@@ -42,6 +44,30 @@ describe("wallet_provider_cert SAN", () => {
       false,
     );
     certWithoutSanDerBase64 = Buffer.from(certWithoutSan.rawData).toString(
+      "base64",
+    );
+
+    const customProviderUrl =
+      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider";
+    const customIssuerKp = await createKeys();
+    const customSubjectKp = await createKeys();
+    const customCert = await createSignedCertificate(
+      customIssuerKp,
+      "CN=TestIssuer",
+      customSubjectKp,
+      `C=IT, O=PagoPA S.p.A., CN=${customProviderUrl.slice("https://".length)}`,
+      false,
+      [
+        new x509.SubjectAlternativeNameExtension(
+          [
+            { type: "dns", value: "dev.eid.wallet.ipzs.it" },
+            { type: "url", value: customProviderUrl },
+          ],
+          false,
+        ),
+      ],
+    );
+    certWithCustomIdentityDerBase64 = Buffer.from(customCert.rawData).toString(
       "base64",
     );
   });
@@ -78,6 +104,24 @@ describe("wallet_provider_cert SAN", () => {
     expect(
       hasSanExtension("not-valid-der-base64!!!"),
       "malformed input should not throw and should return false",
+    ).toBe(false);
+  });
+
+  it("accepts a certificate with a full subject whose SANs match the configured identifier", () => {
+    expect(
+      hasWalletProviderCertificateIdentity(
+        certWithCustomIdentityDerBase64,
+        "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a cached certificate whose URI SAN belongs to another identifier", () => {
+    expect(
+      hasWalletProviderCertificateIdentity(
+        certWithCustomIdentityDerBase64,
+        "https://dev.eid.wallet.ipzs.it/other-wallet-provider",
+      ),
     ).toBe(false);
   });
 });
