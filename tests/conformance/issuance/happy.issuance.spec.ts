@@ -6,6 +6,7 @@ import {
   assertPidJwtPayloadClaims,
   assertPidSdDisclosures,
 } from "#/helpers/pid-helpers";
+import { decodeJwtOrThrow } from "#/helpers/token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import { JwkSet } from "@pagopa/io-wallet-oauth2";
 import { fetchMetadata } from "@pagopa/io-wallet-oid4vci";
@@ -362,42 +363,46 @@ testConfigs.forEach((testConfig) => {
       },
     );
 
-    test("CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet", async () => {
-      const log = baseLog.withTag("CI_009");
-      const DESCRIPTION = "openid_credential_verifier metadata is present";
+    test(
+      "CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet",
+      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      async () => {
+        const log = baseLog.withTag("CI_009");
+        const DESCRIPTION = "openid_credential_verifier metadata is present";
 
-      log.start(
-        "Conformance test: Verifying openid_credential_verifier metadata presence",
-      );
+        log.start(
+          "Conformance test: Verifying openid_credential_verifier metadata presence",
+        );
 
-      let testSuccess = false;
-      try {
-        const entityClaims =
-          fetchMetadataResponse.response?.entityStatementClaims;
+        let testSuccess = false;
+        try {
+          const entityClaims =
+            fetchMetadataResponse.response?.entityStatementClaims;
 
-        const result = z
-          .object({
-            metadata: z.any(),
-          })
-          .loose()
-          .refine(
-            (data) =>
-              data.metadata !== undefined &&
-              data.metadata?.openid_credential_verifier !== undefined,
-            { message: "metadata or openid_credential_verifier is missing" },
-          )
-          .safeParse(entityClaims);
+          const result = z
+            .object({
+              metadata: z.any(),
+            })
+            .loose()
+            .refine(
+              (data) =>
+                data.metadata !== undefined &&
+                data.metadata?.openid_credential_verifier !== undefined,
+              { message: "metadata or openid_credential_verifier is missing" },
+            )
+            .safeParse(entityClaims);
 
-        expect(
-          result.success,
-          `Error validating schema: ${result.success ? "" : result.error.message}`,
-        ).toBe(true);
+          expect(
+            result.success,
+            `Error validating schema: ${result.success ? "" : result.error.message}`,
+          ).toBe(true);
 
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     // ============================================================================
     // CREDENTIAL OFFER TESTS
@@ -560,111 +565,114 @@ testConfigs.forEach((testConfig) => {
       },
     );
 
-    test("CI_014: Credential | Credential Object Compilation", async ({
-      skip,
-    }) => {
-      const log = baseLog.withTag("CI_014");
-      const DESCRIPTION = "Credential Object is properly compiled";
+    test(
+      "CI_014: Credential | Credential Object Compilation",
+      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      async ({ skip }) => {
+        const log = baseLog.withTag("CI_014");
+        const DESCRIPTION = "Credential Object is properly compiled";
 
-      log.start("Conformance test: Verifying Credential Object compilation");
+        log.start("Conformance test: Verifying Credential Object compilation");
 
-      let testSuccess = false;
-      try {
-        expect(credentialResponse.response).toBeDefined();
-        if (!credentialResponse.response)
-          throw new Error(
-            `credential request failed: ${credentialResponse.error}`,
+        let testSuccess = false;
+        try {
+          expect(credentialResponse.response).toBeDefined();
+          if (!credentialResponse.response)
+            throw new Error(
+              `credential request failed: ${credentialResponse.error}`,
+            );
+
+          const credentials = getCredentialResponseCredentials(
+            credentialResponse.response,
           );
-
-        const credentials = getCredentialResponseCredentials(
-          credentialResponse.response,
-        );
-        const transactionId = getCredentialResponseTransactionId(
-          credentialResponse.response,
-        );
-        if (transactionId) {
-          log.debug(
-            `  Received transaction ID: ${transactionId} so can skip the CI_161a test for revocation/suspension`,
+          const transactionId = getCredentialResponseTransactionId(
+            credentialResponse.response,
           );
-          skip();
-        }
-        expect(credentials.length).toBeGreaterThan(0);
+          if (transactionId) {
+            log.debug(
+              `  Received transaction ID: ${transactionId} so can skip the CI_161a test for revocation/suspension`,
+            );
+            skip();
+          }
+          expect(credentials.length).toBeGreaterThan(0);
 
-        const credentialKeyPairs =
-          credentialResponse.response.credentialKeyPairs;
-        expect(
-          credentials.length,
-          "Credential response must contain one credential per generated proof key",
-        ).toBe(credentialKeyPairs.length);
+          const credentialKeyPairs =
+            credentialResponse.response.credentialKeyPairs;
+          expect(
+            credentials.length,
+            "Credential response must contain one credential per generated proof key",
+          ).toBe(credentialKeyPairs.length);
 
-        const credentialSchema:
-          | undefined
-          | {
-              claims: { path: string[] }[];
-              credential_metadata?: { claims: { path: string[] }[] };
-              format: "dc+sd-jwt" | "mso_doc";
-              vct?: string;
-            } =
-          fetchMetadataResponse.response?.entityStatementClaims.metadata
-            ?.openid_credential_issuer?.credential_configurations_supported[
-            testConfig.credentialConfigurationId
-          ];
-        if (!credentialSchema)
-          throw new Error(
-            "missing credential type from issuer's supported credentials list",
-          );
+          const credentialSchema:
+            | undefined
+            | {
+                claims: { path: string[] }[];
+                credential_metadata?: { claims: { path: string[] }[] };
+                format: "dc+sd-jwt" | "mso_doc";
+                vct?: string;
+              } =
+            fetchMetadataResponse.response?.entityStatementClaims.metadata
+              ?.openid_credential_issuer?.credential_configurations_supported[
+              testConfig.credentialConfigurationId
+            ];
+          if (!credentialSchema)
+            throw new Error(
+              "missing credential type from issuer's supported credentials list",
+            );
 
-        const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
-        const claims = isV1_0
-          ? credentialSchema.claims
-          : credentialSchema.credential_metadata?.claims;
-        if (!claims)
-          throw new Error(
-            "missing claims from issuer's supported credential configuration",
-          );
+          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
+          const claims = isV1_0
+            ? credentialSchema.claims
+            : credentialSchema.credential_metadata?.claims;
+          if (!claims)
+            throw new Error(
+              "missing claims from issuer's supported credential configuration",
+            );
 
-        for (const [index, credential] of credentials.entries()) {
-          const credentialKeyPair = credentialKeyPairs[index];
-          expect(credentialKeyPair).toBeDefined();
-          if (!credentialKeyPair) throw new Error("credential key missing");
+          for (const [index, credential] of credentials.entries()) {
+            const credentialKeyPair = credentialKeyPairs[index];
+            expect(credentialKeyPair).toBeDefined();
+            if (!credentialKeyPair) throw new Error("credential key missing");
 
-          expect(credential.credential).toBeDefined();
+            expect(credential.credential).toBeDefined();
 
-          const parsed = await parseCredential(credential.credential);
-          expect(parsed.credential).toBeDefined();
-          if (!parsed.credential) throw new Error("credential parsing failed");
+            const parsed = await parseCredential(credential.credential);
+            expect(parsed.credential).toBeDefined();
+            if (!parsed.credential)
+              throw new Error("credential parsing failed");
 
-          log.info(`  Successfully extracted credential ${index + 1}`);
+            log.info(`  Successfully extracted credential ${index + 1}`);
 
-          const queryResult = await validateDcqlQuery(
-            [
-              {
-                credential: credential.credential,
-                dpopJwk: credentialKeyPair.publicKey,
-                id: `${index}`,
-                typ: parsed.credential.typ,
-              },
-            ],
-            {
-              credentials: [
+            const queryResult = await validateDcqlQuery(
+              [
                 {
-                  ...credentialSchema,
-                  claims: claims.map((claim) => ({
-                    path: claim.path,
-                  })),
+                  credential: credential.credential,
+                  dpopJwk: credentialKeyPair.publicKey,
                   id: `${index}`,
+                  typ: parsed.credential.typ,
                 },
               ],
-            } as DcqlQuery.Input,
-          );
-          expect(queryResult.can_be_satisfied).toBe(true);
-        }
+              {
+                credentials: [
+                  {
+                    ...credentialSchema,
+                    claims: claims.map((claim) => ({
+                      path: claim.path,
+                    })),
+                    id: `${index}`,
+                  },
+                ],
+              } as DcqlQuery.Input,
+            );
+            expect(queryResult.can_be_satisfied).toBe(true);
+          }
 
-        testSuccess = true;
-      } finally {
-        log.testCompleted(DESCRIPTION, testSuccess);
-      }
-    });
+          testSuccess = true;
+        } finally {
+          log.testCompleted(DESCRIPTION, testSuccess);
+        }
+      },
+    );
 
     // ============================================================================
     // PUSHED AUTHORIZATION REQUEST TESTS
@@ -1266,7 +1274,10 @@ testConfigs.forEach((testConfig) => {
         }
 
         for (const token of tokens) {
-          const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+          const claims = decodeJwtOrThrow<{ cnf: { jkt: string } }>(
+            token ?? "",
+            "Access/Refresh token",
+          );
           expect(claims.cnf?.jkt).toBeDefined();
           expect(claims.cnf?.jkt).toBe(jkt);
         }
@@ -1300,7 +1311,10 @@ testConfigs.forEach((testConfig) => {
         }
 
         for (const token of tokens) {
-          const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+          const claims = decodeJwtOrThrow<{ cnf: { jkt: string } }>(
+            token ?? "",
+            "Access/Refresh token",
+          );
           expect(claims.cnf?.jkt).toBeDefined();
           expect(claims.cnf?.jkt).toBe(jkt);
         }
@@ -1350,7 +1364,10 @@ testConfigs.forEach((testConfig) => {
         }
 
         for (const token of tokens) {
-          const claims: { cnf: { jkt: string } } = decodeJwt(token ?? "");
+          const claims = decodeJwtOrThrow<{ cnf: { jkt: string } }>(
+            token ?? "",
+            "Access/Refresh token",
+          );
           expect(claims.cnf?.jkt).toBeDefined();
           expect(claims.cnf?.jkt).toBe(jkt);
         }
