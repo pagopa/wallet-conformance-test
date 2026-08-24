@@ -1,3 +1,5 @@
+import { decodeJwt, JWTPayload } from "jose";
+
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
@@ -5,6 +7,23 @@ import {
   FetchMetadataStepResponse,
 } from "@/step/issuance";
 import { AttestationResponse } from "@/types";
+
+/**
+ * Decodes a JWT and throws a descriptive error (including the offending token)
+ * if decoding fails, so malformed tokens fail the test instead of propagating
+ * an opaque `jose` parsing error.
+ */
+export function decodeJwtOrThrow<T extends JWTPayload = JWTPayload>(
+  token: string,
+  label = "token",
+): T {
+  try {
+    return decodeJwt(token) as T;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid ${label}: ${token} (${reason})`);
+  }
+}
 
 export async function runAndValidateAuthorize(
   orchestrator: WalletIssuanceOrchestratorFlow,
