@@ -8,10 +8,11 @@ import { createServer } from "@/servers/ta-server";
 describe("Trust Anchor Wallet Provider fetch endpoint", () => {
   const walletProviderBaseUrl =
     "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider";
+  const baseConfig = loadConfigWithHierarchy();
   const config = {
-    ...loadConfigWithHierarchy(),
+    ...baseConfig,
     wallet: {
-      ...loadConfigWithHierarchy().wallet,
+      ...baseConfig.wallet,
       wallet_provider_base_url: walletProviderBaseUrl,
     },
   };
