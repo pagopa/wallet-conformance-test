@@ -227,6 +227,61 @@ wct test:issuance --wallet-provider-base-url https://dev.wallet-provider.wct.exa
 CONFIG_WALLET_PROVIDER_BASE_URL=https://dev.wallet-provider.wct.example.org wct test:issuance
 ```
 
+### Using Your Own Wallet Provider Cryptographic Material
+
+The tool initially creates and caches local Wallet Provider cryptographic
+material. To run the tool with your own Wallet Provider, replace the generated
+files with the corresponding certificate and JWKS files issued for your
+Wallet Provider:
+
+| File to replace                                    | Required content                                                                          |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `data/backup/wallet_provider_cert`                 | The Wallet Provider certificate associated with the keys used to sign wallet attestations |
+| `data/backup/wallet_provider_jwks`                 | The JWKS containing the keys associated with `wallet_provider_cert`                       |
+| `data/trust_anchor/localhost/ca_intermediate_cert` | The intermediate CA certificate for your Wallet Provider, issued by the Trust Anchor      |
+| `data/trust_anchor/localhost/ca_intermediate_jwks` | The JWKS containing the keys associated with `ca_intermediate_cert`                       |
+
+The certificate and JWKS files must contain matching key material. Keep the
+same filenames and replace the files from the repository root:
+
+```bash
+cp /path/to/your/wallet_provider_cert data/backup/wallet_provider_cert
+cp /path/to/your/wallet_provider_jwks data/backup/wallet_provider_jwks
+cp /path/to/your/ca_intermediate_cert data/trust_anchor/localhost/ca_intermediate_cert
+cp /path/to/your/ca_intermediate_jwks data/trust_anchor/localhost/ca_intermediate_jwks
+```
+
+If your `config.ini` uses custom `backup_storage_path` or `ca_cert_path`
+values, replace the files in those configured directories instead. The
+Wallet Provider entity identifier must also match the identity in your
+certificates; configure it with `wallet_provider_base_url` as described above.
+
+> **Important:** Before retrying with your own cryptographic material, delete
+> the cached wallet attestation. Replace `V1_X` with the wallet version in use
+> (`V1_0`, `V1_3`, or `V1_4`):
+>
+> ```bash
+> rm data/wallet/attestation/V1_X/wallet_cli_instance
+> ```
+>
+> The tool will generate a new attestation using the replacement material.
+
+#### Docker
+
+When running the tool in Docker, replace the files in the host directory that
+you mount as `/wallet-conformance-test/data`. Do not replace them only inside a
+temporary container, because those changes are lost when the container is
+removed:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/data:/wallet-conformance-test/data" \
+  pagopa/wallet-conformance-test:latest [COMMAND]
+```
+
+Run the `cp` and `rm` commands above from the host repository directory before
+starting the container.
+
 ### TLS Unsafe Mode
 
 When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and disables TLS certificate verification for the entire Node.js process running this tool.
@@ -253,17 +308,17 @@ There are three equivalent ways to enable it, listed in priority order (highest 
    tls_reject_unauthorized = false
    ```
 
-### Running Tests
+## 🎯 Running Conformance Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
 
 1. First rename `config.example.ini` to `config.ini`.
 
-#### Testing the issuance Flow
+### Testing the issuance Flow
 
 To test the credential issuance flow, you will use the `test:issuance` command.
 
-##### Using Configuration File
+#### Using Configuration File
 
 1. Configure your `config.ini` file with the credential issuer URL and credential types:
 
@@ -279,7 +334,7 @@ To test the credential issuance flow, you will use the `test:issuance` command.
    wct test:issuance
    ```
 
-##### Using Command-Line Options
+#### Using Command-Line Options
 
 1. Alternatively, bypass the configuration file and specify parameters directly:
 
@@ -302,9 +357,9 @@ These guides cover:
 - Environment-based configuration
 - Custom step classes and advanced options
 
-#### Testing the Presentation Flow
+### Testing the Presentation Flow
 
-##### Using Configuration File
+#### Using Configuration File
 
 1. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
 
@@ -320,7 +375,7 @@ These guides cover:
    wct test:presentation [OPTIONS]
    ```
 
-##### Using Command-Line Options
+#### Using Command-Line Options
 
 1. Alternatively, bypass the configuration file and specify parameters directly with the authorization url:
 
