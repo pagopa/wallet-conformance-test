@@ -126,7 +126,7 @@ Alternatively, you can build the Docker image from the source code and assign it
 docker build --platform linux/amd64 --tag pagopa/wallet-conformance-test:latest .
 ```
 
-The `--platform linux/amd64` option is the verified local build command for environments that require x86_64 compatibility. The CI workflow still publishes multi-architecture images for both `linux/amd64` and `linux/arm64`.
+The `--platform linux/amd64` option forces an amd64 image build. On non-amd64 hosts you may need Docker Buildx (and QEMU) enabled for this to work. The CI workflow publishes multi-architecture images for both `linux/amd64` and `linux/arm64`.
 
 Run the locally tagged image, for example to start issuance test:
 
