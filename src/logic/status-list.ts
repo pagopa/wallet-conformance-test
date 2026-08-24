@@ -4,6 +4,8 @@ import {
   StatusListJWTHeaderParameters,
 } from "@sd-jwt/jwt-status-list";
 
+import type { KeyPair } from "@/types";
+
 import { StatusListTokenCreationError } from "@/errors";
 
 import { signJwtCallback } from "./jwt";
@@ -16,6 +18,7 @@ export interface CreateStatusListTokenOptions {
   iss: string;
   jwksFilename: string;
   jwksPath: string;
+  keyPair?: KeyPair;
   statusListEndpointUrl: string;
 }
 
@@ -37,7 +40,8 @@ export const createStatusListToken = async (
 ): Promise<string> => {
   //Set the status as VALID (0x00)
   const list = new StatusList([0], 4);
-  const keyPair = await loadJwks(options.jwksPath, options.jwksFilename);
+  const keyPair =
+    options.keyPair ?? (await loadJwks(options.jwksPath, options.jwksFilename));
   const certificate = await loadCertificate(
     options.jwksPath,
     options.certFilename,

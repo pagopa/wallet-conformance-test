@@ -67,6 +67,7 @@ export const createServer = (config: Config): express.Express => {
         iss: wpBaseUrl,
         jwksFilename: "wallet_provider_jwks",
         jwksPath: config.wallet.backup_storage_path,
+        keyPair: providerKeyPair,
         statusListEndpointUrl: appendWalletProviderPath(
           wpBaseUrl,
           "status-list",
