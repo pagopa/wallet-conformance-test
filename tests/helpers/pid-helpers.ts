@@ -112,5 +112,7 @@ export const assertPidSdDisclosures = (
 
   const iat = disclosureMap.get("iat");
   expect(iat, "iat must be present as a disclosure").toBeDefined();
-  expect(typeof iat, "iat must be a number in the JWT payload").toBe("number");
+  expect(typeof iat, "iat must be a number in the SD-JWT disclosures").toBe(
+    "number",
+  );
 };
