@@ -1,5 +1,5 @@
 /* eslint-disable max-lines-per-function */
-import { IssuerSigned } from "@owf/mdoc";
+import { IssuerSigned, SessionTranscript } from "@owf/mdoc";
 import {
   addSecondsToDate,
   dateToSeconds,
@@ -12,6 +12,7 @@ import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import cbor from "cbor";
 import { DcqlQuery } from "dcql";
+import { calculateJwkThumbprint } from "jose";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -840,6 +841,7 @@ describe("createVpTokenMdoc", () => {
         dpopJwk: keyPair.privateKey,
         nonce: "nonce",
         responseUri: "https://example.com",
+        walletVersion: ItWalletSpecsVersion.V1_0,
       }),
     ).rejects.toThrow();
   });
@@ -880,6 +882,7 @@ describe("createVpTokenMdoc", () => {
       dpopJwk: keyPair.privateKey,
       nonce: "nonce",
       responseUri: "https://example.com",
+      walletVersion: ItWalletSpecsVersion.V1_0,
     });
 
     expect(result).toBeDefined();
@@ -896,5 +899,58 @@ describe("createVpTokenMdoc", () => {
     expect(document.issuerSigned.nameSpaces).toBeDefined();
     expect(document.issuerSigned.nameSpaces).toHaveProperty(namespace);
     expect(document.issuerSigned.nameSpaces[namespace].length).toBe(2);
+  });
+  it("uses the final OpenID4VP handover for mdoc presentations", async () => {
+    const docType = "eu.europa.it.badge";
+    const namespace = "eu.europa.it.badge.1";
+    const keyPair = await loadJwks(backupDir, "wallet_unit_jwks");
+    const credential = await loadCredentials(
+      credentialsDir,
+      ["mso_mdoc_mDL"],
+      console.error,
+      ItWalletSpecsVersion.V1_0,
+    );
+
+    if (!credential.mso_mdoc_mDL) {
+      throw new Error("Credential compact is empty");
+    }
+
+    const dcqlQuery: DcqlQuery.Input = {
+      credentials: [
+        {
+          claims: [{ path: [namespace, "family_name"] }],
+          format: "mso_mdoc",
+          id: "query_mdl",
+          meta: { doctype_value: docType },
+        },
+      ],
+    };
+    const verifierEncryptionPublicJwk = keyPair.publicKey;
+    const thumbprint = await calculateJwkThumbprint(
+      verifierEncryptionPublicJwk,
+    );
+    const finalHandoverSpy = vi.spyOn(SessionTranscript, "forOid4Vp");
+
+    await createVpTokenMdoc({
+      client_id: "client_id",
+      credential: credential.mso_mdoc_mDL.compact,
+      dcqlQuery,
+      dpopJwk: keyPair.privateKey,
+      nonce: "nonce",
+      responseUri: "https://example.com",
+      verifierEncryptionPublicJwk,
+      walletVersion: ItWalletSpecsVersion.V1_3,
+    });
+
+    expect(finalHandoverSpy).toHaveBeenCalledWith(
+      {
+        clientId: "client_id",
+        jwkThumbprint: new Uint8Array(Buffer.from(thumbprint, "base64url")),
+        nonce: "nonce",
+        responseUri: "https://example.com",
+      },
+      expect.any(Object),
+    );
+    finalHandoverSpy.mockRestore();
   });
 });

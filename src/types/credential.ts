@@ -1,3 +1,6 @@
+import type { Jwk } from "@pagopa/io-wallet-oauth2";
+import type { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+
 import { IssuerSigned } from "@owf/mdoc";
 import { SDJwt } from "@sd-jwt/core";
 import { DcqlQuery, DcqlQueryResult } from "dcql";
@@ -58,4 +61,6 @@ export interface VpTokenOptions {
   dpopJwk: KeyPair["privateKey"];
   nonce: string;
   responseUri: string;
+  verifierEncryptionPublicJwk?: Jwk;
+  walletVersion: ItWalletSpecsVersion;
 }
