@@ -207,6 +207,26 @@ CONFIG_WALLET_VERSION=V1_3 wct test:presentation
 
 > **Tip**: Use `V1_4` or `V1_3` when testing against issuers or relying parties that implement a recent specification revision. Use `V1_0` for services that still target the first stable release.
 
+### Wallet Provider Entity Identifier
+
+By default, the mock Wallet Provider publishes the historical identifier
+`https://wallet-provider.wct.example.org:<port>`. Integration environments can
+override only this public federation identifier, including a path, without
+changing the local HTTPS listener:
+
+```ini
+[wallet]
+wallet_provider_base_url = https://dev.wallet-provider.wct.example.org
+port = 3002
+```
+
+The same setting is available through the CLI or environment variable:
+
+```bash
+wct test:issuance --wallet-provider-base-url https://dev.wallet-provider.wct.example.org
+CONFIG_WALLET_PROVIDER_BASE_URL=https://dev.wallet-provider.wct.example.org wct test:issuance
+```
+
 ### TLS Unsafe Mode
 
 When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and disables TLS certificate verification for the entire Node.js process running this tool.

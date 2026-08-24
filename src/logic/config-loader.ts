@@ -49,6 +49,7 @@ export interface CliOptions {
   trustAnchorCertDir?: string;
   trustAnchorVerify?: boolean;
   unsafeTls?: boolean;
+  walletProviderBaseUrl?: string;
   walletVersion?: string;
 }
 
@@ -438,6 +439,9 @@ const buildTrustAnchorConfig: ConfigSectionBuilder<Config["trust_anchor"]> = (
 const buildWalletConfig: ConfigSectionBuilder<Config["wallet"]> = (
   options,
 ) => ({
+  ...(options.walletProviderBaseUrl && {
+    wallet_provider_base_url: options.walletProviderBaseUrl,
+  }),
   ...(options.walletVersion && {
     wallet_version: options.walletVersion as ItWalletSpecsVersion,
   }),
@@ -579,6 +583,11 @@ function readCliOptionsFromEnv(): CliOptions {
   readStringEnv(options, "trustAnchorCertDir", "CONFIG_TRUST_ANCHOR_CERT_DIR");
   readBooleanEnv(options, "trustAnchorVerify", "CONFIG_TRUST_ANCHOR_VERIFY");
   readStringEnv(options, "bindAddress", "OIDF_SERVERS_BIND_ADDRESS");
+  readStringEnv(
+    options,
+    "walletProviderBaseUrl",
+    "CONFIG_WALLET_PROVIDER_BASE_URL",
+  );
   readStringEnv(options, "walletVersion", "CONFIG_WALLET_VERSION");
 
   return options;
