@@ -21,7 +21,9 @@ export function decodeJwtOrThrow<T extends JWTPayload = JWTPayload>(
     return decodeJwt(token) as T;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid ${label}: ${token} (${reason})`);
+    const tokenPreview =
+      token.length > 40 ? `${token.slice(0, 20)}...${token.slice(-10)}` : token;
+    throw new Error(`Invalid ${label}: ${tokenPreview} (${reason})`);
   }
 }
 
