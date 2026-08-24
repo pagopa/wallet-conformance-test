@@ -112,7 +112,7 @@ Pull the latest published image from GHCR with the following command:
 docker pull ghcr.io/pagopa/wallet-conformance-test:latest
 ```
 
-Then run the CLI, for example to start issuance test:
+Then run the CLI, for example to run the issuance test suite:
 
 ```bash
 docker run --rm ghcr.io/pagopa/wallet-conformance-test:latest test:issuance
