@@ -108,8 +108,7 @@ export async function loadCredentialsForPresentation(
               config.wallet.wallet_version,
             )
           : createMockMdlMdoc(
-              config.issuance.certificate_subject ??
-                `CN=${config.issuance.url}`,
+              getMdocCertificateSubject(config),
               getLocalCiBaseUrl(config.issuer.port),
               config.wallet.backup_storage_path,
               config.wallet.credentials_storage_path,
@@ -216,6 +215,9 @@ export async function parseCredentialStatus(
   }
 }
 
+export const getMdocCertificateSubject = (config: Config): string =>
+  config.issuance.certificate_subject ?? `C=IT, CN=${config.issuance.url}`;
+
 /**
  * Creates mock SD-JWT and MDOC credentials when no stored credentials are available.
  * Persists the generated credentials and their key pairs to the configured storage paths.
@@ -238,7 +240,7 @@ async function createMockCredentialsWithKeys(
     config.wallet.wallet_version,
   );
   const mobileDriverLicence = await createMockMdlMdoc(
-    config.issuance.certificate_subject ?? `CN=${config.issuance.url}`,
+    getMdocCertificateSubject(config),
     getLocalCiBaseUrl(config.issuer.port),
     config.wallet.backup_storage_path,
     config.wallet.credentials_storage_path,

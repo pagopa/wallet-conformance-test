@@ -1,3 +1,4 @@
+import type { Jwk } from "@pagopa/io-wallet-oauth2";
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
@@ -26,6 +27,11 @@ import {
   resolveWalletProviderBaseUrl,
 } from "@/logic/wallet-provider-url";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
+
+
+const selectEncryptionJwk = (keys: Jwk[]): Jwk | undefined =>
+  keys.find((key) => key.use === "enc") ??
+  keys.find((key) => key.use !== "sig");
 
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
@@ -147,13 +153,22 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
+
+      const verifierJwks =
+        requestObject.client_metadata?.jwks ?? options.verifierMetadata?.jwks;
+
+      const verifierEncryptionPublicJwk = selectEncryptionJwk(
+        verifierJwks?.keys ?? [],
+      );
+
       const vp_token = await buildVpToken(
         options.credentials,
         dcqlQuery,
         {
           client_id: parsedQrCode.clientId,
           nonce: requestObject.nonce,
-          responseUri: responseUri,
+          responseUri,
+          verifierEncryptionPublicJwk,
         },
         this.config.wallet.wallet_version,
         this.log,
