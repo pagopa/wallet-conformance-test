@@ -331,15 +331,31 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 2. Run the test command:
 
    ```bash
-   wct test:issuance
+   wct test:issuance --tests happy
    ```
+
+The `--tests` option accepts a comma-separated list of issuance test names:
+
+| Value | Description |
+|---|---|
+| `pid` | For PID Provider, runs only the tests related to the PID credential |
+| `happy` | Runs the happy-path issuance flow tests |
+| `status-list` | Runs the status list tests |
+| `authorization-validation` | Runs the authorization request validation tests |
+| `credential-validation` | Runs the credential response validation tests |
+| `deferred-endpoint` | Runs the deferred endpoint issuance tests |
+| `mdoc-data-model` | Runs the mdoc data model tests |
+| `par-validation` | Runs the pushed authorization request validation tests |
+| `refresh-token` | Runs the refresh token re-issuance tests |
+| `sd-jwt-data-model` | Runs the SD-JWT data model tests |
+| `token-validation` | Runs the token response validation tests |
 
 #### Using Command-Line Options
 
 1. Alternatively, bypass the configuration file and specify parameters directly:
 
    ```bash
-   wct test:issuance --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
+   wct test:issuance --tests happy --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
    ```
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
