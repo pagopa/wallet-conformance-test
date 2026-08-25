@@ -28,8 +28,7 @@ const LOCAL_WALLET_PROVIDER_HOST = "wallet-provider.wct.example.org";
 
 const selectEncryptionJwk = (keys: Jwk[]): Jwk | undefined =>
   keys.find((key) => key.use === "enc") ??
-  keys.find((key) => key.use !== "sig") ??
-  keys[0];
+  keys.find((key) => key.use !== "sig");
 
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
@@ -149,11 +148,14 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
+
       const verifierJwks =
         requestObject.client_metadata?.jwks ?? options.verifierMetadata?.jwks;
+
       const verifierEncryptionPublicJwk = selectEncryptionJwk(
         verifierJwks?.keys ?? [],
       );
+
       const vp_token = await buildVpToken(
         options.credentials,
         dcqlQuery,
