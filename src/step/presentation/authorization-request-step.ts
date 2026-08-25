@@ -28,7 +28,6 @@ import {
 } from "@/logic/wallet-provider-url";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
-
 const selectEncryptionJwk = (keys: Jwk[]): Jwk | undefined =>
   keys.find((key) => key.use === "enc") ??
   keys.find((key) => key.use !== "sig");

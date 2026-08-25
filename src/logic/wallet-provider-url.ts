@@ -18,6 +18,10 @@ export function getLocalWpBaseUrl(port: number): string {
   return resolveWalletProviderBaseUrl({ port });
 }
 
+export function getWalletProviderBasePath(baseUrl: string): string {
+  return new URL(baseUrl).pathname.replace(/\/+$/, "") || "/";
+}
+
 export function getWalletProviderCertificateSubject(baseUrl: string): string {
   return `CN=${getWalletProviderHostname(baseUrl)}`;
 }

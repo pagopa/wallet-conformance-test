@@ -13,6 +13,7 @@ import {
 import { loadWalletProviderCertificate } from "@/logic/wallet-provider";
 import {
   appendWalletProviderPath,
+  getWalletProviderBasePath,
   getWalletProviderCertificateSubject,
   resolveWalletProviderBaseUrl,
 } from "@/logic/wallet-provider-url";
@@ -26,31 +27,37 @@ export const createServer = (config: Config): express.Express => {
   app.use(express.json());
 
   const wpBaseUrl = resolveWalletProviderBaseUrl(config.wallet);
+  const walletProviderRouter = express.Router();
 
-  app.get("/.well-known/openid-federation", async (_req, res) => {
-    try {
-      const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(config.trust_anchor);
-      const providerKeyPair = await loadJwks(
-        config.wallet.backup_storage_path,
-        buildJwksPath("wallet_provider"),
-      );
-      const jwt = await buildWpEntityConfiguration(
-        config.trust,
-        config.wallet,
-        providerKeyPair,
-        trustAnchorBaseUrl,
-      );
-      res.type("application/entity-statement+jwt").send(jwt);
-    } catch (err) {
-      console.error(
-        "Failed to build wallet provider entity configuration",
-        err,
-      );
-      res.status(500).json({ error: "internal_server_error" });
-    }
-  });
+  walletProviderRouter.get(
+    "/.well-known/openid-federation",
+    async (_req, res) => {
+      try {
+        const trustAnchorBaseUrl = resolveTrustAnchorBaseUrl(
+          config.trust_anchor,
+        );
+        const providerKeyPair = await loadJwks(
+          config.wallet.backup_storage_path,
+          buildJwksPath("wallet_provider"),
+        );
+        const jwt = await buildWpEntityConfiguration(
+          config.trust,
+          config.wallet,
+          providerKeyPair,
+          trustAnchorBaseUrl,
+        );
+        res.type("application/entity-statement+jwt").send(jwt);
+      } catch (err) {
+        console.error(
+          "Failed to build wallet provider entity configuration",
+          err,
+        );
+        res.status(500).json({ error: "internal_server_error" });
+      }
+    },
+  );
 
-  app.get("/status-list", async (_req, res) => {
+  walletProviderRouter.get("/status-list", async (_req, res) => {
     try {
       const providerKeyPair = await loadJwks(
         config.wallet.backup_storage_path,
@@ -80,6 +87,8 @@ export const createServer = (config: Config): express.Express => {
     }
   });
 
+  app.use(getWalletProviderBasePath(wpBaseUrl), walletProviderRouter);
+
   return app;
 };
 
@@ -99,8 +108,8 @@ if (isMainModule(import.meta.url)) {
       URL: https://localhost:${config.wallet.port}
 
       Endpoints:   
-      GET  /.well-known/openid-federation
-      GET  /status-list
+      GET  ${appendWalletProviderPath(wpBaseUrl, ".well-known/openid-federation")}
+      GET  ${appendWalletProviderPath(wpBaseUrl, "status-list")}
 
       Started: ${new Date().toISOString()}`,
         );
