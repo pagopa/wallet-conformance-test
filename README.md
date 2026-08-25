@@ -86,18 +86,44 @@ Alternatively, you can clone the repository and install locally:
 
 ### Command not found? 🤔
 
-If you encounter an issue where the `wct` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands:
+If you encounter an issue where the `wct` command is not available system-wide after installation, you can manually link it. From the root of the wallet-conformance-test directory, run the following commands.
 
-1. Make the script executable:
+> **Note**: If `pnpm install -g` fails right after a fresh `pnpm install` with an error like:
+>
+> ```
+> ERR_PNPM_NO_PKG_MANIFEST  No package.json found in ~/.local/share/pnpm/global/5
+> ```
+>
+> pnpm's global directory has not been initialized on your system yet. Run `pnpm setup` once and reload your shell (steps 1-2 below) before continuing.
+
+1. Initialize pnpm's global directory:
+
+   ```bash
+   pnpm setup
+   ```
+
+2. Reload your shell so the updated `PATH` takes effect:
+
+   ```bash
+   source ~/.bashrc
+   ```
+
+3. Make the script executable:
 
    ```bash
    chmod +x ./bin/wct
    ```
 
-2. Create a global symbolic link to the command:
+4. Create a global symbolic link to the command:
 
    ```bash
    pnpm link --global
+   ```
+
+5. Build the project. Unlike `pnpm install -g`, `pnpm link --global` does not build the project automatically, so `wct` will not work until you do:
+
+   ```bash
+   pnpm build
    ```
 
 ## 🐳 Docker Usage
@@ -237,7 +263,11 @@ There are three equivalent ways to enable it, listed in priority order (highest 
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
 
-1. First rename `config.example.ini` to `config.ini`.
+1. First create your `config.ini` by copying `config.example.ini` — do **not** rename it. The tool always loads `config.example.ini` as its base configuration layer, so removing it (as a rename would) causes the tool to fail with `Default configuration file not found`.
+
+   ```bash
+   cp config.example.ini config.ini
+   ```
 
 #### Testing the issuance Flow
 
