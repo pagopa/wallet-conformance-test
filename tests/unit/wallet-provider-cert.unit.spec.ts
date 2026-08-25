@@ -1,6 +1,10 @@
 import * as x509 from "@peculiar/x509";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { loadConfigWithHierarchy } from "@/logic/config-loader";
 import { createKeys } from "@/logic/jwk";
 import {
   createSignedCertificate,
@@ -8,6 +12,7 @@ import {
   hasWalletProviderCertificateIdentity,
   OID_SUBJECT_ALTERNATIVE_NAME,
 } from "@/logic/pem";
+import { loadWalletProviderCertificate } from "@/logic/wallet-provider";
 import { LOCAL_WP_HOST } from "@/servers/wp-server";
 
 describe("wallet_provider_cert SAN", () => {
@@ -123,5 +128,89 @@ describe("wallet_provider_cert SAN", () => {
         "https://dev.eid.wallet.ipzs.it/other-wallet-provider",
       ),
     ).toBe(false);
+  });
+});
+
+describe("wallet_provider_cert cache validation", () => {
+  const config = loadConfigWithHierarchy();
+
+  async function createCachedCertificate() {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "wct-wallet-provider-"));
+    const wallet = {
+      ...config.wallet,
+      backup_storage_path: path.join(tempDir, "backup"),
+    };
+    const trust = {
+      ...config.trust,
+      ca_cert_path: path.join(tempDir, "ca"),
+    };
+    const providerKeyPair = await createKeys();
+
+    await loadWalletProviderCertificate(wallet, trust, providerKeyPair);
+
+    return { providerKeyPair, tempDir, trust, wallet };
+  }
+
+  it("reuses a cached chain when its signature and provider key are valid", async () => {
+    const { providerKeyPair, tempDir, trust, wallet } =
+      await createCachedCertificate();
+
+    try {
+      const cachedChain = await loadWalletProviderCertificate(
+        wallet,
+        trust,
+        providerKeyPair,
+      );
+      const reusedChain = await loadWalletProviderCertificate(
+        wallet,
+        trust,
+        providerKeyPair,
+      );
+
+      expect(reusedChain).toEqual(cachedChain);
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects a cached leaf whose signature does not match the intermediate", async () => {
+    const { providerKeyPair, tempDir, trust, wallet } =
+      await createCachedCertificate();
+
+    try {
+      const replacementIntermediate = await createSignedCertificate(
+        await createKeys(),
+        "CN=ReplacementIssuer",
+        await createKeys(),
+        "CN=ReplacementIntermediate",
+        true,
+      );
+      writeFileSync(
+        path.join(tempDir, "ca", "ca_intermediate_cert"),
+        replacementIntermediate.toString("pem"),
+      );
+
+      await expect(
+        loadWalletProviderCertificate(wallet, trust, providerKeyPair),
+      ).rejects.toThrow(
+        "Cached Wallet Provider certificate chain leaf signature is invalid",
+      );
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects a cached leaf that belongs to a previous provider key", async () => {
+    const { tempDir, trust, wallet } = await createCachedCertificate();
+
+    try {
+      await expect(
+        loadWalletProviderCertificate(wallet, trust, await createKeys()),
+      ).rejects.toThrow(
+        "Cached Wallet Provider certificate does not match the current provider key",
+      );
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
   });
 });

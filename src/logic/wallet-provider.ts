@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { calculateJwkThumbprint, exportJWK } from "jose";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -41,6 +42,11 @@ const WALLET_PROVIDER_CERT = "wallet_provider_cert";
  * If either certificate in the chain is expired the entire chain is
  * regenerated.
  *
+ * Before reuse, the cached leaf signature is verified against the cached
+ * intermediate and the leaf public key is checked against `providerKeyPair`.
+ * Invalid cached chains cause this function to throw instead of returning
+ * unusable credentials.
+ *
  * @param wallet - The wallet configuration section from Config
  * @param trust - The trust configuration section (provides TA keys + CA cert path)
  * @param providerKeyPair - The provider key pair loaded from backup_storage_path (KY2)
@@ -74,6 +80,11 @@ export async function loadWalletProviderCertificate(
     ) &&
     wpIntermediateCachedCert
   ) {
+    await validateCachedCertificateChain(
+      wpCachedCert,
+      wpIntermediateCachedCert,
+      providerKeyPair,
+    );
     return [wpCachedCert, wpIntermediateCachedCert];
   }
 
@@ -154,4 +165,43 @@ function loadCachedCert(filePath: string): string | undefined {
   if (hasX509CertificateExpired(certDerBase64)) return undefined;
 
   return certDerBase64;
+}
+
+/**
+ * Verifies that a cached Wallet Provider certificate chain still belongs to
+ * the current provider key pair before it is reused.
+ */
+async function validateCachedCertificateChain(
+  leafCertDerBase64: string,
+  intermediateCertDerBase64: string,
+  providerKeyPair: KeyPair,
+): Promise<void> {
+  const leafCertificate = new x509.X509Certificate(
+    Buffer.from(leafCertDerBase64, "base64"),
+  );
+  const intermediateCertificate = new x509.X509Certificate(
+    Buffer.from(intermediateCertDerBase64, "base64"),
+  );
+
+  const leafSignatureValid = await leafCertificate.verify({
+    publicKey: intermediateCertificate,
+    signatureOnly: true,
+  });
+  if (!leafSignatureValid) {
+    throw new Error(
+      "Cached Wallet Provider certificate chain leaf signature is invalid",
+    );
+  }
+
+  const [cachedLeafJwk, providerJwkThumbprint] = await Promise.all([
+    exportJWK(await leafCertificate.publicKey.export()),
+    calculateJwkThumbprint(providerKeyPair.publicKey),
+  ]);
+  const cachedLeafThumbprint = await calculateJwkThumbprint(cachedLeafJwk);
+
+  if (cachedLeafThumbprint !== providerJwkThumbprint) {
+    throw new Error(
+      "Cached Wallet Provider certificate does not match the current provider key",
+    );
+  }
 }
