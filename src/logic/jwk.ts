@@ -161,6 +161,22 @@ function convertBase64DerToPem(certificate: string): string {
 }
 
 /**
+ * Detects whether an unknown error is a Zod schema-validation error.
+ *
+ * `@pagopa/io-wallet-oid-federation` and `@pagopa/io-wallet-utils` both throw a
+ * `ValidationError` carrying a non-enumerable `zodError` property whenever an
+ * entity configuration/statement fails to conform to the expected schema.
+ * Since that class may come from different (transitive) package versions,
+ * duck-typing on the `zodError` property is used instead of `instanceof`.
+ *
+ * @param error The unknown error to inspect.
+ * @returns `true` if the error looks like a Zod schema-validation error.
+ */
+function isSchemaValidationError(error: unknown): error is Error {
+  return error instanceof Error && "zodError" in error;
+}
+
+/**
  * Extracts a JWK from a certificate chain (x5c).
  *
  * @param x5c An array of Base64 encoded DER certificates. The first certificate is used.
@@ -227,19 +243,32 @@ async function jwkFromFederation(
   payload?: Parameters<VerifyJwtCallback>[1]["payload"],
   trustAnchorUrls?: string[],
 ): Promise<Jwk> {
-  const ecTrustChain =
-    trustChain ??
-    (await (() => {
-      if (!payload?.iss) throw new Error("missing iss in payload");
-      const trustedAnchors = toNonEmptyTrustAnchorUrls(trustAnchorUrls);
-      return fetchAndValidateTrustChain(payload.iss, {
-        callbacks: {
-          ...partialCallbacksWithTrustAnchorUrls(trustAnchorUrls),
-          fetch,
-        },
-        ...(trustedAnchors ? { trustAnchorUrls: trustedAnchors } : {}),
-      });
-    })());
+  let ecTrustChain: string[] | undefined;
+  try {
+    ecTrustChain =
+      trustChain ??
+      (await (() => {
+        if (!payload?.iss) throw new Error("missing iss in payload");
+        const trustedAnchors = toNonEmptyTrustAnchorUrls(trustAnchorUrls);
+        return fetchAndValidateTrustChain(payload.iss, {
+          callbacks: {
+            ...partialCallbacksWithTrustAnchorUrls(trustAnchorUrls),
+            fetch,
+          },
+          ...(trustedAnchors ? { trustAnchorUrls: trustedAnchors } : {}),
+        });
+      })());
+  } catch (error) {
+    if (isSchemaValidationError(error)) {
+      throw new Error(
+        `Error validating schema of the entity configuration/statement while ` +
+          `building the trust chain for issuer "${payload?.iss ?? "unknown"}": ` +
+          `${error.message}`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
   const entityConfigurationJwt = ecTrustChain ? ecTrustChain[0] : undefined;
   if (!entityConfigurationJwt) throw new Error("empty trust chain");
 
