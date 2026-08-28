@@ -266,6 +266,16 @@ values, replace the files in those configured directories instead. The
 Wallet Provider entity identifier must also match the identity in your
 certificates; configure it with `wallet_provider_base_url` as described above.
 
+Generated Wallet Provider certificates are tracked with
+`wallet_provider_material_metadata.json` in `backup_storage_path`. When the
+cached generated certificates expire or no longer match the current
+configuration, the tool regenerates them automatically. With an explicit
+`wallet_provider_base_url`, certificate files that do not match this
+generated-material metadata are treated as user-provisioned material; validation
+failures are reported and the files are left untouched.
+Material without an explicit `wallet_provider_base_url` is treated as legacy
+generated cache and may be refreshed automatically.
+
 > **Important:** Before retrying with your own cryptographic material, delete
 > the cached wallet attestation. Replace `V1_X` with the wallet version in use
 > (`V1_0`, `V1_3`, or `V1_4`):
@@ -346,19 +356,19 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 
 The `--tests` option accepts a comma-separated list of issuance test names:
 
-| Value | Description |
-|---|---|
-| `pid` | For PID Provider, runs only the tests related to the PID credential |
-| `happy` | Runs the happy-path issuance flow tests |
-| `status-list` | Runs the status list tests |
-| `authorization-validation` | Runs the authorization request validation tests |
-| `credential-validation` | Runs the credential response validation tests |
-| `deferred-endpoint` | Runs the deferred endpoint issuance tests |
-| `mdoc-data-model` | Runs the mdoc data model tests |
-| `par-validation` | Runs the pushed authorization request validation tests |
-| `refresh-token` | Runs the refresh token re-issuance tests |
-| `sd-jwt-data-model` | Runs the SD-JWT data model tests |
-| `token-validation` | Runs the token response validation tests |
+| Value                      | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| `pid`                      | For PID Provider, runs only the tests related to the PID credential |
+| `happy`                    | Runs the happy-path issuance flow tests                             |
+| `status-list`              | Runs the status list tests                                          |
+| `authorization-validation` | Runs the authorization request validation tests                     |
+| `credential-validation`    | Runs the credential response validation tests                       |
+| `deferred-endpoint`        | Runs the deferred endpoint issuance tests                           |
+| `mdoc-data-model`          | Runs the mdoc data model tests                                      |
+| `par-validation`           | Runs the pushed authorization request validation tests              |
+| `refresh-token`            | Runs the refresh token re-issuance tests                            |
+| `sd-jwt-data-model`        | Runs the SD-JWT data model tests                                    |
+| `token-validation`         | Runs the token response validation tests                            |
 
 #### Using Command-Line Options
 

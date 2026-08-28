@@ -7,7 +7,7 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
-import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
@@ -147,13 +147,17 @@ describe("Wallet Attestation Unit Test", () => {
     const backupStoragePath = path.join(tempDir, "backup");
     const attestationStoragePath = path.join(tempDir, "attestation");
     const credentialsStoragePath = path.join(tempDir, "credentials");
-    const sourceBackupPath = config.wallet.backup_storage_path;
+    const trustCaCertPath = path.join(tempDir, "ca");
+    const trustJwksPath = path.join(tempDir, "trust-jwks");
 
     try {
-      cpSync(sourceBackupPath, backupStoragePath, { recursive: true });
-
       const firstConfig = {
         ...config,
+        trust: {
+          ...config.trust,
+          ca_cert_path: trustCaCertPath,
+          federation_trust_anchors_jwks_path: trustJwksPath,
+        },
         wallet: {
           ...config.wallet,
           backup_storage_path: backupStoragePath,
