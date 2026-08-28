@@ -4,7 +4,7 @@ import * as https from "node:https";
 import { isMainModule } from "@/logic/entrypoint";
 import {
   createSubordinateCredentialIssuerMetadata,
-  createSubordinateWalletUnitMetadata,
+  createSubordinateWalletProviderMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 import {
@@ -51,7 +51,7 @@ export const createServer = (config: Config): express.Express => {
       let subordinateStatement: string;
 
       if (sub === wpBaseUrl) {
-        subordinateStatement = await createSubordinateWalletUnitMetadata({
+        subordinateStatement = await createSubordinateWalletProviderMetadata({
           sub,
           trustAnchor: config.trust,
           trustAnchorBaseUrl,

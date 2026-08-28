@@ -3,6 +3,8 @@ import * as http from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic/config-loader";
+import { createSubordinateWalletUnitMetadata } from "@/logic/federation-metadata";
+import { buildJwksPath, loadJwks } from "@/logic/utils";
 import { createServer } from "@/servers/ta-server";
 
 describe("Trust Anchor Wallet Provider fetch endpoint", () => {
@@ -36,11 +38,58 @@ describe("Trust Anchor Wallet Provider fetch endpoint", () => {
       throw new Error("Trust Anchor test server is not listening");
     }
 
+    const [providerJwks, unitJwks] = await Promise.all([
+      loadJwks(
+        config.wallet.backup_storage_path,
+        buildJwksPath("wallet_provider"),
+      ),
+      loadJwks(config.wallet.backup_storage_path, buildJwksPath("wallet_unit")),
+    ]);
     const response = await fetch(
       `http://127.0.0.1:${address.port}/fetch?sub=${encodeURIComponent(walletProviderBaseUrl)}`,
     );
 
     expect(response.status).toBe(200);
-    expect(decodeJwt(await response.text()).sub).toBe(walletProviderBaseUrl);
+    const decodedStatement = decodeJwt(await response.text());
+    expect(decodedStatement.sub).toBe(walletProviderBaseUrl);
+    expect(decodedStatement.jwks).toEqual(
+      expect.objectContaining({
+        keys: expect.arrayContaining([providerJwks.publicKey]),
+      }),
+    );
+    expect(decodedStatement.jwks).not.toEqual(
+      expect.objectContaining({
+        keys: expect.arrayContaining([unitJwks.publicKey]),
+      }),
+    );
+  });
+
+  it("keeps subordinate Wallet Unit metadata on Wallet Unit keys", async () => {
+    const [unitJwks, providerJwks] = await Promise.all([
+      loadJwks(config.wallet.backup_storage_path, buildJwksPath("wallet_unit")),
+      loadJwks(
+        config.wallet.backup_storage_path,
+        buildJwksPath("wallet_provider"),
+      ),
+    ]);
+
+    const statement = await createSubordinateWalletUnitMetadata({
+      sub: "https://wallet-unit.example",
+      trustAnchor: config.trust,
+      trustAnchorBaseUrl: "https://trust-anchor.example",
+      walletBackupStoragePath: config.wallet.backup_storage_path,
+    });
+
+    const decodedStatement = decodeJwt(statement);
+    expect(decodedStatement.jwks).toEqual(
+      expect.objectContaining({
+        keys: expect.arrayContaining([unitJwks.publicKey]),
+      }),
+    );
+    expect(decodedStatement.jwks).not.toEqual(
+      expect.objectContaining({
+        keys: expect.arrayContaining([providerJwks.publicKey]),
+      }),
+    );
   });
 });

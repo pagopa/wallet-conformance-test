@@ -199,10 +199,7 @@ export interface CreateSubordinateCredentialIssuerMetadataOptions {
   walletBackupStoragePath: string;
 }
 
-/**
- * Options for creating subordinate wallet metadata.
- */
-export interface CreateSubordinateWalletUnitMetadataOptions {
+export interface CreateSubordinateWalletMetadataOptions {
   sub: string;
   trustAnchor: Config["trust"];
   trustAnchorBaseUrl: string;
@@ -210,13 +207,20 @@ export interface CreateSubordinateWalletUnitMetadataOptions {
 }
 
 /**
- * Creates a subordinate wallet metadata JWT signed by the Trust Anchor.
- *
- * @param options Options for creating the subordinate wallet metadata.
- * @returns The signed subordinate wallet metadata JWT.
+ * Options for creating subordinate wallet provider metadata.
  */
-export const createSubordinateWalletUnitMetadata = async (
-  options: CreateSubordinateWalletUnitMetadataOptions,
+export type CreateSubordinateWalletProviderMetadataOptions =
+  CreateSubordinateWalletMetadataOptions;
+
+/**
+ * Options for creating subordinate wallet metadata.
+ */
+export type CreateSubordinateWalletUnitMetadataOptions =
+  CreateSubordinateWalletMetadataOptions;
+
+const createSubordinateWalletMetadata = async (
+  options: CreateSubordinateWalletMetadataOptions,
+  entityJwksPath: string,
 ): Promise<string> => {
   const signedJwks = await loadJwksWithX5C(
     options.trustAnchor.federation_trust_anchors_jwks_path,
@@ -227,8 +231,9 @@ export const createSubordinateWalletUnitMetadata = async (
 
   const walletJwks = await loadJwks(
     options.walletBackupStoragePath,
-    buildJwksPath("wallet_unit"),
+    entityJwksPath,
   );
+
   return await createFederationMetadata({
     claims: {
       iss: options.trustAnchorBaseUrl,
@@ -238,6 +243,31 @@ export const createSubordinateWalletUnitMetadata = async (
     signedJwks,
   });
 };
+
+/**
+ * Creates a subordinate wallet provider metadata JWT signed by the Trust Anchor.
+ *
+ * @param options Options for creating the subordinate wallet provider metadata.
+ * @returns The signed subordinate wallet provider metadata JWT.
+ */
+export const createSubordinateWalletProviderMetadata = async (
+  options: CreateSubordinateWalletProviderMetadataOptions,
+): Promise<string> =>
+  await createSubordinateWalletMetadata(
+    options,
+    buildJwksPath("wallet_provider"),
+  );
+
+/**
+ * Creates a subordinate wallet metadata JWT signed by the Trust Anchor.
+ *
+ * @param options Options for creating the subordinate wallet metadata.
+ * @returns The signed subordinate wallet metadata JWT.
+ */
+export const createSubordinateWalletUnitMetadata = async (
+  options: CreateSubordinateWalletUnitMetadataOptions,
+): Promise<string> =>
+  await createSubordinateWalletMetadata(options, buildJwksPath("wallet_unit"));
 
 /**
  * Creates a subordinate Credential Issuer entity statement JWT signed by the Trust Anchor.
