@@ -119,6 +119,11 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     options.presentationAuthorizeScript,
   );
   applyEnvOption(env, "CONFIG_CREDENTIAL_TYPES", options.credentialTypes);
+  applyEnvOption(
+    env,
+    "CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID",
+    options.batchCredentialConfigurationId,
+  );
   applyEnvOption(env, "CONFIG_TIMEOUT", options.timeout);
   applyEnvOption(env, "CONFIG_MAX_RETRIES", options.maxRetries);
   applyEnvOption(env, "CONFIG_LOG_LEVEL", options.logLevel);
@@ -142,18 +147,13 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   applyEnvOption(env, "CONFIG_WALLET_VERSION", options.walletVersion);
   applyEnvOption(
     env,
-    "CONFIG_REFRESH_TOKEN_REISSUANCE",
-    options.refreshTokenReissuance,
+    "CONFIG_NOTIFICATION_ID_REISSUANCE",
+    options.notificationIdReissuance,
   );
   applyEnvOption(
     env,
     "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
     options.credentialConfigurationIdReissuance,
-  );
-  applyEnvOption(
-    env,
-    "CONFIG_REFRESH_TOKEN_DEFERRED",
-    options.refreshTokenDeferred,
   );
   applyEnvOption(env, "CONFIG_TRANSACTION_ID", options.transactionId);
   applyEnvOption(env, "CONFIG_TRUST_ANCHOR_VERIFY", options.trustAnchorVerify);
@@ -194,6 +194,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--credential-types <types>",
       "Comma-separated list of credential configuration IDs to test (env: CONFIG_CREDENTIAL_TYPES)",
+    )
+    .option(
+      "--batch-credential-configuration-id <id>",
+      "Credential configuration ID that enables batch issuance when present in the resolved credential offer/config (env: CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID)",
     )
     .option(
       "--timeout <seconds>",
@@ -253,16 +257,12 @@ function addCommonOptions(command: Command): Command {
       "Override the IT Wallet specification version (V1_0, V1_3, V1_4) (env: CONFIG_WALLET_VERSION)",
     )
     .option(
-      "--refresh-token-reissuance <token>",
-      "Use a DPoP-bound Refresh Token to run the Re-Issuance Flow (env: CONFIG_REFRESH_TOKEN_REISSUANCE)",
-    )
-    .option(
-      "--refresh-token-deferred <token>",
-      "DPoP-bound Refresh Token used to obtain a new access token for the Deferred Issuance Flow (env: CONFIG_REFRESH_TOKEN_DEFERRED)",
+      "--notification-id-reissuance <id>",
+      "Notification ID selecting the saved notification backup for the Re-Issuance Flow (env: CONFIG_NOTIFICATION_ID_REISSUANCE)",
     )
     .option(
       "--transaction-id <id>",
-      "Transaction ID returned in the pending credential response, required for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
+      "Transaction ID selecting the saved transaction backup for the Deferred Issuance Flow (env: CONFIG_TRANSACTION_ID)",
     )
     .option(
       "--credential-configuration-id-reissuance <id>",

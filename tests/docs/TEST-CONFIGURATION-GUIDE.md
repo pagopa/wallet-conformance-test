@@ -339,11 +339,6 @@ steps_mapping["MyCustomTest"] → not found
 All steps use built-in default implementations (no error)
 ```
 
-
-
-
-
-
 ### config.ini Structure
 
 Test directories and step mappings are configured in `config.ini`:
@@ -353,6 +348,8 @@ Test directories and step mappings are configured in `config.ini`:
 url = https://issuer.example.com
 tests_dir = ./tests/conformance/issuance       # Directory for issuance test specs
 credential_types[] = dc_sd_jwt_EuropeanDisabilityCard
+# Enables batch issuance only when this ID is present in resolved credential_configuration_ids
+batch_credential_configuration_id = mso_mdoc_CompanyBadge
 
 [presentation]
 authorize_request_url = https://verifier.example.com/authorize
@@ -390,6 +387,8 @@ credential_types[] = dc_sd_jwt_ElectronicHealthCard
 The system automatically creates one `IssuerTestConfiguration` per credential type. Each `describe` block in the spec runs independently for each type.
 
 **Important**: If `credential_types[]` is empty or not configured, `defineIssuanceTest()` throws an error.
+
+Batch issuance is disabled by default. Set `batch_credential_configuration_id` to the credential configuration ID that should enable batch requests; metadata `batch_credential_issuance.batch_size` is used only when that ID is present in the resolved `credential_configuration_ids`.
 
 ## Test Execution Reference
 

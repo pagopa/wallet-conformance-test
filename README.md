@@ -104,35 +104,45 @@ If you encounter an issue where the `wct` command is not available system-wide a
 
 If you prefer using Docker, you can pull the official image from the GitHub Container Registry or build it locally.
 
-### Build image
+### Pull Image
 
-1. Pull the latest image with the following command:
+Pull the latest published image from GHCR with the following command:
 
-   ```bash
-   docker pull ghcr.io/pagopa/wallet-conformance-test:latest
-   ```
+```bash
+docker pull ghcr.io/pagopa/wallet-conformance-test:latest
+```
 
-   Alternatively, you can build the Docker image from the source code:
+Then run the CLI, for example to run the issuance test suite:
 
-   ```bash
-   docker build --tag pagopa/wallet-conformance-test:latest .
-   ```
+```bash
+docker run --rm ghcr.io/pagopa/wallet-conformance-test:latest test:issuance
+```
 
-2. Run the CLI for example to start issuance test:
+### Build Image
 
-   ```bash
-   docker run --rm wallet-conformance-test:latest test:issuance
-   ```
+Alternatively, you can build the Docker image from the source code and assign it a local tag:
 
-3. If you want to mount a local folder for data or configuration (as suggested in the README):
+```bash
+docker build --platform linux/amd64 --tag pagopa/wallet-conformance-test:latest .
+```
 
-   ```bash
-   docker run --rm -v "$(pwd)/data:/wallet-conformance-test/data" wallet-conformance-test:latest [COMMAND]
-   ```
+The `--platform linux/amd64` option forces an amd64 image build. On non-amd64 hosts you may need Docker Buildx (and QEMU) enabled for this to work. The CI workflow publishes multi-architecture images for both `linux/amd64` and `linux/arm64`.
+
+Run the locally tagged image, for example to start issuance test:
+
+```bash
+docker run --rm pagopa/wallet-conformance-test:latest test:issuance
+```
+
+If you want to mount a local folder for data or configuration:
+
+```bash
+docker run --rm -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
+```
 
 ### Run Container
 
-To run the tests, create a local directory (e.g., data) to store configuration and reports. Then, launch the container, mounting your local directory as a volume:
+To run the tests with the locally tagged image, create a local directory (e.g., data) to store configuration and reports. Then, launch the container, mounting your local directory as a volume. If you pulled the published GHCR image instead, replace `pagopa/wallet-conformance-test:latest` with `ghcr.io/pagopa/wallet-conformance-test:latest`.
 
 First create a directory for your data:
 

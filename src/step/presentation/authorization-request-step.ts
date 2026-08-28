@@ -1,3 +1,4 @@
+import type { Jwk } from "@pagopa/io-wallet-oauth2";
 import type { ItWalletCredentialVerifierMetadata } from "@pagopa/io-wallet-oid-federation";
 
 import {
@@ -22,6 +23,12 @@ import {
 } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
+
+const LOCAL_WALLET_PROVIDER_HOST = "wallet-provider.wct.example.org";
+
+const selectEncryptionJwk = (keys: Jwk[]): Jwk | undefined =>
+  keys.find((key) => key.use === "enc") ??
+  keys.find((key) => key.use !== "sig");
 
 export interface AuthorizationRequestExecuteStepResponse {
   authorizationRequestHeader: Openid4vpAuthorizationRequestHeader;
@@ -92,7 +99,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       log.info(`Fetching authorization request from: ${authorizeRequestUrl}`);
 
       const walletNonce = crypto.randomUUID();
-      const walletMetadata = buildWalletMetadata();
+      const walletMetadata = buildWalletMetadata(this.config.wallet.port);
       let requestObjectFetch: RequestObjectFetchDetails | undefined;
 
       const fetchCallback = fetchWithConfig(this.config.network, {
@@ -141,13 +148,22 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       if (!dcqlQuery) {
         throw new Error("dcql_query is missing in the request object");
       }
+
+      const verifierJwks =
+        requestObject.client_metadata?.jwks ?? options.verifierMetadata?.jwks;
+
+      const verifierEncryptionPublicJwk = selectEncryptionJwk(
+        verifierJwks?.keys ?? [],
+      );
+
       const vp_token = await buildVpToken(
         options.credentials,
         dcqlQuery,
         {
           client_id: parsedQrCode.clientId,
           nonce: requestObject.nonce,
-          responseUri: responseUri,
+          responseUri,
+          verifierEncryptionPublicJwk,
         },
         this.config.wallet.wallet_version,
         this.log,
@@ -200,7 +216,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
   }
 }
 
-function buildWalletMetadata(): WalletMetadata {
+function buildWalletMetadata(walletProviderPort: number): WalletMetadata {
   const walletClientIdPrefixesSupported = [
     "redirect_uri",
     "x509_san_dns",
@@ -218,6 +234,7 @@ function buildWalletMetadata(): WalletMetadata {
   };
 
   return {
+    authorization_endpoint: `https://${LOCAL_WALLET_PROVIDER_HOST}:${walletProviderPort}/authorize`,
     client_id_prefixes_supported: walletClientIdPrefixesSupported,
     request_object_signing_alg_values_supported: ["ES256"],
     response_modes_supported: ["direct_post.jwt"],

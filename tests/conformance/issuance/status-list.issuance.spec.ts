@@ -14,7 +14,10 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { fetchWithConfig } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
-import { CredentialRequestResponse } from "@/step/issuance";
+import {
+  CredentialRequestResponse,
+  getCredentialResponseCredentials,
+} from "@/step/issuance";
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
@@ -65,7 +68,9 @@ testConfigs.forEach((testConfig) => {
       credentialResponse = result.credentialResponse;
 
       if (!ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) {
-        for (const credObj of credentialResponse.response?.credentials ?? []) {
+        for (const credObj of getCredentialResponseCredentials(
+          credentialResponse.response,
+        )) {
           const issuerJwt = extractIssuerJwt(credObj.credential);
           if (!issuerJwt) continue;
           const { payload } = sdJwtDecodeJwt(issuerJwt);

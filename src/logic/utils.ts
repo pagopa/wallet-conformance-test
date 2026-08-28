@@ -374,6 +374,7 @@ export function saveCredentialToDisk(
   credentialConfigurationId: string,
   credential: string,
   version: ItWalletSpecsVersion,
+  filenameSuffix?: string,
 ): null | string {
   try {
     const credentialsPath = path.resolve(credentialsStoragePath, version);
@@ -383,7 +384,7 @@ export function saveCredentialToDisk(
       mkdirSync(credentialsPath, { recursive: true });
     }
 
-    const filePath = `${credentialsPath}/${credentialConfigurationId}`;
+    const filePath = `${credentialsPath}/${credentialConfigurationId}${filenameSuffix ?? ""}`;
     writeFileSync(filePath, credential);
 
     return filePath;
@@ -433,4 +434,40 @@ export function hasObjectProperties<T, K extends keyof T>(
     throw new MissingFieldError(
       `Error, the following keys are missing from object: ${missingKeys.map(String).join(", ")}`,
     );
+}
+
+/**
+ * Reduces a URI to its comparable base path: normalized origin (lowercased scheme
+ * and host, default port dropped) plus pathname without trailing slashes. Query
+ * parameters and fragments are discarded, so URLs that differ only in per-session
+ * parameters compare as equal.
+ * @param uri An absolute URI.
+ * @throws A `TypeError` if `uri` is not a parsable absolute URI.
+ */
+export function normalizeUriBasePath(uri: string): string {
+  const url = new URL(uri);
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${pathname}`;
+}
+
+/**
+ * Checks whether a URI's base path equals one of the declared base paths, comparing
+ * both sides after {@link normalizeUriBasePath}. Unparsable declared entries are
+ * ignored rather than aborting the comparison.
+ * @param uri The URI to check.
+ * @param declaredBasePaths The base paths the URI must match.
+ */
+export function uriMatchesDeclaredBasePaths(
+  uri: string,
+  declaredBasePaths: string[],
+): boolean {
+  const normalizedUri = normalizeUriBasePath(uri);
+
+  return declaredBasePaths.some((declaredBasePath) => {
+    try {
+      return normalizeUriBasePath(declaredBasePath) === normalizedUri;
+    } catch {
+      return false;
+    }
+  });
 }

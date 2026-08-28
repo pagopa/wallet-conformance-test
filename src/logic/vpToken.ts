@@ -26,7 +26,10 @@ import { prepareCredentials } from "./v1_3/vpToken";
 export async function buildVpToken(
   credentials: CredentialWithKey[],
   query: DcqlQuery.Input,
-  options: Omit<VpTokenOptions, "credential" | "dcqlQuery" | "dpopJwk">,
+  options: Omit<
+    VpTokenOptions,
+    "credential" | "dcqlQuery" | "dpopJwk" | "walletVersion"
+  >,
   version: ItWalletSpecsVersion,
   logger?: Logger,
 ): Promise<Record<string, [string, ...string[]] | string>> {
@@ -53,6 +56,7 @@ export async function buildVpToken(
         ...query,
         credentials: [queryCredential],
       },
+      walletVersion: version,
     };
 
     let res: Record<string, [string, ...string[]] | string>;

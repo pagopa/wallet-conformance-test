@@ -87,6 +87,7 @@ const makeConfig = (): Config =>
     wallet: {
       backup_storage_path: "./backup",
       credentials_storage_path: "./credentials",
+      port: 3002,
       wallet_version: "1.0",
     },
   }) as unknown as Config;
@@ -286,6 +287,32 @@ describe("AuthorizationRequestDefaultStep", () => {
         "A256GCM",
         "A128CBC-HS256",
       ]);
+    });
+  });
+
+  describe("wallet metadata", () => {
+    it("includes the wallet authorization endpoint for request_uri POST", async () => {
+      setupHappyPathMocks();
+      vi.mocked(fetchAuthorizationRequest).mockResolvedValue({
+        parsedQrCode: {
+          ...stubParsedQrCode,
+          requestUriMethod: "post",
+        },
+        requestObjectJwt: "header.payload.sig",
+      } as never);
+
+      const step = makeStep();
+      await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
+        credentials: [],
+        verifierMetadata: baseVerifierMetadata,
+        walletAttestation: {} as never,
+      });
+
+      const [fetchCall] = vi.mocked(fetchAuthorizationRequest).mock.calls;
+      expect(fetchCall?.[0].walletMetadata?.authorization_endpoint).toBe(
+        "https://wallet-provider.wct.example.org:3002/authorize",
+      );
     });
   });
 

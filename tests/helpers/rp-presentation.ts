@@ -1,7 +1,11 @@
-import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
+
+import { normalizeUriBasePath } from "@/logic";
+
+// Re-exported so specs keep a single import site for URI comparison helpers.
+export { normalizeUriBasePath };
 
 export interface RequestedPresentation {
   format: string;
@@ -77,12 +81,6 @@ export function normalizePresentationArray(
   return presentations;
 }
 
-export function normalizeUriBasePath(uri: string): string {
-  const url = new URL(uri);
-  const pathname = url.pathname.replace(/\/+$/, "");
-  return `${url.origin}${pathname}`;
-}
-
 export function readDcqlClaimPaths(
   credential: unknown,
   credentialIndex: number,
@@ -144,20 +142,6 @@ export function readDcqlCredentials(requestObject: unknown): unknown[] {
   }
 
   return credentials;
-}
-
-export function readRelyingPartyIdentifier(
-  requestObject: unknown,
-  parsedQrCode: unknown,
-): string {
-  if (requestObject && typeof requestObject === "object") {
-    const clientId = (requestObject as { client_id?: unknown }).client_id;
-    if (typeof clientId === "string" && clientId.length > 0) {
-      return extractClientIdPrefix(clientId).clientId;
-    }
-  }
-
-  return readRequiredStringProperty(parsedQrCode, "clientId", "parsedQrCode");
 }
 
 export function readRequestedPresentation(

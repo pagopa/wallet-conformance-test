@@ -9,7 +9,10 @@ import { beforeAll, describe, expect, test } from "vitest";
 
 import { parseMdoc } from "@/logic/mdoc";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
-import { CredentialRequestResponse } from "@/step/issuance";
+import {
+  CredentialRequestResponse,
+  getCredentialResponseCredentials,
+} from "@/step/issuance";
 
 const { decode, Tagged } = cbor;
 type CborTagged = InstanceType<typeof Tagged>;
@@ -49,7 +52,9 @@ testConfigs.forEach((testConfig) => {
 
     function getMdocCredentials(): { raw: Buffer }[] {
       const result: { raw: Buffer }[] = [];
-      for (const credObj of credentialResponse.response?.credentials ?? []) {
+      for (const credObj of getCredentialResponseCredentials(
+        credentialResponse.response,
+      )) {
         try {
           const raw = Buffer.from(credObj.credential, "base64url");
           // parseMdoc throws for non-mdoc bytes — use it as a guard

@@ -15,6 +15,10 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
+import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import type {
@@ -23,7 +27,11 @@ import type {
 } from "@/step/issuance";
 import type { KeyPair } from "@/types";
 
-import { loadConfigWithHierarchy } from "@/logic";
+import {
+  loadConfigWithHierarchy,
+  loadNotificationCredentialResponseBackup,
+  saveCredentialResponseBackup,
+} from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 
 const testConfigs = await defineIssuanceTest("RefreshTokenIssuance");
@@ -55,11 +63,27 @@ testConfigs.forEach((testConfig) => {
 
     let credentialResponse: CredentialRequestResponse;
     let refreshTokenTokenEndpoint: string | undefined;
+    let inputNotificationBackup:
+      | ReturnType<typeof loadNotificationCredentialResponseBackup>
+      | undefined;
     let issuedRefreshToken: string | undefined;
     let refreshTokenDPoPKey: KeyPair | undefined;
 
     beforeAll(async () => {
       try {
+        const notificationId =
+          orchestrator.getConfig().issuance.notification_id_reissuance;
+        if (!notificationId) {
+          throw new Error(
+            "CONFIG_NOTIFICATION_ID_REISSUANCE or issuance.notification_id_reissuance is required for refresh-token re-issuance tests",
+          );
+        }
+
+        inputNotificationBackup = loadNotificationCredentialResponseBackup(
+          orchestrator.getConfig().wallet.backup_storage_path,
+          notificationId,
+        );
+
         const result = await orchestrator.reissuance();
         assertReissuanceFlowSuccess(result);
 
@@ -350,13 +374,36 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
+        if (!inputNotificationBackup) {
+          throw new Error("Input notification backup is undefined");
+        }
+
+        const invalidNotificationId = `invalid-refresh-token-ci-096-${randomUUID()}`;
+        const tempBackupStoragePath = mkdtempSync(
+          path.join(tmpdir(), "wct-ci-096-backup-"),
+        );
         const negativeOrchestrator = new WalletIssuanceOrchestratorFlow(
           testConfig,
         );
-        negativeOrchestrator.getConfig().issuance.refresh_token_reissuance =
-          "invalid-refresh-token-ci-096";
+        negativeOrchestrator.getConfig().wallet.backup_storage_path =
+          tempBackupStoragePath;
+        negativeOrchestrator.getConfig().issuance.notification_id_reissuance =
+          invalidNotificationId;
 
-        const result = await negativeOrchestrator.reissuance();
+        saveCredentialResponseBackup(tempBackupStoragePath, {
+          access_token: "invalid-access-token-ci-096",
+          dpop_jwk: inputNotificationBackup.dPoPKey.privateKey,
+          notification_id: invalidNotificationId,
+          refresh_token: "invalid-refresh-token-ci-096",
+        });
+
+        const result = await (async () => {
+          try {
+            return await negativeOrchestrator.reissuance();
+          } finally {
+            rmSync(tempBackupStoragePath, { force: true, recursive: true });
+          }
+        })();
 
         expect(
           result.success,
@@ -416,7 +463,7 @@ testConfigs.forEach((testConfig) => {
         expect(
           issuedRefreshToken,
           "Issuer reused the input refresh token instead of generating a new one",
-        ).not.toBe(orchestrator.getConfig().issuance.refresh_token_reissuance);
+        ).not.toBe(inputNotificationBackup?.refresh_token);
         expect(
           issuedRefreshToken.length,
           "Refresh token must have at least 128 bits of encoded entropy",

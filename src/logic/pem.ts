@@ -21,6 +21,25 @@ const SIGNING_ALGORITHM = {
   namedCurve: "P-256",
 } as const satisfies EcdsaParams & EcKeyImportParams;
 
+/**
+ * Removes JOSE metadata before importing a JWK into Web Crypto.
+ *
+ * Stored wallet keys may contain `use: "sign"`, which is useful application
+ * metadata but is not a valid Web Crypto JWK `use` value (`sig` is the JOSE
+ * value). Web Crypto also does not need JOSE-only fields such as `alg`, `kid`,
+ * or `x5c` to import the key material.
+ */
+function toCryptoJwk(jwk: KeyPair["privateKey"]): JsonWebKey {
+  const { alg, key_ops, kid, use, x5c, ...cryptoJwk } = jwk;
+  void alg;
+  void key_ops;
+  void kid;
+  void use;
+  void x5c;
+
+  return cryptoJwk as JsonWebKey;
+}
+
 export const OID_SUBJECT_ALTERNATIVE_NAME = "2.5.29.17" as const;
 
 /**
@@ -78,7 +97,7 @@ export async function createAndSaveCertificateWithKey(
 
   const privateKey = await crypto.subtle.importKey(
     "jwk",
-    keyPair.privateKey,
+    toCryptoJwk(keyPair.privateKey),
     SIGNING_ALGORITHM,
     true,
     ["sign"],
@@ -108,7 +127,7 @@ export async function createCertificate(
 
   const privateKey = await crypto.subtle.importKey(
     "jwk",
-    keyPair.privateKey,
+    toCryptoJwk(keyPair.privateKey),
     SIGNING_ALGORITHM,
     true,
     ["sign"],
@@ -116,7 +135,7 @@ export async function createCertificate(
 
   const publicKey = await crypto.subtle.importKey(
     "jwk",
-    keyPair.publicKey,
+    toCryptoJwk(keyPair.publicKey),
     SIGNING_ALGORITHM,
     true,
     ["verify"],
@@ -172,7 +191,7 @@ export async function createSignedCertificate(
 ): Promise<x509.X509Certificate> {
   const signingKey = await crypto.subtle.importKey(
     "jwk",
-    issuerKeyPair.privateKey,
+    toCryptoJwk(issuerKeyPair.privateKey),
     SIGNING_ALGORITHM,
     true,
     ["sign"],
@@ -180,7 +199,7 @@ export async function createSignedCertificate(
 
   const publicKey = await crypto.subtle.importKey(
     "jwk",
-    subjectKeyPair.publicKey,
+    toCryptoJwk(subjectKeyPair.publicKey),
     SIGNING_ALGORITHM,
     true,
     ["verify"],
