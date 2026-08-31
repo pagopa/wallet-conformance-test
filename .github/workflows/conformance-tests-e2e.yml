@@ -88,5 +88,5 @@ jobs:
       # ── Presentation tests ───────────────────────────────────────────────────
       - name: Run presentation tests
         shell: bash
-        run: wct test:presentation --tests happy
+        run: wct test:presentation --tests happy --wallet-version=V1_3
         # CONFIG_PRESENTATION_AUTHORIZE_URI is set in GITHUB_ENV by the previous step
