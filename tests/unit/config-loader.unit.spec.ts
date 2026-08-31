@@ -8,7 +8,10 @@ import {
   readPackageVersion,
 } from "@/logic/config-loader";
 import { packageRoot, resolveLocalConfigPath } from "@/logic/runtime-paths";
-import { resolveWalletProviderBaseUrl } from "@/logic/wallet-provider-url";
+import {
+  resolveNormalizedWalletProviderBaseUrl,
+  resolveWalletProviderEntityIdentifier,
+} from "@/logic/wallet-provider-url";
 
 const DEFAULT_INI = path.join(packageRoot, "config.example.ini");
 const envKeys = [
@@ -136,13 +139,16 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
     );
   });
 
-  it("should resolve the configured Wallet Provider identifier from the environment", () => {
+  it("should preserve the configured Wallet Provider identifier from the environment", () => {
     process.env.CONFIG_WALLET_PROVIDER_BASE_URL =
       "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/";
 
     const config = loadConfigWithHierarchy(null, DEFAULT_INI);
 
-    expect(resolveWalletProviderBaseUrl(config.wallet)).toBe(
+    expect(resolveWalletProviderEntityIdentifier(config.wallet)).toBe(
+      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/",
+    );
+    expect(resolveNormalizedWalletProviderBaseUrl(config.wallet)).toBe(
       "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
     );
   });
@@ -161,7 +167,10 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
       DEFAULT_INI,
     );
 
-    expect(resolveWalletProviderBaseUrl(config.wallet)).toBe(
+    expect(resolveWalletProviderEntityIdentifier(config.wallet)).toBe(
+      "https://cli.example/wallet/",
+    );
+    expect(resolveNormalizedWalletProviderBaseUrl(config.wallet)).toBe(
       "https://cli.example/wallet",
     );
   });

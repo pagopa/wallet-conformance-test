@@ -15,7 +15,8 @@ import {
   appendWalletProviderPath,
   getWalletProviderBasePath,
   getWalletProviderCertificateSubject,
-  resolveWalletProviderBaseUrl,
+  resolveNormalizedWalletProviderBaseUrl,
+  resolveWalletProviderEntityIdentifier,
 } from "@/logic/wallet-provider-url";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import { Config } from "@/types";
@@ -26,7 +27,10 @@ export const createServer = (config: Config): express.Express => {
   const app = express();
   app.use(express.json());
 
-  const wpBaseUrl = resolveWalletProviderBaseUrl(config.wallet);
+  const wpBaseUrl = resolveNormalizedWalletProviderBaseUrl(config.wallet);
+  const walletProviderEntityIdentifier = resolveWalletProviderEntityIdentifier(
+    config.wallet,
+  );
   const walletProviderRouter = express.Router();
 
   walletProviderRouter.get(
@@ -70,8 +74,10 @@ export const createServer = (config: Config): express.Express => {
       );
       const jwt = await createStatusListToken({
         certFilename: "wallet_provider_cert",
-        certSubject: getWalletProviderCertificateSubject(wpBaseUrl),
-        iss: wpBaseUrl,
+        certSubject: getWalletProviderCertificateSubject(
+          walletProviderEntityIdentifier,
+        ),
+        iss: walletProviderEntityIdentifier,
         jwksFilename: "wallet_provider_jwks",
         jwksPath: config.wallet.backup_storage_path,
         keyPair: providerKeyPair,
@@ -101,9 +107,11 @@ if (isMainModule(import.meta.url)) {
     )
     .then((server) =>
       server.listen(config.wallet.port, config.network.bind_address, () => {
-        const wpBaseUrl = resolveWalletProviderBaseUrl(config.wallet);
+        const wpBaseUrl = resolveNormalizedWalletProviderBaseUrl(config.wallet);
+        const walletProviderEntityIdentifier =
+          resolveWalletProviderEntityIdentifier(config.wallet);
         console.log(
-          `[Wallet Provider] ${wpBaseUrl} Server started
+          `[Wallet Provider] ${walletProviderEntityIdentifier} Server started
       PID: ${process.pid}
       URL: https://localhost:${config.wallet.port}
 

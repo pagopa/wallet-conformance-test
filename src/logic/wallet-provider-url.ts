@@ -15,7 +15,7 @@ export function appendWalletProviderPath(
 }
 
 export function getLocalWpBaseUrl(port: number): string {
-  return resolveWalletProviderBaseUrl({ port });
+  return resolveNormalizedWalletProviderBaseUrl({ port });
 }
 
 export function getWalletProviderBasePath(baseUrl: string): string {
@@ -31,16 +31,36 @@ export function getWalletProviderHostname(baseUrl: string): string {
 }
 
 /**
- * Resolves the public Wallet Provider entity identifier.
+ * Resolves the Wallet Provider base URL for endpoint and path construction.
+ */
+export function resolveNormalizedWalletProviderBaseUrl(
+  wallet: WalletProviderUrlConfig,
+): string {
+  return resolveWalletProviderEntityIdentifier(wallet).replace(/\/+$/, "");
+}
+
+/**
+ * Resolves the Wallet Provider base URL for endpoint and path construction.
  *
- * The configured URL identifies the Wallet Provider in federation. It is
- * intentionally independent from the local listener address and port.
+ * @deprecated Use resolveNormalizedWalletProviderBaseUrl for URL composition
+ * or resolveWalletProviderEntityIdentifier for protocol identity fields.
  */
 export function resolveWalletProviderBaseUrl(
   wallet: WalletProviderUrlConfig,
 ): string {
-  const configuredUrl = wallet.wallet_provider_base_url;
-  return configuredUrl
-    ? configuredUrl.replace(/\/+$/, "")
-    : `https://${LOCAL_WP_HOST}:${wallet.port}`;
+  return resolveNormalizedWalletProviderBaseUrl(wallet);
+}
+
+/**
+ * Resolves the Wallet Provider entity identifier exactly as configured.
+ *
+ * The configured URL identifies the Wallet Provider in federation. It is
+ * intentionally independent from the local listener address and port.
+ */
+export function resolveWalletProviderEntityIdentifier(
+  wallet: WalletProviderUrlConfig,
+): string {
+  return (
+    wallet.wallet_provider_base_url ?? `https://${LOCAL_WP_HOST}:${wallet.port}`
+  );
 }

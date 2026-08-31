@@ -28,7 +28,8 @@ import {
 } from "@/logic";
 import {
   appendWalletProviderPath,
-  resolveWalletProviderBaseUrl,
+  resolveNormalizedWalletProviderBaseUrl,
+  resolveWalletProviderEntityIdentifier,
 } from "@/logic/wallet-provider-url";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 import {
@@ -41,14 +42,14 @@ import {
 const resolveTaEntityConfiguration = (
   trust: Config["trust"],
   providerPublicKey: KeyPair["publicKey"],
-  walletProviderBaseUrl: string,
+  walletProviderEntityIdentifier: string,
   trustAnchorBaseUrl: string,
   walletVersion: Config["wallet"]["wallet_version"],
 ): Promise<string> =>
   createSubordinateTrustAnchorMetadata({
     entityPublicJwk: providerPublicKey,
     federationTrustAnchor: trust,
-    sub: walletProviderBaseUrl,
+    sub: walletProviderEntityIdentifier,
     trustAnchorBaseUrl,
     walletVersion,
   });
@@ -75,7 +76,9 @@ export const buildWpEntityConfiguration = async (
     trust_anchor_base_url: trustAnchorBaseUrl,
     trust_marks,
     wallet_name: wallet.wallet_name,
-    wallet_provider_base_url: resolveWalletProviderBaseUrl(wallet),
+    wallet_provider_base_url: resolveNormalizedWalletProviderBaseUrl(wallet),
+    wallet_provider_entity_identifier:
+      resolveWalletProviderEntityIdentifier(wallet),
   };
   const wpClaims = loadJsonDumps(
     "wallet_provider_metadata.json",
@@ -100,12 +103,13 @@ const buildAttestationOptions = async (
     ...partialCallbacks,
     signJwt: signJwtCallback([providerKeyPair.privateKey]),
   };
-  const wpBaseUrl = resolveWalletProviderBaseUrl(wallet);
+  const wpBaseUrl = resolveNormalizedWalletProviderBaseUrl(wallet);
+  const wpEntityIdentifier = resolveWalletProviderEntityIdentifier(wallet);
   const commonOptions = {
     callbacks,
     dpopJwkPublic: unitPublicKey,
     expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiration
-    issuer: wpBaseUrl,
+    issuer: wpEntityIdentifier,
     walletLink: appendWalletProviderPath(wpBaseUrl, "wallet"),
     walletName: wallet.wallet_name,
   };
@@ -173,7 +177,7 @@ export const createAttestation = async (
     resolveTaEntityConfiguration(
       trust,
       providerKeyPair.publicKey,
-      resolveWalletProviderBaseUrl(wallet),
+      resolveWalletProviderEntityIdentifier(wallet),
       trustAnchorBaseUrl,
       wallet.wallet_version,
     ),
@@ -248,7 +252,8 @@ export const loadAttestation = async (
       const attestation = readFileSync(attestationPath, "utf-8");
       const attestationJwt = await SDJwt.extractJwt(attestation);
       if (
-        attestationJwt.payload?.iss !== resolveWalletProviderBaseUrl(wallet)
+        attestationJwt.payload?.iss !==
+        resolveWalletProviderEntityIdentifier(wallet)
       ) {
         throw new Error(
           "wallet attestation issuer does not match configuration",

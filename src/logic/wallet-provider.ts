@@ -17,7 +17,7 @@ import { buildJwksPath, ensureDir, loadJwks } from "./utils";
 import {
   getWalletProviderCertificateSubject,
   getWalletProviderHostname,
-  resolveWalletProviderBaseUrl,
+  resolveWalletProviderEntityIdentifier,
 } from "./wallet-provider-url";
 
 /** Filenames for persisted intermediate artefacts */
@@ -113,7 +113,7 @@ export async function loadWalletProviderCertificate(
   const validationError = await validateCachedCertificateMaterial(
     wpCachedCert,
     wpIntermediateCachedCert,
-    resolveWalletProviderBaseUrl(wallet),
+    resolveWalletProviderEntityIdentifier(wallet),
     providerKeyPair,
   );
   if (!validationError) {
@@ -154,8 +154,8 @@ export async function loadWalletProviderCertificate(
 
   // ── wpIntermediateCert: signed by TA, attests KY1 (isCA = true) ─────────────────────
   const taSubject = trust.certificate_subject;
-  const wpBaseUrl = resolveWalletProviderBaseUrl(wallet);
-  const wpSubject = getWalletProviderCertificateSubject(wpBaseUrl);
+  const wpEntityIdentifier = resolveWalletProviderEntityIdentifier(wallet);
+  const wpSubject = getWalletProviderCertificateSubject(wpEntityIdentifier);
 
   const wpIntermediateCert = await createSignedCertificate(
     taKeyPair,
@@ -180,8 +180,8 @@ export async function loadWalletProviderCertificate(
     [
       new x509.SubjectAlternativeNameExtension(
         [
-          { type: "dns", value: getWalletProviderHostname(wpBaseUrl) },
-          { type: "url", value: wpBaseUrl },
+          { type: "dns", value: getWalletProviderHostname(wpEntityIdentifier) },
+          { type: "url", value: wpEntityIdentifier },
         ],
         false,
       ),

@@ -24,7 +24,7 @@ import {
 import { buildVpToken } from "@/logic/vpToken";
 import {
   appendWalletProviderPath,
-  resolveWalletProviderBaseUrl,
+  resolveNormalizedWalletProviderBaseUrl,
 } from "@/logic/wallet-provider-url";
 import { StepFlow, type StepResponse } from "@/step/step-flow";
 
@@ -102,7 +102,7 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
 
       const walletNonce = crypto.randomUUID();
       const walletMetadata = buildWalletMetadata(
-        resolveWalletProviderBaseUrl(this.config.wallet),
+        resolveNormalizedWalletProviderBaseUrl(this.config.wallet),
       );
       let requestObjectFetch: RequestObjectFetchDetails | undefined;
 
