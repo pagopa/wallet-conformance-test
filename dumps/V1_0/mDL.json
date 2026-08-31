@@ -2,7 +2,7 @@
     "age_over_18": true,
     "birth_date": "1980-01-10",
     "document_number": "XX1234567",
-    "driving_priviledges": [
+    "driving_privileges": [
         {
             "expiry_date": "2029-02-22",
             "issue_date": "2023-11-14",
