@@ -4,8 +4,8 @@
  *
  * Verifies that:
  * - deferred() returns a typed unsuccessful result without calling remote steps
- *   when either refresh_token_deferred or transaction_id is missing.
- * - deferred() uses grant_type=refresh_token with the deferred refresh token.
+ *   when transaction_id is missing or the transaction backup is invalid.
+ * - deferred() uses grant_type=refresh_token with the backed-up refresh token.
  * - deferred() posts to deferred_credential_endpoint with the transaction_id.
  * - deferred() saves a credential when save_credential=true and the response is immediate.
  * - deferred() returns partial responses on token / deferred-step failures.
@@ -16,6 +16,10 @@
 import { IssuerTestConfiguration } from "#/config/issuance-test-configuration";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import {
+  CredentialResponseBackupPersistenceError,
+  loadTransactionCredentialResponseBackup,
+} from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +58,8 @@ vi.mock("@/logic", async (importOriginal) => {
         wallet_version: "1.0",
       },
     }),
+    loadTransactionCredentialResponseBackup: vi.fn(),
+    saveCredentialResponseBackup: vi.fn().mockReturnValue([]),
   };
 });
 
@@ -153,14 +159,31 @@ const fetchMetadataMissingDeferred = makeStepSuccess({
 });
 
 const dPoPKey = {
-  privateKey: { crv: "P-256", d: "mock-d", kty: "EC" },
+  privateKey: {
+    alg: "ES256",
+    crv: "P-256",
+    d: "mock-d",
+    kid: "mock-kid",
+    kty: "EC",
+    x: "mock-x",
+    y: "mock-y",
+  },
   publicKey: {
+    alg: "ES256",
     crv: "P-256",
     kid: "mock-kid",
     kty: "EC",
     x: "mock-x",
     y: "mock-y",
   },
+} as const;
+
+const deferredTransactionBackup = {
+  access_token: "previous-access-token",
+  dpop_jwk: dPoPKey.privateKey,
+  dPoPKey,
+  refresh_token: "backup-refresh-token",
+  transaction_id: "txn-abc",
 };
 
 const tokenSuccess = makeStepSuccess({
@@ -194,11 +217,13 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
     );
     // Reset deferred-flow fields to undefined after each new orchestrator
     // (the mock returns the same config object, so mutations bleed between tests)
-    orchestrator.getConfig().issuance.refresh_token_deferred = undefined;
     orchestrator.getConfig().issuance.transaction_id_deferred = undefined;
+    vi.mocked(loadTransactionCredentialResponseBackup).mockReturnValue(
+      deferredTransactionBackup,
+    );
   });
 
-  test("fails fast when both refresh_token_deferred and transaction_id are missing", async () => {
+  test("fails fast when transaction_id is missing", async () => {
     const fetchSpy = vi.spyOn(
       // @ts-expect-error accessing private field for testing
       orchestrator.fetchMetadataStep,
@@ -209,14 +234,23 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
 
     expect(result.success).toBe(false);
     expect(result.error?.message).toContain(
-      "Deferred Issuance Flow requires both a deferred refresh token and a transaction id",
+      "Deferred Issuance Flow requires a transaction id",
     );
+    expect(loadTransactionCredentialResponseBackup).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  test("fails fast when only refresh_token_deferred is set", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred =
-      "my-deferred-token";
+  test("fails fast when transaction backup cannot be loaded", async () => {
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
+    vi.mocked(loadTransactionCredentialResponseBackup).mockImplementation(
+      () => {
+        throw new CredentialResponseBackupPersistenceError({
+          identifierType: "transaction_id",
+          operation: "read_file",
+          safePath: "/safe/backup/transactions/txn-abc.json",
+        });
+      },
+    );
 
     const fetchSpy = vi.spyOn(
       // @ts-expect-error accessing private field for testing
@@ -227,29 +261,45 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
     const result = await orchestrator.deferred();
 
     expect(result.success).toBe(false);
-    expect(result.error?.message).toContain(
-      "deferred refresh token and a transaction id",
-    );
+    expect(result.error?.message).toContain("read_file");
+    expect(result.error).toMatchObject({
+      code: "CREDENTIAL_RESPONSE_BACKUP_FAILED",
+      operation: "read_file",
+      safePath: "/safe/backup/transactions/txn-abc.json",
+    });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  test("fails fast when only transaction_id is set", async () => {
-    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-123";
+  test("loads transaction backup from backup storage path and transaction_id", async () => {
+    orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
-    const fetchSpy = vi.spyOn(
+    vi.spyOn(
       // @ts-expect-error accessing private field for testing
       orchestrator.fetchMetadataStep,
       "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenSuccess as never);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.deferredCredentialRequestStep,
+      "run",
+    ).mockResolvedValue(deferredSuccessImmediate as never);
+
+    await orchestrator.deferred();
+
+    expect(loadTransactionCredentialResponseBackup).toHaveBeenCalledWith(
+      "./backup",
+      "txn-abc",
     );
-
-    const result = await orchestrator.deferred();
-
-    expect(result.success).toBe(false);
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   test("does not call PAR or authorize steps", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -287,8 +337,11 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
     expect(authorizeSpy).not.toHaveBeenCalled();
   });
 
-  test("token step receives grant_type=refresh_token with refresh_token_deferred value", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "my-deferred-rt";
+  test("token step receives grant_type=refresh_token with backed-up refresh token", async () => {
+    vi.mocked(loadTransactionCredentialResponseBackup).mockReturnValue({
+      ...deferredTransactionBackup,
+      refresh_token: "my-backed-up-rt",
+    });
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -317,12 +370,12 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
     const tokenCallArg = tokenRunSpy.mock.calls[0]?.[0];
     expect(tokenCallArg?.accessTokenRequest).toMatchObject({
       grant_type: "refresh_token",
-      refresh_token: "my-deferred-rt",
+      refresh_token: "my-backed-up-rt",
     });
+    expect(tokenCallArg?.dPoPKey).toBe(deferredTransactionBackup.dPoPKey);
   });
 
   test("deferred step is called with deferred_credential_endpoint and transaction_id", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-xyz";
 
     vi.spyOn(
@@ -356,7 +409,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("deferred step receives the same dPoPKey from the token request", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -386,7 +438,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:true with deferredCredentialResponse on immediate (200) response", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -416,7 +467,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:true with deferredCredentialResponse on still-pending (202) response", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -444,7 +494,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("returns success:false with IssuerMetadataError when deferred_credential_endpoint is missing", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -467,7 +516,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("token failure returns partial response with fetchMetadataResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -492,7 +540,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("deferred step failure returns partial response with tokenResponse", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(
@@ -523,7 +570,6 @@ describe("WalletIssuanceOrchestratorFlow.deferred()", () => {
   });
 
   test("never throws — error is always captured in result.error", async () => {
-    orchestrator.getConfig().issuance.refresh_token_deferred = "deferred-rt";
     orchestrator.getConfig().issuance.transaction_id_deferred = "txn-abc";
 
     vi.spyOn(

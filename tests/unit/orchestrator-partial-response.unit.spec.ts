@@ -9,8 +9,12 @@
 
 import { IssuerTestConfiguration } from "#/config/issuance-test-configuration";
 import { PresentationTestConfiguration } from "#/config/presentation-test-configuration";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { Config } from "@/types";
+
+import { loadConfigWithHierarchy, saveCredentialToDisk } from "@/logic";
 import { getAuthorizeRequestUrl } from "@/logic/authorization-request-url";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator/wallet-issuance-orchestrator-flow";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
@@ -19,41 +23,50 @@ import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presen
 // Module-level mocks — must be hoisted before any imports that use them
 // ---------------------------------------------------------------------------
 
+const logicMocks = vi.hoisted(() => ({
+  config: {
+    issuance: {
+      batch_credential_configuration_id: undefined as string | undefined,
+      credential_offer_uri: "",
+      credential_types: ["dc_sd_jwt_PersonIdentificationData"],
+      save_credential: false,
+      url: "https://issuer.example.com",
+    },
+    logging: {
+      log_file: "",
+      log_file_format: "json",
+      log_format: "pretty",
+      log_level: "silent",
+    },
+    network: { max_retries: 1, timeout: 10, user_agent: "test" },
+    presentation: {
+      authorize_request_url:
+        "https://verifier.example.com/authorize?client_id=https://verifier.example.com",
+      verifier: "https://verifier.example.com",
+    },
+    steps_mapping: { mapping: {} },
+    trust: { trust_anchor_entity_configuration_url: "" },
+    trust_anchor: {
+      port: 3000,
+      ta_url: "http://localhost:3000",
+    },
+    wallet: {
+      backup_storage_path: "./backup",
+      credentials_storage_path: "./credentials",
+      wallet_version: "1.0",
+    },
+  },
+  saveCredentialToDisk: vi.fn().mockReturnValue("/mock/saved-credential"),
+}));
+
 vi.mock("@/logic", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/logic")>();
   return {
     ...actual,
-    loadConfigWithHierarchy: vi.fn().mockReturnValue({
-      issuance: {
-        credential_offer_uri: "",
-        credential_types: ["dc_sd_jwt_PersonIdentificationData"],
-        save_credential: false,
-        url: "https://issuer.example.com",
-      },
-      logging: {
-        log_file: "",
-        log_file_format: "json",
-        log_format: "pretty",
-        log_level: "silent",
-      },
-      network: { max_retries: 1, timeout: 10, user_agent: "test" },
-      presentation: {
-        authorize_request_url:
-          "https://verifier.example.com/authorize?client_id=https://verifier.example.com",
-        verifier: "https://verifier.example.com",
-      },
-      steps_mapping: { mapping: {} },
-      trust: { trust_anchor_entity_configuration_url: "" },
-      trust_anchor: {
-        port: 3000,
-        ta_url: "http://localhost:3000",
-      },
-      wallet: {
-        backup_storage_path: "./backup",
-        credentials_storage_path: "./credentials",
-        wallet_version: "1.0",
-      },
-    }),
+    loadConfigWithHierarchy: vi.fn(
+      () => logicMocks.config as unknown as Config,
+    ),
+    saveCredentialToDisk: logicMocks.saveCredentialToDisk,
   };
 });
 
@@ -113,6 +126,29 @@ function makeStepSuccess<T>(response: T) {
   return { durationMs: 10, response, success: true as const };
 }
 
+function setMockConfig(options?: {
+  batchCredentialConfigurationId?: string;
+  saveCredential?: boolean;
+  walletVersion?: ItWalletSpecsVersion;
+}) {
+  logicMocks.config = {
+    ...logicMocks.config,
+    issuance: {
+      ...logicMocks.config.issuance,
+      batch_credential_configuration_id:
+        options?.batchCredentialConfigurationId,
+      save_credential: options?.saveCredential ?? false,
+    },
+    wallet: {
+      ...logicMocks.config.wallet,
+      wallet_version: options?.walletVersion ?? ItWalletSpecsVersion.V1_0,
+    },
+  };
+  vi.mocked(loadConfigWithHierarchy).mockImplementation(
+    () => logicMocks.config as unknown as Config,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Issuance orchestrator tests
 // ---------------------------------------------------------------------------
@@ -151,6 +187,8 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    setMockConfig();
+    vi.mocked(saveCredentialToDisk).mockReturnValue("/mock/saved-credential");
     orchestrator = new WalletIssuanceOrchestratorFlow(
       IssuerTestConfiguration.createDefault(),
     );
@@ -457,6 +495,275 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     expect(result.tokenResponse).toBeDefined();
     expect(result.nonceResponse).toEqual(nonceSuccess);
   });
+
+  test("forwards v1.3 metadata batch_size for the first token credential identifier and saves each returned credential", async () => {
+    setMockConfig({
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
+      saveCredential: true,
+      walletVersion: ItWalletSpecsVersion.V1_3,
+    });
+    const batchOrchestrator = new WalletIssuanceOrchestratorFlow(
+      IssuerTestConfiguration.createDefault(),
+    );
+    const fetchMetadataBatchSuccess = makeStepSuccess({
+      discoveredVia: "federation" as const,
+      entityStatementClaims: {
+        iss: "https://issuer.example.com",
+        metadata: {
+          oauth_authorization_server: {
+            authorization_endpoint: "https://issuer.example.com/authorize",
+            pushed_authorization_request_endpoint:
+              "https://issuer.example.com/par",
+            token_endpoint: "https://issuer.example.com/token",
+          },
+          openid_credential_issuer: {
+            batch_credential_issuance: { batch_size: 3 },
+            credential_configurations_supported: {
+              dc_sd_jwt_PersonIdentificationData: {},
+            },
+            credential_endpoint: "https://issuer.example.com/credential",
+            nonce_endpoint: "https://issuer.example.com/nonce",
+          },
+        },
+        sub: "https://issuer.example.com",
+      },
+      status: 200,
+    });
+    const authorizeSuccess = makeStepSuccess({
+      authorizeResponse: { code: "mock-auth-code" },
+      requestObject: { response_uri: "https://issuer.example.com/redirect" },
+    });
+    const tokenSuccess = makeStepSuccess({
+      access_token: "mock-access-token",
+      authorization_details: [
+        { credential_identifiers: ["token-credential-id", "other-id"] },
+      ],
+      dPoPKey: {
+        privateKey: { crv: "P-256", d: "mock-d", kty: "EC" },
+        publicKey: {
+          crv: "P-256",
+          kid: "mock-kid",
+          kty: "EC",
+          x: "mock-x",
+          y: "mock-y",
+        },
+      },
+    });
+    const nonceSuccess = makeStepSuccess({
+      nonce: { c_nonce: "mock-c-nonce" },
+    });
+    const credentialSuccess = makeStepSuccess({
+      credentialKeyPairs: [],
+      credentials: [
+        { credential: "mock-credential-0" },
+        { credential: "mock-credential-1" },
+        { credential: "mock-credential-2" },
+      ],
+    });
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      batchOrchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataBatchSuccess);
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      batchOrchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      batchOrchestrator.authorizeStep,
+      "run",
+    ).mockResolvedValue(authorizeSuccess as never);
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      batchOrchestrator.tokenRequestStep,
+      "run",
+    ).mockResolvedValue(tokenSuccess as never);
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      batchOrchestrator.nonceRequestStep,
+      "run",
+    ).mockResolvedValue(nonceSuccess as never);
+    const credentialRunSpy = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        batchOrchestrator.credentialRequestStep,
+        "run",
+      )
+      .mockResolvedValue(credentialSuccess as never);
+
+    const result = await batchOrchestrator.issuance();
+
+    expect(result.success).toBe(true);
+    expect(credentialRunSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchSize: 3,
+        credentialIdentifier: "token-credential-id",
+      }),
+    );
+    expect(saveCredentialToDisk).toHaveBeenCalledTimes(3);
+    expect(saveCredentialToDisk).toHaveBeenNthCalledWith(
+      1,
+      "./credentials",
+      "token-credential-id",
+      "mock-credential-0",
+      ItWalletSpecsVersion.V1_3,
+      "-0",
+    );
+    expect(saveCredentialToDisk).toHaveBeenNthCalledWith(
+      2,
+      "./credentials",
+      "token-credential-id",
+      "mock-credential-1",
+      ItWalletSpecsVersion.V1_3,
+      "-1",
+    );
+    expect(saveCredentialToDisk).toHaveBeenNthCalledWith(
+      3,
+      "./credentials",
+      "token-credential-id",
+      "mock-credential-2",
+      ItWalletSpecsVersion.V1_3,
+      "-2",
+    );
+  });
+
+  test.each([
+    {
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
+      metadataBatchSize: 4,
+      walletVersion: ItWalletSpecsVersion.V1_0,
+    },
+    {
+      batchCredentialConfigurationId: "dc_sd_jwt_PersonIdentificationData",
+      metadataBatchSize: undefined,
+      walletVersion: ItWalletSpecsVersion.V1_3,
+    },
+    {
+      batchCredentialConfigurationId: undefined,
+      metadataBatchSize: 4,
+      walletVersion: ItWalletSpecsVersion.V1_3,
+    },
+    {
+      batchCredentialConfigurationId: "mso_mdoc_CompanyBadge",
+      metadataBatchSize: 4,
+      walletVersion: ItWalletSpecsVersion.V1_4,
+    },
+  ])(
+    "uses batch size one for walletVersion=$walletVersion, metadataBatchSize=$metadataBatchSize and batchCredentialConfigurationId=$batchCredentialConfigurationId",
+    async ({
+      batchCredentialConfigurationId,
+      metadataBatchSize,
+      walletVersion,
+    }) => {
+      setMockConfig({ batchCredentialConfigurationId, walletVersion });
+      const singleOrchestrator = new WalletIssuanceOrchestratorFlow(
+        IssuerTestConfiguration.createDefault(),
+      );
+      const fetchMetadataSingleSuccess = makeStepSuccess({
+        discoveredVia: "federation" as const,
+        entityStatementClaims: {
+          iss: "https://issuer.example.com",
+          metadata: {
+            oauth_authorization_server: {
+              authorization_endpoint: "https://issuer.example.com/authorize",
+              pushed_authorization_request_endpoint:
+                "https://issuer.example.com/par",
+              token_endpoint: "https://issuer.example.com/token",
+            },
+            openid_credential_issuer: {
+              ...(metadataBatchSize
+                ? {
+                    batch_credential_issuance: {
+                      batch_size: metadataBatchSize,
+                    },
+                  }
+                : {}),
+              credential_configurations_supported: {
+                dc_sd_jwt_PersonIdentificationData: {},
+              },
+              credential_endpoint: "https://issuer.example.com/credential",
+              nonce_endpoint: "https://issuer.example.com/nonce",
+            },
+          },
+          sub: "https://issuer.example.com",
+        },
+        status: 200,
+      });
+      const authorizeSuccess = makeStepSuccess({
+        authorizeResponse: { code: "mock-auth-code" },
+        requestObject: { response_uri: "https://issuer.example.com/redirect" },
+      });
+      const tokenSuccess = makeStepSuccess({
+        access_token: "mock-access-token",
+        authorization_details: [
+          { credential_identifiers: ["token-credential-id", "other-id"] },
+        ],
+        dPoPKey: {
+          privateKey: { crv: "P-256", d: "mock-d", kty: "EC" },
+          publicKey: {
+            crv: "P-256",
+            kid: "mock-kid",
+            kty: "EC",
+            x: "mock-x",
+            y: "mock-y",
+          },
+        },
+      });
+      const nonceSuccess = makeStepSuccess({
+        nonce: { c_nonce: "mock-c-nonce" },
+      });
+      const credentialSuccess = makeStepSuccess({
+        credentialKeyPairs: [],
+        credentials: [{ credential: "mock-credential" }],
+      });
+
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        singleOrchestrator.fetchMetadataStep,
+        "run",
+      ).mockResolvedValue(fetchMetadataSingleSuccess);
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        singleOrchestrator.pushedAuthorizationRequestStep,
+        "run",
+      ).mockResolvedValue(parSuccess as never);
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        singleOrchestrator.authorizeStep,
+        "run",
+      ).mockResolvedValue(authorizeSuccess as never);
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        singleOrchestrator.tokenRequestStep,
+        "run",
+      ).mockResolvedValue(tokenSuccess as never);
+      vi.spyOn(
+        // @ts-expect-error accessing private field for testing
+        singleOrchestrator.nonceRequestStep,
+        "run",
+      ).mockResolvedValue(nonceSuccess as never);
+      const credentialRunSpy = vi
+        .spyOn(
+          // @ts-expect-error accessing private field for testing
+          singleOrchestrator.credentialRequestStep,
+          "run",
+        )
+        .mockResolvedValue(credentialSuccess as never);
+
+      const result = await singleOrchestrator.issuance();
+
+      expect(result.success).toBe(true);
+      expect(credentialRunSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          batchSize: 1,
+          credentialIdentifier: "token-credential-id",
+        }),
+      );
+    },
+  );
 
   test("never throws — error is captured in result.error", async () => {
     vi.spyOn(

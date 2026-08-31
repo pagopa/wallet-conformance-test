@@ -38,7 +38,7 @@ jobs:
         name: Checkout
 
       - name: Docker Build and Push
-        uses: pagopa/dx/actions/docker-build-push@main
+        uses: pagopa/dx/actions/docker-build-push@ec66e086392125a53b623665b7a247b72c665ea3 # main
         with:
           dockerfile_path: "./Dockerfile"
           dockerfile_context: "."

@@ -9,10 +9,6 @@ export const assertPidJwtPayloadClaims = (
     "sub must be a non-empty string in the JWT payload",
   ).toBe(true);
 
-  expect(typeof payload["iat"], "iat must be a number in the JWT payload").toBe(
-    "number",
-  );
-
   expect(
     typeof payload["cnf"] === "object" && payload["cnf"] !== null,
     "cnf must be a non-null object in the JWT payload",
@@ -113,4 +109,10 @@ export const assertPidSdDisclosures = (
     pan !== undefined || tic !== undefined,
     "At least one of personal_administrative_number or tax_id_code must be disclosed",
   ).toBe(true);
+
+  const iat = disclosureMap.get("iat");
+  expect(iat, "iat must be present as a disclosure").toBeDefined();
+  expect(typeof iat, "iat must be a number in the SD-JWT disclosures").toBe(
+    "number",
+  );
 };

@@ -8,7 +8,9 @@ import {
   MdlParseError,
   SessionTranscript,
 } from "@owf/mdoc";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { DcqlQuery } from "dcql";
+import { calculateJwkThumbprint } from "jose";
 
 import { VpTokenOptions } from "@/types";
 
@@ -36,24 +38,42 @@ export async function createVpTokenMdoc(
   const issuerSigned = parseMdoc(Buffer.from(options.credential, "base64url"));
   const docType = issuerSigned.issuerAuth.mobileSecurityObject.docType;
 
-  const walletNonce = Buffer.from(
-    crypto.getRandomValues(new Uint8Array(16)),
-  ).toString("base64url");
-
   const deviceRequest = convertDcqlToDeviceRequest(options.dcqlQuery, docType);
   if (!deviceRequest) {
     return "";
   }
 
-  const sessionTranscript = await SessionTranscript.forOid4VpDraft18(
-    {
-      clientId: options.client_id,
-      mdocGeneratedNonce: walletNonce,
-      responseUri: options.responseUri,
-      verifierGeneratedNonce: options.nonce,
-    },
-    mdocContext,
-  );
+  const sessionTranscript =
+    options.walletVersion === ItWalletSpecsVersion.V1_0
+      ? await SessionTranscript.forOid4VpDraft18(
+          {
+            clientId: options.client_id,
+            mdocGeneratedNonce: Buffer.from(
+              crypto.getRandomValues(new Uint8Array(16)),
+            ).toString("base64url"),
+            responseUri: options.responseUri,
+            verifierGeneratedNonce: options.nonce,
+          },
+          mdocContext,
+        )
+      : await SessionTranscript.forOid4Vp(
+          {
+            clientId: options.client_id,
+            jwkThumbprint: options.verifierEncryptionPublicJwk
+              ? new Uint8Array(
+                  Buffer.from(
+                    await calculateJwkThumbprint(
+                      options.verifierEncryptionPublicJwk,
+                    ),
+                    "base64url",
+                  ),
+                )
+              : undefined,
+            nonce: options.nonce,
+            responseUri: options.responseUri,
+          },
+          mdocContext,
+        );
 
   const deviceResponse = await Holder.createDeviceResponseForDeviceRequest(
     {

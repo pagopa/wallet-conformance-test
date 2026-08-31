@@ -24,6 +24,7 @@ import { deepMerge } from "./utils";
  */
 export interface CliOptions {
   [key: string]: boolean | number | string | undefined;
+  batchCredentialConfigurationId?: string;
   bindAddress?: string;
   credentialConfigurationIdReissuance?: string;
   credentialIssuerUri?: string;
@@ -35,12 +36,11 @@ export interface CliOptions {
   logFile?: string;
   logLevel?: string;
   maxRetries?: number;
+  notificationIdReissuance?: string;
   port?: number;
   presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
   presentationTestsDir?: string;
-  refreshTokenDeferred?: string;
-  refreshTokenReissuance?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
   tests?: string;
@@ -359,21 +359,21 @@ const buildIssuanceConfig: ConfigSectionBuilder<Config["issuance"]> = (
   ...(options.credentialOfferUri && {
     credential_offer_uri: options.credentialOfferUri,
   }),
+  ...(options.batchCredentialConfigurationId && {
+    batch_credential_configuration_id: options.batchCredentialConfigurationId,
+  }),
   ...(options.credentialTypes && {
     credential_types: options.credentialTypes
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
   }),
-  ...(options.refreshTokenReissuance && {
-    refresh_token_reissuance: options.refreshTokenReissuance,
+  ...(options.notificationIdReissuance && {
+    notification_id_reissuance: options.notificationIdReissuance,
   }),
   ...(options.credentialConfigurationIdReissuance && {
     credential_configuration_id_reissuance:
       options.credentialConfigurationIdReissuance,
-  }),
-  ...(options.refreshTokenDeferred && {
-    refresh_token_deferred: options.refreshTokenDeferred,
   }),
   ...(options.transactionId && {
     transaction_id_deferred: options.transactionId,
@@ -541,6 +541,11 @@ function readCliOptionsFromEnv(): CliOptions {
     "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
   );
   readStringEnv(options, "credentialTypes", "CONFIG_CREDENTIAL_TYPES");
+  readStringEnv(
+    options,
+    "batchCredentialConfigurationId",
+    "CONFIG_BATCH_CREDENTIAL_CONFIGURATION_ID",
+  );
   readNumberEnv(options, "timeout", "CONFIG_TIMEOUT");
   readNumberEnv(options, "maxRetries", "CONFIG_MAX_RETRIES");
   readStringEnv(options, "logLevel", "CONFIG_LOG_LEVEL");
@@ -560,18 +565,13 @@ function readCliOptionsFromEnv(): CliOptions {
   );
   readStringEnv(
     options,
-    "refreshTokenReissuance",
-    "CONFIG_REFRESH_TOKEN_REISSUANCE",
+    "notificationIdReissuance",
+    "CONFIG_NOTIFICATION_ID_REISSUANCE",
   );
   readStringEnv(
     options,
     "credentialConfigurationIdReissuance",
     "CONFIG_CREDENTIAL_CONFIGURATION_ID_REISSUANCE",
-  );
-  readStringEnv(
-    options,
-    "refreshTokenDeferred",
-    "CONFIG_REFRESH_TOKEN_DEFERRED",
   );
   readStringEnv(options, "transactionId", "CONFIG_TRANSACTION_ID");
   readStringEnv(options, "stepsMapping", "CONFIG_STEPS_MAPPING");

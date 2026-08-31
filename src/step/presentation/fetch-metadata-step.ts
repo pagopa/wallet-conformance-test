@@ -1,8 +1,15 @@
-import { itWalletEntityStatementClaimsSchema } from "@pagopa/io-wallet-oid-federation";
-import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
+import {
+  fetchAndValidateTrustChain,
+  itWalletEntityStatementClaimsSchema,
+} from "@pagopa/io-wallet-oid-federation";
+import { createFetcher, parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import { decodeJwt } from "jose";
 
-import { fetchWithRetries } from "@/logic/utils";
+import {
+  fetchWithConfig,
+  fetchWithRetries,
+  partialCallbacks,
+} from "@/logic/utils";
 import { recordSessionEntityNameFromEntityConfiguration } from "@/report/session-runtime";
 
 import { StepFlow, StepResponse } from "../step-flow";
@@ -10,8 +17,6 @@ import { StepFlow, StepResponse } from "../step-flow";
 export interface FetchMetadataVpExecuteResponse {
   // Entity statement metadata is version-dependent and consumed structurally by orchestrators/tests.
   entityStatementClaims?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  headers?: Headers;
-  status: number;
 }
 
 export interface FetchMetadataVpOptions {
@@ -25,21 +30,49 @@ export type FetchMetadataVpStepResponse = StepResponse & {
 export class FetchMetadataVpDefaultStep extends StepFlow {
   static readonly tag = "FETCH_METADATA_VP";
 
+  async retrieveEntityStatementJwt(url: URL) {
+    const isVerifyEnabled = this.config.trust_anchor.verify;
+    // Entity identifiers carry no trailing slash, but URL parsing adds one for
+    // origin-only URLs. Strip it while preserving any path segments.
+    const entityId = url.href.replace(/\/+$/, "");
+
+    if (isVerifyEnabled) {
+      const resValidateTrustChain = await fetchAndValidateTrustChain(entityId, {
+        callbacks: {
+          ...partialCallbacks,
+          fetch: createFetcher(fetchWithConfig(this.config.network)),
+        },
+        trustAnchorUrls: this.config.trust.federation_trust_anchors as [
+          string,
+          ...string[],
+        ],
+      });
+      return resValidateTrustChain[0];
+    }
+
+    // Skip validation trust chain, just fetch metadata
+    const wellKnownUrl = `${entityId}/.well-known/openid-federation`;
+    const response = await fetchWithRetries(wellKnownUrl, this.config.network);
+    return await response.response.text();
+  }
+
   async run(
     options: FetchMetadataVpOptions,
   ): Promise<FetchMetadataVpStepResponse> {
     const log = this.log;
-    const url = `${options.baseUrl}/.well-known/openid-federation`;
+    const url = new URL(options.baseUrl);
 
     log.info("Discovering metadata...");
     log.info(`Fetching Relying Party metadata from ${url}`);
 
     return this.execute<FetchMetadataVpExecuteResponse>(async () => {
-      const res = await fetchWithRetries(url, this.config.network);
-      log.info(
-        `Request completed with status ${res.response.status} after ${res.attempts} failed attempts`,
-      );
-      const entityStatementJwt = await res.response.text();
+      const entityStatementJwt = await this.retrieveEntityStatementJwt(url);
+
+      if (!entityStatementJwt) {
+        throw new Error(
+          "Error in trust chain evaluation, neither the base jwt has been fetched",
+        );
+      }
 
       log.info("Parsing entity statement JWT...");
 
@@ -73,8 +106,6 @@ export class FetchMetadataVpDefaultStep extends StepFlow {
 
       return {
         entityStatementClaims,
-        headers: res.response.headers,
-        status: res.response.status,
       };
     });
   }
