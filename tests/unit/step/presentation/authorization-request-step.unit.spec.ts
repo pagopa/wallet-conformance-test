@@ -330,7 +330,7 @@ describe("AuthorizationRequestDefaultStep", () => {
       } as never);
 
       const step = makeStep(
-        "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/",
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider/",
       );
       await step.run({
         authorizeRequestUrl: stubAuthorizeRequestUrl,
@@ -341,7 +341,7 @@ describe("AuthorizationRequestDefaultStep", () => {
 
       const [fetchCall] = vi.mocked(fetchAuthorizationRequest).mock.calls;
       expect(fetchCall?.[0].walletMetadata?.authorization_endpoint).toBe(
-        "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/authorize",
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider/authorize",
       );
     });
   });

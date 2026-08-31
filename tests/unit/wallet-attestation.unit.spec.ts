@@ -164,7 +164,7 @@ describe("Wallet Attestation Unit Test", () => {
           credentials_storage_path: credentialsStoragePath,
           wallet_attestations_storage_path: attestationStoragePath,
           wallet_provider_base_url:
-            "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
+            "https://dev.eid.wallet.it/1-3/test-wallet-provider",
         },
       };
 
@@ -180,7 +180,7 @@ describe("Wallet Attestation Unit Test", () => {
         wallet: {
           ...firstConfig.wallet,
           wallet_provider_base_url:
-            "https://dev.eid.wallet.ipzs.it/1-3/another-wallet-provider",
+            "https://dev.eid.wallet.it/1-3/another-wallet-provider",
         },
       };
       const secondResponse = await loadAttestation({
@@ -191,7 +191,7 @@ describe("Wallet Attestation Unit Test", () => {
 
       expect(secondResponse.created).toBe(true);
       expect(resolveWalletProviderBaseUrl(secondConfig.wallet)).toBe(
-        "https://dev.eid.wallet.ipzs.it/1-3/another-wallet-provider",
+        "https://dev.eid.wallet.it/1-3/another-wallet-provider",
       );
       expect(secondResponse.attestation).not.toBe(firstResponse.attestation);
     } finally {

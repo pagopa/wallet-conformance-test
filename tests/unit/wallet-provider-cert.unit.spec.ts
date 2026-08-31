@@ -68,7 +68,7 @@ describe("wallet_provider_cert SAN", () => {
     );
 
     const customProviderUrl =
-      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider";
+      "https://dev.eid.wallet.it/1-3/test-wallet-provider";
     const customIssuerKp = await createKeys();
     const customSubjectKp = await createKeys();
     const customCert = await createSignedCertificate(
@@ -80,7 +80,7 @@ describe("wallet_provider_cert SAN", () => {
       [
         new x509.SubjectAlternativeNameExtension(
           [
-            { type: "dns", value: "dev.eid.wallet.ipzs.it" },
+            { type: "dns", value: "dev.eid.wallet.it" },
             { type: "url", value: customProviderUrl },
           ],
           false,
@@ -131,7 +131,7 @@ describe("wallet_provider_cert SAN", () => {
     expect(
       hasWalletProviderCertificateIdentity(
         certWithCustomIdentityDerBase64,
-        "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider",
       ),
     ).toBe(true);
   });
@@ -140,7 +140,7 @@ describe("wallet_provider_cert SAN", () => {
     expect(
       hasWalletProviderCertificateIdentity(
         certWithCustomIdentityDerBase64,
-        "https://dev.eid.wallet.ipzs.it/other-wallet-provider",
+        "https://dev.eid.wallet.it/other-wallet-provider",
       ),
     ).toBe(false);
   });

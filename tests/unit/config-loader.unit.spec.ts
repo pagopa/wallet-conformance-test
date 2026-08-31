@@ -141,15 +141,15 @@ describe("loadConfigWithHierarchy – environment overrides", () => {
 
   it("should preserve the configured Wallet Provider identifier from the environment", () => {
     process.env.CONFIG_WALLET_PROVIDER_BASE_URL =
-      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/";
+      "https://dev.eid.wallet.it/1-3/test-wallet-provider/";
 
     const config = loadConfigWithHierarchy(null, DEFAULT_INI);
 
     expect(resolveWalletProviderEntityIdentifier(config.wallet)).toBe(
-      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider/",
+      "https://dev.eid.wallet.it/1-3/test-wallet-provider/",
     );
     expect(resolveNormalizedWalletProviderBaseUrl(config.wallet)).toBe(
-      "https://dev.eid.wallet.ipzs.it/1-3/test-wallet-provider",
+      "https://dev.eid.wallet.it/1-3/test-wallet-provider",
     );
   });
 
