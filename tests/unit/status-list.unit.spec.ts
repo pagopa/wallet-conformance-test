@@ -1,13 +1,19 @@
 import { StatusList } from "@sd-jwt/jwt-status-list";
 import { decodeJwt, decodeProtectedHeader, importX509, jwtVerify } from "jose";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { loadConfigWithHierarchy } from "@/logic";
+import { createKeys } from "@/logic/jwk";
 import * as pem from "@/logic/pem";
 import { createStatusListToken } from "@/logic/status-list";
 import * as utils from "@/logic/utils";
+import { appendWalletProviderPath } from "@/logic/wallet-provider-url";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
 import { getLocalWpBaseUrl } from "@/servers/wp-server";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("status-list endpoint tests", () => {
   const config = loadConfigWithHierarchy();
@@ -63,6 +69,17 @@ describe("status-list endpoint tests", () => {
       });
     },
   );
+});
+
+describe("Wallet Provider status-list URL composition", () => {
+  it("preserves a configured Wallet Provider path without duplicate slashes", () => {
+    expect(
+      appendWalletProviderPath(
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider/",
+        "/status-list",
+      ),
+    ).toBe("https://dev.eid.wallet.it/1-3/test-wallet-provider/status-list");
+  });
 });
 
 describe("createStatusListToken", () => {
@@ -131,6 +148,19 @@ describe("createStatusListToken", () => {
     await expect(
       jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
     ).resolves.toBeDefined();
+  });
+
+  it("should reuse a preloaded key pair without loading JWKS", async () => {
+    const keyPair = await createKeys();
+    const loadJwksSpy = vi
+      .spyOn(utils, "loadJwks")
+      .mockRejectedValue(new Error("JWKS should not be loaded"));
+
+    await expect(
+      createStatusListToken({ ...walletOptions, keyPair }),
+    ).resolves.toBeDefined();
+
+    expect(loadJwksSpy).not.toHaveBeenCalled();
   });
 
   it("should decompress the status list and report index 0 as VALID (0x00) (spec §8.3)", async () => {

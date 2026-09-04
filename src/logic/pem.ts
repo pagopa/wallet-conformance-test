@@ -249,6 +249,39 @@ export function hasSanExtension(certDerBase64: string): boolean {
   }
 }
 
+/**
+ * Checks that a Wallet Provider leaf certificate has the expected DNS SAN and
+ * URI SAN for the public entity identifier.
+ */
+export function hasWalletProviderCertificateIdentity(
+  certDerBase64: string,
+  walletProviderBaseUrl: string,
+): boolean {
+  if (!certDerBase64) return false;
+
+  try {
+    const certificate = new x509.X509Certificate(certDerBase64);
+    const expectedHostname = new URL(walletProviderBaseUrl).hostname;
+    const san = certificate.getExtension(x509.SubjectAlternativeNameExtension);
+
+    if (!san) {
+      return false;
+    }
+
+    const sanNames = san.names.toJSON();
+    return (
+      sanNames.some(
+        ({ type, value }) => type === "dns" && value === expectedHostname,
+      ) &&
+      sanNames.some(
+        ({ type, value }) => type === "url" && value === walletProviderBaseUrl,
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function hasX509CertificateExpired(
   x5c: string | x509.X509Certificate,
 ): boolean {

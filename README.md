@@ -217,6 +217,91 @@ CONFIG_WALLET_VERSION=V1_3 wct test:presentation
 
 > **Tip**: Use `V1_4` or `V1_3` when testing against issuers or relying parties that implement a recent specification revision. Use `V1_0` for services that still target the first stable release.
 
+### Wallet Provider Entity Identifier
+
+By default, the mock Wallet Provider publishes the historical identifier
+`https://wallet-provider.wct.example.org:<port>`. Integration environments can
+override only this public federation identifier, including a path, without
+changing the local HTTPS listener:
+
+```ini
+[wallet]
+wallet_provider_base_url = https://dev.wallet-provider.wct.example.org
+port = 3002
+```
+
+The same setting is available through the CLI or environment variable:
+
+```bash
+wct test:issuance --wallet-provider-base-url https://dev.wallet-provider.wct.example.org
+CONFIG_WALLET_PROVIDER_BASE_URL=https://dev.wallet-provider.wct.example.org wct test:issuance
+```
+
+### Using Your Own Wallet Provider Cryptographic Material
+
+The tool initially creates and caches local Wallet Provider cryptographic
+material. To run the tool with your own Wallet Provider, replace the generated
+files with the corresponding certificate and JWKS files issued for your
+Wallet Provider:
+
+| File to replace                                    | Required content                                                                          |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `data/backup/wallet_provider_cert`                 | The Wallet Provider certificate associated with the keys used to sign wallet attestations |
+| `data/backup/wallet_provider_jwks`                 | The JWKS containing the keys associated with `wallet_provider_cert`                       |
+| `data/trust_anchor/localhost/ca_intermediate_cert` | The intermediate CA certificate for your Wallet Provider, issued by the Trust Anchor      |
+| `data/trust_anchor/localhost/ca_intermediate_jwks` | The JWKS containing the keys associated with `ca_intermediate_cert`                       |
+
+The certificate and JWKS files must contain matching key material. Keep the
+same filenames and replace the files from the repository root:
+
+```bash
+cp /path/to/your/wallet_provider_cert data/backup/wallet_provider_cert
+cp /path/to/your/wallet_provider_jwks data/backup/wallet_provider_jwks
+cp /path/to/your/ca_intermediate_cert data/trust_anchor/localhost/ca_intermediate_cert
+cp /path/to/your/ca_intermediate_jwks data/trust_anchor/localhost/ca_intermediate_jwks
+```
+
+If your `config.ini` uses custom `backup_storage_path` or `ca_cert_path`
+values, replace the files in those configured directories instead. The
+Wallet Provider entity identifier must also match the identity in your
+certificates; configure it with `wallet_provider_base_url` as described above.
+
+Generated Wallet Provider certificates are tracked with
+`wallet_provider_material_metadata.json` in `backup_storage_path`. When the
+cached generated certificates expire or no longer match the current
+configuration, the tool regenerates them automatically. With an explicit
+`wallet_provider_base_url`, certificate files that do not match this
+generated-material metadata are treated as user-provisioned material; validation
+failures are reported and the files are left untouched.
+Material without an explicit `wallet_provider_base_url` is treated as legacy
+generated cache and may be refreshed automatically.
+
+> **Important:** Before retrying with your own cryptographic material, delete
+> the cached wallet attestation. Replace `V1_X` with the wallet version in use
+> (`V1_0`, `V1_3`, or `V1_4`):
+>
+> ```bash
+> rm data/wallet/attestation/V1_X/wallet_cli_instance
+> ```
+>
+> The tool will generate a new attestation using the replacement material.
+
+#### Docker
+
+When running the tool in Docker, replace the files in the host directory that
+you mount as `/wallet-conformance-test/data`. Do not replace them only inside a
+temporary container, because those changes are lost when the container is
+removed:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/data:/wallet-conformance-test/data" \
+  pagopa/wallet-conformance-test:latest [COMMAND]
+```
+
+Run the `cp` and `rm` commands above from the host repository directory before
+starting the container.
+
 ### TLS Unsafe Mode
 
 When testing against local services with self-signed certificates, you can disable TLS certificate verification. This is cross-platform (Windows, macOS, Linux) and disables TLS certificate verification for the entire Node.js process running this tool.
@@ -243,17 +328,17 @@ There are three equivalent ways to enable it, listed in priority order (highest 
    tls_reject_unauthorized = false
    ```
 
-### Running Tests
+## 🎯 Running Conformance Tests
 
 The primary function of the tool is to run test suites for the main IT Wallet flows.
 
 1. First rename `config.example.ini` to `config.ini`.
 
-#### Testing the issuance Flow
+### Testing the issuance Flow
 
 To test the credential issuance flow, you will use the `test:issuance` command.
 
-##### Using Configuration File
+#### Using Configuration File
 
 1. Configure your `config.ini` file with the credential issuer URL and credential types:
 
@@ -266,15 +351,31 @@ To test the credential issuance flow, you will use the `test:issuance` command.
 2. Run the test command:
 
    ```bash
-   wct test:issuance
+   wct test:issuance --tests happy
    ```
 
-##### Using Command-Line Options
+The `--tests` option accepts a comma-separated list of issuance test names:
+
+| Value                      | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| `pid`                      | For PID Provider, runs only the tests related to the PID credential |
+| `happy`                    | Runs the happy-path issuance flow tests                             |
+| `status-list`              | Runs the status list tests                                          |
+| `authorization-validation` | Runs the authorization request validation tests                     |
+| `credential-validation`    | Runs the credential response validation tests                       |
+| `deferred-endpoint`        | Runs the deferred endpoint issuance tests                           |
+| `mdoc-data-model`          | Runs the mdoc data model tests                                      |
+| `par-validation`           | Runs the pushed authorization request validation tests              |
+| `refresh-token`            | Runs the refresh token re-issuance tests                            |
+| `sd-jwt-data-model`        | Runs the SD-JWT data model tests                                    |
+| `token-validation`         | Runs the token response validation tests                            |
+
+#### Using Command-Line Options
 
 1. Alternatively, bypass the configuration file and specify parameters directly:
 
    ```bash
-   wct test:issuance --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
+   wct test:issuance --tests happy --credential-issuer-uri https://issuer.example.com --credential-types dc_sd_jwt_EuropeanDisabilityCard
    ```
 
 During the test, verbose logs will be printed to the console, informing you of progress and any anomalies.
@@ -292,9 +393,9 @@ These guides cover:
 - Environment-based configuration
 - Custom step classes and advanced options
 
-#### Testing the Presentation Flow
+### Testing the Presentation Flow
 
-##### Using Configuration File
+#### Using Configuration File
 
 1. Ensure your `.ini` file is configured with the correct URL for the credential identifier you wish to test, `config.ini`:
 
@@ -310,7 +411,7 @@ These guides cover:
    wct test:presentation [OPTIONS]
    ```
 
-##### Using Command-Line Options
+#### Using Command-Line Options
 
 1. Alternatively, bypass the configuration file and specify parameters directly with the authorization url:
 
