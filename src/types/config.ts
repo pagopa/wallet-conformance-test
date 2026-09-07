@@ -96,6 +96,31 @@ export const configSchema = z.object({
     wallet_attestations_storage_path: z.string(),
     wallet_id: z.string(),
     wallet_name: z.string(),
+    wallet_provider_base_url: z
+      .string()
+      .url()
+      .superRefine((value, context) => {
+        const parsed = new URL(value);
+        if (parsed.protocol !== "https:") {
+          context.addIssue({
+            code: "custom",
+            message: "wallet_provider_base_url must use HTTPS",
+          });
+        }
+        if (parsed.search) {
+          context.addIssue({
+            code: "custom",
+            message: "wallet_provider_base_url must not contain a query string",
+          });
+        }
+        if (parsed.hash) {
+          context.addIssue({
+            code: "custom",
+            message: "wallet_provider_base_url must not contain a fragment",
+          });
+        }
+      })
+      .optional(),
     wallet_version: z
       .string({
         error: (issue) =>

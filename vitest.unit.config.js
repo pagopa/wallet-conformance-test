@@ -1,6 +1,11 @@
 import * as path from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
+process.env.CONFIG_FILE_INI ??= path.resolve(
+  import.meta.dirname,
+  "config.example.ini",
+);
+
 export default defineConfig({
   resolve: {
     alias: {

@@ -147,6 +147,11 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
   applyEnvOption(env, "CONFIG_WALLET_VERSION", options.walletVersion);
   applyEnvOption(
     env,
+    "CONFIG_WALLET_PROVIDER_BASE_URL",
+    options.walletProviderBaseUrl,
+  );
+  applyEnvOption(
+    env,
     "CONFIG_NOTIFICATION_ID_REISSUANCE",
     options.notificationIdReissuance,
   );
@@ -255,6 +260,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--wallet-version <version>",
       "Override the IT Wallet specification version (V1_0, V1_3, V1_4) (env: CONFIG_WALLET_VERSION)",
+    )
+    .option(
+      "--wallet-provider-base-url <url>",
+      "Override the public Wallet Provider entity identifier (env: CONFIG_WALLET_PROVIDER_BASE_URL)",
     )
     .option(
       "--notification-id-reissuance <id>",

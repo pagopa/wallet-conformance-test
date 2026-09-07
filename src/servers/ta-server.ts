@@ -4,15 +4,15 @@ import * as https from "node:https";
 import { isMainModule } from "@/logic/entrypoint";
 import {
   createSubordinateCredentialIssuerMetadata,
-  createSubordinateWalletUnitMetadata,
+  createSubordinateWalletProviderMetadata,
   createTrustAnchorMetadata,
 } from "@/logic/federation-metadata";
 import {
   loadConfigWithHierarchy,
   loadOrCreateServerCertificate,
 } from "@/logic/utils";
+import { resolveWalletProviderEntityIdentifier } from "@/logic/wallet-provider-url";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
 import { LOCAL_TA_BASE_URL } from "@/trust-anchor/trust-anchor-resolver";
 import { Config } from "@/types";
 
@@ -21,7 +21,9 @@ export const createServer = (config: Config): express.Express => {
   app.use(express.json());
 
   const trustAnchorBaseUrl = `${LOCAL_TA_BASE_URL}:${config.trust_anchor.port}`;
-  const wpBaseUrl = getLocalWpBaseUrl(config.wallet.port);
+  const walletProviderEntityIdentifier = resolveWalletProviderEntityIdentifier(
+    config.wallet,
+  );
   const ciBaseUrl = getLocalCiBaseUrl(config.issuer.port);
 
   // federation metadata
@@ -50,8 +52,8 @@ export const createServer = (config: Config): express.Express => {
 
       let subordinateStatement: string;
 
-      if (sub === wpBaseUrl) {
-        subordinateStatement = await createSubordinateWalletUnitMetadata({
+      if (sub === walletProviderEntityIdentifier) {
+        subordinateStatement = await createSubordinateWalletProviderMetadata({
           sub,
           trustAnchor: config.trust,
           trustAnchorBaseUrl,

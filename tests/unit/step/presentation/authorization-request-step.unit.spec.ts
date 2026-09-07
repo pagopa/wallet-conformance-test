@@ -68,7 +68,7 @@ const stubAuthorizeRequestUrl =
   "https://verifier.example.com/authorize?client_id=https://verifier.example.com";
 
 /** Minimal Config that satisfies StepFlow constructor requirements. */
-const makeConfig = (): Config =>
+const makeConfig = (walletProviderBaseUrl?: string): Config =>
   ({
     logging: {
       log_file: "",
@@ -88,6 +88,7 @@ const makeConfig = (): Config =>
       backup_storage_path: "./backup",
       credentials_storage_path: "./credentials",
       port: 3002,
+      wallet_provider_base_url: walletProviderBaseUrl,
       wallet_version: "1.0",
     },
   }) as unknown as Config;
@@ -155,8 +156,11 @@ const stubAuthorizationResponse = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeStep() {
-  return new AuthorizationRequestDefaultStep(makeConfig(), createQuietLogger());
+function makeStep(walletProviderBaseUrl?: string) {
+  return new AuthorizationRequestDefaultStep(
+    makeConfig(walletProviderBaseUrl),
+    createQuietLogger(),
+  );
 }
 
 function setupHappyPathMocks() {
@@ -312,6 +316,32 @@ describe("AuthorizationRequestDefaultStep", () => {
       const [fetchCall] = vi.mocked(fetchAuthorizationRequest).mock.calls;
       expect(fetchCall?.[0].walletMetadata?.authorization_endpoint).toBe(
         "https://wallet-provider.wct.example.org:3002/authorize",
+      );
+    });
+
+    it("preserves the configured Wallet Provider path in the authorization endpoint", async () => {
+      setupHappyPathMocks();
+      vi.mocked(fetchAuthorizationRequest).mockResolvedValue({
+        parsedQrCode: {
+          ...stubParsedQrCode,
+          requestUriMethod: "post",
+        },
+        requestObjectJwt: "header.payload.sig",
+      } as never);
+
+      const step = makeStep(
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider/",
+      );
+      await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
+        credentials: [],
+        verifierMetadata: baseVerifierMetadata,
+        walletAttestation: {} as never,
+      });
+
+      const [fetchCall] = vi.mocked(fetchAuthorizationRequest).mock.calls;
+      expect(fetchCall?.[0].walletMetadata?.authorization_endpoint).toBe(
+        "https://dev.eid.wallet.it/1-3/test-wallet-provider/authorize",
       );
     });
   });

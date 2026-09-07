@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 import { Jwk } from "@pagopa/io-wallet-oauth2";
 import {
   addSecondsToDate,
@@ -6,7 +7,9 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt, importJWK, jwtVerify } from "jose";
-import { readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, test, vi } from "vitest";
 
 import type { KeyPair } from "@/types";
@@ -17,7 +20,7 @@ import {
   loadConfigWithHierarchy,
   partialCallbacks,
 } from "@/logic";
-import { getLocalWpBaseUrl } from "@/servers/wp-server";
+import { resolveWalletProviderBaseUrl } from "@/logic/wallet-provider-url";
 import { resolveTrustAnchorBaseUrl } from "@/trust-anchor/trust-anchor-resolver";
 
 describe("Wallet Attestation Unit Test", () => {
@@ -70,10 +73,10 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
-    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(jwt.payload.iss).toBe(resolveWalletProviderBaseUrl(config.wallet));
     expect(jwt.payload.sub).toBe(unitThumbprint);
     expect(jwt.payload.wallet_link).toBe(
-      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+      `${resolveWalletProviderBaseUrl(config.wallet)}/wallet`,
     );
     expect(jwt.payload.wallet_name).toBe(config.wallet.wallet_name);
 
@@ -82,8 +85,8 @@ describe("Wallet Attestation Unit Test", () => {
 
     // Verify Wallet Provider Entity Configuration
     const wpDecoded = decodeJwt(wpEntityConfig ?? "");
-    expect(wpDecoded.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
-    expect(wpDecoded.sub).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(wpDecoded.iss).toBe(resolveWalletProviderBaseUrl(config.wallet));
+    expect(wpDecoded.sub).toBe(resolveWalletProviderBaseUrl(config.wallet));
     expect(wpDecoded.metadata).toBeDefined();
     // V1_3 uses wallet_solution; V1_0 uses wallet_provider
     const metadata = wpDecoded.metadata as Record<string, unknown>;
@@ -94,7 +97,7 @@ describe("Wallet Attestation Unit Test", () => {
     // Verify Trust Anchor Entity Statement (about Wallet Provider)
     const taDecoded = decodeJwt(taEntityStatement ?? "");
     expect(taDecoded.iss).toBe(resolveTrustAnchorBaseUrl(config.trust_anchor)); // Trust Anchor
-    expect(taDecoded.sub).toBe(getLocalWpBaseUrl(config.wallet.port)); // About Wallet Provider
+    expect(taDecoded.sub).toBe(resolveWalletProviderBaseUrl(config.wallet)); // About Wallet Provider
   });
 
   test("Load Existing Wallet Attestation", async () => {
@@ -137,6 +140,63 @@ describe("Wallet Attestation Unit Test", () => {
     expect(trustChain).toBeDefined();
     expect(Array.isArray(trustChain)).toBe(true);
     expect(trustChain?.length).toBe(2);
+  });
+
+  test("Regenerates a persisted attestation when the Wallet Provider identifier changes", async () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "wct-attestation-"));
+    const backupStoragePath = path.join(tempDir, "backup");
+    const attestationStoragePath = path.join(tempDir, "attestation");
+    const credentialsStoragePath = path.join(tempDir, "credentials");
+    const trustCaCertPath = path.join(tempDir, "ca");
+    const trustJwksPath = path.join(tempDir, "trust-jwks");
+
+    try {
+      const firstConfig = {
+        ...config,
+        trust: {
+          ...config.trust,
+          ca_cert_path: trustCaCertPath,
+          federation_trust_anchors_jwks_path: trustJwksPath,
+        },
+        wallet: {
+          ...config.wallet,
+          backup_storage_path: backupStoragePath,
+          credentials_storage_path: credentialsStoragePath,
+          wallet_attestations_storage_path: attestationStoragePath,
+          wallet_provider_base_url:
+            "https://dev.eid.wallet.it/1-3/test-wallet-provider",
+        },
+      };
+
+      const firstResponse = await loadAttestation({
+        trust: firstConfig.trust,
+        trustAnchor: firstConfig.trust_anchor,
+        wallet: firstConfig.wallet,
+      });
+      expect(firstResponse.created).toBe(true);
+
+      const secondConfig = {
+        ...firstConfig,
+        wallet: {
+          ...firstConfig.wallet,
+          wallet_provider_base_url:
+            "https://dev.eid.wallet.it/1-3/another-wallet-provider",
+        },
+      };
+      const secondResponse = await loadAttestation({
+        trust: secondConfig.trust,
+        trustAnchor: secondConfig.trust_anchor,
+        wallet: secondConfig.wallet,
+      });
+
+      expect(secondResponse.created).toBe(true);
+      expect(resolveWalletProviderBaseUrl(secondConfig.wallet)).toBe(
+        "https://dev.eid.wallet.it/1-3/another-wallet-provider",
+      );
+      expect(secondResponse.attestation).not.toBe(firstResponse.attestation);
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
   });
 
   test("Regenerate Wallet Attestation only when expired", async () => {
@@ -246,10 +306,10 @@ describe("Wallet Attestation V1_3 Unit Test", () => {
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
-    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(jwt.payload.iss).toBe(resolveWalletProviderBaseUrl(walletV1_3));
     expect(jwt.payload.sub).toBe(unitThumbprint);
     expect(jwt.payload.wallet_link).toBe(
-      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+      `${resolveWalletProviderBaseUrl(walletV1_3)}/wallet`,
     );
     expect(jwt.payload.wallet_name).toBe(walletV1_3.wallet_name);
   });
@@ -367,10 +427,10 @@ describe("Wallet Attestation V1_4 Unit Test", () => {
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
-    expect(jwt.payload.iss).toBe(getLocalWpBaseUrl(config.wallet.port));
+    expect(jwt.payload.iss).toBe(resolveWalletProviderBaseUrl(walletV1_4));
     expect(jwt.payload.sub).toBe(unitThumbprint);
     expect(jwt.payload.wallet_link).toBe(
-      `${getLocalWpBaseUrl(config.wallet.port)}/wallet`,
+      `${resolveWalletProviderBaseUrl(walletV1_4)}/wallet`,
     );
     expect(jwt.payload.wallet_name).toBe(walletV1_4.wallet_name);
   });
