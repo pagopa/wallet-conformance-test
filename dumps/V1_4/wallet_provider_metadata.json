@@ -3,8 +3,8 @@
     "{{trust_anchor_base_url}}"
   ],
   "trust_marks": "{{trust_marks}}",
-  "iss": "{{wallet_provider_base_url}}",
-  "sub": "{{wallet_provider_base_url}}",
+  "iss": "{{wallet_provider_entity_identifier}}",
+  "sub": "{{wallet_provider_entity_identifier}}",
   "jwks": {
     "keys": ["{{public_key}}"]
   },

@@ -10,6 +10,9 @@ import { SignCallback } from "@pagopa/io-wallet-oid-federation";
 import { CompactEncrypt, importJWK, type JWK, jwtVerify, SignJWT } from "jose";
 
 import { jwkFromSigner } from "./jwk";
+import { createLogger } from "./logs";
+
+const log = createLogger().withTag("jwt");
 
 export interface VerifyJwtCallbackOptions {
   trustAnchorUrls?: string[];
@@ -86,7 +89,11 @@ export function createVerifyJwtCallback(
       publicJwk = await jwkFromSigner(signer, jwt.payload, {
         trustAnchorUrls: options.trustAnchorUrls,
       });
-    } catch {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      log.error(
+        `Failed to extract public JWK from signer ${JSON.stringify(signer)}: ${reason}`,
+      );
       return { verified: false };
     }
 
