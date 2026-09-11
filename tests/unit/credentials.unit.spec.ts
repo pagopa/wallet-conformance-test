@@ -16,13 +16,17 @@ import { calculateJwkThumbprint } from "jose";
 import { rmSync } from "node:fs";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
+import type { Credential, KeyPairJwk } from "@/types";
+
 import {
   createMockMdlMdoc,
   createMockSdJwt,
   getCredentialMdocExpiration,
   getCredentialSdJwtExpiration,
+  getCredentialStatus,
   isCredentialMdocExpired,
   isCredentialSdJwtExpired,
+  isLongLivedCredential,
   loadCredentials,
   loadCredentialsForPresentation,
   parseCredentialStatus,
@@ -39,7 +43,7 @@ import {
   loadJwks,
   parseMdoc,
 } from "@/logic";
-import { KeyPairJwk, zTrustChain, zX5c } from "@/types";
+import { zTrustChain, zX5c } from "@/types";
 
 const backupDir = "./tests/mocked-data/backup";
 const credentialsDir = "./tests/mocked-data/credentials";
@@ -684,6 +688,124 @@ describe("Generate Mocked Credentials", () => {
       Buffer.from(parsedCompact.issuerAuth.payload ?? []).toString("base64"),
     ).toEqual(Buffer.from(parsed.issuerAuth.payload ?? []).toString("base64"));
   });
+});
+
+describe("Credential status lifetime policy", () => {
+  const issuedAtMs = Date.UTC(2026, 0, 1);
+
+  function createSdJwtCredential(
+    validityMs: number,
+    nbf?: unknown,
+  ): Credential {
+    return {
+      compact: "",
+      parsed: {
+        jwt: {
+          payload: {
+            exp: (issuedAtMs + validityMs) / 1000,
+            iat: issuedAtMs / 1000,
+            ...(nbf === undefined ? {} : { nbf }),
+          },
+        },
+      },
+      typ: "dc+sd-jwt",
+    } as unknown as Credential;
+  }
+
+  function createMdocCredential(validityMs: number): Credential {
+    return {
+      compact: "",
+      parsed: {
+        issuerAuth: {
+          mobileSecurityObject: {
+            validityInfo: {
+              validFrom: new Date(issuedAtMs),
+              validUntil: new Date(issuedAtMs + validityMs),
+            },
+          },
+        },
+      },
+      typ: "mso_mdoc",
+    } as unknown as Credential;
+  }
+
+  it.each([
+    ["SD-JWT", createSdJwtCredential],
+    ["mdoc", createMdocCredential],
+  ])("classifies short-lived %s credentials", (_format, createCredential) => {
+    expect(isLongLivedCredential(createCredential(24 * 60 * 60 * 1000))).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    ["SD-JWT", createSdJwtCredential],
+    ["mdoc", createMdocCredential],
+  ])("classifies long-lived %s credentials", (_format, createCredential) => {
+    expect(
+      isLongLivedCredential(createCredential(24 * 60 * 60 * 1000 + 1000)),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["SD-JWT", createSdJwtCredential],
+    ["mdoc", createMdocCredential],
+  ])(
+    "treats %s credentials with a reversed validity range as long-lived",
+    (_format, createCredential) => {
+      expect(isLongLivedCredential(createCredential(-1000))).toBe(true);
+    },
+  );
+
+  it.each([
+    ["SD-JWT", createSdJwtCredential],
+    ["mdoc", createMdocCredential],
+  ])(
+    "treats %s credentials with non-finite validity as long-lived",
+    (_format, createCredential) => {
+      expect(isLongLivedCredential(createCredential(Number.NaN))).toBe(true);
+    },
+  );
+
+  it("treats an SD-JWT with null nbf as long-lived", () => {
+    expect(
+      isLongLivedCredential(createSdJwtCredential(60 * 60 * 1000, null)),
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      "SD-JWT",
+      (status: unknown) =>
+        ({
+          compact: "",
+          parsed: { jwt: { payload: { status } } },
+          typ: "dc+sd-jwt",
+        }) as unknown as Credential,
+    ],
+    [
+      "mdoc",
+      (status: unknown) =>
+        ({
+          compact: "",
+          parsed: {
+            issuerAuth: {
+              payload: cbor.encode(
+                new cbor.Tagged(24, cbor.encode({ status })),
+              ),
+            },
+          },
+          typ: "mso_mdoc",
+        }) as unknown as Credential,
+    ],
+  ])(
+    "rejects an explicit null status claim on %s credentials",
+    (_format, credential) => {
+      expect(() => getCredentialStatus(credential(null))).toThrow(
+        "null status",
+      );
+    },
+  );
 });
 
 describe("Parse Credential's Status", () => {

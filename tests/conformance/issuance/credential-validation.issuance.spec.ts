@@ -36,7 +36,11 @@ import {
 } from "@pagopa/io-wallet-utils";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
-import { parseCredentialStatus } from "@/functions";
+import {
+  getCredentialStatus,
+  isLongLivedCredential,
+  parseCredential,
+} from "@/functions";
 import {
   createKeys,
   fetchWithConfig,
@@ -685,12 +689,30 @@ testConfigs.forEach((testConfig) => {
           const credentialCompact = credentialObj.credential;
           expect(credentialCompact).toBeDefined();
 
-          const statusClaim = await parseCredentialStatus(credentialCompact);
+          const parsedCredential = await parseCredential(credentialCompact);
+          if (!parsedCredential.credential) {
+            throw new Error("Issued credential could not be parsed.");
+          }
+
+          const statusClaim = getCredentialStatus(parsedCredential.credential);
+          const statusIsRequired =
+            ioWalletSdkConfig.itWalletSpecsVersion !==
+              ItWalletSpecsVersion.V1_4 ||
+            isLongLivedCredential(parsedCredential.credential);
+
+          const statusRequirementSatisfied =
+            statusClaim !== null || !statusIsRequired;
           expect(
-            statusClaim,
-            "Credential MUST contain a 'status' claim",
-          ).not.toBeNull();
-          log.debug(`  Status claim present: ${statusClaim !== null}`);
+            statusRequirementSatisfied,
+            "Long-lived credentials MUST contain a 'status' claim",
+          ).toBe(true);
+
+          if (statusClaim === null) {
+            log.debug("  Status claim omitted for a short-lived credential");
+            continue;
+          }
+
+          log.debug("  Status claim present");
 
           const specVersion = ioWalletSdkConfig.itWalletSpecsVersion;
           const statusList =
