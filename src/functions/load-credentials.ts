@@ -161,6 +161,97 @@ export async function parseCredential(
   }
 }
 
+const maxShortLivedCredentialValidityMs = 24 * 60 * 60 * 1000;
+
+/**
+ * Extracts a parsed credential's status claim.
+ *
+ * @param credential - A parsed SD-JWT or mdoc credential.
+ * @returns The `StatusClaim` if present, otherwise `null`.
+ */
+export function getCredentialStatus(
+  credential: Credential,
+): null | StatusClaim {
+  switch (credential.typ) {
+    case "dc+sd-jwt": {
+      const sdJwtPayload = credential.parsed.jwt.payload;
+      if (!sdJwtPayload || typeof sdJwtPayload !== "object")
+        throw new Error("parsed sd-jwt has empty or malformed payload");
+      if (!("status" in sdJwtPayload)) return null;
+      if (sdJwtPayload.status === null)
+        throw new Error("parsed sd-jwt has a null status claim");
+
+      return sdJwtPayload.status as StatusClaim;
+    }
+    case "mso_mdoc": {
+      const issuerAuthPayload = credential.parsed.issuerAuth.payload;
+      if (!issuerAuthPayload)
+        throw new Error("could not extract payload from mdoc");
+
+      const mdocPayloadTag = decode(Buffer.from(issuerAuthPayload));
+      if (
+        !mdocPayloadTag.value ||
+        !mdocPayloadTag.tag ||
+        mdocPayloadTag.tag !== 24
+      )
+        throw new Error("could not extract payload from mdoc");
+
+      const mdocPayload = decode(mdocPayloadTag.value);
+      if (mdocPayload === null || typeof mdocPayload !== "object")
+        throw new Error("parsed mdoc has malformed payload");
+      if (!("status" in mdocPayload)) return null;
+      if (mdocPayload.status === null)
+        throw new Error("parsed mdoc has a null status claim");
+
+      return mdocPayload.status as StatusClaim;
+    }
+  }
+}
+/**
+ * Determines whether a credential's technical validity period exceeds 24 hours.
+ * IT Wallet 1.4 requires status information only for long-lived credentials.
+ *
+ * @param credential - A parsed SD-JWT or mdoc credential.
+ * @returns `true` when the credential is long-lived or its validity cannot be determined.
+ */
+export function isLongLivedCredential(credential: Credential): boolean {
+  switch (credential.typ) {
+    case "dc+sd-jwt": {
+      const payload = credential.parsed.jwt.payload;
+      const exp = payload?.exp;
+      const validFrom =
+        payload !== undefined && "nbf" in payload ? payload.nbf : payload?.iat;
+
+      return (
+        typeof exp !== "number" ||
+        typeof validFrom !== "number" ||
+        !Number.isFinite(exp) ||
+        !Number.isFinite(validFrom) ||
+        exp < validFrom ||
+        (exp - validFrom) * 1000 > maxShortLivedCredentialValidityMs
+      );
+    }
+    case "mso_mdoc": {
+      const { validFrom, validUntil } =
+        credential.parsed.issuerAuth.mobileSecurityObject.validityInfo;
+
+      if (!(validFrom instanceof Date) || !(validUntil instanceof Date)) {
+        return true;
+      }
+
+      const validFromMs = validFrom.getTime();
+      const validUntilMs = validUntil.getTime();
+
+      return (
+        !Number.isFinite(validFromMs) ||
+        !Number.isFinite(validUntilMs) ||
+        validUntilMs < validFromMs ||
+        validUntilMs - validFromMs > maxShortLivedCredentialValidityMs
+      );
+    }
+  }
+}
+
 /**
  * Parses a credential and extracts its status claim.
  *
@@ -179,40 +270,7 @@ export async function parseCredentialStatus(
       "unable to unmarshal string into sd-jwt or mdoc credential",
     );
 
-  switch (credential.typ) {
-    case "dc+sd-jwt": {
-      const sdJwtPayload = credential.parsed.jwt.payload;
-      if (!sdJwtPayload || typeof sdJwtPayload !== "object")
-        throw new Error("parsed sd-jwt has empty or malformed payload");
-
-      if (!sdJwtPayload.status) return null;
-
-      return sdJwtPayload.status as StatusClaim;
-    }
-    case "mso_mdoc": {
-      const issuerAuthPayload = credential.parsed.issuerAuth.payload;
-      if (!issuerAuthPayload)
-        throw new Error("could not extract payload from mdoc");
-
-      const mdocPayloadTag = decode(Buffer.from(issuerAuthPayload));
-      if (
-        !mdocPayloadTag.value ||
-        !mdocPayloadTag.tag ||
-        mdocPayloadTag.tag !== 24
-      )
-        throw new Error("could not extract payload from mdoc");
-
-      const mdocPayload = decode(mdocPayloadTag.value);
-      if (typeof mdocPayload !== "object")
-        throw new Error("parsed mdoc has malformed payload");
-
-      if (!mdocPayload.status) return null;
-
-      return mdocPayload.status as StatusClaim;
-    }
-    default:
-      return null;
-  }
+  return getCredentialStatus(credential);
 }
 
 export const getMdocCertificateSubject = (config: Config): string =>
