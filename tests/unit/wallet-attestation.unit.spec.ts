@@ -364,7 +364,7 @@ describe("Wallet Attestation V1_4 Unit Test", () => {
     wallet_version: ItWalletSpecsVersion.V1_4,
   };
 
-  test("Generate New Wallet Attestation V1_4 with x5c and status_list", async () => {
+  test("Generate New Wallet Attestation V1_4 with x5c", async () => {
     const attestationPath = buildAttestationPath(walletV1_4);
 
     // Remove existing attestation to force new generation
@@ -417,13 +417,8 @@ describe("Wallet Attestation V1_4 Unit Test", () => {
     // V1_4: aal / authenticatorAssuranceLevel MUST NOT be in payload
     expect((jwt.payload as Record<string, unknown>).aal).toBeUndefined();
 
-    // V1_4: status.status_list is mandatory
-    const status = jwt.payload.status as
-      | undefined
-      | { status_list: { idx: number; uri: string } };
-    expect(status?.status_list).toBeDefined();
-    expect(typeof status?.status_list.idx).toBe("number");
-    expect(typeof status?.status_list.uri).toBe("string");
+    // V1_4: Since at least version 1.4.6 the status field should not be present
+    expect(jwt.payload.status).not.toBeDefined();
 
     // Verify payload claims
     expect((jwt.payload.cnf as { jwk: Jwk }).jwk).toStrictEqual(unitJWK);
@@ -476,10 +471,6 @@ describe("Wallet Attestation V1_4 Unit Test", () => {
     expect(Array.isArray(x5c)).toBe(true);
     expect((x5c ?? []).length).toBeGreaterThan(0);
 
-    // Verify status.status_list still present
-    const status = jwt.payload.status as
-      | undefined
-      | { status_list: { idx: number; uri: string } };
-    expect(status?.status_list).toBeDefined();
+    expect(jwt.payload.status).not.toBeDefined();
   });
 });
