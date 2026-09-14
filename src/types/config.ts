@@ -12,6 +12,21 @@ import { parseItWalletSpecVersion } from "./version";
 const zBooleanFromString = z.union([z.boolean(), z.stringbool()]);
 
 /**
+ * Engagement mode of the presentation session under test.
+ *
+ * The Request Object is identical in both flows, so the harness cannot infer the
+ * engagement mode from the protocol: it has to be declared. It matters because the
+ * Relying Party MUST return `redirect_uri` (carrying a fresh `response_code`) only in
+ * the Same Device Flow; in the Cross Device Flow its absence is conformant behaviour.
+ */
+export const presentationFlowTypeSchema = z.enum([
+  "same-device",
+  "cross-device",
+]);
+
+export type PresentationFlowType = z.infer<typeof presentationFlowTypeSchema>;
+
+/**
  * Represents the configuration for the wallet conformance test.
  */
 export const configSchema = z.object({
@@ -58,6 +73,7 @@ export const configSchema = z.object({
   presentation: z.object({
     authorize_request_script: z.string().optional(),
     authorize_request_url: z.string().url(),
+    flow_type: presentationFlowTypeSchema.optional().default("same-device"),
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),

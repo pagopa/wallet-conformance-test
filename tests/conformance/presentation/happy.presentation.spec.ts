@@ -41,6 +41,22 @@ import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 const SKIPPING_RP_METADATA_MSG =
   "Skipping because Relying Party metadata was not fetched: client_id prefix is x509_hash or it has no HTTPS base URL";
 
+// The Relying Party MUST return `redirect_uri` (carrying a fresh `response_code`) only
+// in the Same Device Flow; in the Cross Device Flow its absence is conformant and the
+// Wallet Instance is not required to perform any further step. The Request Object is
+// identical in both flows, so the engagement mode is taken from `presentation.flow_type`.
+const SKIPPING_CROSS_DEVICE_MSG =
+  "Skipping because the presentation session under test is a Cross Device Flow: the Relying Party MUST return redirect_uri only in the Same Device Flow. Set presentation.flow_type = same-device (or --presentation-flow-type same-device) to assert this requirement";
+
+const SKIPPING_SAME_DEVICE_MSG =
+  "Skipping because the presentation session under test is a Same Device Flow. Set presentation.flow_type = cross-device (or --presentation-flow-type cross-device) to assert this requirement";
+
+const SAME_DEVICE_LEG_ONLY_MSG =
+  "  ⚠️ RPR-84 requires support for both flows: this run covered the Same Device Flow leg only. Run again with presentation.flow_type = cross-device to cover RPR-84b";
+
+const CROSS_DEVICE_LEG_ONLY_MSG =
+  "  ⚠️ RPR-84 requires support for both flows: this run covered the Cross Device Flow leg only. Run again with presentation.flow_type = same-device to cover RPR-84a";
+
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
 
@@ -52,6 +68,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
   const walletVersion = orchestrator.getConfig().wallet.wallet_version;
   const shouldSkipTrustAnchorVerification =
     orchestrator.getConfig().trust_anchor.verify === false;
+  const isSameDeviceFlow =
+    orchestrator.getConfig().presentation.flow_type === "same-device";
 
   let authorizationRequestResult: AuthorizationRequestStepResponse;
   let fetchMetadataResult: FetchMetadataVpStepResponse | undefined;
@@ -100,6 +118,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly issues an inspectable 302 redirect URL using a metadata-declared base URL";
     let testSuccess = false;
     try {
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       if (!fetchMetadataResult) {
         log.warn(SKIPPING_RP_METADATA_MSG);
         skip();
@@ -490,7 +514,10 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       const requestObject = response?.requestObject;
       expect(requestObject).toBeDefined();
-      expect(redirectUriResult.response?.redirectUri).toBeDefined();
+      // Flow-agnostic: this test asserts that the RP evaluated the Wallet Instance's
+      // technical capabilities and carried the flow through, not how it concluded it.
+      // Whether a redirect_uri is returned depends on the engagement mode (RPR-83).
+      expect(redirectUriResult.success).toBe(true);
       log.debug(
         "  ✅ RP continued the flow using technical Wallet metadata only",
       );
@@ -962,7 +989,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-19: User is redirected correctly, the endpoint works.", () => {
+  test("RPR-19: User is redirected correctly, the endpoint works.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-19");
 
     log.start(
@@ -973,6 +1002,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly redirects user and endpoint returns valid response_code";
     let testSuccess = false;
     try {
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       if (!redirectUriResult.success) {
         log.error("❌ Redirect URI step failed");
         log.error(`  Result: ${JSON.stringify(redirectUriResult, null, 2)}`);
@@ -1121,7 +1156,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     },
   );
 
-  test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", () => {
+  test("RPR-28: response_code has sufficient entropy with at least 32 URL-safe characters.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-28");
 
     log.start("Conformance test: Verifying response_code entropy requirements");
@@ -1130,6 +1167,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly provides response_code with sufficient entropy (≥32 characters, URL-safe charset)";
     let testSuccess = false;
     try {
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       expect(redirectUriResult.success).toBe(true);
       expect(redirectUriResult.response?.responseCode).toBeDefined();
 
@@ -1513,7 +1556,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-83: Relying Party correctly provides and handles redirect_uri.", () => {
+  test("RPR-83: Relying Party correctly provides and handles redirect_uri.", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-83");
 
     log.start(
@@ -1524,6 +1569,14 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party correctly provides response_uri and handles redirect_uri";
     let testSuccess = false;
     try {
+      // The response_uri half of this requirement is already covered by RPR-92, which
+      // runs in both flows, so nothing is lost by skipping the whole test here.
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
 
@@ -1571,22 +1624,73 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-84: Flow Support | Relying Party supports both Same Device and Cross Device flows", () => {
-    const log = baseLog.withTag("RPR-84");
+  // A single run drives one engagement mode: `authorize_request_url` identifies one
+  // Relying Party session, created for either the Same Device or the Cross Device Flow.
+  // RPR-84 ("supports *both* flows") is therefore split into one leg per mode: each run
+  // asserts the declared flow and reports the other as skipped. Full RPR-84 coverage
+  // requires running the suite once with each `presentation.flow_type`.
+  test("RPR-84a: Flow Support | Relying Party supports the Same Device Flow", ({
+    skip,
+  }) => {
+    const log = baseLog.withTag("RPR-84a");
 
-    log.start(
-      "Conformance test: Verifying required Same Device and Cross Device flow support",
-    );
+    log.start("Conformance test: Verifying Same Device Flow support");
 
     const DESCRIPTION =
-      "Relying Party supports both Same Device and Cross Device flows";
+      "Relying Party supports the Same Device Flow (one of the two RPR-84 legs)";
     let testSuccess = false;
     try {
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       expect(authorizationRequestResult.success).toBe(true);
       expect(authorizationRequestResult.response).toBeDefined();
-      const qrCodePayload = readQrCodePayload();
 
-      log.debug("→ Validating Cross Device Flow QR-Code entry point...");
+      log.debug("→ Validating Same Device Flow redirect handling...");
+      expect(redirectUriResult.success).toBe(true);
+      expect(redirectUriResult.response?.redirectUri).toBeDefined();
+      const redirectUri = redirectUriResult.response?.redirectUri;
+      expect(["haip:", "https:"]).toContain(redirectUri?.protocol);
+      expect(redirectUriResult.response?.responseCode).toBeDefined();
+      log.debug("  ✅ Same Device Flow redirect handling is supported");
+
+      log.warn(SAME_DEVICE_LEG_ONLY_MSG);
+
+      testSuccess = true;
+    } finally {
+      log.testCompleted(DESCRIPTION, testSuccess);
+    }
+  });
+
+  test("RPR-84b: Flow Support | Relying Party supports the Cross Device Flow", ({
+    skip,
+  }) => {
+    const log = baseLog.withTag("RPR-84b");
+
+    log.start("Conformance test: Verifying Cross Device Flow support");
+
+    const DESCRIPTION =
+      "Relying Party supports the Cross Device Flow (one of the two RPR-84 legs)";
+    let testSuccess = false;
+    try {
+      if (isSameDeviceFlow) {
+        log.warn(SKIPPING_SAME_DEVICE_MSG);
+        skip();
+        return;
+      }
+
+      expect(authorizationRequestResult.success).toBe(true);
+      expect(authorizationRequestResult.response).toBeDefined();
+
+      log.debug("→ Validating Cross Device Flow entry point...");
+
+      // Preconditions on the configured entry point: the QR-Code payload is supplied
+      // through `authorize_request_url`, so its shape is not attributable to the Relying
+      // Party. It is checked here only to locate the advertised `request_uri`.
+      const qrCodePayload = readQrCodePayload();
       expect(qrCodePayload).toBeTruthy();
       const authorizationRequestUrl = new URL(qrCodePayload);
       expect(["haip:", "openid4vp:", "https:"]).toContain(
@@ -1597,15 +1701,23 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         authorizationRequestUrl.searchParams.get("request_uri");
       expect(hasRequest || Boolean(requestUri)).toBe(true);
       expect(authorizationRequestResult.response?.parsedQrCode).toBeDefined();
-      log.debug("  ✅ Cross Device Flow QR-Code entry point is supported");
 
-      log.debug("→ Validating Same Device Flow redirect handling...");
+      // What the Relying Party is accountable for: serving a valid Request Object at the
+      // `request_uri` the payload advertises, and concluding the flow at the response
+      // endpoint with an HTTP 200 and no `redirect_uri` — in the Cross Device Flow the
+      // user-agent resumes through the Relying Party's status endpoint instead.
+      expect(
+        authorizationRequestResult.response?.requestObject,
+        "Relying Party did not serve a Request Object at the request_uri advertised in the Cross Device Flow entry point",
+      ).toBeDefined();
       expect(redirectUriResult.success).toBe(true);
-      expect(redirectUriResult.response?.redirectUri).toBeDefined();
-      const redirectUri = redirectUriResult.response?.redirectUri;
-      expect(["haip:", "https:"]).toContain(redirectUri?.protocol);
-      expect(redirectUriResult.response?.responseCode).toBeDefined();
-      log.debug("  ✅ Same Device Flow redirect handling is supported");
+      expect(
+        redirectUriResult.response?.status,
+        "Relying Party did not conclude the Cross Device Flow with an HTTP 200 at the response endpoint",
+      ).toBe(200);
+      log.debug("  ✅ Cross Device Flow entry point is supported");
+
+      log.warn(CROSS_DEVICE_LEG_ONLY_MSG);
 
       testSuccess = true;
     } finally {
@@ -2210,7 +2322,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
     }
   });
 
-  test("RPR-112: Response Code Inclusion | Relying Party includes response code in redirect_uri", async () => {
+  test("RPR-112: Response Code Inclusion | Relying Party includes response code in redirect_uri", ({
+    skip,
+  }) => {
     const log = baseLog.withTag("RPR-112");
 
     log.start(
@@ -2221,6 +2335,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       "Relying Party includes fresh response code in redirect_uri";
     let testSuccess = false;
     try {
+      if (!isSameDeviceFlow) {
+        log.warn(SKIPPING_CROSS_DEVICE_MSG);
+        skip();
+        return;
+      }
+
       expect(redirectUriResult.success).toBe(true);
       expect(redirectUriResult.response?.redirectUri).toBeDefined();
 

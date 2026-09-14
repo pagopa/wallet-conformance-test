@@ -6,7 +6,9 @@ import { parse } from "ini";
 import { existsSync, readFileSync } from "node:fs";
 import path from "path";
 
-import { Config, configSchema } from "@/types";
+import type { PresentationFlowType } from "@/types";
+
+import { Config, configSchema, presentationFlowTypeSchema } from "@/types";
 
 import {
   packageRoot,
@@ -40,6 +42,7 @@ export interface CliOptions {
   port?: number;
   presentationAuthorizeScript?: string;
   presentationAuthorizeUri?: string;
+  presentationFlowType?: string;
   presentationTestsDir?: string;
   saveCredential?: boolean;
   stepsMapping?: string;
@@ -397,6 +400,9 @@ const buildPresentationConfig: ConfigSectionBuilder<Config["presentation"]> = (
   ...(options.presentationAuthorizeScript && {
     authorize_request_script: options.presentationAuthorizeScript,
   }),
+  ...(options.presentationFlowType && {
+    flow_type: parsePresentationFlowType(options.presentationFlowType),
+  }),
   ...(options.presentationTestsDir && {
     tests_dir: options.presentationTestsDir,
   }),
@@ -508,6 +514,22 @@ function loadIniFile(filePath: string): null | Partial<Config> {
   }
 }
 
+/**
+ * Validates the presentation engagement mode supplied on the command line or through
+ * `CONFIG_PRESENTATION_FLOW_TYPE`, so a typo fails at config load with an actionable
+ * message instead of silently disabling the Same Device Flow assertions.
+ */
+function parsePresentationFlowType(value: string): PresentationFlowType {
+  const parsed = presentationFlowTypeSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid presentation flow type "${value}": expected one of ${presentationFlowTypeSchema.options.join(", ")}`,
+    );
+  }
+
+  return parsed.data;
+}
+
 function readBooleanEnv(
   options: CliOptions,
   optionKey: keyof CliOptions,
@@ -561,6 +583,11 @@ function readCliOptionsFromEnv(): CliOptions {
     options,
     "issuanceCertificateSubject",
     "CONFIG_ISSUANCE_CERTIFICATE_SUBJECT",
+  );
+  readStringEnv(
+    options,
+    "presentationFlowType",
+    "CONFIG_PRESENTATION_FLOW_TYPE",
   );
   readStringEnv(
     options,
