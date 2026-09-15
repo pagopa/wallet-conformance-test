@@ -219,6 +219,10 @@ export class AuthorizeDefaultStep extends StepFlow {
       throw new Error("Failed to create authorization response JARM");
     }
 
+    const rpSigKey = options.rpMetadata.jwks.keys.find(
+      (key) => key.use === "sig",
+    );
+
     this.log.info(`Sending authorization response to: ${responseUri}`);
     this.log.debug(`Authorization response iss: ${options.baseUrl}`);
     const sendAuthorizationResponseAndExtractCodeOptions = {
@@ -231,6 +235,15 @@ export class AuthorizeDefaultStep extends StepFlow {
       iss: options.baseUrl,
       presentationResponseUri: responseUri,
       state: requestObject.state,
+      ...(rpSigKey
+        ? {
+            signer: {
+              alg: "ES256",
+              method: "jwk",
+              publicJwk: rpSigKey,
+            },
+          }
+        : {}),
     } satisfies SendAuthorizationResponseAndExtractCodeOptions;
 
     const authorizeResponse = await sendAuthorizationResponseAndExtractCode(
