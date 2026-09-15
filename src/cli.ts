@@ -118,6 +118,11 @@ function setEnvFromOptions(options: CliOptions): NodeJS.ProcessEnv {
     "CONFIG_PRESENTATION_AUTHORIZE_SCRIPT",
     options.presentationAuthorizeScript,
   );
+  applyEnvOption(
+    env,
+    "CONFIG_PRESENTATION_FLOW_TYPE",
+    options.presentationFlowType,
+  );
   applyEnvOption(env, "CONFIG_CREDENTIAL_TYPES", options.credentialTypes);
   applyEnvOption(
     env,
@@ -195,6 +200,10 @@ function addCommonOptions(command: Command): Command {
     .option(
       "--presentation-authorize-script <path>",
       "Override the presentation authorize script path (env: CONFIG_PRESENTATION_AUTHORIZE_SCRIPT)",
+    )
+    .option(
+      "--presentation-flow-type <type>",
+      "Engagement mode of the presentation session under test: same-device or cross-device. Same Device Flow requires the Relying Party to return a redirect_uri (env: CONFIG_PRESENTATION_FLOW_TYPE)",
     )
     .option(
       "--credential-types <types>",

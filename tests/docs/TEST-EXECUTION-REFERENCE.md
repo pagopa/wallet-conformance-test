@@ -318,7 +318,7 @@ The presentation flow validates credential presentation conformance according to
 
 - **RPR015**: Reads the authorization Request Object JWT header and verifies that at least one of two trust signals is present: `trust_chain` (a non-empty array of JWTs representing the OpenID Federation trust chain) or `x5c` (a non-empty certificate chain array). Confirms the RP embeds its trust credential in the Request Object for the wallet to validate.
 
-- **RPR019**: Verifies that the redirect URI step succeeded and returned a `redirectUri` that is a valid HTTPS URL, and that `responseCode` is defined in the response. Confirms that after the wallet submitted the VP token, the RP responded with a valid redirect containing a `response_code`.
+- **RPR019**: Verifies that the redirect URI step succeeded and returned a `redirectUri` that is a valid HTTPS URL, and that `responseCode` is defined in the response. Confirms that after the wallet submitted the VP token, the RP responded with a valid redirect containing a `response_code`. Runs only when `presentation.flow_type` is `same-device`: the Relying Party MUST return a `redirect_uri` only in the Same Device Flow, so this test is skipped in a Cross Device session.
 
 #### JARM Response Tests
 
@@ -338,7 +338,7 @@ The presentation flow validates credential presentation conformance according to
 
 #### Metadata and Configuration Tests
 
-- **RPR083**: Verifies two things end-to-end: (1) the `response_uri` in the Request Object JWT is a valid HTTPS URL, and (2) the redirect URI step, which POSTs the VP token to that `response_uri`, succeeded and returned a valid redirect URL. Confirms that the RP correctly exposes and handles the `response_uri` endpoint.
+- **RPR083**: Verifies two things end-to-end: (1) the `response_uri` in the Request Object JWT is a valid HTTPS URL, and (2) the redirect URI step, which POSTs the VP token to that `response_uri`, succeeded and returned a valid redirect URL. Confirms that the RP correctly exposes and handles the `response_uri` endpoint. Runs only when `presentation.flow_type` is `same-device`: the Relying Party MUST return a `redirect_uri` only in the Same Device Flow, so this test is skipped in a Cross Device session. The `response_uri` half of the requirement is covered in both flows by RPR092.
 
 - **RPR095**: Verifies that the FetchMetadata step completed successfully and that the HTTP response status was 200. Confirms that the RP's `.well-known/openid-federation` endpoint is reachable and returns a well-formed response.
 
