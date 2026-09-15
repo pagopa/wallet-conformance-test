@@ -73,7 +73,7 @@ export const configSchema = z.object({
   presentation: z.object({
     authorize_request_script: z.string().optional(),
     authorize_request_url: z.string().url(),
-    flow_type: presentationFlowTypeSchema.optional().default("same-device"),
+    flow_type: presentationFlowTypeSchema.optional().default("cross-device"),
     tests_dir: z.string().default("./tests/presentation"),
     verifier: z.string().url().optional(),
   }),

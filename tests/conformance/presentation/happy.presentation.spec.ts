@@ -1715,6 +1715,8 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         redirectUriResult.response?.status,
         "Relying Party did not conclude the Cross Device Flow with an HTTP 200 at the response endpoint",
       ).toBe(200);
+      // A cross device flow should not return a redirect_uri
+      expect(redirectUriResult.response?.redirectUri).not.toBeDefined();
       log.debug("  ✅ Cross Device Flow entry point is supported");
 
       log.warn(CROSS_DEVICE_LEG_ONLY_MSG);
