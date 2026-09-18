@@ -135,7 +135,9 @@ const buildAttestationOptions = async (
       );
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
-        signer: { ...signerBase, method: "x5c", x5c },
+        // The trustChain field is optional, but wallet instance
+        // generation tests require it
+        signer: { ...signerBase, method: "x5c", trustChain, x5c },
       };
       return attestationOptions;
     }
@@ -147,7 +149,9 @@ const buildAttestationOptions = async (
       );
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
-        signer: { ...signerBase, method: "x5c", x5c },
+        // The trustChain field is optional, but wallet instance
+        // generation tests require it
+        signer: { ...signerBase, method: "x5c", trustChain, x5c },
         status: {
           status_list: {
             idx: 0,
