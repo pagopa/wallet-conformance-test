@@ -88,5 +88,5 @@ jobs:
       # ── Presentation tests ───────────────────────────────────────────────────
       - name: Run presentation tests
         shell: bash
-        run: CONFIG_PRESENTATION_FLOW_TYPE="same-device" wct test:presentation --tests happy --wallet-version=V1_3
+        run: CONFIG_PRESENTATION_FLOW_TYPE="same-device" wct test:presentation --tests happy
         # CONFIG_PRESENTATION_AUTHORIZE_URI is set in GITHUB_ENV by the previous step
