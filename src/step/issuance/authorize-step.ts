@@ -1,6 +1,7 @@
 import {
   AuthorizationResponse,
   sendAuthorizationResponseAndExtractCode,
+  SendAuthorizationResponseAndExtractCodeOptions,
 } from "@pagopa/io-wallet-oid4vci";
 import {
   createAuthorizationResponse,
@@ -160,22 +161,6 @@ export class AuthorizeDefaultStep extends StepFlow {
       );
     }
 
-    const rpEncKey = options.rpMetadata.jwks.keys.find(
-      (key) => key.use === "enc",
-    );
-    if (!rpEncKey) {
-      this.log.error("No encryption key found in RP Metadata JWKS");
-      throw new Error("No encryption key found in RP Metadata JWKS");
-    }
-
-    const rpSigKey = options.rpMetadata.jwks.keys.find(
-      (key) => key.use === "sig",
-    );
-    if (!rpSigKey) {
-      this.log.error("No signature key found in RP Metadata JWKS");
-      throw new Error("No signature key found in RP Metadata JWKS");
-    }
-
     const dcqlQuery = requestObject.dcql_query as DcqlQuery | undefined;
     if (!dcqlQuery) {
       throw new Error("dcql_query is missing in the request object");
@@ -234,6 +219,10 @@ export class AuthorizeDefaultStep extends StepFlow {
       throw new Error("Failed to create authorization response JARM");
     }
 
+    const rpSigKey = options.rpMetadata.jwks.keys.find(
+      (key) => key.use === "sig",
+    );
+
     this.log.info(`Sending authorization response to: ${responseUri}`);
     this.log.debug(`Authorization response iss: ${options.baseUrl}`);
     const sendAuthorizationResponseAndExtractCodeOptions = {
@@ -245,13 +234,17 @@ export class AuthorizeDefaultStep extends StepFlow {
       },
       iss: options.baseUrl,
       presentationResponseUri: responseUri,
-      signer: {
-        alg: "ES256",
-        method: "jwk" as const,
-        publicJwk: rpSigKey,
-      },
       state: requestObject.state,
-    };
+      ...(rpSigKey
+        ? {
+            signer: {
+              alg: "ES256",
+              method: "jwk",
+              publicJwk: rpSigKey,
+            },
+          }
+        : {}),
+    } satisfies SendAuthorizationResponseAndExtractCodeOptions;
 
     const authorizeResponse = await sendAuthorizationResponseAndExtractCode(
       sendAuthorizationResponseAndExtractCodeOptions,

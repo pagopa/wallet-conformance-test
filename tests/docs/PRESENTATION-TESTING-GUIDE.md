@@ -147,7 +147,33 @@ set, `authorize_request_script` takes precedence. You must provide at least one 
 # Optional: explicit RP Verifier base URL when the federation metadata
 # domain differs from the authorize_request_url domain.
 verifier = https://rp.example.com
+
+# Optional: engagement mode of the presentation session under test.
+# One of `same-device` (default) or `cross-device`.
+flow_type = same-device
 ```
+
+#### `flow_type` — Same Device vs Cross Device
+
+The Request Object is identical in both engagement modes, so the tool cannot infer which one
+the Relying Party created the session for: you must declare it.
+
+It matters because the Relying Party MUST return a `redirect_uri` — carrying a fresh
+`response_code` — in its response to the `response_uri` **only in the Same Device Flow**. In the
+Cross Device Flow the response is an HTTP 200 `application/json` body without `redirect_uri`,
+and the Wallet Instance is not required to perform any further step; the user-agent continues
+the flow through the RP's status endpoint instead.
+
+The tests that assert the `redirect_uri` / `response_code` requirements (RPR-01, RPR-19, RPR-28,
+RPR-83 and RPR-112) therefore run only when `flow_type = same-device`, and are reported as
+skipped otherwise. Leaving the value at its `same-device` default against a cross-device session
+will report those tests as failures.
+
+`flow_type` also selects which half of RPR-84 runs. A single `authorize_request_url` identifies
+one Relying Party session in one engagement mode, so RPR-84 ("Relying Party supports **both**
+Same Device and Cross Device flows") is split into two legs — **RPR-84a** (Same Device) and
+**RPR-84b** (Cross Device) — of which each run covers one and skips the other. Full RPR-84
+coverage means running the suite twice, once per `flow_type`.
 
 ---
 
@@ -352,6 +378,7 @@ CONFIG_PRESENTATION_AUTHORIZE_SCRIPT=./tests/scripts/presentation.example.sh \
 | `--presentation-tests-dir <path>`        | `CONFIG_PRESENTATION_TESTS_DIR`        | `tests_dir`                   | Directory where Vitest looks for `*.presentation.spec.ts` files   |
 | `--presentation-authorize-uri <url>`     | `CONFIG_PRESENTATION_AUTHORIZE_URI`    | `authorize_request_url`       | Static authorization request URL                                  |
 | `--presentation-authorize-script <path>` | `CONFIG_PRESENTATION_AUTHORIZE_SCRIPT` | `authorize_request_script`    | Path to a script that outputs the URL dynamically                 |
+| `--presentation-flow-type <type>`        | `CONFIG_PRESENTATION_FLOW_TYPE`        | `flow_type`                   | `same-device` (default) or `cross-device` engagement mode         |
 
 > Both `--file-ini` and `--presentation-tests-dir` paths are resolved relative to
 > `wallet-conformance-test/` (your current working directory). The `../my-example` examples above
