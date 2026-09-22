@@ -1,7 +1,6 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
-import { DisclosureData } from "@sd-jwt/types";
 import { DcqlMdocCredential, DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import type { Logger } from "@/types/logger";
@@ -125,15 +124,18 @@ export async function parseCredentialFromSdJwt(
 ): Promise<DcqlSdJwtVcCredential> {
   const { disclosures, jwt } = await decodeSdJwt(credential, digest);
 
-  const claims = disclosures.reduce(
-    (acc, disclosure) => {
-      const disclosureData = disclosure.decode();
-      const claim = disclosureData[1] as string;
-      acc[claim] = disclosureData;
-      return acc;
-    },
-    {} as Record<string, DisclosureData<unknown>>,
-  );
+  const claims = Object.fromEntries(
+    Object.entries(jwt.payload).filter(
+      ([claim]) => claim !== "_sd" && claim !== "_sd_alg",
+    ),
+  ) as DcqlSdJwtVcCredential["claims"];
+
+  for (const disclosure of disclosures) {
+    const disclosureData = disclosure.decode();
+    const claim = disclosureData[1] as string;
+    claims[claim] =
+      disclosureData[2] as DcqlSdJwtVcCredential["claims"][string];
+  }
 
   const credentialFormat = jwt.header.typ;
   if (credentialFormat !== "dc+sd-jwt") {

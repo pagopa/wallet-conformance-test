@@ -1,6 +1,9 @@
 /* eslint-disable max-lines-per-function */
 
+import type { CredentialCompilationConfiguration } from "#/helpers/credential-compilation-query";
+
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { buildCredentialCompilationQuery } from "#/helpers/credential-compilation-query";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { decodeJwtOrThrow } from "#/helpers/token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
@@ -16,7 +19,6 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
-import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
@@ -607,13 +609,8 @@ testConfigs.forEach((testConfig) => {
           ).toBe(credentialKeyPairs.length);
 
           const credentialSchema:
-            | undefined
-            | {
-                claims: { path: string[] }[];
-                credential_metadata?: { claims: { path: string[] }[] };
-                format: "dc+sd-jwt" | "mso_doc";
-                vct?: string;
-              } =
+            | CredentialCompilationConfiguration
+            | undefined =
             fetchMetadataResponse.response?.entityStatementClaims.metadata
               ?.openid_credential_issuer?.credential_configurations_supported[
               testConfig.credentialConfigurationId
@@ -621,15 +618,6 @@ testConfigs.forEach((testConfig) => {
           if (!credentialSchema)
             throw new Error(
               "missing credential type from issuer's supported credentials list",
-            );
-
-          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
-          const claims = isV1_0
-            ? credentialSchema.claims
-            : credentialSchema.credential_metadata?.claims;
-          if (!claims)
-            throw new Error(
-              "missing claims from issuer's supported credential configuration",
             );
 
           for (const [index, credential] of credentials.entries()) {
@@ -646,6 +634,11 @@ testConfigs.forEach((testConfig) => {
 
             log.info(`  Successfully extracted credential ${index + 1}`);
 
+            const query = buildCredentialCompilationQuery(credentialSchema, {
+              credentialQueryId: `${index}`,
+              isLegacy: sdkConfig.isVersion(ItWalletSpecsVersion.V1_0),
+            });
+
             const queryResult = await validateDcqlQuery(
               [
                 {
@@ -655,17 +648,7 @@ testConfigs.forEach((testConfig) => {
                   typ: parsed.credential.typ,
                 },
               ],
-              {
-                credentials: [
-                  {
-                    ...credentialSchema,
-                    claims: claims.map((claim) => ({
-                      path: claim.path,
-                    })),
-                    id: `${index}`,
-                  },
-                ],
-              } as DcqlQuery.Input,
+              query,
             );
             expect(queryResult.can_be_satisfied).toBe(true);
           }
