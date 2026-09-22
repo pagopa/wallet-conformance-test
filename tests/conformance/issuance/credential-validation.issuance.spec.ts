@@ -36,11 +36,7 @@ import {
 } from "@pagopa/io-wallet-utils";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 
-import {
-  getCredentialStatus,
-  isLongLivedCredential,
-  parseCredential,
-} from "@/functions";
+import { evaluateStatusRequirement, parseCredential } from "@/functions";
 import {
   createKeys,
   fetchWithConfig,
@@ -691,19 +687,26 @@ testConfigs.forEach((testConfig) => {
 
           const parsedCredential = await parseCredential(credentialCompact);
           if (!parsedCredential.credential) {
-            throw new Error("Issued credential could not be parsed.");
+            throw new Error(
+              `Issued credential could not be parsed: ${parsedCredential.error ?? "unrecognised format"}`,
+            );
           }
 
-          const statusClaim = getCredentialStatus(parsedCredential.credential);
-          const statusIsRequired =
-            ioWalletSdkConfig.itWalletSpecsVersion !==
-              ItWalletSpecsVersion.V1_4 ||
-            isLongLivedCredential(parsedCredential.credential);
+          const credential = parsedCredential.credential;
+          const { detail, failure, satisfied, statusClaim } =
+            evaluateStatusRequirement(
+              credential,
+              ioWalletSdkConfig.itWalletSpecsVersion,
+            );
 
-          const statusRequirementSatisfied =
-            statusClaim !== null || !statusIsRequired;
+          log.debug(`  ${detail}`);
+
+          if (!satisfied) {
+            log.error(`  ${failure}`);
+          }
+
           expect(
-            statusRequirementSatisfied,
+            satisfied,
             "Long-lived credentials MUST contain a 'status' claim",
           ).toBe(true);
 

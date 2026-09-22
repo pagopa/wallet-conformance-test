@@ -12,6 +12,7 @@ import {
   CredentialWithKey,
   Logger,
   StatusClaim,
+  StatusRequirement,
 } from "@/types";
 
 import {
@@ -164,6 +165,32 @@ export async function parseCredential(
 const maxShortLivedCredentialValidityMs = 24 * 60 * 60 * 1000;
 
 /**
+ * Applies the IT Wallet status-claim policy to an issued credential, for both
+ * SD-JWT VC and mdoc-CBOR. IT Wallet 1.4 requires `status` only for long-lived
+ * credentials; earlier versions require it for every credential.
+ *
+ * @param credential  Parsed credential returned by the issuer
+ * @param specVersion IT Wallet specification version under test
+ * @returns The status claim, whether the credential is long-lived, and whether
+ *          the requirement is satisfied.
+ */
+export function evaluateStatusRequirement(
+  credential: Credential,
+  specVersion: ItWalletSpecsVersion,
+): StatusRequirement {
+  const statusClaim = getCredentialStatus(credential);
+  const longLived = isLongLivedCredential(credential);
+  const scope = longLived ? "long-lived credentials" : "every credential";
+  const presence = statusClaim === null ? "absent" : "present";
+
+  return {
+    detail: `Format: ${credential.typ}, long-lived: ${longLived}, status claim: ${presence}`,
+    failure: `${credential.typ} credential carries no 'status' claim, but IT Wallet ${specVersion} requires one for ${scope}`,
+    satisfied: statusClaim !== null || !longLived,
+    statusClaim,
+  };
+}
+/**
  * Extracts a parsed credential's status claim.
  *
  * @param credential - A parsed SD-JWT or mdoc credential.
@@ -207,6 +234,7 @@ export function getCredentialStatus(
     }
   }
 }
+
 /**
  * Determines whether a credential's technical validity period exceeds 24 hours.
  * IT Wallet 1.4 requires status information only for long-lived credentials.
