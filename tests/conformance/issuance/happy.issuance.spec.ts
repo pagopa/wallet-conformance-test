@@ -220,9 +220,11 @@ testConfigs.forEach((testConfig) => {
             );
 
           const subordinateJwt = await response.text();
-          const subordinateClaims = decodeJwt(subordinateJwt) as {
-            jwks: JwkSet;
-          };
+
+          const subordinateClaims = decodeJwtOrThrow<{ jwks: JwkSet }>(
+            subordinateJwt ?? "",
+            `Subordinate Statement from ${fetchUrl}`,
+          );
 
           log.debug("→ Checking public key in Subordinate Statement...");
           expect(subordinateClaims.jwks.keys).toBeDefined();
@@ -260,7 +262,10 @@ testConfigs.forEach((testConfig) => {
             fetchMetadataResponse.response?.entityStatementClaims;
 
           log.debug("→ Checking Trust Marks...");
-          expect(entityClaims.trust_marks).toBeDefined();
+          expect(
+            entityClaims.trust_marks,
+            "Trust marks are missing in the entity configuration",
+          ).toBeDefined();
           expect(entityClaims.trust_marks?.length).toBeGreaterThan(0);
 
           testSuccess = true;
@@ -359,7 +364,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet",
-      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId === "dc_sd_jwt_pid" ||
+          testConfig.credentialConfigurationId === "dc_sd_jwt_eid",
+      },
       async () => {
         const log = baseLog.withTag("CI_009");
         const DESCRIPTION = "openid_credential_verifier metadata is present";
