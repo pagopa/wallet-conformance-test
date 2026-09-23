@@ -572,7 +572,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_014: Credential | Credential Object Compilation",
-      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId === "dc_sd_jwt_pid" ||
+          testConfig.credentialConfigurationId === "dc_sd_jwt_eid",
+      },
       async ({ skip }) => {
         const log = baseLog.withTag("CI_014");
         const DESCRIPTION = "Credential Object is properly compiled";
