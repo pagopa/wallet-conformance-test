@@ -115,6 +115,8 @@ export function parseCredentialFromMdoc(
 /**
  * Parses an SD-JWT credential and transforms it into the format required for DCQL processing.
  *
+ * NOTE: currently it does not support _sd disclosures nested in other properties or in arrays
+ *
  * @param credential The credential in SD-JWT format.
  * @returns A promise that resolves to the parsed credential in `DcqlSdJwtVcCredential` format.
  * @throws An error if the credential format is unsupported or if the `vct` claim is missing.
