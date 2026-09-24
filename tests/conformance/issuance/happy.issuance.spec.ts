@@ -624,6 +624,20 @@ testConfigs.forEach((testConfig) => {
               "missing credential type from issuer's supported credentials list",
             );
 
+          const metadataClaims = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0)
+            ? credentialSchema.claims
+            : credentialSchema.credential_metadata?.claims;
+          if (
+            metadataClaims &&
+            !metadataClaims.some(
+              (claim) => claim.mandatory === true || claim.mandatory === "true",
+            )
+          ) {
+            log.warn(
+              "  ⚠ CI_014 validates credential format/type only for application claims: issuer metadata contains no mandatory claims",
+            );
+          }
+
           for (const [index, credential] of credentials.entries()) {
             const credentialKeyPair = credentialKeyPairs[index];
             expect(credentialKeyPair).toBeDefined();
