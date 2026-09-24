@@ -4,26 +4,168 @@ import { defineIssuanceTest } from "#/config/test-metadata";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
 import {
+  Fetch,
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
-import { decodeJwt as sdJwtDecodeJwt } from "@sd-jwt/decode";
 import { StatusList } from "@sd-jwt/jwt-status-list";
 import { decodeJwt, decodeProtectedHeader, importX509, jwtVerify } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 
+import { evaluateStatusRequirement, parseCredential } from "@/functions";
 import { fetchWithConfig } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
-import {
-  CredentialRequestResponse,
-  getCredentialResponseCredentials,
-} from "@/step/issuance";
+import { getCredentialResponseCredentials } from "@/step/issuance";
+import { Logger } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Module-level test registration
 // ---------------------------------------------------------------------------
 
 const testConfigs = await defineIssuanceTest("StatusList");
+
+// ---------------------------------------------------------------------------
+// Per-credential status list model
+// ---------------------------------------------------------------------------
+
+/**
+ * Outcome of the status-list evaluation for a single issued credential:
+ * - `exempt`  — short-lived credential legitimately issued without a status claim;
+ * - `invalid` — the credential fails every status list assertion (e.g. it is
+ *               long-lived but carries no `status` claim);
+ * - `ready`   — status list entry resolved and Status List Token fetched.
+ */
+type CredentialStatusContext =
+  | { detail: string; kind: "exempt"; label: string }
+  | {
+      entry: StatusListEntry;
+      kind: "ready";
+      label: string;
+      statusList: StatusListData;
+    }
+  | { kind: "invalid"; label: string; reason: string };
+
+type ReadyStatusListContext = Extract<
+  CredentialStatusContext,
+  { kind: "ready" }
+>;
+
+/** Status List Token as served by a credential's `status.status_list.uri`. */
+interface StatusListData {
+  /** `status_list.bits`; undefined when the token payload is not decodable. */
+  bits?: number;
+  contentEncoding: null | string;
+  contentType: null | string;
+  /** Inflated byte array; undefined when `lst` could not be decompressed. */
+  decompressed?: StatusList;
+  httpStatus: number;
+  jwt: string;
+  /** `status_list.lst`; undefined when the token payload is not decodable. */
+  lst?: string;
+}
+
+/** Entry taken from a credential's `status.status_list` claim. */
+interface StatusListEntry {
+  idx: number;
+  uri: string;
+}
+
+/**
+ * Fetches and decodes the Status List Token published at `uri`.
+ * HTTP facts are always captured; the payload fields are left undefined when
+ * the token cannot be decoded, so that the tests asserting on them report the
+ * failure with their own message instead of breaking the shared setup.
+ */
+async function fetchStatusListData(
+  fetcher: Fetch,
+  uri: string,
+): Promise<StatusListData> {
+  const response = await fetcher(uri);
+  const jwt = await response.text();
+
+  const statusList: StatusListData = {
+    contentEncoding: response.headers.get("content-encoding"),
+    contentType: response.headers.get("content-type"),
+    httpStatus: response.status,
+    jwt,
+  };
+
+  try {
+    const claim = decodeJwt(jwt)["status_list"] as
+      | undefined
+      | { bits: number; lst: string };
+    if (claim) {
+      statusList.bits = claim.bits;
+      statusList.lst = claim.lst;
+      statusList.decompressed = StatusList.decompressStatusList(
+        claim.lst,
+        claim.bits as 1 | 2 | 4 | 8,
+      );
+    }
+  } catch {
+    // Intentionally ignored: CI_177, CI_181 and CI_185 assert on these fields.
+  }
+
+  return statusList;
+}
+
+/**
+ * Parses one issued credential and resolves its Status List Token.
+ *
+ * @param compact         Compact-serialized credential returned by the issuer.
+ * @param position        1-based position of the credential in the batch.
+ * @param specVersion     IT Wallet specification version under test.
+ * @param fetchStatusList Deduplicated fetcher for Status List Tokens.
+ */
+async function resolveCredentialStatus(
+  compact: string,
+  position: number,
+  specVersion: ItWalletSpecsVersion,
+  fetchStatusList: (uri: string) => Promise<StatusListData>,
+): Promise<CredentialStatusContext> {
+  const parsed = await parseCredential(compact);
+  if (!parsed.credential) {
+    return {
+      kind: "invalid",
+      label: `credential #${position}`,
+      reason: `credential could not be parsed: ${parsed.error ?? "unrecognised format"}`,
+    };
+  }
+
+  const label = `credential #${position} (${parsed.credential.typ})`;
+  const { detail, failure, satisfied, statusClaim } = evaluateStatusRequirement(
+    parsed.credential,
+    specVersion,
+  );
+
+  if (!satisfied) return { kind: "invalid", label, reason: failure };
+  if (statusClaim === null) return { detail, kind: "exempt", label };
+
+  const entry =
+    "status_list" in statusClaim ? statusClaim.status_list : undefined;
+  if (!entry?.uri) {
+    return {
+      kind: "invalid",
+      label,
+      reason: `'status' claim carries no 'status_list' object with a 'uri' (${detail})`,
+    };
+  }
+
+  try {
+    return {
+      entry,
+      kind: "ready",
+      label,
+      statusList: await fetchStatusList(entry.uri),
+    };
+  } catch (error) {
+    return {
+      kind: "invalid",
+      label,
+      reason: `Status List Token at ${entry.uri} could not be retrieved: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -34,28 +176,76 @@ testConfigs.forEach((testConfig) => {
     const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
     const baseLog = orchestrator.getLog();
 
-    let credentialResponse: CredentialRequestResponse;
     const ioWalletSdkConfig: IoWalletSdkConfig = new IoWalletSdkConfig({
       itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
     });
-    // Extracted from the issued credential's status.status_list claim
-    let statusListUri: string | undefined;
-    let credentialIdx: number | undefined;
-    // Fetched Status List JWT and parsed parts
-    let statusListJwt: string | undefined;
-    let statusListResponseStatus: number | undefined;
-    let statusListContentType: null | string = null;
-    let statusListContentEncoding: null | string = null;
-    let statusListBits: number | undefined;
-    let statusListLst: string | undefined;
-    let decompressedList: StatusList | undefined;
+
+    // One entry per issued credential, each with its own Status List Token
+    let credentialContexts: CredentialStatusContext[] = [];
 
     // -----------------------------------------------------------------------
-    // Helper: extract issuer-signed JWT from Combined Format (splits on ~)
+    // Helper: run an assertion once per credential that carries a status list
     // -----------------------------------------------------------------------
 
-    function extractIssuerJwt(combinedFormat: string): string {
-      return combinedFormat.split("~")[0] ?? "";
+    async function forEachStatusList(
+      log: Logger,
+      assertion: (context: ReadyStatusListContext) => Promise<void> | void,
+    ): Promise<void> {
+      expect(
+        credentialContexts.length,
+        "At least one credential MUST have been issued",
+      ).toBeGreaterThan(0);
+
+      for (const context of credentialContexts) {
+        if (context.kind === "invalid") {
+          log.error(`  ${context.label}: ${context.reason}`);
+          expect(context.kind, `${context.label}: ${context.reason}`).not.toBe(
+            "invalid",
+          );
+          continue;
+        }
+
+        if (context.kind === "exempt") {
+          log.debug(
+            `  ${context.label}: no 'status' claim required (${context.detail})`,
+          );
+          continue;
+        }
+
+        log.debug(`→ ${context.label}: status list ${context.entry.uri}`);
+        await assertion(context);
+      }
+    }
+
+    /** Asserts the Status List Token payload was decodable, returning its claim. */
+    function requireStatusListClaim(context: ReadyStatusListContext): {
+      bits: number;
+      lst: string;
+    } {
+      const { bits, lst } = context.statusList;
+
+      expect(
+        typeof bits,
+        `${context.label}: Status List Token MUST carry a numeric 'status_list.bits'`,
+      ).toBe("number");
+      expect(
+        typeof lst,
+        `${context.label}: Status List Token MUST carry a string 'status_list.lst'`,
+      ).toBe("string");
+
+      return { bits: bits as number, lst: lst as string };
+    }
+
+    /** Asserts the Status List byte array was decompressible, returning it. */
+    function requireDecompressedList(
+      context: ReadyStatusListContext,
+    ): StatusList {
+      expect(
+        context.statusList.decompressed,
+        `${context.label}: 'status_list.lst' MUST decompress to a byte array`,
+      ).toBeDefined();
+
+      return context.statusList.decompressed as StatusList;
     }
 
     // -----------------------------------------------------------------------
@@ -65,50 +255,37 @@ testConfigs.forEach((testConfig) => {
     beforeAll(async () => {
       const result = await orchestrator.issuance();
       assertIssuanceFlowSuccess(result);
-      credentialResponse = result.credentialResponse;
 
-      if (!ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) {
-        for (const credObj of getCredentialResponseCredentials(
-          credentialResponse.response,
-        )) {
-          const issuerJwt = extractIssuerJwt(credObj.credential);
-          if (!issuerJwt) continue;
-          const { payload } = sdJwtDecodeJwt(issuerJwt);
-          const statusClaim = payload["status"] as
-            | Record<string, unknown>
-            | undefined;
-          const slClaim = statusClaim?.["status_list"] as
-            | undefined
-            | { idx: number; uri: string };
-          if (slClaim?.uri) {
-            statusListUri = slClaim.uri;
-            credentialIdx = slClaim.idx;
-            break;
-          }
-        }
+      if (ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)) return;
 
-        if (statusListUri) {
-          const fetcher = fetchWithConfig(orchestrator.getConfig().network);
-          const response = await fetcher(statusListUri);
-          statusListResponseStatus = response.status;
-          statusListContentType = response.headers.get("content-type");
-          statusListContentEncoding = response.headers.get("content-encoding");
-          statusListJwt = await response.text();
+      const credentials =
+        getCredentialResponseCredentials(result.credentialResponse.response) ??
+        [];
 
-          const jwtPayload = decodeJwt(statusListJwt);
-          const slPayloadClaim = jwtPayload["status_list"] as
-            | undefined
-            | { bits: number; lst: string };
-          if (slPayloadClaim) {
-            statusListBits = slPayloadClaim.bits;
-            statusListLst = slPayloadClaim.lst;
-            decompressedList = StatusList.decompressStatusList(
-              statusListLst,
-              statusListBits as 1 | 2 | 4 | 8,
-            );
-          }
-        }
-      }
+      const fetcher = fetchWithConfig(orchestrator.getConfig().network);
+      // Credentials issued in a batch usually share a Status List Token:
+      // fetch every distinct uri only once.
+      const pending = new Map<string, Promise<StatusListData>>();
+      const fetchStatusList = (uri: string): Promise<StatusListData> => {
+        const cached = pending.get(uri) ?? fetchStatusListData(fetcher, uri);
+        pending.set(uri, cached);
+        return cached;
+      };
+
+      credentialContexts = await Promise.all(
+        credentials.map((credentialObj, index) =>
+          resolveCredentialStatus(
+            credentialObj.credential,
+            index + 1,
+            ioWalletSdkConfig.itWalletSpecsVersion,
+            fetchStatusList,
+          ),
+        ),
+      );
+
+      baseLog.debug(
+        `Status list contexts resolved for ${credentialContexts.length} issued credential(s)`,
+      );
     });
 
     useTestSummary(baseLog, testConfig.name);
@@ -131,24 +308,23 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListUri || statusListResponseStatus === undefined)
-            throw new Error("missing uri in stasus_list");
+          await forEachStatusList(log, ({ entry, label, statusList }) => {
+            log.debug(`  Status List URI from credential: ${entry.uri}`);
+            log.debug(`  HTTP response status: ${statusList.httpStatus}`);
 
-          log.debug(`→ Status List URI from credential: ${statusListUri}`);
-          log.debug(`  HTTP response status: ${statusListResponseStatus}`);
-
-          expect(
-            statusListResponseStatus,
-            "Status List endpoint MUST return HTTP 2xx",
-          ).toBeGreaterThanOrEqual(200);
-          expect(
-            statusListResponseStatus,
-            "Status List endpoint MUST return HTTP 2xx",
-          ).toBeLessThan(300);
-          expect(
-            statusListJwt,
-            "Status List response body MUST be a non-empty JWT string",
-          ).toBeTruthy();
+            expect(
+              statusList.httpStatus,
+              `${label}: Status List endpoint MUST return HTTP 2xx`,
+            ).toBeGreaterThanOrEqual(200);
+            expect(
+              statusList.httpStatus,
+              `${label}: Status List endpoint MUST return HTTP 2xx`,
+            ).toBeLessThan(300);
+            expect(
+              statusList.jwt,
+              `${label}: Status List response body MUST be a non-empty JWT string`,
+            ).toBeTruthy();
+          });
 
           testSuccess = true;
         } finally {
@@ -173,29 +349,32 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (credentialIdx === undefined || !decompressedList)
-            throw new Error("missing idx in status_list");
+          await forEachStatusList(log, (context) => {
+            const { idx } = context.entry;
+            const { label } = context;
+            const list = requireDecompressedList(context);
 
-          const idx = credentialIdx as number;
-          const list = decompressedList as StatusList;
+            log.debug(`  credential idx: ${idx}`);
 
-          log.debug(`→ credential idx: ${idx}`);
+            expect(
+              Number.isInteger(idx),
+              `${label}: idx MUST be an integer`,
+            ).toBe(true);
+            expect(
+              idx,
+              `${label}: idx MUST be a non-negative integer`,
+            ).toBeGreaterThanOrEqual(0);
 
-          expect(Number.isInteger(idx), "idx MUST be an integer").toBe(true);
-          expect(
-            idx,
-            "idx MUST be a non-negative integer",
-          ).toBeGreaterThanOrEqual(0);
-
-          const statusAtIdx = list.getStatus(idx);
-          expect(
-            statusAtIdx,
-            `Status List MUST contain a valid entry at idx=${idx}`,
-          ).toBeDefined();
-          expect(
-            typeof statusAtIdx,
-            "Status value at idx MUST be a number",
-          ).toBe("number");
+            const statusAtIdx = list.getStatus(idx);
+            expect(
+              statusAtIdx,
+              `${label}: Status List MUST contain a valid entry at idx=${idx}`,
+            ).toBeDefined();
+            expect(
+              typeof statusAtIdx,
+              `${label}: Status value at idx MUST be a number`,
+            ).toBe("number");
+          });
 
           testSuccess = true;
         } finally {
@@ -222,35 +401,35 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListJwt)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, async ({ label, statusList }) => {
+            const jwt = statusList.jwt;
+            const header = decodeProtectedHeader(jwt);
+            log.debug(`  JWT header: ${JSON.stringify(header)}`);
 
-          const jwt = statusListJwt as string;
-          const header = decodeProtectedHeader(jwt);
-          log.debug(`  JWT header: ${JSON.stringify(header)}`);
+            expect(header.typ, `${label}: typ MUST be 'statuslist+jwt'`).toBe(
+              "statuslist+jwt",
+            );
 
-          expect(header.typ, "typ MUST be 'statuslist+jwt'").toBe(
-            "statuslist+jwt",
-          );
+            const x5c = header.x5c as string[] | undefined;
+            expect(
+              Array.isArray(x5c) && x5c.length > 0,
+              `${label}: x5c MUST be present and non-empty for signature verification`,
+            ).toBe(true);
 
-          const x5c = header.x5c as string[] | undefined;
-          expect(
-            Array.isArray(x5c) && x5c.length > 0,
-            "x5c MUST be present and non-empty for signature verification",
-          ).toBe(true);
+            expect(
+              typeof header.alg,
+              `${label}: alg MUST be present as a string`,
+            ).toBe("string");
+            const alg = header.alg as string;
+            const leafCert = (x5c as string[])[0];
+            const pem = `-----BEGIN CERTIFICATE-----\n${leafCert}\n-----END CERTIFICATE-----`;
+            const publicKey = await importX509(pem, alg);
 
-          expect(typeof header.alg, "alg MUST be present as a string").toBe(
-            "string",
-          );
-          const alg = header.alg as string;
-          const leafCert = (x5c as string[])[0];
-          const pem = `-----BEGIN CERTIFICATE-----\n${leafCert}\n-----END CERTIFICATE-----`;
-          const publicKey = await importX509(pem, alg);
-
-          await expect(
-            jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
-            "JWT signature MUST be valid against the x5c leaf certificate",
-          ).resolves.toBeDefined();
+            await expect(
+              jwtVerify(jwt, publicKey, { typ: "statuslist+jwt" }),
+              `${label}: JWT signature MUST be valid against the x5c leaf certificate`,
+            ).resolves.toBeDefined();
+          });
 
           testSuccess = true;
         } finally {
@@ -275,18 +454,22 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (statusListBits === undefined)
-            throw new Error("could not load status bits");
+          await forEachStatusList(log, (context) => {
+            const { bits } = requireStatusListClaim(context);
+            const { label } = context;
 
-          const bits = statusListBits as number;
-          log.debug(`→ bits per entry: ${bits}`);
+            log.debug(`  bits per entry: ${bits}`);
 
-          const VALID_BITS = [1, 2, 4, 8];
-          expect(
-            VALID_BITS.includes(bits),
-            `bits MUST be one of {1, 2, 4, 8}; got ${bits}`,
-          ).toBe(true);
-          expect(Number.isInteger(bits), "bits MUST be an integer").toBe(true);
+            const VALID_BITS = [1, 2, 4, 8];
+            expect(
+              VALID_BITS.includes(bits),
+              `${label}: bits MUST be one of {1, 2, 4, 8}; got ${bits}`,
+            ).toBe(true);
+            expect(
+              Number.isInteger(bits),
+              `${label}: bits MUST be an integer`,
+            ).toBe(true);
+          });
 
           testSuccess = true;
         } finally {
@@ -313,29 +496,25 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (
-            !statusListLst ||
-            !decompressedList ||
-            credentialIdx === undefined
-          )
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { lst } = requireStatusListClaim(context);
+            const list = requireDecompressedList(context);
+            const { idx } = context.entry;
+            const { label } = context;
 
-          const lst = statusListLst as string;
-          const list = decompressedList as StatusList;
-          const idx = credentialIdx as number;
+            log.debug(`  lst (compressed, base64url): ${lst.slice(0, 20)}...`);
 
-          log.debug(`→ lst (compressed, base64url): ${lst.slice(0, 20)}...`);
+            expect(
+              lst.length,
+              `${label}: Compressed status list (lst) MUST be non-empty`,
+            ).toBeGreaterThan(0);
 
-          expect(
-            lst.length,
-            "Compressed status list (lst) MUST be non-empty",
-          ).toBeGreaterThan(0);
-
-          const statusAtIdx = list.getStatus(idx);
-          expect(
-            statusAtIdx,
-            `Byte array MUST have a valid entry at credential idx=${idx}`,
-          ).toBeDefined();
+            const statusAtIdx = list.getStatus(idx);
+            expect(
+              statusAtIdx,
+              `${label}: Byte array MUST have a valid entry at credential idx=${idx}`,
+            ).toBeDefined();
+          });
 
           testSuccess = true;
         } finally {
@@ -362,18 +541,19 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!decompressedList || credentialIdx === undefined)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const list = requireDecompressedList(context);
+            const { idx } = context.entry;
+            const { label } = context;
 
-          const list = decompressedList as StatusList;
-          const idx = credentialIdx as number;
+            const statusValue = list.getStatus(idx);
+            log.debug(`  status at idx ${idx}: ${statusValue}`);
 
-          const statusValue = list.getStatus(idx);
-          log.debug(`→ status at idx ${idx}: ${statusValue}`);
-
-          expect(statusValue, `Status at idx=${idx} MUST be VALID (0x00)`).toBe(
-            0x00,
-          );
+            expect(
+              statusValue,
+              `${label}: Status at idx=${idx} MUST be VALID (0x00)`,
+            ).toBe(0x00);
+          });
 
           testSuccess = true;
         } finally {
@@ -390,7 +570,7 @@ testConfigs.forEach((testConfig) => {
       "CI_181: Status List Byte Array Compression | lst is DEFLATE/ZLIB compressed (RFC 1951/RFC 1950)",
       { skip: ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0) },
       async () => {
-        const log = baseLog.withTag("CI_180");
+        const log = baseLog.withTag("CI_181");
         const DESCRIPTION =
           "Status List byte array is compressed with DEFLATE/ZLIB as required by the spec";
 
@@ -398,24 +578,23 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListLst || statusListBits === undefined)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { bits, lst } = requireStatusListClaim(context);
+            const { label } = context;
 
-          const lst = statusListLst as string;
-          const bits = statusListBits as 1 | 2 | 4 | 8;
+            let decompressionSucceeded = false;
+            try {
+              StatusList.decompressStatusList(lst, bits as 1 | 2 | 4 | 8);
+              decompressionSucceeded = true;
+            } catch {
+              decompressionSucceeded = false;
+            }
 
-          let decompressionSucceeded = false;
-          try {
-            StatusList.decompressStatusList(lst, bits);
-            decompressionSucceeded = true;
-          } catch {
-            decompressionSucceeded = false;
-          }
-
-          expect(
-            decompressionSucceeded,
-            "lst field MUST be DEFLATE/ZLIB compressed and successfully decompressible",
-          ).toBe(true);
+            expect(
+              decompressionSucceeded,
+              `${label}: lst field MUST be DEFLATE/ZLIB compressed and successfully decompressible`,
+            ).toBe(true);
+          });
 
           testSuccess = true;
         } finally {
@@ -440,28 +619,25 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (
-            !statusListLst ||
-            !decompressedList ||
-            statusListBits === undefined
-          )
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { lst } = requireStatusListClaim(context);
+            const list = requireDecompressedList(context);
+            const { label } = context;
 
-          const lst = statusListLst as string;
-          const list = decompressedList as StatusList;
+            log.debug(`  lst length (compressed, base64url): ${lst.length}`);
 
-          log.debug(`→ lst length (compressed, base64url): ${lst.length}`);
+            // Verify decompression produces valid data with an entry at index 0
+            const statusAtZero = list.getStatus(0);
+            expect(
+              typeof statusAtZero,
+              `${label}: Decompressed status list MUST have a valid entry at index 0`,
+            ).toBe("number");
 
-          // Verify decompression produces valid data with an entry at index 0
-          const statusAtZero = list.getStatus(0);
-          expect(
-            typeof statusAtZero,
-            "Decompressed status list MUST have a valid entry at index 0",
-          ).toBe("number");
-
-          expect(lst.length, "Compressed lst MUST be present").toBeGreaterThan(
-            0,
-          );
+            expect(
+              lst.length,
+              `${label}: Compressed lst MUST be present`,
+            ).toBeGreaterThan(0);
+          });
 
           testSuccess = true;
         } finally {
@@ -486,20 +662,19 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListUri || statusListResponseStatus === undefined)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, ({ entry, label, statusList }) => {
+            log.debug(`  Status List endpoint: ${entry.uri}`);
+            log.debug(`  HTTP response status: ${statusList.httpStatus}`);
 
-          log.debug(`→ Status List endpoint: ${statusListUri}`);
-          log.debug(`  HTTP response status: ${statusListResponseStatus}`);
-
-          expect(
-            statusListResponseStatus,
-            "Endpoint MUST return HTTP 2xx",
-          ).toBeGreaterThanOrEqual(200);
-          expect(
-            statusListResponseStatus,
-            "Endpoint MUST return HTTP 2xx",
-          ).toBeLessThan(300);
+            expect(
+              statusList.httpStatus,
+              `${label}: Endpoint MUST return HTTP 2xx`,
+            ).toBeGreaterThanOrEqual(200);
+            expect(
+              statusList.httpStatus,
+              `${label}: Endpoint MUST return HTTP 2xx`,
+            ).toBeLessThan(300);
+          });
 
           testSuccess = true;
         } finally {
@@ -524,43 +699,40 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (
-            !decompressedList ||
-            credentialIdx === undefined ||
-            statusListBits === undefined
-          )
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { bits } = requireStatusListClaim(context);
+            const list = requireDecompressedList(context);
+            const { idx } = context.entry;
+            const { label } = context;
 
-          const list = decompressedList as StatusList;
-          const idx = credentialIdx as number;
-          const bits = statusListBits as number;
+            const maxAllowed = Math.pow(2, bits) - 1;
+            const statusValue = list.getStatus(idx);
+            log.debug(
+              `  status at idx ${idx}: ${statusValue} (allowed range: [0, ${maxAllowed}])`,
+            );
 
-          const maxAllowed = Math.pow(2, bits) - 1;
-          const statusValue = list.getStatus(idx);
-          log.debug(
-            `→ status at idx ${idx}: ${statusValue} (allowed range: [0, ${maxAllowed}])`,
-          );
+            expect(
+              typeof statusValue,
+              `${label}: Status value MUST be a number`,
+            ).toBe("number");
+            expect(
+              statusValue as number,
+              `${label}: Status value MUST be >= 0`,
+            ).toBeGreaterThanOrEqual(0);
+            expect(
+              statusValue as number,
+              `${label}: Status value MUST be <= ${maxAllowed} for bits=${bits}`,
+            ).toBeLessThanOrEqual(maxAllowed);
 
-          expect(typeof statusValue, "Status value MUST be a number").toBe(
-            "number",
-          );
-          expect(
-            statusValue as number,
-            "Status value MUST be >= 0",
-          ).toBeGreaterThanOrEqual(0);
-          expect(
-            statusValue as number,
-            `Status value MUST be <= ${maxAllowed} for bits=${bits}`,
-          ).toBeLessThanOrEqual(maxAllowed);
-
-          // 0x00 = VALID, 0x01 = INVALID, 0x02 = SUSPENDED, 0x03 = APPLICATION_SPECIFIC
-          const specDefinedValues = [0x00, 0x01, 0x02, 0x03];
-          const isSpecDefined = specDefinedValues.includes(
-            statusValue as number,
-          );
-          log.debug(
-            `  Value ${statusValue} is ${isSpecDefined ? "spec-defined" : "application-specific"}`,
-          );
+            // 0x00 = VALID, 0x01 = INVALID, 0x02 = SUSPENDED, 0x03 = APPLICATION_SPECIFIC
+            const specDefinedValues = [0x00, 0x01, 0x02, 0x03];
+            const isSpecDefined = specDefinedValues.includes(
+              statusValue as number,
+            );
+            log.debug(
+              `  Value ${statusValue} is ${isSpecDefined ? "spec-defined" : "application-specific"}`,
+            );
+          });
 
           testSuccess = true;
         } finally {
@@ -585,32 +757,30 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (
-            statusListBits === undefined ||
-            !decompressedList ||
-            credentialIdx === undefined
-          )
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { bits } = requireStatusListClaim(context);
+            const list = requireDecompressedList(context);
+            const { idx } = context.entry;
+            const { label } = context;
 
-          const list = decompressedList as StatusList;
-          const idx = credentialIdx as number;
-          const bits = statusListBits as number;
+            const maxAllowed = Math.pow(2, bits) - 1;
+            log.debug(
+              `  bits=${bits}, allowed value range: [0, ${maxAllowed}]`,
+            );
+            log.debug(
+              `  Values 0–3 are spec-defined; values 4–${maxAllowed} are application-specific (for bits=4)`,
+            );
 
-          const maxAllowed = Math.pow(2, bits) - 1;
-          log.debug(`→ bits=${bits}, allowed value range: [0, ${maxAllowed}]`);
-          log.debug(
-            `  Values 0–3 are spec-defined; values 4–${maxAllowed} are application-specific (for bits=4)`,
-          );
-
-          const statusValue = list.getStatus(idx);
-          expect(
-            statusValue as number,
-            `Status value at idx MUST be within range [0, ${maxAllowed}]`,
-          ).toBeGreaterThanOrEqual(0);
-          expect(
-            statusValue as number,
-            `Status value MUST NOT exceed max=${maxAllowed} for bits=${bits}`,
-          ).toBeLessThanOrEqual(maxAllowed);
+            const statusValue = list.getStatus(idx);
+            expect(
+              statusValue as number,
+              `${label}: Status value at idx MUST be within range [0, ${maxAllowed}]`,
+            ).toBeGreaterThanOrEqual(0);
+            expect(
+              statusValue as number,
+              `${label}: Status value MUST NOT exceed max=${maxAllowed} for bits=${bits}`,
+            ).toBeLessThanOrEqual(maxAllowed);
+          });
 
           testSuccess = true;
         } finally {
@@ -635,38 +805,41 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListJwt)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, ({ label, statusList }) => {
+            const jwtPayload = decodeJwt(statusList.jwt);
+            log.debug(
+              `  Payload claims: ${JSON.stringify(Object.keys(jwtPayload))}`,
+            );
 
-          const jwt = statusListJwt as string;
-          const jwtPayload = decodeJwt(jwt);
-          log.debug(
-            `  Payload claims: ${JSON.stringify(Object.keys(jwtPayload))}`,
-          );
+            expect(
+              typeof jwtPayload.iss,
+              `${label}: iss (issuer) MUST be present as a string`,
+            ).toBe("string");
+            expect(
+              typeof jwtPayload.sub,
+              `${label}: sub MUST be present as a string (Status List Token URI)`,
+            ).toBe("string");
+            expect(
+              typeof jwtPayload.iat,
+              `${label}: iat MUST be present as a number`,
+            ).toBe("number");
 
-          expect(
-            typeof jwtPayload.iss,
-            "iss (issuer) MUST be present as a string",
-          ).toBe("string");
-          expect(
-            typeof jwtPayload.sub,
-            "sub MUST be present as a string (Status List Token URI)",
-          ).toBe("string");
-          expect(typeof jwtPayload.iat, "iat MUST be present as a number").toBe(
-            "number",
-          );
-
-          const slClaim = jwtPayload["status_list"] as
-            | undefined
-            | { bits: unknown; lst: unknown };
-          expect(slClaim, "status_list claim MUST be present").toBeDefined();
-          expect(
-            typeof slClaim?.bits,
-            "status_list.bits MUST be a number",
-          ).toBe("number");
-          expect(typeof slClaim?.lst, "status_list.lst MUST be a string").toBe(
-            "string",
-          );
+            const slClaim = jwtPayload["status_list"] as
+              | undefined
+              | { bits: unknown; lst: unknown };
+            expect(
+              slClaim,
+              `${label}: status_list claim MUST be present`,
+            ).toBeDefined();
+            expect(
+              typeof slClaim?.bits,
+              `${label}: status_list.bits MUST be a number`,
+            ).toBe("number");
+            expect(
+              typeof slClaim?.lst,
+              `${label}: status_list.lst MUST be a string`,
+            ).toBe("string");
+          });
 
           testSuccess = true;
         } finally {
@@ -691,23 +864,21 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListJwt)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, ({ label, statusList }) => {
+            const { exp, iat } = decodeJwt(statusList.jwt);
 
-          const jwtPayload = decodeJwt(statusListJwt as string);
-          const { exp, iat } = jwtPayload;
+            expect(typeof iat, `${label}: iat MUST be a number`).toBe("number");
+            expect(exp, `${label}: exp MUST be defined`).toBeDefined();
+            expect(typeof exp, `${label}: exp MUST be a number`).toBe("number");
 
-          expect(typeof iat, "iat MUST be a number").toBe("number");
-          expect(exp, "exp MUST be defined").toBeDefined();
-          expect(typeof exp, "exp MUST be a number").toBe("number");
+            const maxExp = (iat as number) + 86400;
+            log.debug(`  iat=${iat}, exp=${exp}, iat+86400=${maxExp}`);
 
-          const maxExp = (iat as number) + 86400;
-          log.debug(`→ iat=${iat}, exp=${exp}, iat+86400=${maxExp}`);
-
-          expect(
-            exp as number,
-            `exp MUST NOT exceed iat + 86400 (24 h); exp=${exp}, max=${maxExp}`,
-          ).toBeLessThanOrEqual(maxExp);
+            expect(
+              exp as number,
+              `${label}: exp MUST NOT exceed iat + 86400 (24 h); exp=${exp}, max=${maxExp}`,
+            ).toBeLessThanOrEqual(maxExp);
+          });
 
           testSuccess = true;
         } finally {
@@ -732,37 +903,35 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (statusListBits === undefined || !statusListLst)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, (context) => {
+            const { bits, lst } = requireStatusListClaim(context);
+            const { label } = context;
 
-          const bits = statusListBits as number;
-          const lst = statusListLst as string;
+            log.debug(`  status_list.bits: ${bits}`);
+            log.debug(
+              `  status_list.lst (first 20 chars): ${lst.slice(0, 20)}...`,
+            );
 
-          log.debug(`→ status_list.bits: ${bits}`);
-          log.debug(
-            `→ status_list.lst (first 20 chars): ${lst.slice(0, 20)}...`,
-          );
+            expect(
+              Number.isInteger(bits),
+              `${label}: status_list.bits MUST be an integer`,
+            ).toBe(true);
 
-          expect(
-            Number.isInteger(bits),
-            "status_list.bits MUST be an integer",
-          ).toBe(true);
+            const VALID_BITS = [1, 2, 4, 8];
+            expect(
+              VALID_BITS.includes(bits),
+              `${label}: status_list.bits MUST be one of {1, 2, 4, 8}`,
+            ).toBe(true);
 
-          const VALID_BITS = [1, 2, 4, 8];
-          expect(
-            VALID_BITS.includes(bits),
-            "status_list.bits MUST be one of {1, 2, 4, 8}",
-          ).toBe(true);
-
-          expect(typeof lst, "status_list.lst MUST be a string").toBe("string");
-          expect(
-            lst.length,
-            "status_list.lst MUST not be empty",
-          ).toBeGreaterThan(0);
-          expect(
-            /^[A-Za-z0-9_-]+$/.test(lst),
-            "status_list.lst MUST be base64url-encoded (JWT base64url alphabet, no padding)",
-          ).toBe(true);
+            expect(
+              lst.length,
+              `${label}: status_list.lst MUST not be empty`,
+            ).toBeGreaterThan(0);
+            expect(
+              /^[A-Za-z0-9_-]+$/.test(lst),
+              `${label}: status_list.lst MUST be base64url-encoded (JWT base64url alphabet, no padding)`,
+            ).toBe(true);
+          });
 
           testSuccess = true;
         } finally {
@@ -789,34 +958,38 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (credentialIdx === undefined || !statusListUri)
-            throw new Error("missing uri/idx in status_list");
+          await forEachStatusList(log, ({ entry, label }) => {
+            const { idx, uri } = entry;
 
-          const idx = credentialIdx as number;
-          const uri = statusListUri as string;
+            log.debug(`  status_list.idx: ${idx}`);
+            log.debug(`  status_list.uri: ${uri}`);
 
-          log.debug(`→ status_list.idx: ${idx}`);
-          log.debug(`→ status_list.uri: ${uri}`);
+            expect(
+              typeof idx,
+              `${label}: status_list.idx MUST be a number`,
+            ).toBe("number");
+            expect(
+              Number.isInteger(idx),
+              `${label}: status_list.idx MUST be an integer`,
+            ).toBe(true);
+            expect(
+              idx,
+              `${label}: status_list.idx MUST be a non-negative integer`,
+            ).toBeGreaterThanOrEqual(0);
 
-          expect(typeof idx, "status_list.idx MUST be a number").toBe("number");
-          expect(
-            Number.isInteger(idx),
-            "status_list.idx MUST be an integer",
-          ).toBe(true);
-          expect(
-            idx,
-            "status_list.idx MUST be a non-negative integer",
-          ).toBeGreaterThanOrEqual(0);
-
-          expect(typeof uri, "status_list.uri MUST be a string").toBe("string");
-          expect(
-            uri.length,
-            "status_list.uri MUST not be empty",
-          ).toBeGreaterThan(0);
-          expect(
-            () => new URL(uri),
-            "status_list.uri MUST be a valid URL",
-          ).not.toThrow();
+            expect(
+              typeof uri,
+              `${label}: status_list.uri MUST be a string`,
+            ).toBe("string");
+            expect(
+              uri.length,
+              `${label}: status_list.uri MUST not be empty`,
+            ).toBeGreaterThan(0);
+            expect(
+              () => new URL(uri),
+              `${label}: status_list.uri MUST be a valid URL`,
+            ).not.toThrow();
+          });
 
           testSuccess = true;
         } finally {
@@ -841,24 +1014,23 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListUri || statusListResponseStatus === undefined)
-            throw new Error("could not load status_list response");
+          await forEachStatusList(log, ({ label, statusList }) => {
+            log.debug(`  HTTP status: ${statusList.httpStatus}`);
+            log.debug(`  Content-Type: ${statusList.contentType}`);
 
-          log.debug(`  HTTP status: ${statusListResponseStatus}`);
-          log.debug(`  Content-Type: ${statusListContentType}`);
-
-          expect(
-            statusListResponseStatus,
-            "Endpoint MUST return HTTP 2xx",
-          ).toBeGreaterThanOrEqual(200);
-          expect(
-            statusListResponseStatus,
-            "Endpoint MUST return HTTP 2xx",
-          ).toBeLessThan(300);
-          expect(
-            statusListContentType,
-            "Content-Type MUST contain 'application/statuslist+jwt'",
-          ).toContain("application/statuslist+jwt");
+            expect(
+              statusList.httpStatus,
+              `${label}: Endpoint MUST return HTTP 2xx`,
+            ).toBeGreaterThanOrEqual(200);
+            expect(
+              statusList.httpStatus,
+              `${label}: Endpoint MUST return HTTP 2xx`,
+            ).toBeLessThan(300);
+            expect(
+              statusList.contentType,
+              `${label}: Content-Type MUST contain 'application/statuslist+jwt'`,
+            ).toContain("application/statuslist+jwt");
+          });
 
           testSuccess = true;
         } finally {
@@ -883,20 +1055,19 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          if (!statusListUri) throw new Error("missing uri in status_list");
+          await forEachStatusList(log, ({ label, statusList }) => {
+            log.debug(`  Content-Encoding: ${statusList.contentEncoding}`);
 
-          log.debug(`  Content-Encoding: ${statusListContentEncoding}`);
+            if (!statusList.contentEncoding) {
+              log.info(`  ${label}: 'Content-Encoding' header missing`);
+              return;
+            }
 
-          if (!statusListContentEncoding) {
-            log.info("'Content-Encoding' header missing");
-            testSuccess = true;
-            return log.testCompleted(DESCRIPTION, true);
-          }
-
-          expect(
-            statusListContentEncoding,
-            "Content-Encoding MUST be 'gzip'",
-          ).toBe("gzip");
+            expect(
+              statusList.contentEncoding,
+              `${label}: Content-Encoding MUST be 'gzip'`,
+            ).toBe("gzip");
+          });
 
           testSuccess = true;
         } finally {
