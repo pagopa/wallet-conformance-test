@@ -31,10 +31,14 @@ export interface CredentialWithKey {
   typ: "dc+sd-jwt" | "mso_mdoc";
 }
 
+export type DcqlClaimPath = (number | string)[];
+
 export type DcqlMatchSuccess = Extract<
   DcqlQueryResult.CredentialMatch,
   { success: true }
 >;
+
+export type DcqlValidCredential = DcqlMatchSuccess["valid_credentials"][number];
 
 export type StatusClaim = StatusClaimV1_0 | StatusListClaim;
 
@@ -57,6 +61,7 @@ export interface StatusListClaim {
 export interface VpTokenOptions {
   client_id: string;
   credential: string;
+  dcqlClaimPaths?: DcqlClaimPath[];
   dcqlQuery: DcqlQuery.Input;
   dpopJwk: KeyPair["privateKey"];
   nonce: string;
