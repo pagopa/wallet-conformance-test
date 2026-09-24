@@ -103,6 +103,7 @@ function newLogger(options?: Partial<ConsolaOptions>): Logger {
     setLogOptions,
     testCompleted,
     testFailed,
+    testSkipped,
     testSuite,
     testSummary,
     withTag,
@@ -196,6 +197,21 @@ function testCompleted(
  */
 function testFailed(this: Logger) {
   this.error("Test failed ❌");
+}
+
+/**
+ * Prints a single-line result for a test that never executed:
+ *   ⏭️  Credential Offer URI has correct structure   (skipped by test options)
+ *
+ * Emitted by the conformance reporter so that skipped tests and tests whose
+ * suite setup failed still leave a trace in the log file.
+ *
+ * @param description Human-readable test description
+ * @param reason      Optional explanation of why the test did not run
+ */
+function testSkipped(this: Logger, description: string, reason?: string) {
+  const suffix = reason ? `   (${reason})` : "";
+  this.info(`⏭️  ${description}${suffix}`);
 }
 
 /**
@@ -320,6 +336,7 @@ function withTag(this: Logger, tag: string): Logger {
     setLogOptions,
     testCompleted,
     testFailed,
+    testSkipped,
     testSuite,
     testSummary,
     withTag,
