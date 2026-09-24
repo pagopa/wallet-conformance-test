@@ -86,12 +86,6 @@ export async function buildMockMdlMdoc(
         string,
         unknown
       >,
-      status: {
-        statusList: {
-          idx: 0,
-          uri: `${issuerBaseUrl}/status-list`,
-        },
-      },
       validityInfo: {
         signed: new Date(),
         validFrom: new Date(),
@@ -182,12 +176,6 @@ export async function buildMockSdJwt(
       exp: Math.floor(expiration.getTime() / 1000),
       iat: Math.floor(Date.now() / 1000),
       iss: metadata.iss,
-      status: {
-        status_list: {
-          idx: 0,
-          uri: `${metadata.iss}/status-list`,
-        },
-      },
       sub: unitKey.kid,
       vct,
       "vct#integrity": vctIntegrity,
