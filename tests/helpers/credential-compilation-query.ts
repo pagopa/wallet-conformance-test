@@ -39,8 +39,15 @@ export function buildCredentialCompilationQuery(
   const mandatoryClaims = metadataClaims.filter(isMandatoryClaim);
   const hasAdministrativeNumberAlternative =
     mandatoryClaims.some((claim) =>
-      isClaimAtPath(claim, "personal_administrative_number"),
-    ) && mandatoryClaims.some((claim) => isClaimAtPath(claim, "tax_id_code"));
+      isClaimAtPath(
+        claim,
+        "personal_administrative_number",
+        configuration.format,
+      ),
+    ) &&
+    mandatoryClaims.some((claim) =>
+      isClaimAtPath(claim, "tax_id_code", configuration.format),
+    );
 
   const claims = mandatoryClaims.map((claim, index) => ({
     ...(hasAdministrativeNumberAlternative
@@ -52,10 +59,15 @@ export function buildCredentialCompilationQuery(
   let claimSets: [string[], string[]] | undefined;
   if (hasAdministrativeNumberAlternative) {
     const taxIdIndex = mandatoryClaims.findIndex((claim) =>
-      isClaimAtPath(claim, "tax_id_code"),
+      isClaimAtPath(claim, "tax_id_code", configuration.format),
     );
     const personalAdministrativeNumberIndex = mandatoryClaims.findIndex(
-      (claim) => isClaimAtPath(claim, "personal_administrative_number"),
+      (claim) =>
+        isClaimAtPath(
+          claim,
+          "personal_administrative_number",
+          configuration.format,
+        ),
     );
     const taxIdClaim = mandatoryClaims[taxIdIndex];
     const personalAdministrativeNumberClaim =
@@ -74,8 +86,12 @@ export function buildCredentialCompilationQuery(
       .map((claim, index) => ({ claim, id: getClaimId(claim, index) }))
       .filter(
         ({ claim }) =>
-          !isClaimAtPath(claim, "tax_id_code") &&
-          !isClaimAtPath(claim, "personal_administrative_number"),
+          !isClaimAtPath(claim, "tax_id_code", configuration.format) &&
+          !isClaimAtPath(
+            claim,
+            "personal_administrative_number",
+            configuration.format,
+          ),
       )
       .map(({ id }) => id);
 
@@ -145,8 +161,13 @@ function getClaimId(claim: CredentialCompilationClaim, index: number): string {
 function isClaimAtPath(
   claim: CredentialCompilationClaim,
   path: string,
+  format: CredentialCompilationConfiguration["format"],
 ): boolean {
-  return claim.path.length === 1 && claim.path[0] === path;
+  if (format === "dc+sd-jwt") {
+    return claim.path.length === 1 && claim.path[0] === path;
+  }
+
+  return claim.path.length === 2 && claim.path[1] === path;
 }
 
 function isMandatoryClaim(claim: CredentialCompilationClaim): boolean {
