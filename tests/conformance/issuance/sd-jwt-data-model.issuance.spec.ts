@@ -365,7 +365,6 @@ testConfigs.forEach((testConfig) => {
           "sub",
           "vct",
           "vct#integrity",
-          "verification",
         ]);
 
         const instance = new SDJwtVcInstance({ hasher: digest });

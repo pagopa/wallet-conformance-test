@@ -1,7 +1,6 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import { decodeSdJwt } from "@sd-jwt/decode";
-import { DisclosureData } from "@sd-jwt/types";
 import { DcqlMdocCredential, DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import type { Logger } from "@/types/logger";
@@ -116,6 +115,8 @@ export function parseCredentialFromMdoc(
 /**
  * Parses an SD-JWT credential and transforms it into the format required for DCQL processing.
  *
+ * NOTE: currently it does not support _sd disclosures nested in other properties or in arrays
+ *
  * @param credential The credential in SD-JWT format.
  * @returns A promise that resolves to the parsed credential in `DcqlSdJwtVcCredential` format.
  * @throws An error if the credential format is unsupported or if the `vct` claim is missing.
@@ -125,15 +126,18 @@ export async function parseCredentialFromSdJwt(
 ): Promise<DcqlSdJwtVcCredential> {
   const { disclosures, jwt } = await decodeSdJwt(credential, digest);
 
-  const claims = disclosures.reduce(
-    (acc, disclosure) => {
-      const disclosureData = disclosure.decode();
-      const claim = disclosureData[1] as string;
-      acc[claim] = disclosureData;
-      return acc;
-    },
-    {} as Record<string, DisclosureData<unknown>>,
-  );
+  const claims = Object.fromEntries(
+    Object.entries(jwt.payload).filter(
+      ([claim]) => claim !== "_sd" && claim !== "_sd_alg",
+    ),
+  ) as DcqlSdJwtVcCredential["claims"];
+
+  for (const disclosure of disclosures) {
+    const disclosureData = disclosure.decode();
+    const claim = disclosureData[1] as string;
+    claims[claim] =
+      disclosureData[2] as DcqlSdJwtVcCredential["claims"][string];
+  }
 
   const credentialFormat = jwt.header.typ;
   if (credentialFormat !== "dc+sd-jwt") {

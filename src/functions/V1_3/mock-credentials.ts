@@ -169,6 +169,7 @@ export async function buildMockSdJwt(
       "nationalities",
       "personal_administrative_number",
       "tax_id_code",
+      "verification",
     ],
   };
 
