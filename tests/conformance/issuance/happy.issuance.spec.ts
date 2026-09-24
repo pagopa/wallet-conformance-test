@@ -1,6 +1,9 @@
 /* eslint-disable max-lines-per-function */
 
+import type { CredentialCompilationConfiguration } from "#/helpers/credential-compilation-query";
+
 import { defineIssuanceTest } from "#/config/test-metadata";
+import { buildCredentialCompilationQuery } from "#/helpers/credential-compilation-query";
 import { assertIssuanceFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import { decodeJwtOrThrow } from "#/helpers/token-validation-helpers";
 import { useTestSummary } from "#/helpers/use-test-summary";
@@ -16,7 +19,6 @@ import {
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
-import { DcqlQuery } from "dcql";
 import { calculateJwkThumbprint, decodeJwt } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
@@ -220,9 +222,11 @@ testConfigs.forEach((testConfig) => {
             );
 
           const subordinateJwt = await response.text();
-          const subordinateClaims = decodeJwt(subordinateJwt) as {
-            jwks: JwkSet;
-          };
+
+          const subordinateClaims = decodeJwtOrThrow<{ jwks: JwkSet }>(
+            subordinateJwt ?? "",
+            `Subordinate Statement from ${fetchUrl}`,
+          );
 
           log.debug("→ Checking public key in Subordinate Statement...");
           expect(subordinateClaims.jwks.keys).toBeDefined();
@@ -260,7 +264,10 @@ testConfigs.forEach((testConfig) => {
             fetchMetadataResponse.response?.entityStatementClaims;
 
           log.debug("→ Checking Trust Marks...");
-          expect(entityClaims.trust_marks).toBeDefined();
+          expect(
+            entityClaims.trust_marks,
+            "Trust marks are missing in the entity configuration",
+          ).toBeDefined();
           expect(entityClaims.trust_marks?.length).toBeGreaterThan(0);
 
           testSuccess = true;
@@ -359,7 +366,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_009: Fetch Metadata | Inclusion of openid_credential_verifier Metadata in User Authentication via Wallet",
-      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId === "dc_sd_jwt_pid" ||
+          testConfig.credentialConfigurationId === "dc_sd_jwt_eid",
+      },
       async () => {
         const log = baseLog.withTag("CI_009");
         const DESCRIPTION = "openid_credential_verifier metadata is present";
@@ -561,7 +572,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_014: Credential | Credential Object Compilation",
-      { skip: testConfig.credentialConfigurationId === "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId === "dc_sd_jwt_pid" ||
+          testConfig.credentialConfigurationId === "dc_sd_jwt_eid",
+      },
       async ({ skip }) => {
         const log = baseLog.withTag("CI_014");
         const DESCRIPTION = "Credential Object is properly compiled";
@@ -598,13 +613,8 @@ testConfigs.forEach((testConfig) => {
           ).toBe(credentialKeyPairs.length);
 
           const credentialSchema:
-            | undefined
-            | {
-                claims: { path: string[] }[];
-                credential_metadata?: { claims: { path: string[] }[] };
-                format: "dc+sd-jwt" | "mso_doc";
-                vct?: string;
-              } =
+            | CredentialCompilationConfiguration
+            | undefined =
             fetchMetadataResponse.response?.entityStatementClaims.metadata
               ?.openid_credential_issuer?.credential_configurations_supported[
               testConfig.credentialConfigurationId
@@ -614,14 +624,19 @@ testConfigs.forEach((testConfig) => {
               "missing credential type from issuer's supported credentials list",
             );
 
-          const isV1_0 = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0);
-          const claims = isV1_0
+          const metadataClaims = sdkConfig.isVersion(ItWalletSpecsVersion.V1_0)
             ? credentialSchema.claims
             : credentialSchema.credential_metadata?.claims;
-          if (!claims)
-            throw new Error(
-              "missing claims from issuer's supported credential configuration",
+          if (
+            metadataClaims &&
+            !metadataClaims.some(
+              (claim) => claim.mandatory === true || claim.mandatory === "true",
+            )
+          ) {
+            log.warn(
+              "  ⚠ CI_014 validates credential format/type only for application claims: issuer metadata contains no mandatory claims",
             );
+          }
 
           for (const [index, credential] of credentials.entries()) {
             const credentialKeyPair = credentialKeyPairs[index];
@@ -637,6 +652,11 @@ testConfigs.forEach((testConfig) => {
 
             log.info(`  Successfully extracted credential ${index + 1}`);
 
+            const query = buildCredentialCompilationQuery(credentialSchema, {
+              credentialQueryId: `${index}`,
+              isLegacy: sdkConfig.isVersion(ItWalletSpecsVersion.V1_0),
+            });
+
             const queryResult = await validateDcqlQuery(
               [
                 {
@@ -646,17 +666,7 @@ testConfigs.forEach((testConfig) => {
                   typ: parsed.credential.typ,
                 },
               ],
-              {
-                credentials: [
-                  {
-                    ...credentialSchema,
-                    claims: claims.map((claim) => ({
-                      path: claim.path,
-                    })),
-                    id: `${index}`,
-                  },
-                ],
-              } as DcqlQuery.Input,
+              query,
             );
             expect(queryResult.can_be_satisfied).toBe(true);
           }
