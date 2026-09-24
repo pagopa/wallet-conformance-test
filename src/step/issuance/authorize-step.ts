@@ -365,8 +365,8 @@ export class AuthorizeDefaultStep extends StepFlow {
       });
     }
 
-    if (options.responseMode === "query") {
-      return this.completeQueryFlow({
+    if (options.responseMode === "direct_post.jwt") {
+      return this.completeDirectPostJwtFlow({
         authorizationResponseJarm,
         options,
         responseUri,
@@ -378,7 +378,7 @@ export class AuthorizeDefaultStep extends StepFlow {
     );
   }
 
-  private async completeQueryFlow({
+  private async completeDirectPostJwtFlow({
     authorizationResponseJarm,
     options,
     responseUri,
@@ -387,7 +387,7 @@ export class AuthorizeDefaultStep extends StepFlow {
     options: AuthorizeStepOptions;
     responseUri: string;
   }): Promise<AuthorizationResponse> {
-    this.log.debug("Completing query flow for authorization response.");
+    this.log.debug("Completing direct_post.jwt flow for authorization response.");
 
     const { redirect_uri } = await fetchAuthorizationResponse({
       authorizationResponseJarm,
@@ -399,7 +399,7 @@ export class AuthorizeDefaultStep extends StepFlow {
 
     if (!redirect_uri) {
       throw new Error(
-        "redirect_uri is missing in the query authorization response",
+        "redirect_uri is missing in the direct_post.jwt authorization response",
       );
     }
 
@@ -420,7 +420,7 @@ export class AuthorizeDefaultStep extends StepFlow {
 
     if (missingParameters.length > 0) {
       throw new Error(
-        `Authorization query redirect is missing parameter(s): ${missingParameters.join(", ")}`,
+        `Authorization redirect is missing parameter(s): ${missingParameters.join(", ")}`,
       );
     }
 
@@ -430,7 +430,7 @@ export class AuthorizeDefaultStep extends StepFlow {
 
     if (!parsedAuthorizationResponse.success) {
       throw new Error(
-        `Invalid authorization query response: ${parsedAuthorizationResponse.error.message}`,
+        `Invalid authorization response: ${parsedAuthorizationResponse.error.message}`,
       );
     }
 

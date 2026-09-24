@@ -12,7 +12,7 @@ import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
-export type IssuanceResponseMode = "form_post.jwt" | "query";
+export type IssuanceResponseMode = "form_post.jwt" | "direct_post.jwt";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
@@ -208,12 +208,12 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
       this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3) ||
       this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)
     ) {
-      return "query";
+      return "direct_post.jwt";
     }
 
     const responseMode = (options as { responseMode?: unknown }).responseMode;
 
-    if (responseMode === "form_post.jwt" || responseMode === "query") {
+    if (responseMode === "form_post.jwt" || responseMode === "direct_post.jwt") {
       return responseMode;
     }
 
