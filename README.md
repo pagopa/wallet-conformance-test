@@ -76,7 +76,13 @@ Alternatively, you can clone the repository and install locally:
    pnpm install -g
    ```
 
-5. Verify the installation by checking the version:
+5. Build the project
+
+   ```bash
+   pnpm build
+   ```
+
+6. Verify the installation by checking the version:
 
    ```bash
    wct --version
@@ -118,12 +124,6 @@ If you encounter an issue where the `wct` command is not available system-wide a
 
    ```bash
    pnpm link --global
-   ```
-
-5. Build the project. Unlike `pnpm install -g`, `pnpm link --global` does not build the project automatically, so `wct` will not work until you do:
-
-   ```bash
-   pnpm build
    ```
 
 ## 🐳 Docker Usage
