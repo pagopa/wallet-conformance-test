@@ -36,7 +36,10 @@ import {
 } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
-import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
+import {
+  AuthorizationRequestExecuteStepResponse,
+  AuthorizationRequestStepResponse,
+} from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
 const SKIPPING_RP_METADATA_MSG =
@@ -57,6 +60,41 @@ const SAME_DEVICE_LEG_ONLY_MSG =
 
 const CROSS_DEVICE_LEG_ONLY_MSG =
   "  ⚠️ RPR-84 requires support for both flows: this run covered the Cross Device Flow leg only. Run again with presentation.flow_type = same-device to cover RPR-84a";
+
+// RPR-13 accepts the JARM encryption key either from the RP's federation JWKS or from an
+// ephemeral key carried in client_metadata.jwks of the Request Object: under
+// openid_federation, client_metadata.jwks may exclusively transport request-specific
+// (ephemeral) encryption keys (eid-wallet-it-docs/docs/it/remote-flow.rst:588-592, WP_092).
+// The normative definition of RPR-13 (test-plans-remote-presentation.rst:70) only requires
+// "one of the RP's keys", not one published in federation.
+function findRpEncryptionKey(
+  kid: string | undefined,
+  rpJwksKeys: Jwk[] | undefined,
+  authorizationRequestResponse:
+    | AuthorizationRequestExecuteStepResponse
+    | undefined,
+): { key: Jwk | undefined; source: string } {
+  const rpKeys = rpJwksKeys ?? [];
+  const clientMetadataJwksKeys =
+    authorizationRequestResponse?.requestObject.client_metadata?.jwks?.keys ??
+    [];
+  if (rpKeys.length === 0 && clientMetadataJwksKeys.length === 0) {
+    throw new Error(
+      "RP JWKS is missing or empty in both verifier metadata and request object client_metadata",
+    );
+  }
+  const rpKey = rpKeys.find((key) => key.kid === kid);
+  if (rpKey) {
+    return { key: rpKey, source: "RP JWKS (federation metadata)" };
+  }
+  const clientMetadataKey = clientMetadataJwksKeys.find(
+    (key) => key.kid === kid,
+  );
+  return {
+    key: clientMetadataKey,
+    source: "client_metadata JWKS (request object, ephemeral key)",
+  };
+}
 
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
@@ -956,24 +994,25 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  kid: ${protectedHeader.kid}`);
 
       log.debug("→ Checking selected key belongs to RP JWKS...");
-      const rpJwksKeys = verifierMetadata.jwks?.keys;
-      if (!Array.isArray(rpJwksKeys) || rpJwksKeys.length === 0) {
-        throw new Error("RP JWKS is missing or empty in verifier metadata");
-      }
-      const rpEncryptionKey = verifierMetadata.jwks.keys.find(
-        (key: Jwk) => key.kid === encryptionJwk.kid,
+      const { key: matchedKey, source: matchedKeySource } = findRpEncryptionKey(
+        encryptionJwk.kid,
+        verifierMetadata.jwks?.keys,
+        authorizationRequestResult.response,
       );
-      expect(rpEncryptionKey).toBeDefined();
-      if (!rpEncryptionKey) {
-        throw new Error("selected encryption key is not present in RP JWKS");
+      expect(matchedKey).toBeDefined();
+      if (!matchedKey) {
+        throw new Error(
+          "selected encryption key is not present in RP JWKS nor in request object client_metadata JWKS",
+        );
       }
-      expect(rpEncryptionKey.use).toBe("enc");
+      log.debug(`  ✅ selected encryption key found in ${matchedKeySource}`);
+      expect(matchedKey.use).toBe("enc");
       expect(encryptionJwk).toMatchObject({
-        crv: rpEncryptionKey.crv,
-        kid: rpEncryptionKey.kid,
-        kty: rpEncryptionKey.kty,
-        x: rpEncryptionKey.x,
-        y: rpEncryptionKey.y,
+        crv: matchedKey.crv,
+        kid: matchedKey.kid,
+        kty: matchedKey.kty,
+        x: matchedKey.x,
+        y: matchedKey.y,
       });
       log.debug("  ✅ selected encryption key is one of the RP public keys");
 
