@@ -273,7 +273,10 @@ export class AuthorizeDefaultStep extends StepFlow {
       `&request_uri=${encodeURIComponent(options.requestUri ?? "")}`;
 
     return this.execute<AuthorizeExecuteResponse>(async () => {
-      if (options.credentialIdentifier === "dc_sd_jwt_pid") {
+      if (
+        options.credentialIdentifier === "dc_sd_jwt_pid" ||
+        options.credentialIdentifier === "dc_sd_jwt_eid"
+      ) {
         return this.handlePidFlow({
           authorizeUrl,
           callbackPort,

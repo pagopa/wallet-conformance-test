@@ -31,14 +31,6 @@ export const assertPidJwtPayloadClaims = (
     "issuing_country must be a 2-character ISO 3166-1 Alpha-2 code in the JWT payload",
   ).toBe(true);
 
-  if (!isV1_0) {
-    expect(
-      typeof payload["verification"] === "object" &&
-        payload["verification"] !== null,
-      "verification must be a non-null object in the JWT payload (V1.3 domestic extension)",
-    ).toBe(true);
-  }
-
   const expiryKey = isV1_0 ? "expiry_date" : "date_of_expiry";
   expect(
     payload[expiryKey],
@@ -90,6 +82,29 @@ export const assertPidSdDisclosures = (
         pobObj["region"] !== undefined ||
         pobObj["locality"] !== undefined,
       "place_of_birth must contain at least one of: country, region, locality",
+    ).toBe(true);
+  }
+
+  if (!isV1_0) {
+    const verification = disclosureMap.get("verification");
+
+    expect(
+      typeof verification === "object" &&
+        verification !== null &&
+        !Array.isArray(verification),
+      "verification must be a non-null object in the SD-JWT disclosures (V1.3 domestic extension)",
+    ).toBe(true);
+
+    const verificationObject = verification as Record<string, unknown>;
+    expect(
+      typeof verificationObject["trust_framework"] === "string" &&
+        verificationObject["trust_framework"].length > 0,
+      "verification.trust_framework must be a non-empty string",
+    ).toBe(true);
+    expect(
+      typeof verificationObject["assurance_level"] === "string" &&
+        verificationObject["assurance_level"].length > 0,
+      "verification.assurance_level must be a non-empty string",
     ).toBe(true);
   }
 
