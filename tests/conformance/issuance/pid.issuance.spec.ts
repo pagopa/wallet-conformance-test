@@ -56,7 +56,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_051: CieID High-Level Authentication | PID Provider successfully performs User authentication based on CieID scheme with LoAHigh (CIE L3)",
-      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" &&
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_eid",
+      },
       async () => {
         const log = baseLog.withTag("CI_051");
         const DESCRIPTION =
@@ -102,7 +106,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_117: Credential | The Italian PID is successfully provided with the User attributes defined in the PID table",
-      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" &&
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_eid",
+      },
       async () => {
         const log = baseLog.withTag("CI_117");
         const DESCRIPTION =
@@ -166,7 +174,11 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_136: Additional PID Claims | Additional claims data is successfully incorporated when required",
-      { skip: testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" },
+      {
+        skip:
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_pid" &&
+          testConfig.credentialConfigurationId !== "dc_sd_jwt_eid",
+      },
       async () => {
         const log = baseLog.withTag("CI_136");
         const DESCRIPTION =
