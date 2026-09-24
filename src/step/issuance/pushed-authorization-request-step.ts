@@ -5,11 +5,14 @@ import {
   fetchPushedAuthorizationResponse,
   fetchPushedAuthorizationResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
+import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
+
+export type IssuanceResponseMode = "form_post.jwt" | "query";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
@@ -17,6 +20,11 @@ export type PushedAuthorizationRequestExecuteResponse =
      * Code verifier used in the Pushed Authorization Request, if not provided it will be generated internally
      */
     codeVerifier: string;
+
+    /**
+     * Effective OAuth/OID4VCI response mode selected for the authorization code response.
+     */
+    responseMode: IssuanceResponseMode;
 
     /**
      * State value sent in the authorization request, it can be used to correlate the authorization response with the request
@@ -124,14 +132,20 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           redirectUri: getCallbackRedirectUri(
             this.config.issuance.callback_port,
           ),
-          responseMode: "query",
           state,
         };
 
+        const createParOptionsWithVersionDefaults =
+          this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_0)
+            ? { ...createParOptions, responseMode: "form_post.jwt" }
+            : createParOptions;
+
         const finalParOptions = {
-          ...createParOptions,
+          ...createParOptionsWithVersionDefaults,
           ...options.createParOverrides,
         } as CreatePushedAuthorizationRequestOptions;
+        const effectiveResponseMode =
+          this.resolveEffectiveResponseMode(finalParOptions);
 
         log.debug(
           "Final PAR options:",
@@ -176,6 +190,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         return {
           ...parResponse,
           codeVerifier,
+          responseMode: effectiveResponseMode,
           state,
         };
       },
@@ -184,5 +199,26 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
   tag(): string {
     return PushedAuthorizationRequestDefaultStep.tag;
+  }
+
+  private resolveEffectiveResponseMode(
+    options: CreatePushedAuthorizationRequestOptions,
+  ): IssuanceResponseMode {
+    if (
+      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3) ||
+      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)
+    ) {
+      return "query";
+    }
+
+    const responseMode = (options as { responseMode?: unknown }).responseMode;
+
+    if (responseMode === "form_post.jwt" || responseMode === "query") {
+      return responseMode;
+    }
+
+    throw new Error(
+      `Unsupported or missing issuance response mode: ${String(responseMode)}`,
+    );
   }
 }

@@ -48,6 +48,7 @@ testConfigs.forEach((testConfig) => {
     async function runAuthStep(
       StepClass: typeof AuthorizeDefaultStep,
       requestUri?: string,
+      parResponse: PushedAuthorizationRequestResponse = pushedAuthorizationRequestResponse,
       attestationOverride?: Omit<AttestationResponse, "created">,
     ): Promise<AuthorizeStepResponse> {
       const config = loadConfigWithHierarchy();
@@ -64,7 +65,9 @@ testConfigs.forEach((testConfig) => {
         credentialIdentifier: testConfig.credentialConfigurationId,
         credentials: [],
         requestUri: requestUri ?? "",
+        responseMode: parResponse.response?.responseMode,
         rpMetadata: entityClaims?.metadata?.openid_credential_verifier,
+        state: parResponse.response?.state,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
       });
     }
@@ -87,12 +90,20 @@ testConfigs.forEach((testConfig) => {
         expect(requestUri).toBeDefined();
 
         log.info("→ Sending two requests in rapid succession...");
-        const promise1 = runAuthStep(testConfig.authorizeStepClass, requestUri);
+        const promise1 = runAuthStep(
+          testConfig.authorizeStepClass,
+          requestUri,
+          parResult.pushedAuthorizationRequestResponse,
+        );
 
         // Small delay but within typical grace period (2000ms)
         await new Promise((r) => setTimeout(r, 2e3));
 
-        const promise2 = runAuthStep(testConfig.authorizeStepClass, requestUri);
+        const promise2 = runAuthStep(
+          testConfig.authorizeStepClass,
+          requestUri,
+          parResult.pushedAuthorizationRequestResponse,
+        );
 
         const [res1, res2] = await Promise.all([promise1, promise2]);
         log.info(`  Result 1 success: ${res1.success}`);
@@ -182,6 +193,7 @@ testConfigs.forEach((testConfig) => {
           const expiredResult = await runAuthStep(
             testConfig.authorizeStepClass,
             parResponse.response?.request_uri,
+            parResponse,
           );
 
           log.info("→ Validating issuer rejected the expired request_uri...");
