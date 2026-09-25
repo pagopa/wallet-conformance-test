@@ -12,7 +12,7 @@ import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
 
-export type IssuanceResponseMode = "form_post.jwt" | "direct_post.jwt";
+export type IssuanceResponseMode = "direct_post.jwt" | "form_post.jwt";
 
 export type PushedAuthorizationRequestExecuteResponse =
   PushedAuthorizationResponse & {
@@ -213,7 +213,10 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
 
     const responseMode = (options as { responseMode?: unknown }).responseMode;
 
-    if (responseMode === "form_post.jwt" || responseMode === "direct_post.jwt") {
+    if (
+      responseMode === "form_post.jwt" ||
+      responseMode === "direct_post.jwt"
+    ) {
       return responseMode;
     }
 
