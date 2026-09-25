@@ -23,6 +23,7 @@ import { createVerifyJwtCallback, getEncryptJweCallback } from "@/logic/jwt";
 import {
   fetchWithConfig,
   fetchWithRetries,
+  partialCallbacks,
   partialCallbacksWithTrustAnchorUrls,
 } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
@@ -297,17 +298,86 @@ export class AuthorizeDefaultStep extends StepFlow {
     return AuthorizeDefaultStep.tag;
   }
 
-  private assertRedirectUriMatchesExpected(actual: URL, expected: URL): void {
-    if (
-      actual.protocol !== expected.protocol ||
-      actual.hostname !== expected.hostname ||
-      actual.port !== expected.port ||
-      actual.pathname !== expected.pathname
-    ) {
+  private async completeDirectPostJwtFlow({
+    authorizationResponseJarm,
+    options,
+    responseUri,
+  }: {
+    authorizationResponseJarm: string;
+    options: AuthorizeStepOptions;
+    responseUri: string;
+  }): Promise<AuthorizationResponse> {
+    this.log.debug(
+      "Completing direct_post.jwt flow for authorization response.",
+    );
+
+    const appFetch = fetchWithConfig(this.config.network);
+    const { redirect_uri } = await fetchAuthorizationResponse({
+      authorizationResponseJarm,
+      callbacks: {
+        ...partialCallbacks,
+        fetch: appFetch,
+      },
+      presentationResponseUri: responseUri,
+    });
+
+    if (!redirect_uri) {
+      const errorMessage =
+        "The authorization server did not return a redirect_uri to continue the authorization flow";
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const response = await appFetch(redirect_uri, { redirect: "manual" }).catch(
+      () => null,
+    );
+    if (!response || response.status >= 400) {
+      const errorMessage = `An error occurred while completing the authorization flow. Ensure ${redirect_uri} is a valid HTTP url for redirect`;
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const finalRedirectUri = response.headers.get("location");
+    if (!finalRedirectUri) {
+      const errorMessage = `The authorization server did not redirect to the provided client redirect URI. got: ${finalRedirectUri}`;
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const redirectUri = new URL(finalRedirectUri);
+
+    const rawIss = redirectUri.searchParams.get("iss");
+
+    const authorizationResponse = {
+      code: redirectUri.searchParams.get("code"),
+      iss: rawIss ? decodeURIComponent(rawIss) : null,
+      state: redirectUri.searchParams.get("state"),
+    };
+    const missingParameters = Object.entries(authorizationResponse)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingParameters.length > 0) {
       throw new Error(
-        `Unexpected authorization redirect_uri '${actual.toString()}'. Expected '${expected.protocol}//${expected.host}${expected.pathname}' ignoring query and fragment.`,
+        `Authorization redirect is missing parameter(s): ${missingParameters.join(", ")}`,
       );
     }
+
+    const parsedAuthorizationResponse = zAuthorizationResponse.safeParse(
+      authorizationResponse,
+    );
+
+    if (!parsedAuthorizationResponse.success) {
+      throw new Error(
+        `Invalid authorization response: ${parsedAuthorizationResponse.error.message}`,
+      );
+    }
+
+    return await verifyAuthorizationResponse({
+      authorizationResponse: parsedAuthorizationResponse.data,
+      iss: options.baseUrl,
+      state: this.requireParState(options.state),
+    });
   }
 
   private async completeFormPostJwtFlow({
@@ -376,69 +446,6 @@ export class AuthorizeDefaultStep extends StepFlow {
     throw new Error(
       `Unsupported OAuth response mode from PAR: ${String(options.responseMode)}`,
     );
-  }
-
-  private async completeDirectPostJwtFlow({
-    authorizationResponseJarm,
-    options,
-    responseUri,
-  }: {
-    authorizationResponseJarm: string;
-    options: AuthorizeStepOptions;
-    responseUri: string;
-  }): Promise<AuthorizationResponse> {
-    this.log.debug("Completing direct_post.jwt flow for authorization response.");
-
-    const { redirect_uri } = await fetchAuthorizationResponse({
-      authorizationResponseJarm,
-      callbacks: {
-        fetch: fetchWithConfig(this.config.network),
-      },
-      presentationResponseUri: responseUri,
-    });
-
-    if (!redirect_uri) {
-      throw new Error(
-        "redirect_uri is missing in the direct_post.jwt authorization response",
-      );
-    }
-
-    const redirectUri = new URL(redirect_uri);
-    const expectedRedirectUri = new URL(
-      getCallbackRedirectUri(this.config.issuance.callback_port),
-    );
-    this.assertRedirectUriMatchesExpected(redirectUri, expectedRedirectUri);
-
-    const authorizationResponse = {
-      code: redirectUri.searchParams.get("code"),
-      iss: redirectUri.searchParams.get("iss"),
-      state: redirectUri.searchParams.get("state"),
-    };
-    const missingParameters = Object.entries(authorizationResponse)
-      .filter(([, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingParameters.length > 0) {
-      throw new Error(
-        `Authorization redirect is missing parameter(s): ${missingParameters.join(", ")}`,
-      );
-    }
-
-    const parsedAuthorizationResponse = zAuthorizationResponse.safeParse(
-      authorizationResponse,
-    );
-
-    if (!parsedAuthorizationResponse.success) {
-      throw new Error(
-        `Invalid authorization response: ${parsedAuthorizationResponse.error.message}`,
-      );
-    }
-
-    return await verifyAuthorizationResponse({
-      authorizationResponse: parsedAuthorizationResponse.data,
-      iss: options.baseUrl,
-      state: this.requireParState(options.state),
-    });
   }
 
   private requireParState(state: string | undefined): string {
