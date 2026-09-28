@@ -7,8 +7,8 @@ import {
   ValidationError,
 } from "@pagopa/io-wallet-utils";
 import { X509Certificate } from "@peculiar/x509";
+import { decodeJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
-import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import cbor from "cbor";
 import { DcqlQuery } from "dcql";

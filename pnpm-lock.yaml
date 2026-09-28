@@ -55,23 +55,17 @@ importers:
         specifier: ^1.14.3
         version: 1.14.3
       '@sd-jwt/core':
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.21.0
+        version: 0.21.0
       '@sd-jwt/crypto-nodejs':
-        specifier: ^0.17.0
-        version: 0.17.0
-      '@sd-jwt/decode':
         specifier: ^0.17.0
         version: 0.17.0
       '@sd-jwt/jwt-status-list':
         specifier: ^0.19.0
         version: 0.19.0
       '@sd-jwt/sd-jwt-vc':
-        specifier: ^0.17.1
-        version: 0.17.1
-      '@sd-jwt/types':
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.21.0
+        version: 0.21.0
       cbor:
         specifier: ^10.0.11
         version: 10.0.12
@@ -406,8 +400,14 @@ packages:
   '@owf/cose@0.3.2':
     resolution: {integrity: sha512-g1l55f31iqx5SEUv7MSAjLoCFZZAmwiXXkouRdiVltrwHLrnVAAStYUZozh3mN3RibpDftB2+4W4QTIRjl2nXw==}
 
+  '@owf/cose@0.4.0':
+    resolution: {integrity: sha512-bN06KEB2kXWBskcapRGt3giVHvVRNds3NLc8nInXh6PbbbzPrsK+hMpYxIULDa89HJhK7sJKthttepYslu3aYw==}
+
   '@owf/identity-common@0.3.2':
     resolution: {integrity: sha512-XH5Bg6zuXc9SeimTe2ZD/+54GnhSyenFSy2Qe/z2HY1ul5j+6/lDNIhI83xct5aOkCD0uZ7zHbMhTI4Nq8YJOQ==}
+
+  '@owf/identity-common@0.4.0':
+    resolution: {integrity: sha512-YvbEeIuLE+TlR7wfzsfR3tAzNPFssbZ559QZactwGVunl1zgZG0smzArQwpgc3qNv0LrLdeCBzPd2ZcyfGyDHQ==}
 
   '@owf/mdoc@0.7.0':
     resolution: {integrity: sha512-WgYwmpxawDgkMmej719DwlgZ/6gmzCWyyFYf4Z/9eA50Xq/rAi5nQ4oQTu1/79A0IZwwWJdrcJp53yiOQHbUtg==}
@@ -415,6 +415,9 @@ packages:
 
   '@owf/token-status-list@0.3.2':
     resolution: {integrity: sha512-12UDEVJaXp4DX0U+rNwkznWYD8dPRJ4GdOEkUSHbnWRm0D6iWXVXtePtbXtsOgYsT3J120+WaqzJc05sVu2Uhg==}
+
+  '@owf/token-status-list@0.4.0':
+    resolution: {integrity: sha512-KmjNfB0cHV/I3rtP8IGCisw62u/gxDrlCYE75JjZMl+5biB2NeYxpZ6lWJG5NJzFxsy2U4ekTqxuk5AFnPbEkw==}
 
   '@pagopa/eslint-config@5.1.2':
     resolution: {integrity: sha512-7Byb+K51xcWKjk9oWDU0GeHPpdRm3Y1zgLSP0NZ0wnijxmD4GGe3DNLMhbu3q7MOCrHbbJXWR4jqR3BqE6P7dw==}
@@ -612,51 +615,26 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sd-jwt/core@0.17.0':
-    resolution: {integrity: sha512-8NM2kZFjBxNT7JE+UukhcXDEiTq/6LSltVx2R2BlL2NlbYaT29Eln+vKyULNDI8FaRbh4lierLguPJGba4E5uA==}
-    engines: {node: '>=20'}
+  '@sd-jwt/core@0.21.0':
+    resolution: {integrity: sha512-b4ODdTXT+QvfZkYlu9i8goV3fybdXD7wkOugplO1OyDzPvePelgJlzqT4wjwnBIM+E6ktH4h79XMGKAlJJEq4A==}
 
   '@sd-jwt/crypto-nodejs@0.17.0':
     resolution: {integrity: sha512-sOhBz3SYmHrrqahgHO11tJje2YBYGKnuEOUMETeERL+9nyUiervOMrIZELUrrx+z3vgK0tEgyxUGebnrpzfv6g==}
     engines: {node: '>=20'}
     deprecated: Merged into @owf/crypto
 
-  '@sd-jwt/decode@0.17.0':
-    resolution: {integrity: sha512-1qBA0nfsYdAPb/s+n+uWfeaYRVaiDYBg/cL7iDpPcSS8Zq8rtHFwR86KhQfRk8WR5V4cKO7p+njK/8LweqlHxg==}
-    engines: {node: '>=20'}
-    deprecated: 'Merged into @sd-jwt/core (>= 0.20.0). Security: GHSA-f9j6-8p6x-r9j6.'
-
-  '@sd-jwt/jwt-status-list@0.17.1':
-    resolution: {integrity: sha512-5vcOQsEmWwCkh7uEU7iwSaZ9aDH7nSNLnt48dTc6X5UrF9qWNFkVf8r/juBfuzSy2JlxRZQitVYGhyactiXxHA==}
-    engines: {node: '>=20'}
-    deprecated: Package moved to @owf/token-status-list, please use this instead
-
   '@sd-jwt/jwt-status-list@0.19.0':
     resolution: {integrity: sha512-Xhh0n0DKe3paEtNNQSScy4dtA0ZVKF2OrmDcIB2jm77Doh4xsSs1pOseGEWBs9fmAe5Y0m082wgkmQnWEV53IQ==}
     engines: {node: '>=20'}
     deprecated: Package moved to @owf/token-status-list, please use this instead
 
-  '@sd-jwt/present@0.17.0':
-    resolution: {integrity: sha512-qh226z4H76uMVfFfqvltV9d0oz2N9S2REURy2HcVFKhsa1fSYZXdKkhg4S102iwp9fEELEPyCnLkW26+qwWLcg==}
-    engines: {node: '>=20'}
-
-  '@sd-jwt/sd-jwt-vc@0.17.1':
-    resolution: {integrity: sha512-rkbkAfZSJM6gLyOn+eKqzFRrsztfpo+k8odKkXv+psmmZURnOleVvECJHdn2v3ggn6HSqa5uiiH7WkjNiHmGMA==}
-    engines: {node: '>=20'}
-
-  '@sd-jwt/types@0.17.0':
-    resolution: {integrity: sha512-XMZprAzSst+ze6JXoMttV3zrUNTL9VFAzHWChENTlFuh9tM6gy+/hJjFyTO0RVO0SRRNl2c7eMeYu7byLMj6Jg==}
-    engines: {node: '>=20'}
-    deprecated: Package got merged into @sd-jwt/core, please use this instead
+  '@sd-jwt/sd-jwt-vc@0.21.0':
+    resolution: {integrity: sha512-uZcARar1OAweW1LWEI1NEGf3D6gvPzL0e6Ui7AFj/yISIVtzyjUby1Ths/heeTVrncaidoaRBk8P2m2X53mfXA==}
 
   '@sd-jwt/types@0.19.0':
     resolution: {integrity: sha512-nfuC9zRLKe7o4HSvc+N4ojWRAxo4JGfgcNWpR7bJloLUlnE9eQuu9h9pEaJZht7KRwMpGorNTIdYpoi1btuiew==}
     engines: {node: '>=20'}
     deprecated: Package got merged into @sd-jwt/core, please use this instead
-
-  '@sd-jwt/utils@0.17.0':
-    resolution: {integrity: sha512-Xe6GgO3tzjQrKbwVgtrE4LkB8Prcl0zCX+LDFC0QCzsvrks1jEFSPpcpP5Ge/ESBK6LrNG/srBKOQlFM/RuGsg==}
-    engines: {node: '>=20'}
 
   '@sd-jwt/utils@0.19.0':
     resolution: {integrity: sha512-bDwDRjfxMBNOsAXY8q8hnxQq7jdOWxrdqTK926Mxt8DN+ttXbXbZIPLwSh84M90WP0V7+WdkXlZD31iISzUR3w==}
@@ -891,6 +869,9 @@ packages:
 
   cbor-x@1.6.4:
     resolution: {integrity: sha512-UGKHjp6RHC6QuZ2yy5LCKm7MojM4716DwoSaqwQpaH4DvZvbBTGcoDNTiG9Y2lByXZYFEs9WRkS5tLl96IrF1Q==}
+
+  cbor-x@1.6.6:
+    resolution: {integrity: sha512-8QiD9PGOxyQHo7s2pzwTBH6lTjqekxPdl9Aq6fXvZgCuCJHOht1puDEA/fTr6mciB76c+M+Gi0qT2i1a4pm4Wg==}
 
   cbor@10.0.12:
     resolution: {integrity: sha512-exQDevYd7ZQLP4moMQcZkKCVZsXLAtUSflObr3xTh4xzFIv/xBCdvCd6L259kQOUP2kcTC0jvC6PpZIf/WmRXA==}
@@ -1395,6 +1376,9 @@ packages:
   pako@3.0.1:
     resolution: {integrity: sha512-GupotUUI0mlhugKjUs4bjOwLt3nrehy9Ys2dxC0GtgVef5cnKggkDMmf2bq2poCCuVXopWPmqsc9VDT2iJUy+w==}
 
+  pako@3.0.2:
+    resolution: {integrity: sha512-uBv6IT2aT1A78iU6dpNEbf6+CyhlV/6g9JlJs9kpgjFGFhruIICVRysF/W0SLzXg5+hCl+KroH7e4YUyfEmgLg==}
+
   parseurl@1.3.3:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
     engines: {node: '>= 0.8'}
@@ -1827,6 +1811,9 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+
 snapshots:
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.2':
@@ -2009,7 +1996,16 @@ snapshots:
       zod: 4.4.3
       zod-validation-error: 5.0.0(zod@4.4.3)
 
+  '@owf/cose@0.4.0':
+    dependencies:
+      '@owf/identity-common': 0.4.0
+      cbor-x: 1.6.6
+      zod: 4.6.5
+      zod-validation-error: 5.0.0(zod@4.6.5)
+
   '@owf/identity-common@0.3.2': {}
+
+  '@owf/identity-common@0.4.0': {}
 
   '@owf/mdoc@0.7.0':
     dependencies:
@@ -2025,6 +2021,14 @@ snapshots:
       cbor-x: 1.6.4
       pako: 3.0.1
       zod: 4.4.3
+
+  '@owf/token-status-list@0.4.0':
+    dependencies:
+      '@owf/cose': 0.4.0
+      '@owf/identity-common': 0.4.0
+      cbor-x: 1.6.6
+      pako: 3.0.2
+      zod: 4.6.5
 
   '@pagopa/eslint-config@5.1.2(@typescript-eslint/eslint-plugin@8.58.0(@typescript-eslint/parser@8.58.0(eslint@10.9.0)(typescript@5.9.3))(eslint@10.9.0)(typescript@5.9.3))(eslint@10.9.0)(prettier@3.8.1)(vitest@4.1.11)':
     dependencies:
@@ -2259,25 +2263,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.2':
     optional: true
 
-  '@sd-jwt/core@0.17.0':
+  '@sd-jwt/core@0.21.0':
     dependencies:
-      '@sd-jwt/decode': 0.17.0
-      '@sd-jwt/present': 0.17.0
-      '@sd-jwt/types': 0.17.0
-      '@sd-jwt/utils': 0.17.0
+      '@owf/identity-common': 0.4.0
 
   '@sd-jwt/crypto-nodejs@0.17.0': {}
-
-  '@sd-jwt/decode@0.17.0':
-    dependencies:
-      '@sd-jwt/types': 0.17.0
-      '@sd-jwt/utils': 0.17.0
-
-  '@sd-jwt/jwt-status-list@0.17.1':
-    dependencies:
-      '@sd-jwt/types': 0.17.0
-      '@sd-jwt/utils': 0.17.0
-      pako: 2.1.0
 
   '@sd-jwt/jwt-status-list@0.19.0':
     dependencies:
@@ -2285,26 +2275,14 @@ snapshots:
       '@sd-jwt/utils': 0.19.0
       pako: 2.1.0
 
-  '@sd-jwt/present@0.17.0':
+  '@sd-jwt/sd-jwt-vc@0.21.0':
     dependencies:
-      '@sd-jwt/decode': 0.17.0
-      '@sd-jwt/types': 0.17.0
-      '@sd-jwt/utils': 0.17.0
-
-  '@sd-jwt/sd-jwt-vc@0.17.1':
-    dependencies:
-      '@sd-jwt/core': 0.17.0
-      '@sd-jwt/jwt-status-list': 0.17.1
-      '@sd-jwt/utils': 0.17.0
-
-  '@sd-jwt/types@0.17.0': {}
+      '@owf/identity-common': 0.4.0
+      '@owf/token-status-list': 0.4.0
+      '@sd-jwt/core': 0.21.0
+      zod: 4.6.5
 
   '@sd-jwt/types@0.19.0': {}
-
-  '@sd-jwt/utils@0.17.0':
-    dependencies:
-      '@sd-jwt/types': 0.17.0
-      js-base64: 3.7.8
 
   '@sd-jwt/utils@0.19.0':
     dependencies:
@@ -2681,6 +2659,10 @@ snapshots:
     optional: true
 
   cbor-x@1.6.4:
+    optionalDependencies:
+      cbor-extract: 2.2.2
+
+  cbor-x@1.6.6:
     optionalDependencies:
       cbor-extract: 2.2.2
 
@@ -3177,6 +3159,8 @@ snapshots:
 
   pako@3.0.1: {}
 
+  pako@3.0.2: {}
+
   parseurl@1.3.3: {}
 
   path-exists@4.0.0: {}
@@ -3583,6 +3567,12 @@ snapshots:
     dependencies:
       zod: 4.4.3
 
+  zod-validation-error@5.0.0(zod@4.6.5):
+    dependencies:
+      zod: 4.6.5
+
   zod@3.25.76: {}
 
   zod@4.4.3: {}
+
+  zod@4.6.5: {}
