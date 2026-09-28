@@ -27,6 +27,7 @@ import {
 } from "@pagopa/io-wallet-utils";
 import { decodeJwt, decodeProtectedHeader } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";
+import { z } from "zod";
 
 import {
   createVerifyJwtCallback,
@@ -1076,15 +1077,36 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
           throw new Error("openid_credential_verifier metadata is missing");
         }
 
-        const vpFormatsSupported = verifierMetadata.vp_formats_supported;
-        expect(vpFormatsSupported).toBeDefined();
-        expect(vpFormatsSupported).toBeTypeOf("object");
-        if (!vpFormatsSupported || typeof vpFormatsSupported !== "object") {
-          throw new Error("vp_formats_supported metadata is missing");
+        const zAlgValues = z.union([z.string().array(), z.number().array()]);
+        const zVpFormatsSupported = z
+          .record(z.string(), z.record(z.string(), zAlgValues))
+          .and(
+            z.object({
+              "dc+sd-jwt": z.object({
+                "kb-jwt_alg_values": z.string().array().optional(),
+                "sd-jwt_alg_values": z.string().array(),
+              }),
+              mso_mdoc: z
+                .object({
+                  deviceauth_alg_values: z.number().array(),
+                  issuerauth_alg_values: z.number().array(),
+                })
+                .optional(),
+            }),
+          );
+
+        const parsedVpFormatsSupported = zVpFormatsSupported.safeParse(
+          verifierMetadata.vp_formats_supported,
+        );
+        expect(parsedVpFormatsSupported.success).toBe(true);
+        if (!parsedVpFormatsSupported.success) {
+          throw new Error(
+            `vp_formats_supported is not correctly formatted. Details: ${z.prettifyError(parsedVpFormatsSupported.error)}`,
+          );
         }
+        const vpFormatsSupported = parsedVpFormatsSupported.data;
 
         const supportedFormatEntries = Object.entries(vpFormatsSupported);
-        expect(supportedFormatEntries.length).toBeGreaterThan(0);
         log.debug(
           `  Metadata-supported formats: ${supportedFormatEntries
             .map(([format]) => format)
@@ -1092,24 +1114,9 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
         );
 
         for (const [format, parameters] of supportedFormatEntries) {
-          expect(parameters).toBeDefined();
-          expect(parameters).toBeTypeOf("object");
-          if (!parameters || typeof parameters !== "object") {
-            throw new Error(`vp_formats_supported.${format} is not an object`);
-          }
-
-          const algorithmParameters = Object.entries(parameters)
-            .map(([name, value]) => ({ name, value }))
-            .filter(
-              (
-                entry,
-              ): entry is {
-                name: string;
-                value: string[];
-              } =>
-                Array.isArray(entry.value) &&
-                entry.value.every((item) => typeof item === "string"),
-            );
+          const algorithmParameters = Object.entries(parameters).map(
+            ([name, value]) => ({ name, value }),
+          );
           expect(algorithmParameters.length).toBeGreaterThan(0);
 
           for (const { name, value } of algorithmParameters) {

@@ -3,7 +3,7 @@ import {
   ItWalletEntityConfigurationClaimsOptions,
   SignCallback,
 } from "@pagopa/io-wallet-oid-federation";
-import { decodeJwt } from "@sd-jwt/decode";
+import { decodeJwt } from "@sd-jwt/core";
 
 import { Config, KeyPair, KeyPairJwk } from "@/types";
 

@@ -150,6 +150,7 @@ testConfigs.forEach((testConfig) => {
 
     test(
       "CI_047: Request URI One-Time Use | Verify request_uri one-time use and expiration (Reject reused request_uri)",
+      { timeout: 120e3 },
       async () => {
         const log = baseLog.withTag("CI_047");
         const DESCRIPTION = "✅ Issuer correctly rejected expired request_uri";
@@ -203,7 +204,6 @@ testConfigs.forEach((testConfig) => {
           log.testCompleted(DESCRIPTION, testSuccess);
         }
       },
-      { timeout: 120e3 },
     );
 
     // -----------------------------------------------------------------------
