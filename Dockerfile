@@ -13,6 +13,11 @@ RUN npm install -g pnpm@10.23.0 \
 COPY . .
 
 # Make CLI executable
-RUN chmod +x ./bin/wct
+RUN chmod +x ./bin/wct \
+    && mkdir -p ./data \
+    && chown -R node:node /wallet-conformance-test
+
+# Run the application with the least privileges required at runtime.
+USER node
 
 ENTRYPOINT ["./bin/wct"]
