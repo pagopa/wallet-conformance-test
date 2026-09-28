@@ -61,7 +61,7 @@
     "@types/express": "^5.0.3",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
-    "@vitest/ui": "^3.2.4",
+    "@vitest/ui": "^4.1.11",
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.9.0",
@@ -75,6 +75,9 @@
       "puppeteer"
     ],
     "overrides": {
+      "fflate": "0.8.3",
+      "express>qs": "6.16.0",
+      "qs": "6.16.0",
       "qs@>=6.11.1 <=6.15.1": ">=6.15.2",
       "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6",
       "shell-quote@>=1.1.0 <=1.8.3": ">=1.8.4",
@@ -119,7 +122,7 @@
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "puppeteer": "^25.1.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.11",
     "zod": "^4.4.3"
   }
 }
