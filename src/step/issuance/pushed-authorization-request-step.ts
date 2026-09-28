@@ -204,10 +204,10 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
   private resolveEffectiveResponseMode(
     options: CreatePushedAuthorizationRequestOptions,
   ): IssuanceResponseMode {
-    if (
-      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3) ||
-      this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)
-    ) {
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_3)) {
+      return "form_post.jwt";
+    }
+    if (this.ioWalletSdkConfig.isVersion(ItWalletSpecsVersion.V1_4)) {
       return "direct_post.jwt";
     }
 
