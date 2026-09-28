@@ -1,9 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
+import type { TestResult } from "vitest/node";
 import type { Reporter } from "vitest/reporters";
 
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
-import { TestResult } from "vitest/node.js";
 
 import type { ConformanceCheck } from "@/report/types";
 import type { Logger } from "@/types";
