@@ -9,7 +9,7 @@
 import { Command } from "commander";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import type { CliOptions } from "@/logic";
 
@@ -65,7 +65,8 @@ function runTestCommand(
     script === "test:issuance"
       ? "vitest.issuance.config.js"
       : "vitest.presentation.config.js";
-  const vitestBin = nodeRequire.resolve("vitest/vitest.mjs");
+  const vitestPackageJson = nodeRequire.resolve("vitest/package.json");
+  const vitestBin = join(dirname(vitestPackageJson), "vitest.mjs");
 
   const result = spawnSync(
     process.execPath,

@@ -61,7 +61,7 @@
     "@types/express": "^5.0.3",
     "@types/ini": "^4.1.1",
     "@types/node": "^24.1.0",
-    "@vitest/ui": "^3.2.4",
+    "@vitest/ui": "^4.1.11",
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.9.0",
@@ -75,6 +75,9 @@
       "puppeteer"
     ],
     "overrides": {
+      "fflate": "0.8.3",
+      "express>qs": "6.16.0",
+      "qs": "6.16.0",
       "qs@>=6.11.1 <=6.15.1": ">=6.15.2",
       "brace-expansion@>=5.0.0 <5.0.6": ">=5.0.6",
       "shell-quote@>=1.1.0 <=1.8.3": ">=1.8.4",
@@ -105,12 +108,10 @@
     "@pagopa/io-wallet-oid4vp": "1.5.7",
     "@pagopa/io-wallet-utils": "1.5.7",
     "@peculiar/x509": "^1.14.3",
-    "@sd-jwt/core": "^0.17.0",
+    "@sd-jwt/core": "^0.21.0",
     "@sd-jwt/crypto-nodejs": "^0.17.0",
-    "@sd-jwt/decode": "^0.17.0",
     "@sd-jwt/jwt-status-list": "^0.19.0",
-    "@sd-jwt/sd-jwt-vc": "^0.17.1",
-    "@sd-jwt/types": "^0.17.0",
+    "@sd-jwt/sd-jwt-vc": "^0.21.0",
     "cbor": "^10.0.11",
     "commander": "^14.0.2",
     "consola": "^3.4.2",
@@ -119,7 +120,7 @@
     "ini": "^5.0.0",
     "jose": "^6.1.0",
     "puppeteer": "^25.1.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.11",
     "zod": "^4.4.3"
   }
 }
