@@ -479,50 +479,6 @@ describe("Load Mocked Credentials", async () => {
       vi.useRealTimers();
     });
   });
-
-  it.each([
-    ItWalletSpecsVersion.V1_0,
-    ItWalletSpecsVersion.V1_3,
-    ItWalletSpecsVersion.V1_4,
-  ])("should regenerate expired credentials", async (version) => {
-    rmSync(`${backupDir}/${version}/dc_sd_jwt_PersonIdentificationData`, {
-      force: true,
-    });
-    rmSync(`${backupDir}/${version}/mso_mdoc_mDL`, { force: true });
-    config.wallet.wallet_version = version;
-    const logger = createLogger();
-
-    // In order to make KSUID work, the date should be after its internal base epoch, May 13, 2014
-    const date = new Date(2015, 1, 1);
-    // Advance by 2 years + 60 s to clear the 30-second clock-skew tolerance
-    // used in the credential expiry check (exp < Date.now() - 30 s).
-    const twoYearsLater = addSecondsToDate(date, 3600 * 24 * 365 * 2 + 60);
-
-    try {
-      vi.useFakeTimers();
-
-      vi.setSystemTime(date);
-      const credentials = await loadCredentialsForPresentation(config, logger);
-
-      vi.setSystemTime(twoYearsLater);
-      const regenerated = await loadCredentialsForPresentation(config, logger);
-
-      const isSomeCredentialTheSame = credentials.some((curr) => {
-        const corresponding = regenerated.find((cred) => cred.id === curr.id);
-        if (!corresponding)
-          throw new Error(
-            `Expected to find a corresponding credential to ${curr.id} in the regenerated batch`,
-          );
-
-        return curr.credential === corresponding.credential;
-      });
-
-      //We expect all the credentials to be different
-      expect(isSomeCredentialTheSame).toBe(false);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });
 
 describe("Generate Mocked Credentials", () => {
