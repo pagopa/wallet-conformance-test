@@ -1,7 +1,6 @@
 /* eslint-disable max-lines-per-function */
 import { IssuerSigned, SessionTranscript } from "@owf/mdoc";
 import {
-  addSecondsToDate,
   dateToSeconds,
   ItWalletSpecsVersion,
   ValidationError,
@@ -28,14 +27,12 @@ import {
   isCredentialSdJwtExpired,
   isLongLivedCredential,
   loadCredentials,
-  loadCredentialsForPresentation,
   parseCredentialStatus,
 } from "@/functions";
 import {
   buildJwksPath,
   CLOCK_SKEW_TOLERANCE_MS,
   createKeys,
-  createLogger,
   createVpTokenMdoc,
   loadCertificate,
   loadConfig,
