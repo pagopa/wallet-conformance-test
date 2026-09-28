@@ -109,6 +109,7 @@ testConfigs.forEach((testConfig) => {
         log.debug("→ Validating Entity Statement claims are present...");
         expect(
           fetchMetadataResponse.response?.entityStatementClaims,
+          "Entity Statement claims are not present",
         ).toBeDefined();
 
         testSuccess = true;
@@ -168,7 +169,10 @@ testConfigs.forEach((testConfig) => {
           });
 
           log.debug("→ Checking Entity Statement JWT is present...");
-          expect(entityClaims).toBeDefined();
+          expect(
+            entityClaims,
+            "Entity Statement claims are not present",
+          ).toBeDefined();
 
           testSuccess = true;
         } catch (e) {
@@ -197,8 +201,14 @@ testConfigs.forEach((testConfig) => {
           const entityClaims =
             fetchMetadataResponse.response?.entityStatementClaims;
           log.debug("→ Checking public key in Entity Configuration...");
-          expect(entityClaims.jwks.keys).toBeDefined();
-          expect(entityClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(
+            entityClaims.jwks.keys,
+            "JWKS keys are not defined in the Entity Configuration",
+          ).toBeDefined();
+          expect(
+            entityClaims.jwks.keys.length,
+            "JWKS keys array is empty in the Entity Configuration",
+          ).toBeGreaterThan(0);
           expect(() =>
             jsonWebKeySetSchema.parse(entityClaims.jwks),
           ).not.toThrowError();
@@ -229,8 +239,14 @@ testConfigs.forEach((testConfig) => {
           );
 
           log.debug("→ Checking public key in Subordinate Statement...");
-          expect(subordinateClaims.jwks.keys).toBeDefined();
-          expect(subordinateClaims.jwks.keys.length).toBeGreaterThan(0);
+          expect(
+            subordinateClaims.jwks.keys,
+            "JWKS keys are not defined in the Subordinate Statement",
+          ).toBeDefined();
+          expect(
+            subordinateClaims.jwks.keys.length,
+            "JWKS keys array is empty in the Subordinate Statement",
+          ).toBeGreaterThan(0);
           expect(() =>
             jsonWebKeySetSchema.parse(subordinateClaims.jwks),
           ).not.toThrowError();
@@ -474,8 +490,10 @@ testConfigs.forEach((testConfig) => {
 
             offer = await credentialOfferFetched.json();
           }
-          expect(offer).toBeDefined();
-          expect(offer).toBeTypeOf("object");
+          expect(offer, "Credential Offer is not defined").toBeDefined();
+          expect(offer, "Credential Offer is not an object").toBeTypeOf(
+            "object",
+          );
 
           testSuccess = true;
         } finally {
@@ -515,10 +533,22 @@ testConfigs.forEach((testConfig) => {
           log.debug(
             "→ Checking mandatory parameters: credential_issuer, credential_configuration_ids, grants",
           );
-          expect(offer.credential_issuer).toBeDefined();
-          expect(offer.credential_configuration_ids).toBeDefined();
-          expect(Array.isArray(offer.credential_configuration_ids)).toBe(true);
-          expect(offer.grants).toBeDefined();
+          expect(
+            offer.credential_issuer,
+            "credential_issuer is not defined in the Credential Offer",
+          ).toBeDefined();
+          expect(
+            offer.credential_configuration_ids,
+            "credential_configuration_ids is not defined in the Credential Offer",
+          ).toBeDefined();
+          expect(
+            Array.isArray(offer.credential_configuration_ids),
+            "credential_configuration_ids is not an array in the Credential Offer",
+          ).toBe(true);
+          expect(
+            offer.grants,
+            "grants is not defined in the Credential Offer",
+          ).toBeDefined();
 
           testSuccess = true;
         } finally {
@@ -561,7 +591,10 @@ testConfigs.forEach((testConfig) => {
           );
 
           log.debug("→ Checking authorization_code grant structure...");
-          expect(offer.grants.authorization_code).toBeDefined();
+          expect(
+            offer.grants.authorization_code,
+            "authorization_code grant is not defined in the Credential Offer",
+          ).toBeDefined();
 
           testSuccess = true;
         } finally {
@@ -585,7 +618,10 @@ testConfigs.forEach((testConfig) => {
 
         let testSuccess = false;
         try {
-          expect(credentialResponse.response).toBeDefined();
+          expect(
+            credentialResponse.response,
+            "Credential response is not defined",
+          ).toBeDefined();
           if (!credentialResponse.response)
             throw new Error(
               `credential request failed: ${credentialResponse.error}`,
@@ -603,7 +639,10 @@ testConfigs.forEach((testConfig) => {
             );
             skip();
           }
-          expect(credentials.length).toBeGreaterThan(0);
+          expect(
+            credentials.length,
+            "No credentials found in the Credential Response",
+          ).toBeGreaterThan(0);
 
           const credentialKeyPairs =
             credentialResponse.response.credentialKeyPairs;
@@ -640,13 +679,22 @@ testConfigs.forEach((testConfig) => {
 
           for (const [index, credential] of credentials.entries()) {
             const credentialKeyPair = credentialKeyPairs[index];
-            expect(credentialKeyPair).toBeDefined();
+            expect(
+              credentialKeyPair,
+              `Credential key pair at index ${index} is not defined`,
+            ).toBeDefined();
             if (!credentialKeyPair) throw new Error("credential key missing");
 
-            expect(credential.credential).toBeDefined();
+            expect(
+              credential.credential,
+              `Credential at index ${index} is not defined`,
+            ).toBeDefined();
 
             const parsed = await parseCredential(credential.credential);
-            expect(parsed.credential).toBeDefined();
+            expect(
+              parsed.credential,
+              `Parsed credential at index ${index} is not defined`,
+            ).toBeDefined();
             if (!parsed.credential)
               throw new Error("credential parsing failed");
 
@@ -710,7 +758,10 @@ testConfigs.forEach((testConfig) => {
       try {
         const expires_in =
           pushedAuthorizationRequestResponse.response?.expires_in;
-        expect(expires_in).toBeDefined();
+        expect(
+          expires_in,
+          "expires_in is not defined in the PAR response",
+        ).toBeDefined();
         log.debug(`  expires_in: ${expires_in} seconds`);
         expect(expires_in).toBeLessThanOrEqual(60);
 
@@ -730,7 +781,10 @@ testConfigs.forEach((testConfig) => {
       try {
         const requestUri =
           pushedAuthorizationRequestResponse.response?.request_uri;
-        expect(requestUri).toBeDefined();
+        expect(
+          requestUri,
+          "request_uri is not defined in the PAR response",
+        ).toBeDefined();
 
         log.debug(`  request_uri: ${requestUri}`);
 
@@ -763,7 +817,10 @@ testConfigs.forEach((testConfig) => {
       try {
         const requestUriLength =
           pushedAuthorizationRequestResponse.response?.request_uri.length;
-        expect(requestUriLength).toBeDefined();
+        expect(
+          requestUriLength,
+          "request_uri length is not defined in the PAR response",
+        ).toBeDefined();
         log.debug(`  Length: ${requestUriLength} characters (max: 512)`);
         expect(requestUriLength).toBeLessThanOrEqual(512);
 
@@ -799,8 +856,14 @@ testConfigs.forEach((testConfig) => {
       try {
         const requestUri =
           pushedAuthorizationRequestResponse.response?.request_uri;
-        expect(requestUri).toBeDefined();
-        expect(requestUri).toBeTruthy();
+        expect(
+          requestUri,
+          "request_uri is not defined in the PAR response",
+        ).toBeDefined();
+        expect(
+          requestUri,
+          "request_uri is not truthy in the PAR response",
+        ).toBeTruthy();
         log.debug(`  request_uri: ${requestUri}`);
 
         testSuccess = true;
@@ -819,10 +882,19 @@ testConfigs.forEach((testConfig) => {
       try {
         const expiresIn =
           pushedAuthorizationRequestResponse.response?.expires_in;
-        expect(expiresIn).toBeDefined();
-        expect(typeof expiresIn).toBe("number");
+        expect(
+          expiresIn,
+          "expires_in is not defined in the PAR response",
+        ).toBeDefined();
+        expect(
+          typeof expiresIn,
+          "expires_in is not a number in the PAR response",
+        ).toBe("number");
         log.debug(`  expires_in: ${expiresIn} seconds`);
-        expect(expiresIn).toBeGreaterThan(0);
+        expect(
+          expiresIn,
+          "expires_in is not greater than 0 in the PAR response",
+        ).toBeGreaterThan(0);
 
         testSuccess = true;
       } finally {
@@ -1273,8 +1345,14 @@ testConfigs.forEach((testConfig) => {
             token ?? "",
             "Access/Refresh token",
           );
-          expect(claims.cnf?.jkt).toBeDefined();
-          expect(claims.cnf?.jkt).toBe(jkt);
+          expect(
+            claims.cnf?.jkt,
+            "JWK Thumbprint (jkt) is not defined in the token",
+          ).toBeDefined();
+          expect(
+            claims.cnf?.jkt,
+            "JWK Thumbprint (jkt) does not match the expected value",
+          ).toBe(jkt);
         }
 
         testSuccess = true;
@@ -1291,7 +1369,10 @@ testConfigs.forEach((testConfig) => {
 
       let testSuccess = false;
       try {
-        expect(tokenResponse.response?.access_token).toBeDefined();
+        expect(
+          tokenResponse.response?.access_token,
+          "Access token is not defined",
+        ).toBeDefined();
 
         testSuccess = true;
       } finally {
@@ -1326,8 +1407,14 @@ testConfigs.forEach((testConfig) => {
             token ?? "",
             "Access/Refresh token",
           );
-          expect(claims.cnf?.jkt).toBeDefined();
-          expect(claims.cnf?.jkt).toBe(jkt);
+          expect(
+            claims.cnf?.jkt,
+            "JWK Thumbprint (jkt) is not defined in the token",
+          ).toBeDefined();
+          expect(
+            claims.cnf?.jkt,
+            "JWK Thumbprint (jkt) does not match the expected value",
+          ).toBe(jkt);
         }
 
         testSuccess = true;
@@ -1351,7 +1438,7 @@ testConfigs.forEach((testConfig) => {
         const nonce = nonceResponse.response?.nonce as
           | undefined
           | { c_nonce: string };
-        expect(nonce?.c_nonce).toBeDefined();
+        expect(nonce?.c_nonce, "c_nonce is not defined").toBeDefined();
         expect(nonce?.c_nonce.length).toBeGreaterThan(0);
         log.debug(`  c_nonce length: ${nonce?.c_nonce.length} characters`);
 
@@ -1456,7 +1543,10 @@ testConfigs.forEach((testConfig) => {
         const credentialJkts = new Set<string>();
 
         for (const credential of credentials) {
-          expect(credential.credential).toBeDefined();
+          expect(
+            credential.credential,
+            "Credential is not defined",
+          ).toBeDefined();
 
           // Resolve the key-binding JWK from either SD-JWT VC (cnf.jwk) or
           // mdoc-CBOR (deviceKeyInfo.deviceKey converted from COSE_Key).
