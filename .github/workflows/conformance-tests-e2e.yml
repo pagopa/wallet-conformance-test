@@ -57,7 +57,7 @@ jobs:
       # ── Issuance tests ──────────────────────────────────────────────────────
       - name: Run issuance tests
         shell: bash
-        run: wct test:issuance --tests happy
+        run: wct test:issuance --tests happy --wallet-version V1_3
         env:
           CONFIG_CREDENTIAL_ISSUER_URI: ${{ vars.CONFIG_CREDENTIAL_ISSUER_URI }}
 

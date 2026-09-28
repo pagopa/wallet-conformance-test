@@ -1,10 +1,15 @@
-import { CredentialWithKey, VpTokenOptions } from "@/types";
+import {
+  CredentialWithKey,
+  DcqlValidCredential,
+  VpTokenOptions,
+} from "@/types";
 
+import { getSelectedSdJwtClaimPaths } from "../dcql-selection";
 import { createVpTokenMdoc } from "../mdoc";
 import { createVpTokenSdJwt } from "../sd-jwt";
 
 export async function prepareCredentials_V1_0(
-  validCredentials: { input_credential_index: number }[],
+  validCredentials: DcqlValidCredential[],
   credentialQueryId: string,
   credentials: CredentialWithKey[],
   options: Omit<VpTokenOptions, "credential" | "dpopJwk">,
@@ -22,11 +27,21 @@ export async function prepareCredentials_V1_0(
       `Credential index ${credentialIndex} not found for credential_query_id ${credentialQueryId}`,
     );
 
+  const queryCredential = options.dcqlQuery.credentials[0];
+  if (!queryCredential)
+    throw new Error(
+      `Credential query missing for credential_query_id ${credentialQueryId}`,
+    );
+
   if (credential.typ === "dc+sd-jwt")
     return {
       [credentialQueryId]: await createVpTokenSdJwt({
         ...options,
         credential: credential.credential,
+        dcqlClaimPaths: getSelectedSdJwtClaimPaths(
+          queryCredential,
+          validCredential,
+        ),
         dpopJwk: credential.dpopJwk,
       }),
     };

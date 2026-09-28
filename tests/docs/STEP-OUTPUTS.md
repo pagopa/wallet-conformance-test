@@ -117,7 +117,7 @@ a request URI.
     }>;
     clientId: string;                 //   OAuth2 client_id (thumbprint of wallet unit key)
     redirectUri: string;              //   Redirect URI for the authorization response
-    responseMode: string;             //   Response mode (e.g. "query")
+    responseMode: string;             //   OAuth/OID4VCI response mode (V1_0 only, e.g. "form_post.jwt" or "query")
     scope?: string;                   //   OAuth2 scope
     state?: string;                   //   State parameter (auto-generated if omitted)
     jti?: string;                     //   JWT ID (auto-generated if omitted)
@@ -142,6 +142,8 @@ a request URI.
     request_uri: string;    // Request URI to use in the authorization redirect
     expires_in: number;     // Seconds until the request_uri expires (e.g. 600)
     codeVerifier: string;   // PKCE code verifier (auto-generated or from input) — pass to AuthorizeStep / TokenRequestStep
+    responseMode: "form_post.jwt" | "query";  // Effective OAuth/OID4VCI response mode selected by PAR
+    state: string;          // OAuth state sent in PAR — pass to AuthorizeStep
   }
 }
 ```
@@ -154,7 +156,9 @@ a request URI.
   "response": {
     "request_uri": "urn:example:issuer:request_object:1234567890",
     "expires_in": 600,
-    "codeVerifier": "E9Mrozoa2owszxWeEMsudkMjXXVfqaexRKjcWB0nJc"
+    "codeVerifier": "E9Mrozoa2owszxWeEMsudkMjXXVfqaexRKjcWB0nJc",
+    "responseMode": "form_post.jwt",
+    "state": "eaad3c0e-77bc-41c7-9a80-7b4042af5f4e"
   }
 }
 ```
@@ -164,8 +168,10 @@ a request URI.
 - `response.response?.request_uri` is a valid string (not empty)
 - `response.response?.expires_in` is a positive number
 - `response.response?.codeVerifier` is present and non-empty
+- `response.response?.responseMode` is either `"form_post.jwt"` or `"query"`
+- `response.response?.state` is present and later matches the authorize response
 
-**Note**: Use `createParOverrides` to test negative cases (e.g., wrong credential type, malformed parameters).
+**Note**: Use `createParOverrides` to test negative cases (e.g., wrong credential type, malformed parameters). The effective `responseMode` is produced by the wallet when creating the PAR request; it is not read from the PAR HTTP response body. For V1_0 the default is `"form_post.jwt"` and can be overridden to `"query"`; V1_3/V1_4 normalize to `"query"`.
 
 ---
 
@@ -179,6 +185,12 @@ and returns the authorization code.
 > **Note**: This step internally constructs and sends the authorization response to the issuer's
 > `response_uri` (JARM-encrypted). The `authorizeResponse.code` in the output is the authorization
 > code the issuer echoes back after validating the VP presentation.
+>
+> `responseMode` here is the OAuth/OID4VCI response mode selected in the PAR request. It is distinct from the nested OID4VP Request Object `response_mode`, which remains `direct_post.jwt` and only controls how the wallet sends the VP/JARM to the issuer's `response_uri`.
+
+**Completion modes**:
+- `"form_post.jwt"`: sends the OID4VP JARM, retrieves the issuer's form-post JWT response, verifies its signature, and validates `iss`/`state` against the issuer base URL and PAR state.
+- `"query"`: sends the OID4VP JARM, reads the returned `redirect_uri`, accepts it only when scheme/host/port/path match the known callback URI, extracts `code`, `state`, and `iss` from query parameters, and validates them with the SDK.
 
 **Input** (`AuthorizeStepOptions`):
 ```typescript
@@ -197,6 +209,9 @@ and returns the authorization code.
     typ: "dc+sd-jwt" | "mso_mdoc";
   }>;
   requestUri?: string;             // Request URI from PAR step
+  responseMode:                   // Effective OAuth/OID4VCI response mode from PAR step
+    | "form_post.jwt"
+    | "query";
   rpMetadata: {                    // Relying Party metadata (ItWalletCredentialVerifierMetadata)
     application_type: "web";
     authorization_encrypted_response_alg: string;  // e.g. "ECDH-ES"
@@ -213,6 +228,7 @@ and returns the authorization code.
     }>;
     // … additional fields from @pagopa/io-wallet-oid-federation
   };
+  state: string;                   // OAuth state from PAR step
   walletAttestation: {             // Wallet authentication (AttestationResponse without "created")
     attestation: string;           //   Compact JWT of the Wallet Attestation
     providerKey: KeyPair;          //   Wallet Provider key pair (EC P-256, JWK format)
