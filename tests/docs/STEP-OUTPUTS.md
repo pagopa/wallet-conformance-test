@@ -142,7 +142,7 @@ a request URI.
     request_uri: string;    // Request URI to use in the authorization redirect
     expires_in: number;     // Seconds until the request_uri expires (e.g. 600)
     codeVerifier: string;   // PKCE code verifier (auto-generated or from input) — pass to AuthorizeStep / TokenRequestStep
-    responseMode: "form_post.jwt" | "query";  // Effective OAuth/OID4VCI response mode selected by PAR
+    responseMode: "direct_post.jwt" | "form_post.jwt" | "query";  // Effective OAuth/OID4VCI response mode selected by PAR
     state: string;          // OAuth state sent in PAR — pass to AuthorizeStep
   }
 }
