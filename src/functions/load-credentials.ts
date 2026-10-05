@@ -96,40 +96,16 @@ export async function loadCredentialsForPresentation(
           ? isCredentialSdJwtExpired(credential.parsed)
           : isCredentialMdocExpired(credential.parsed);
       if (isExpired) {
-        const newCredential = await (credential.typ === "dc+sd-jwt"
-          ? createMockSdJwt(
-              {
-                iss: getLocalCiBaseUrl(config.issuer.port),
-                network: config.network,
-                trust: config.trust,
-                trustAnchor: config.trust_anchor,
-              },
-              config.wallet.backup_storage_path,
-              config.wallet.credentials_storage_path,
-              config.wallet.wallet_version,
-            )
-          : createMockMdlMdoc(
-              getMdocCertificateSubject(config),
-              getLocalCiBaseUrl(config.issuer.port),
-              config.wallet.backup_storage_path,
-              config.wallet.credentials_storage_path,
-              config.wallet.wallet_version,
-            ));
-
-        return toCredentialWithKey(
-          key,
-          newCredential.compact,
-          newCredential.typ,
-          config.wallet.backup_storage_path,
-        );
-      } else {
-        return toCredentialWithKey(
-          key,
-          credential.compact,
-          credential.typ,
-          config.wallet.backup_storage_path,
+        log.warn(
+          `Credential '${key}' is expired, it will not be ignored but you need to reissuance it.`,
         );
       }
+      return toCredentialWithKey(
+        key,
+        credential.compact,
+        credential.typ,
+        config.wallet.backup_storage_path,
+      );
     }),
   );
 }
