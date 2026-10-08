@@ -1,11 +1,10 @@
 /* eslint-disable max-lines-per-function */
-import type { Jwk } from "@pagopa/io-wallet-oauth2";
-
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
   assertSignedPresentation,
   assertVpTokenRecord,
+  findRpEncryptionKey,
   isCompactJwt,
   normalizePresentationArray,
   normalizeUriBasePath,
@@ -36,10 +35,7 @@ import {
 } from "@/logic";
 import { WalletPresentationOrchestratorFlow } from "@/orchestrator/wallet-presentation-orchestrator-flow";
 import { FetchMetadataVpStepResponse } from "@/step/presentation";
-import {
-  AuthorizationRequestExecuteStepResponse,
-  AuthorizationRequestStepResponse,
-} from "@/step/presentation/authorization-request-step";
+import { AuthorizationRequestStepResponse } from "@/step/presentation/authorization-request-step";
 import { RedirectUriStepResponse } from "@/step/presentation/redirect-uri-step";
 
 const SKIPPING_RP_METADATA_MSG =
@@ -60,41 +56,6 @@ const SAME_DEVICE_LEG_ONLY_MSG =
 
 const CROSS_DEVICE_LEG_ONLY_MSG =
   "  ⚠️ RPR-84 requires support for both flows: this run covered the Cross Device Flow leg only. Run again with presentation.flow_type = same-device to cover RPR-84a";
-
-// RPR-13 accepts the JARM encryption key either from the RP's federation JWKS or from an
-// ephemeral key carried in client_metadata.jwks of the Request Object: under
-// openid_federation, client_metadata.jwks may exclusively transport request-specific
-// (ephemeral) encryption keys (eid-wallet-it-docs/docs/it/remote-flow.rst:588-592, WP_092).
-// The normative definition of RPR-13 (test-plans-remote-presentation.rst:70) only requires
-// "one of the RP's keys", not one published in federation.
-function findRpEncryptionKey(
-  kid: string | undefined,
-  rpJwksKeys: Jwk[] | undefined,
-  authorizationRequestResponse:
-    | AuthorizationRequestExecuteStepResponse
-    | undefined,
-): { key: Jwk | undefined; source: string } {
-  const rpKeys = rpJwksKeys ?? [];
-  const clientMetadataJwksKeys =
-    authorizationRequestResponse?.requestObject.client_metadata?.jwks?.keys ??
-    [];
-  if (rpKeys.length === 0 && clientMetadataJwksKeys.length === 0) {
-    throw new Error(
-      "RP JWKS is missing or empty in both verifier metadata and request object client_metadata",
-    );
-  }
-  const rpKey = rpKeys.find((key) => key.kid === kid);
-  if (rpKey) {
-    return { key: rpKey, source: "RP JWKS (federation metadata)" };
-  }
-  const clientMetadataKey = clientMetadataJwksKeys.find(
-    (key) => key.kid === kid,
-  );
-  return {
-    key: clientMetadataKey,
-    source: "client_metadata JWKS (request object, ephemeral key)",
-  };
-}
 
 // Define and auto-register test configuration
 const testConfig = await definePresentationTest("HappyFlowPresentation");
