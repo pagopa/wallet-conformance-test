@@ -1,11 +1,10 @@
 /* eslint-disable max-lines-per-function */
-import type { Jwk } from "@pagopa/io-wallet-oauth2";
-
 import { definePresentationTest } from "#/config/test-metadata";
 import { assertPresentationFlowSuccess } from "#/helpers/flow-assertion-helpers";
 import {
   assertSignedPresentation,
   assertVpTokenRecord,
+  findRpEncryptionKey,
   isCompactJwt,
   normalizePresentationArray,
   normalizeUriBasePath,
@@ -956,24 +955,25 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       log.debug(`  kid: ${protectedHeader.kid}`);
 
       log.debug("→ Checking selected key belongs to RP JWKS...");
-      const rpJwksKeys = verifierMetadata.jwks?.keys;
-      if (!Array.isArray(rpJwksKeys) || rpJwksKeys.length === 0) {
-        throw new Error("RP JWKS is missing or empty in verifier metadata");
-      }
-      const rpEncryptionKey = verifierMetadata.jwks.keys.find(
-        (key: Jwk) => key.kid === encryptionJwk.kid,
+      const { key: matchedKey, source: matchedKeySource } = findRpEncryptionKey(
+        encryptionJwk.kid,
+        verifierMetadata.jwks?.keys,
+        authorizationRequestResult.response,
       );
-      expect(rpEncryptionKey).toBeDefined();
-      if (!rpEncryptionKey) {
-        throw new Error("selected encryption key is not present in RP JWKS");
+      expect(matchedKey).toBeDefined();
+      if (!matchedKey) {
+        throw new Error(
+          "selected encryption key is not present in RP JWKS nor in request object client_metadata JWKS",
+        );
       }
-      expect(rpEncryptionKey.use).toBe("enc");
+      log.debug(`  ✅ selected encryption key found in ${matchedKeySource}`);
+      expect(matchedKey.use).toBe("enc");
       expect(encryptionJwk).toMatchObject({
-        crv: rpEncryptionKey.crv,
-        kid: rpEncryptionKey.kid,
-        kty: rpEncryptionKey.kty,
-        x: rpEncryptionKey.x,
-        y: rpEncryptionKey.y,
+        crv: matchedKey.crv,
+        kid: matchedKey.kid,
+        kty: matchedKey.kty,
+        x: matchedKey.x,
+        y: matchedKey.y,
       });
       log.debug("  ✅ selected encryption key is one of the RP public keys");
 
