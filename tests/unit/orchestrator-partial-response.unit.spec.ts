@@ -12,6 +12,7 @@ import { PresentationTestConfiguration } from "#/config/presentation-test-config
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { StepOutputError } from "@/orchestrator/errors";
 import type { Config } from "@/types";
 
 import { loadConfigWithHierarchy, saveCredentialToDisk } from "@/logic";
@@ -183,6 +184,8 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   const parSuccess = makeStepSuccess({
     codeVerifier: "mock-code-verifier",
     request_uri: "urn:ietf:params:oauth:request_uri:mock",
+    responseMode: "query",
+    state: "mock-par-state",
   });
 
   beforeEach(async () => {
@@ -302,6 +305,75 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
     expect(result.authorizeResponse).toEqual(authorizeFailure);
     expect(result.tokenResponse).toBeUndefined();
     expect(result.credentialResponse).toBeUndefined();
+  });
+
+  test("runThroughAuthorize passes PAR responseMode and state to the authorize step", async () => {
+    const authorizeFailure = makeStepFailure("stop after authorize args");
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parSuccess as never);
+
+    const authorizeRun = vi
+      .spyOn(
+        // @ts-expect-error accessing private field for testing
+        orchestrator.authorizeStep,
+        "run",
+      )
+      .mockResolvedValue(authorizeFailure);
+
+    await expect(orchestrator.runThroughAuthorize()).rejects.toThrow(
+      "stop after authorize args",
+    );
+
+    expect(authorizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestUri: "urn:ietf:params:oauth:request_uri:mock",
+        responseMode: "query",
+        state: "mock-par-state",
+      }),
+    );
+  });
+
+  test("runThroughAuthorize fails with StepOutputError when PAR responseMode is missing", async () => {
+    const parWithoutResponseMode = makeStepSuccess({
+      codeVerifier: "mock-code-verifier",
+      request_uri: "urn:ietf:params:oauth:request_uri:mock",
+      state: "mock-par-state",
+    });
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.fetchMetadataStep,
+      "run",
+    ).mockResolvedValue(fetchMetadataSuccess);
+
+    vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.pushedAuthorizationRequestStep,
+      "run",
+    ).mockResolvedValue(parWithoutResponseMode as never);
+
+    const authorizeRun = vi.spyOn(
+      // @ts-expect-error accessing private field for testing
+      orchestrator.authorizeStep,
+      "run",
+    );
+
+    await expect(orchestrator.runThroughAuthorize()).rejects.toMatchObject({
+      code: "STEP_OUTPUT_MISSING",
+      missingField: "responseMode",
+      stepTag: "PUSHED_AUTHORIZATION_REQUEST",
+    } satisfies Partial<StepOutputError>);
+    expect(authorizeRun).not.toHaveBeenCalled();
   });
 
   test("step 4 (token) failure — returns partial response through authorizeResponse", async () => {
