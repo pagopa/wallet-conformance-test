@@ -15,7 +15,6 @@ import {
 import { beforeAll, describe, expect, test } from "vitest";
 
 import {
-  createLogger,
   createQuietLogger,
   loadConfigWithHierarchy,
   partialCallbacks,
@@ -43,7 +42,7 @@ const testConfigs = await defineIssuanceTest("TokenValidation");
 testConfigs.forEach((testConfig) => {
   describe(`[${testConfig.name}] Token Endpoint Validation`, () => {
     const orchestrator = new WalletIssuanceOrchestratorFlow(testConfig);
-    const baseLog = createLogger().withTag("Token-Validation");
+    const baseLog = orchestrator.getLog();
 
     let walletAttestationResponse: AttestationResponse;
     let fetchMetadataResponse: FetchMetadataStepResponse;

@@ -19,6 +19,7 @@ export type Logger = Omit<
     durationMs?: number,
   ) => void;
   testFailed: () => void;
+  testSkipped: (description: string, reason?: string) => void;
   testSuite: (options: {
     profile: string;
     specsVersion: string;

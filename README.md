@@ -166,6 +166,24 @@ If you want to mount a local folder for data or configuration:
 docker run --rm -v "$(pwd)/data:/wallet-conformance-test/data" pagopa/wallet-conformance-test:latest [COMMAND]
 ```
 
+The image prepares the mounted directory at startup and runs the application as
+the non-root `node` user. If Docker is running rootless or with a user namespace
+that prevents the container from changing ownership, create the directory with
+permissions for the invoking user and pass that user explicitly:
+
+```bash
+mkdir -p data
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/data:/wallet-conformance-test/data" \
+  pagopa/wallet-conformance-test:latest [COMMAND]
+```
+
+For an existing root-owned directory, fix its ownership on the host first (for
+example, with `sudo chown -R "$(id -u):$(id -g)" data`) or use another writable
+directory. The container exits with an actionable error if the mounted path is
+still not writable.
+
 ### Run Container
 
 To run the tests with the locally tagged image, create a local directory (e.g., data) to store configuration and reports. Then, launch the container, mounting your local directory as a volume. If you pulled the published GHCR image instead, replace `pagopa/wallet-conformance-test:latest` with `ghcr.io/pagopa/wallet-conformance-test:latest`.
@@ -173,7 +191,7 @@ To run the tests with the locally tagged image, create a local directory (e.g., 
 First create a directory for your data:
 
 ```bash
-mkdir data
+mkdir -p data
 ```
 
 Then run the container:

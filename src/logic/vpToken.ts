@@ -1,6 +1,6 @@
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { decodeSdJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
-import { decodeSdJwt } from "@sd-jwt/decode";
 import { DcqlMdocCredential, DcqlQuery, DcqlSdJwtVcCredential } from "dcql";
 
 import type { Logger } from "@/types/logger";

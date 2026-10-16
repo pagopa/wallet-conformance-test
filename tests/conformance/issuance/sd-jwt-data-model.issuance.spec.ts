@@ -7,9 +7,8 @@ import {
   IoWalletSdkConfig,
   ItWalletSpecsVersion,
 } from "@pagopa/io-wallet-utils";
-import { SDJwt } from "@sd-jwt/core";
+import { decodeJwt, SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
-import { decodeJwt } from "@sd-jwt/decode";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { importX509, jwtVerify } from "jose";
 import { beforeAll, describe, expect, test } from "vitest";

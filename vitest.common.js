@@ -38,7 +38,7 @@ export function buildExcludePatterns(runsBuiltTests) {
     ? configDefaults.exclude.filter(
         (pattern) => !["**/dist/**", "**/node_modules/**"].includes(pattern),
       )
-    : configDefaults.exclude;
+    : [...new Set(["**/dist/**", ...configDefaults.exclude])];
 }
 
 export function buildIncludePattern(testType, testsDir, userConfigured) {

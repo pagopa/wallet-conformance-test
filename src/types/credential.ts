@@ -54,6 +54,15 @@ export interface StatusListClaim {
   };
 }
 
+export interface StatusRequirement {
+  /** Log-ready summary of the evaluation. */
+  detail: string;
+  /** Message to log when the requirement is not satisfied. */
+  failure: string;
+  satisfied: boolean;
+  statusClaim: null | StatusClaim;
+}
+
 export interface VpTokenOptions {
   client_id: string;
   credential: string;
