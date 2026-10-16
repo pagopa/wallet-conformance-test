@@ -623,7 +623,7 @@ describe("Generate Mocked Credentials", () => {
         hasher: digest,
       }).decode(credential.compact);
 
-      expect(decoded.jwt?.payload?.status).toHaveProperty("status_list");
+      expect(decoded.jwt?.payload).not.toHaveProperty("status");
 
       expect(
         decoded.disclosures?.find(
@@ -861,12 +861,7 @@ describe("Parse Credential's Status", () => {
       ItWalletSpecsVersion.V1_3,
     );
     const status = await parseCredentialStatus(credential.compact);
-    expect(status).toEqual({
-      status_list: {
-        idx: 0,
-        uri: `${metadata.iss}/status-list`,
-      },
-    });
+    expect(status).toBe(null);
   });
 
   it("should retrieve status from MDOC (V1_0)", async () => {
@@ -894,12 +889,7 @@ describe("Parse Credential's Status", () => {
       ItWalletSpecsVersion.V1_3,
     );
     const status = await parseCredentialStatus(credential.compact);
-    expect(status).toEqual({
-      status_list: {
-        idx: 0,
-        uri: `${iss}/status-list`,
-      },
-    });
+    expect(status).toBe(null);
   });
 
   it("should retrieve status from SD-JWT (V1_4)", async () => {
@@ -910,12 +900,7 @@ describe("Parse Credential's Status", () => {
       ItWalletSpecsVersion.V1_4,
     );
     const status = await parseCredentialStatus(credential.compact);
-    expect(status).toEqual({
-      status_list: {
-        idx: 0,
-        uri: `${metadata.iss}/status-list`,
-      },
-    });
+    expect(status).toBe(null);
   });
 
   it("should retrieve status from MDOC (V1_4)", async () => {
@@ -927,12 +912,7 @@ describe("Parse Credential's Status", () => {
       ItWalletSpecsVersion.V1_4,
     );
     const status = await parseCredentialStatus(credential.compact);
-    expect(status).toEqual({
-      status_list: {
-        idx: 0,
-        uri: `${iss}/status-list`,
-      },
-    });
+    expect(status).toBe(null);
   });
 
   it("should throw error for invalid credential format", async () => {
