@@ -491,6 +491,15 @@ export class WalletIssuanceOrchestratorFlow {
       );
     }
 
+    const redirectUri =
+      pushedAuthorizationRequestResponse.response?.redirectUri;
+    if (!redirectUri) {
+      throw new StepOutputError(
+        PushedAuthorizationRequestDefaultStep.tag,
+        "redirectUri",
+      );
+    }
+
     const authorizeResponse = await this.authorizeStep.run({
       authorizationEndpoint:
         entityStatementClaims.metadata?.oauth_authorization_server
@@ -499,6 +508,7 @@ export class WalletIssuanceOrchestratorFlow {
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
       credentials,
+      redirectUri,
       requestUri,
       responseMode,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,

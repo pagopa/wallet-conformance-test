@@ -68,6 +68,11 @@ export interface AuthorizeStepOptions {
   credentials: CredentialWithKey[];
 
   /**
+   * Effective redirect URI sent in the Pushed Authorization Request.
+   */
+  redirectUri?: string;
+
+  /**
    * Request URI obtained from the Pushed Authorization Request step
    */
   requestUri?: string;
@@ -345,6 +350,27 @@ export class AuthorizeDefaultStep extends StepFlow {
     }
 
     const redirectUri = new URL(finalRedirectUri);
+
+    if (!options.redirectUri) {
+      throw new Error("Effective redirect URI from PAR is missing");
+    }
+
+    const expectedRedirectUri = new URL(options.redirectUri);
+    if (
+      redirectUri.protocol !== expectedRedirectUri.protocol ||
+      redirectUri.hostname !== expectedRedirectUri.hostname ||
+      redirectUri.port !== expectedRedirectUri.port ||
+      redirectUri.pathname !== expectedRedirectUri.pathname ||
+      redirectUri.username !== expectedRedirectUri.username ||
+      redirectUri.password !== expectedRedirectUri.password ||
+      [...expectedRedirectUri.searchParams].some(
+        ([key, value]) => redirectUri.searchParams.get(key) !== value,
+      )
+    ) {
+      throw new Error(
+        `Authorization redirect destination does not match the effective PAR redirect URI: ${finalRedirectUri}`,
+      );
+    }
 
     const rawIss = redirectUri.searchParams.get("iss");
 

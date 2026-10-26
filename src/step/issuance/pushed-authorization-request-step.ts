@@ -22,6 +22,11 @@ export type PushedAuthorizationRequestExecuteResponse =
     codeVerifier: string;
 
     /**
+     * Effective redirect URI sent in the Pushed Authorization Request.
+     */
+    redirectUri: string;
+
+    /**
      * Effective OAuth/OID4VCI response mode selected for the authorization code response.
      */
     responseMode: IssuanceResponseMode;
@@ -190,6 +195,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
         return {
           ...parResponse,
           codeVerifier,
+          redirectUri: finalParOptions.redirectUri,
           responseMode: effectiveResponseMode,
           state,
         };
