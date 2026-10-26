@@ -3,7 +3,6 @@ import {
   sendAuthorizationResponseAndExtractCode,
   SendAuthorizationResponseAndExtractCodeOptions,
   verifyAuthorizationResponse,
-  zAuthorizationResponse,
 } from "@pagopa/io-wallet-oid4vci";
 import {
   createAuthorizationResponse,
@@ -17,6 +16,7 @@ import { DcqlQuery } from "dcql";
 import { exec } from "node:child_process";
 import { platform } from "node:os";
 
+import { parseAuthorizationResponse } from "@/logic/authorization-response";
 import { startCallbackServer } from "@/logic/callback-server";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { createVerifyJwtCallback, getEncryptJweCallback } from "@/logic/jwt";
@@ -372,35 +372,10 @@ export class AuthorizeDefaultStep extends StepFlow {
       );
     }
 
-    const rawIss = redirectUri.searchParams.get("iss");
-
-    const authorizationResponse = {
-      code: redirectUri.searchParams.get("code"),
-      iss: rawIss ? decodeURIComponent(rawIss) : null,
-      state: redirectUri.searchParams.get("state"),
-    };
-    const missingParameters = Object.entries(authorizationResponse)
-      .filter(([, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingParameters.length > 0) {
-      throw new Error(
-        `Authorization redirect is missing parameter(s): ${missingParameters.join(", ")}`,
-      );
-    }
-
-    const parsedAuthorizationResponse = zAuthorizationResponse.safeParse(
-      authorizationResponse,
-    );
-
-    if (!parsedAuthorizationResponse.success) {
-      throw new Error(
-        `Invalid authorization response: ${parsedAuthorizationResponse.error.message}`,
-      );
-    }
-
     return await verifyAuthorizationResponse({
-      authorizationResponse: parsedAuthorizationResponse.data,
+      authorizationResponse: parseAuthorizationResponse(
+        redirectUri.searchParams,
+      ),
       iss: options.baseUrl,
       state: this.requireParState(options.state),
     });
