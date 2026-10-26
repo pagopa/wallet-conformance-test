@@ -183,6 +183,7 @@ describe("WalletIssuanceOrchestratorFlow.issuance()", () => {
   });
   const parSuccess = makeStepSuccess({
     codeVerifier: "mock-code-verifier",
+    redirectUri: "http://localhost:3000/callback",
     request_uri: "urn:ietf:params:oauth:request_uri:mock",
     responseMode: "query",
     state: "mock-par-state",
