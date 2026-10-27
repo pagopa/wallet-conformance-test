@@ -24,6 +24,25 @@ function buildMdocAlternativeConfiguration(): CredentialCompilationConfiguration
 }
 
 describe("CI_014 credential compilation query", () => {
+  it("does not query SD-JWT reserved claims", () => {
+    const query = buildCredentialCompilationQuery(
+      {
+        credential_metadata: {
+          claims: [
+            { mandatory: true, path: ["iss"] },
+            { mandatory: true, path: ["_sd"] },
+            { mandatory: true, path: ["_sd_alg"] },
+          ],
+        },
+        format: "dc+sd-jwt",
+        vct: "urn:eudi:test",
+      },
+      { credentialQueryId: "sd-jwt-reserved", isLegacy: false },
+    );
+
+    expect(query.credentials[0]?.claims).toEqual([{ path: ["iss"] }]);
+  });
+
   it("models namespaced mdoc identifiers as alternatives", () => {
     const query = buildCredentialCompilationQuery(
       buildMdocAlternativeConfiguration(),

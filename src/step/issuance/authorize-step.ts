@@ -2,10 +2,12 @@ import {
   AuthorizationResponse,
   sendAuthorizationResponseAndExtractCode,
   SendAuthorizationResponseAndExtractCodeOptions,
+  verifyAuthorizationResponse,
 } from "@pagopa/io-wallet-oid4vci";
 import {
   createAuthorizationResponse,
   type CreateAuthorizationResponseVersionedOptions,
+  fetchAuthorizationResponse,
   parseAuthorizeRequest,
   type ParsedAuthorizeRequestResult,
 } from "@pagopa/io-wallet-oid4vp";
@@ -14,15 +16,20 @@ import { DcqlQuery } from "dcql";
 import { exec } from "node:child_process";
 import { platform } from "node:os";
 
+import { parseAuthorizationResponse } from "@/logic/authorization-response";
 import { startCallbackServer } from "@/logic/callback-server";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { createVerifyJwtCallback, getEncryptJweCallback } from "@/logic/jwt";
 import {
+  fetchWithConfig,
   fetchWithRetries,
+  partialCallbacks,
   partialCallbacksWithTrustAnchorUrls,
 } from "@/logic/utils";
 import { buildVpToken } from "@/logic/vpToken";
 import { AttestationResponse, CredentialWithKey } from "@/types";
+
+import type { IssuanceResponseMode } from "./pushed-authorization-request-step";
 
 import { StepFlow, StepResponse } from "../step-flow";
 
@@ -61,14 +68,29 @@ export interface AuthorizeStepOptions {
   credentials: CredentialWithKey[];
 
   /**
+   * Effective redirect URI sent in the Pushed Authorization Request.
+   */
+  redirectUri?: string;
+
+  /**
    * Request URI obtained from the Pushed Authorization Request step
    */
   requestUri?: string;
 
   /**
+   * Effective OAuth/OID4VCI response mode selected during the PAR step.
+   */
+  responseMode?: IssuanceResponseMode;
+
+  /**
    * RP Metadata to be included in the Authorization Response
    */
   rpMetadata: ItWalletCredentialVerifierMetadata;
+
+  /**
+   * OAuth state generated for the PAR request.
+   */
+  state?: string;
 
   /**
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
@@ -219,36 +241,22 @@ export class AuthorizeDefaultStep extends StepFlow {
       throw new Error("Failed to create authorization response JARM");
     }
 
-    const rpSigKey = options.rpMetadata.jwks.keys.find(
-      (key) => key.use === "sig",
-    );
-
     this.log.info(`Sending authorization response to: ${responseUri}`);
     this.log.debug(`Authorization response iss: ${options.baseUrl}`);
-    const sendAuthorizationResponseAndExtractCodeOptions = {
-      authorizationResponseJarm: authorizationResponse.jarm.responseJwe,
-      callbacks: {
-        verifyJwt: createVerifyJwtCallback({
-          trustAnchorUrls: this.config.trust.federation_trust_anchors,
-        }),
-      },
-      iss: options.baseUrl,
-      presentationResponseUri: responseUri,
-      state: requestObject.state,
-      ...(rpSigKey
-        ? {
-            signer: {
-              alg: "ES256",
-              method: "jwk",
-              publicJwk: rpSigKey,
-            },
-          }
-        : {}),
-    } satisfies SendAuthorizationResponseAndExtractCodeOptions;
 
-    const authorizeResponse = await sendAuthorizationResponseAndExtractCode(
-      sendAuthorizationResponseAndExtractCodeOptions,
-    );
+    if (!options.state) {
+      throw new Error("OAuth state from PAR is missing");
+    }
+
+    if (!options.responseMode) {
+      throw new Error("OAuth response mode from PAR is missing");
+    }
+
+    const authorizeResponse = await this.completeQEEAFlow({
+      authorizationResponseJarm: authorizationResponse.jarm.responseJwe,
+      options,
+      responseUri,
+    });
     this.log.debug(
       "Authorize response extracted code:",
       JSON.stringify(authorizeResponse, null, 2),
@@ -293,6 +301,160 @@ export class AuthorizeDefaultStep extends StepFlow {
 
   tag(): string {
     return AuthorizeDefaultStep.tag;
+  }
+
+  private async completeDirectPostJwtFlow({
+    authorizationResponseJarm,
+    options,
+    responseUri,
+  }: {
+    authorizationResponseJarm: string;
+    options: AuthorizeStepOptions;
+    responseUri: string;
+  }): Promise<AuthorizationResponse> {
+    this.log.debug(
+      "Completing direct_post.jwt flow for authorization response.",
+    );
+
+    const appFetch = fetchWithConfig(this.config.network);
+    const { redirect_uri } = await fetchAuthorizationResponse({
+      authorizationResponseJarm,
+      callbacks: {
+        ...partialCallbacks,
+        fetch: appFetch,
+      },
+      presentationResponseUri: responseUri,
+    });
+
+    if (!redirect_uri) {
+      const errorMessage =
+        "The authorization server did not return a redirect_uri to continue the authorization flow";
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const response = await appFetch(redirect_uri, { redirect: "manual" }).catch(
+      () => null,
+    );
+    if (!response || response.status >= 400) {
+      const errorMessage = `An error occurred while completing the authorization flow. Ensure ${redirect_uri} is a valid HTTP url for redirect`;
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const finalRedirectUri = response.headers.get("location");
+    if (!finalRedirectUri) {
+      const errorMessage = `The authorization server did not redirect to the provided client redirect URI. got: ${finalRedirectUri}`;
+      this.log.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const redirectUri = new URL(finalRedirectUri);
+
+    if (!options.redirectUri) {
+      throw new Error("Effective redirect URI from PAR is missing");
+    }
+
+    const expectedRedirectUri = new URL(options.redirectUri);
+    if (
+      redirectUri.protocol !== expectedRedirectUri.protocol ||
+      redirectUri.hostname !== expectedRedirectUri.hostname ||
+      redirectUri.port !== expectedRedirectUri.port ||
+      redirectUri.pathname !== expectedRedirectUri.pathname ||
+      redirectUri.username !== expectedRedirectUri.username ||
+      redirectUri.password !== expectedRedirectUri.password ||
+      [...expectedRedirectUri.searchParams].some(
+        ([key, value]) => redirectUri.searchParams.get(key) !== value,
+      )
+    ) {
+      throw new Error(
+        `Authorization redirect destination does not match the effective PAR redirect URI: ${finalRedirectUri}`,
+      );
+    }
+
+    return await verifyAuthorizationResponse({
+      authorizationResponse: parseAuthorizationResponse(
+        redirectUri.searchParams,
+      ),
+      iss: options.baseUrl,
+      state: this.requireParState(options.state),
+    });
+  }
+
+  private async completeFormPostJwtFlow({
+    authorizationResponseJarm,
+    options,
+    responseUri,
+  }: {
+    authorizationResponseJarm: string;
+    options: AuthorizeStepOptions;
+    responseUri: string;
+  }): Promise<AuthorizationResponse> {
+    const rpSigKey = options.rpMetadata.jwks.keys.find(
+      (key) => key.use === "sig",
+    );
+    const sendAuthorizationResponseAndExtractCodeOptions = {
+      authorizationResponseJarm,
+      callbacks: {
+        verifyJwt: createVerifyJwtCallback({
+          trustAnchorUrls: this.config.trust.federation_trust_anchors,
+        }),
+      },
+      iss: options.baseUrl,
+      presentationResponseUri: responseUri,
+      state: this.requireParState(options.state),
+      ...(rpSigKey
+        ? {
+            signer: {
+              alg: "ES256",
+              method: "jwk",
+              publicJwk: rpSigKey,
+            },
+          }
+        : {}),
+    } satisfies SendAuthorizationResponseAndExtractCodeOptions;
+
+    return await sendAuthorizationResponseAndExtractCode(
+      sendAuthorizationResponseAndExtractCodeOptions,
+    );
+  }
+
+  private async completeQEEAFlow({
+    authorizationResponseJarm,
+    options,
+    responseUri,
+  }: {
+    authorizationResponseJarm: string;
+    options: AuthorizeStepOptions;
+    responseUri: string;
+  }): Promise<AuthorizationResponse> {
+    if (options.responseMode === "form_post.jwt") {
+      return this.completeFormPostJwtFlow({
+        authorizationResponseJarm,
+        options,
+        responseUri,
+      });
+    }
+
+    if (options.responseMode === "direct_post.jwt") {
+      return this.completeDirectPostJwtFlow({
+        authorizationResponseJarm,
+        options,
+        responseUri,
+      });
+    }
+
+    throw new Error(
+      `Unsupported OAuth response mode from PAR: ${String(options.responseMode)}`,
+    );
+  }
+
+  private requireParState(state: string | undefined): string {
+    if (!state) {
+      throw new Error("OAuth state from PAR is missing");
+    }
+
+    return state;
   }
 }
 

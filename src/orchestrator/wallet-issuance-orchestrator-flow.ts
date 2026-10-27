@@ -466,6 +466,40 @@ export class WalletIssuanceOrchestratorFlow {
       this.config,
       this.log,
     );
+    const requestUri = pushedAuthorizationRequestResponse.response?.request_uri;
+    if (!requestUri) {
+      throw new StepOutputError(
+        PushedAuthorizationRequestDefaultStep.tag,
+        "request_uri",
+      );
+    }
+
+    const responseMode =
+      pushedAuthorizationRequestResponse.response?.responseMode;
+    if (!responseMode) {
+      throw new StepOutputError(
+        PushedAuthorizationRequestDefaultStep.tag,
+        "responseMode",
+      );
+    }
+
+    const state = pushedAuthorizationRequestResponse.response?.state;
+    if (!state) {
+      throw new StepOutputError(
+        PushedAuthorizationRequestDefaultStep.tag,
+        "state",
+      );
+    }
+
+    const redirectUri =
+      pushedAuthorizationRequestResponse.response?.redirectUri;
+    if (!redirectUri) {
+      throw new StepOutputError(
+        PushedAuthorizationRequestDefaultStep.tag,
+        "redirectUri",
+      );
+    }
+
     const authorizeResponse = await this.authorizeStep.run({
       authorizationEndpoint:
         entityStatementClaims.metadata?.oauth_authorization_server
@@ -474,8 +508,11 @@ export class WalletIssuanceOrchestratorFlow {
       clientId: walletAttestationResponse.unitKey.publicKey.kid,
       credentialIdentifier: this.issuanceConfig.credentialConfigurationId,
       credentials,
-      requestUri: pushedAuthorizationRequestResponse.response?.request_uri,
+      redirectUri,
+      requestUri,
+      responseMode,
       rpMetadata: entityStatementClaims.metadata?.openid_credential_verifier,
+      state,
       walletAttestation: walletAttestationResponse,
     });
     this._authorizeResponse = authorizeResponse;

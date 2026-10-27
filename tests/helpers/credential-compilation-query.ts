@@ -36,7 +36,11 @@ export function buildCredentialCompilationQuery(
     );
   }
 
-  const mandatoryClaims = metadataClaims.filter(isMandatoryClaim);
+  const mandatoryClaims = metadataClaims.filter(
+    (claim) =>
+      isMandatoryClaim(claim) &&
+      !isSdJwtReservedClaim(claim, configuration.format),
+  );
   const hasAdministrativeNumberAlternative =
     mandatoryClaims.some((claim) =>
       isClaimAtPath(
@@ -172,4 +176,13 @@ function isClaimAtPath(
 
 function isMandatoryClaim(claim: CredentialCompilationClaim): boolean {
   return claim.mandatory === true || claim.mandatory === "true";
+}
+
+function isSdJwtReservedClaim(
+  claim: CredentialCompilationClaim,
+  format: CredentialCompilationConfiguration["format"],
+): boolean {
+  if (format !== "dc+sd-jwt" || claim.path.length !== 1) return false;
+
+  return claim.path[0] === "_sd" || claim.path[0] === "_sd_alg";
 }
