@@ -438,13 +438,14 @@ export class CredentialRequestDefaultStep extends StepFlow {
   private async generateCredentialKeyPair(
     credentialIdentifier: string,
   ): Promise<KeyPair> {
-    if (!this.config.issuance.save_credential) return createKeys();
+    if (!this.config.issuance.save_credential)
+      return createKeys({ includeAlgorithm: false });
 
     const jwksPath = buildJwksPath(
       `${this.config.wallet.backup_storage_path}/${credentialIdentifier}`,
     );
 
-    return createAndSaveKeys(jwksPath);
+    return createAndSaveKeys(jwksPath, { includeAlgorithm: false });
   }
 
   private async generateCredentialKeyPairs(

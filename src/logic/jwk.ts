@@ -24,6 +24,16 @@ import { KeyPair, KeyPairJwk } from "@/types";
 import { loadCertificate } from "./pem";
 import { buildCertPath, partialCallbacksWithTrustAnchorUrls } from "./utils";
 
+export interface CreateKeysOptions {
+  /**
+   * Whether to include the optional JWK algorithm claim.
+   *
+   * Credential binding keys must omit this claim, while keys used for
+   * signing JWTs continue to include it by default.
+   */
+  includeAlgorithm?: boolean;
+}
+
 interface JwkFromSignerOptions {
   trustAnchorUrls?: string[];
 }
@@ -34,8 +44,11 @@ interface JwkFromSignerOptions {
  * @param fileName The name of the file to save the key pair to.
  * @returns A promise that resolves to the generated key pair.
  */
-export async function createAndSaveKeys(fileName: string): Promise<KeyPair> {
-  const exportedPair = await createKeys();
+export async function createAndSaveKeys(
+  fileName: string,
+  options: CreateKeysOptions = {},
+): Promise<KeyPair> {
+  const exportedPair = await createKeys(options);
   writeFileSync(fileName, JSON.stringify(exportedPair));
 
   return exportedPair;
@@ -72,7 +85,9 @@ export async function createAndSaveKeysWithX5C(
  *
  * @returns A promise that resolves to the generated key pair.
  */
-export async function createKeys(): Promise<KeyPair> {
+export async function createKeys({
+  includeAlgorithm = true,
+}: CreateKeysOptions = {}): Promise<KeyPair> {
   const keyPair = await generateKeyPair("ES256", {
     crv: "P-256",
     extractable: true,
@@ -81,14 +96,15 @@ export async function createKeys(): Promise<KeyPair> {
   const pub = await exportJWK(keyPair.publicKey);
 
   const kid = await calculateJwkThumbprint(pub, "sha256");
+  const algorithm = includeAlgorithm ? { alg: "ES256" as const } : {};
   const exportedPair: KeyPair = {
     privateKey: parseWithErrorHandling(jsonWebKeySchema, {
-      alg: "ES256",
+      ...algorithm,
       kid: kid,
       ...priv,
     }) as KeyPairJwk,
     publicKey: parseWithErrorHandling(jsonWebKeySchema, {
-      alg: "ES256",
+      ...algorithm,
       kid: kid,
       ...pub,
     }) as KeyPairJwk,
