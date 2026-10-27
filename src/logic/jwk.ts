@@ -197,7 +197,7 @@ function isSchemaValidationError(error: unknown): error is Error {
  *
  * @param x5c An array of Base64 encoded DER certificates. The first certificate is used.
  * @param alg The algorithm used for the key.
- * @param kid Optional key ID to inject into the extracted JWK.
+ * @param kid Optional key ID to inject into the extracted JWK; defaults to the JWK thumbprint.
  * @returns A promise that resolves to the extracted JWK.
  * @throws An error if the certificate chain is missing or empty.
  */
@@ -233,8 +233,12 @@ async function jwkFromCertificateChain(
   const pem = convertBase64DerToPem(x5c[0] as string);
   const key = await importX509(pem, alg, { extractable: true });
   const jwk = await exportJWK(key);
-  // exportJWK() from jose doesn't add a kid when exporting from an X.509 certificate
-  const jwkWithKid = kid ? { ...jwk, kid } : jwk;
+  // exportJWK() from jose doesn't add a kid when exporting from an X.509 certificate;
+  // kid is optional in the header for x509_hash, so fall back to the RFC 7638 thumbprint
+  const jwkWithKid = {
+    ...jwk,
+    kid: kid ?? (await calculateJwkThumbprint(jwk, "sha256")),
+  };
 
   return parseWithErrorHandling(
     jsonWebKeySchema,

@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createAndSaveKeys, createKeys } from "@/logic/jwk";
+import { createAndSaveKeys, createKeys, jwkFromSigner } from "@/logic/jwk";
+import { createCertificate } from "@/logic/pem";
 
 const temporaryDirectories: string[] = [];
 
@@ -37,5 +38,17 @@ describe("JWK generation", () => {
     expect(keyPair.publicKey).not.toHaveProperty("alg");
     expect(savedKeyPair.privateKey).not.toHaveProperty("alg");
     expect(savedKeyPair.publicKey).not.toHaveProperty("alg");
+  });
+});
+
+describe("jwkFromSigner with x5c", () => {
+  it("falls back to the JWK thumbprint when the header has no kid", async () => {
+    const keyPair = await createKeys();
+    const cert = await createCertificate(keyPair, "CN=rp.example.org");
+    const x5c = [Buffer.from(cert.rawData).toString("base64")];
+
+    const jwk = await jwkFromSigner({ alg: "ES256", method: "x5c", x5c });
+
+    expect(jwk.kid).toBe(keyPair.publicKey.kid);
   });
 });
