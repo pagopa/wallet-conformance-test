@@ -344,6 +344,30 @@ describe("AuthorizationRequestDefaultStep", () => {
         "https://dev.eid.wallet.it/1-3/test-wallet-provider/authorize",
       );
     });
+
+    it("advertises only the client_id prefixes allowed by the IT-Wallet profile", async () => {
+      setupHappyPathMocks();
+      vi.mocked(fetchAuthorizationRequest).mockResolvedValue({
+        parsedQrCode: {
+          ...stubParsedQrCode,
+          requestUriMethod: "post",
+        },
+        requestObjectJwt: "header.payload.sig",
+      } as never);
+
+      const step = makeStep();
+      await step.run({
+        authorizeRequestUrl: stubAuthorizeRequestUrl,
+        credentials: [],
+        verifierMetadata: baseVerifierMetadata,
+        walletAttestation: {} as never,
+      });
+
+      const [fetchCall] = vi.mocked(fetchAuthorizationRequest).mock.calls;
+      expect(
+        fetchCall?.[0].walletMetadata?.client_id_prefixes_supported,
+      ).toEqual(["openid_federation", "x509_hash"]);
+    });
   });
 
   // -------------------------------------------------------------------------

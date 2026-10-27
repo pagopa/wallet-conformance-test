@@ -221,11 +221,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
 }
 
 function buildWalletMetadata(walletProviderBaseUrl: string): WalletMetadata {
-  const walletClientIdPrefixesSupported = [
-    "redirect_uri",
-    "x509_san_dns",
-    "x509_san_uri",
-  ];
+  // only prefixes allowed by the IT-Wallet profile, so the RP can't downgrade
+  const walletClientIdPrefixesSupported = ["openid_federation", "x509_hash"];
 
   const walletVpFormatsSupported: WalletMetadata["vp_formats_supported"] = {
     "dc+sd-jwt": {
