@@ -76,6 +76,9 @@ testConfigs.forEach((testConfig) => {
     let walletAttestationResponse: AttestationResponse;
     let fetchMetadataResponse: FetchMetadataStepResponse;
     let credentialConfigurationId: string;
+    // The identifier the token response returned (OpenID4VCI 1.0 §8.2); the
+    // configuration id only when the token response returned none.
+    let credentialIdentifier: string;
     let ioWalletSdkConfig: IoWalletSdkConfig;
 
     // -----------------------------------------------------------------------
@@ -100,6 +103,9 @@ testConfigs.forEach((testConfig) => {
         );
       }
       accessToken = rawAccessToken;
+      credentialIdentifier =
+        tokenCtx.tokenResponse.response?.authorization_details?.[0]
+          ?.credential_identifiers?.[0] ?? credentialConfigurationId;
 
       const rawCredentialEndpoint =
         entityStatementClaims?.metadata?.openid_credential_issuer
@@ -164,7 +170,7 @@ testConfigs.forEach((testConfig) => {
         accessToken,
         batchSize,
         clientId: walletAttestationResponse.unitKey.publicKey.kid,
-        credentialIdentifier: credentialConfigurationId,
+        credentialIdentifier,
         credentialIssuer: credentialIssuer,
         credentialRequestEndpoint: credentialEndpoint,
         dPoPKey: tokenCtx.dPoPKey,
