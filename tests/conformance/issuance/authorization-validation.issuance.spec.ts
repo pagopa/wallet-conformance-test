@@ -168,7 +168,8 @@ testConfigs.forEach((testConfig) => {
           const { pushedAuthorizationRequestResponse: parResponse } =
             await orchestrator.runThroughPar();
           const expiration = new Promise((resolve) =>
-            setTimeout(resolve, parResponse.response?.expires_in ?? 60e3),
+            // expires_in is in seconds (RFC 9126 §2.2); setTimeout takes milliseconds
+            setTimeout(resolve, (parResponse.response?.expires_in ?? 60) * 1e3),
           );
 
           //Wait for expiration of optional grace period
