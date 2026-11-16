@@ -192,6 +192,10 @@ These are negative tests that verify the token endpoint enforces all required va
 
 - **CI_079**: Runs a successful credential request and inspects each issued SD-JWT VC or mdoc-CBOR credential. For IT Wallet 1.4, it requires `status` only when the credential's technical validity period exceeds 24 hours; status is optional for short-lived credentials. Whenever present, it validates `status.status_list` has an integer `idx` and string `uri`. For versions 1.3 and 1.0, it retains the existing required `status.status_list` and `status.status_assertion.credential_hash_alg` validation, respectively.
 
+- **CI_083a**: Sends a credential request whose JWT proof, correctly signed by the credential key, has `aud` set to the Credential Endpoint instead of the Credential Issuer Identifier. Verifies that the issuer checks the proof audience (OpenID4VCI 1.0 Appendix F.1 and F.4) rather than accepting any of its own URLs.
+
+- **CI_083b**: Same as CI_083a with `aud` set to an unrelated entity (`https://attacker.example.com`). Verifies that the issuer rejects a proof addressed to someone else.
+
 - **CI_084**: Runs a successful credential request and verifies that each issued credential is cryptographically bound to the wallet's key, supporting both SD-JWT VC and mdoc-CBOR formats. For SD-JWT VC, extracts the `cnf.jwk` claim from the JWT payload, computes its JWK thumbprint, and asserts it equals the thumbprint of the wallet's credential key pair. For mdoc-CBOR, extracts the `deviceKeyInfo.deviceKey` COSE_Key from the MSO inside `issuerAuth`, converts it to a JWK, computes its thumbprint, and asserts the same equality. Fails with an explicit error if a credential is neither SD-JWT VC nor mdoc-CBOR. Confirms the credential cannot be used by anyone other than the holder of the matching private key.
 
 - **CI_084a**: Sends a credential request with `credential_configuration_id` set to `"unknown_credential_type_that_does_not_exist_in_issuer_metadata"`. Verifies that the issuer validates the credential type against its metadata and rejects requests for unknown types.

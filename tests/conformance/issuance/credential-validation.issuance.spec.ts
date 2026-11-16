@@ -261,6 +261,70 @@ testConfigs.forEach((testConfig) => {
     });
 
     // -----------------------------------------------------------------------
+    // CI_083a / CI_083b — JWT proof audience
+    // OpenID4VCI 1.0 Appendix F.1 and F.4 (CI_083 in the test plan): the
+    // proof's aud MUST be the Credential Issuer Identifier. The proofs below are
+    // correctly signed by the credential key; only aud is wrong.
+    // -----------------------------------------------------------------------
+
+    test("CI_083a: JWT Proof Audience | Issuer rejects a credential request whose JWT proof aud is the Credential Endpoint instead of the Credential Issuer identifier", async () => {
+      const log = baseLog.withTag("CI_083a");
+      const DESCRIPTION =
+        "Issuer correctly rejected a JWT proof whose aud is the credential endpoint";
+
+      log.start("Conformance test: Verifying JWT proof aud validation");
+
+      let testSuccess = false;
+      try {
+        log.debug(
+          `→ Sending credential request with proof aud = ${credentialEndpoint}...`,
+        );
+        const result = await runCredentialStep(
+          withCredentialRequestOverrides(
+            testConfig.credentialRequestStepClass,
+            {
+              issuerIdentifier: credentialEndpoint,
+            },
+          ),
+        );
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    test("CI_083b: JWT Proof Audience | Issuer rejects a credential request whose JWT proof aud is another entity", async () => {
+      const log = baseLog.withTag("CI_083b");
+      const DESCRIPTION =
+        "Issuer correctly rejected a JWT proof whose aud is another entity";
+
+      log.start("Conformance test: Verifying JWT proof aud validation");
+
+      let testSuccess = false;
+      try {
+        const result = await runCredentialStep(
+          withCredentialRequestOverrides(
+            testConfig.credentialRequestStepClass,
+            {
+              issuerIdentifier: "https://attacker.example.com",
+            },
+          ),
+        );
+
+        log.debug("→ Validating issuer rejected the request...");
+        expect(result.success).toBe(false);
+
+        testSuccess = true;
+      } finally {
+        log.testCompleted(DESCRIPTION, testSuccess);
+      }
+    });
+
+    // -----------------------------------------------------------------------
     // CI_072 — Batch JWT Proof Uniqueness
     // -----------------------------------------------------------------------
 
