@@ -15,6 +15,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import z from "zod";
 
 import { fetchWithConfig } from "@/logic";
+import { collectDisclosureDigests } from "@/logic/sd-jwt";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import {
   CredentialRequestResponse,
@@ -423,7 +424,10 @@ testConfigs.forEach((testConfig) => {
           const decoded = await instance.decode(credentialJwt);
           const payload = decoded.jwt?.payload as Record<string, unknown>;
           const sdAlg = (payload["_sd_alg"] as string | undefined) ?? "sha-256";
-          const sdDigests = (payload["_sd"] as string[] | undefined) ?? [];
+          const sdDigests = collectDisclosureDigests(payload);
+          for (const disclosure of decoded.disclosures ?? []) {
+            collectDisclosureDigests(disclosure.value, sdDigests);
+          }
 
           expect(
             decoded.disclosures,
