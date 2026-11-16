@@ -240,13 +240,12 @@ testConfigs.forEach((testConfig) => {
           "→ Sending credential request with nonce claim removed from proof...",
         );
         const result = await runCredentialStep(
-          withCredentialSignJwtOverride(
+          // Signed by the credential key, so the only fault is the missing nonce
+          withCredentialRequestOverrides(
             testConfig.credentialRequestStepClass,
-            signWithoutClaim(
-              "nonce",
-              walletAttestationResponse.unitKey.privateKey,
-              walletAttestationResponse.unitKey.publicKey,
-            ),
+            {
+              nonce: undefined,
+            },
           ),
         );
         log.debug("  Request completed");
