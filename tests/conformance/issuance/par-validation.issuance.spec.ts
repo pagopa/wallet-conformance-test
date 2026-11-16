@@ -668,7 +668,10 @@ testConfigs.forEach((testConfig) => {
       try {
         log.debug("→ Freezing time 10 minutes in the past...");
         // Freeze time 10 minutes in the past so the SDK generates an already-expired JWT
-        vi.useFakeTimers({ now: Date.now() - 10 * 60 * 1000 });
+        vi.useFakeTimers({
+          now: Date.now() - 10 * 60 * 1000,
+          toFake: ["Date"],
+        });
         log.debug("  Time frozen at: " + new Date(Date.now()).toISOString());
 
         log.debug("→ Sending PAR request with expired token...");
@@ -706,7 +709,10 @@ testConfigs.forEach((testConfig) => {
       try {
         log.debug("→ Advancing time 10 minutes into the future...");
         // Advance the clock 10 minutes forward so iat > server_now + tolerance
-        vi.useFakeTimers({ now: Date.now() + 10 * 60 * 1000 });
+        vi.useFakeTimers({
+          now: Date.now() + 10 * 60 * 1000,
+          toFake: ["Date"],
+        });
         log.debug("  Time advanced to: " + new Date(Date.now()).toISOString());
 
         log.debug("→ Sending PAR request with future iat...");
@@ -744,7 +750,7 @@ testConfigs.forEach((testConfig) => {
       try {
         log.debug("→ Rewinding time 6 minutes into the past...");
         // Go back 6 minutes so iat exceeds the 5-minute clock-skew window
-        vi.useFakeTimers({ now: Date.now() - 6 * 60 * 1000 });
+        vi.useFakeTimers({ now: Date.now() - 6 * 60 * 1000, toFake: ["Date"] });
         log.debug("  Time set to: " + new Date(Date.now()).toISOString());
 
         log.debug("→ Sending PAR request with stale iat...");

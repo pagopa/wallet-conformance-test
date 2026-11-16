@@ -592,7 +592,11 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.debug("→ Advancing time 10 minutes into the future...");
-        vi.useFakeTimers({ now: Date.now() + 10 * 60 * 1000 });
+        // Fake only the clock: faking every timer also stops the HTTP client's timers, so the request never completes
+        vi.useFakeTimers({
+          now: Date.now() + 10 * 60 * 1000,
+          toFake: ["Date"],
+        });
         log.info("  Time advanced to: " + new Date(Date.now()).toISOString());
 
         log.debug("→ Sending credential request with future iat in proof...");
@@ -627,7 +631,7 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.debug("→ Rewinding time 6 minutes into the past...");
-        vi.useFakeTimers({ now: Date.now() - 6 * 60 * 1000 });
+        vi.useFakeTimers({ now: Date.now() - 6 * 60 * 1000, toFake: ["Date"] });
         log.debug("  Time set to: " + new Date(Date.now()).toISOString());
 
         log.debug("→ Sending credential request with stale iat in proof...");
