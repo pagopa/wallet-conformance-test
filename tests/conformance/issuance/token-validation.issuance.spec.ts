@@ -456,7 +456,11 @@ testConfigs.forEach((testConfig) => {
               accessToken,
               clientId:
                 tokenCtx.walletAttestationResponse.unitKey.publicKey.kid,
-              credentialIdentifier: testConfig.credentialConfigurationId,
+              // The identifier the token response returned (OpenID4VCI 1.0 §8.2)
+              credentialIdentifier:
+                tokenCtx.tokenResponse.response?.authorization_details?.[0]
+                  ?.credential_identifiers?.[0] ??
+                testConfig.credentialConfigurationId,
               credentialIssuer: tokenCtx.credentialIssuer,
               credentialRequestEndpoint: credentialEndpoint,
               dPoPKey: tokenCtx.dPoPKey,
