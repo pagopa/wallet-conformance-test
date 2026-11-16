@@ -75,6 +75,11 @@ export interface PushedAuthorizationRequestStepOptions {
   pushedAuthorizationRequestEndpoint: string;
 
   /**
+   * Scope advertised by the issuer for the requested configurations
+   */
+  scope?: string;
+
+  /**
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
    */
   walletAttestation: Omit<AttestationResponse, "created">;
@@ -137,6 +142,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           redirectUri: getCallbackRedirectUri(
             this.config.issuance.callback_port,
           ),
+          scope: options.scope,
           state,
         };
 

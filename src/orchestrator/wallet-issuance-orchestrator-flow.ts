@@ -18,6 +18,7 @@ import {
   loadNotificationCredentialResponseBackup,
   loadTransactionCredentialResponseBackup,
   partialCallbacks,
+  resolveCredentialScope,
   saveCredentialResponseBackup,
   saveCredentialToDisk,
   signJwtCallback,
@@ -643,6 +644,10 @@ export class WalletIssuanceOrchestratorFlow {
         credentialConfigurationIds,
         popAttestation,
         pushedAuthorizationRequestEndpoint,
+        scope: resolveCredentialScope(
+          credentialConfigurationIds,
+          credentialConfigsSupported,
+        ),
         walletAttestation: walletAttestationResponse,
       });
     this._pushedAuthorizationRequestResponse =
