@@ -6,11 +6,20 @@ import {
   fetchPushedAuthorizationResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { randomBytes } from "node:crypto";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
+
+/**
+ * IT-Wallet 1.4.x PAR `state`: random alphanumeric string, minimum length 32.
+ * Special characters (including UUID hyphens) are not allowed.
+ */
+export function createParState(): string {
+  return randomBytes(16).toString("hex");
+}
 
 export type IssuanceResponseMode = "direct_post.jwt" | "form_post.jwt";
 
@@ -107,7 +116,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
-        const state = crypto.randomUUID();
+        const state = createParState();
         const createParOptions = {
           audience: options.baseUrl,
           authorization_details: options.credentialConfigurationIds.map(
@@ -149,6 +158,10 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           ...createParOptionsWithVersionDefaults,
           ...options.createParOverrides,
         } as CreatePushedAuthorizationRequestOptions;
+        const effectiveState =
+          typeof finalParOptions.state === "string" && finalParOptions.state
+            ? finalParOptions.state
+            : state;
         const effectiveResponseMode =
           this.resolveEffectiveResponseMode(finalParOptions);
 
@@ -197,7 +210,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           codeVerifier,
           redirectUri: finalParOptions.redirectUri,
           responseMode: effectiveResponseMode,
-          state,
+          state: effectiveState,
         };
       },
     );
