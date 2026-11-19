@@ -130,16 +130,33 @@ export function getEncryptJweCallback(): EncryptJweCallback {
   return async (jweEncryptor: JweEncryptor, data: string) => {
     // jose rejects importJWK when the JWK already carries alg (e.g. ECDH-ES
     // from RP client_metadata). Pass the algorithm only as the second argument.
-    const { alg: _ignoredAlg, ...publicJwk } = jweEncryptor.publicJwk as JWK & {
-      alg?: string;
-    };
-    const key = await importJWK(publicJwk, jweEncryptor.alg);
+    const sourceJwk = jweEncryptor.publicJwk as JWK & { alg?: string };
+    const { alg: jwkAlg, ...publicJwk } = sourceJwk;
+    const requestedAlg = jweEncryptor.alg || jwkAlg;
+    // Key management alg must not be a content-encryption alg (A128GCM/A256GCM).
+    const isContentEncAlg =
+      requestedAlg === "A128GCM" ||
+      requestedAlg === "A192GCM" ||
+      requestedAlg === "A256GCM";
+    const keyManagementAlg = isContentEncAlg || !requestedAlg
+      ? publicJwk.kty === "RSA"
+        ? "RSA-OAEP-256"
+        : "ECDH-ES"
+      : requestedAlg;
+    const contentEnc =
+      jweEncryptor.enc ||
+      (isContentEncAlg ? requestedAlg : undefined) ||
+      "A128GCM";
+    log.info(
+      `JWE encrypt requestedAlg=${requestedAlg} alg=${keyManagementAlg} enc=${contentEnc} kid=${sourceJwk.kid}`,
+    );
+    const key = await importJWK(publicJwk, keyManagementAlg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
       .setProtectedHeader({
-        alg: jweEncryptor.alg,
-        enc: jweEncryptor.enc,
+        alg: keyManagementAlg,
+        enc: contentEnc,
         kid: jweEncryptor.publicJwk.kid,
       })
       .encrypt(key);
