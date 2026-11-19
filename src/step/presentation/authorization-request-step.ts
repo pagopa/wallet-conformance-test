@@ -128,11 +128,45 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
       log.debug("Request Object JWT:", requestObjectJwt);
 
+      const federationVerifyJwt = createVerifyJwtCallback({
+        trustAnchorUrls: this.config.trust.federation_trust_anchors,
+      });
+      const metadataJwks = options.verifierMetadata?.jwks?.keys ?? [];
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: {
-          verifyJwt: createVerifyJwtCallback({
-            trustAnchorUrls: this.config.trust.federation_trust_anchors,
-          }),
+          verifyJwt: async (signer, jwt) => {
+            const federationResult = await federationVerifyJwt(signer, jwt);
+            if (federationResult.verified) {
+              return federationResult;
+            }
+
+            // Demo stacks often expose an HTTP trust anchor. When verify is
+            // disabled, fall back to JWKS already retrieved from verifier metadata.
+            if (
+              this.config.trust_anchor.verify !== false ||
+              metadataJwks.length === 0 ||
+              !("kid" in signer) ||
+              typeof signer.kid !== "string"
+            ) {
+              return federationResult;
+            }
+
+            const metadataKey = metadataJwks.find(
+              (key) => key.kid === signer.kid,
+            );
+            if (!metadataKey) {
+              return federationResult;
+            }
+
+            return createVerifyJwtCallback()(
+              {
+                alg: signer.alg,
+                method: "jwk",
+                publicJwk: metadataKey,
+              } as Parameters<typeof federationVerifyJwt>[0],
+              jwt,
+            );
+          },
         },
         config: this.ioWalletSdkConfig,
         requestObjectJwt,

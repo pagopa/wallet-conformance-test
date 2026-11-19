@@ -481,8 +481,18 @@ async function completeAuthorizeHeadless(
   const timeoutMs = Number(process.env.CONFIG_AUTHORIZE_HEADLESS_TIMEOUT_MS || "120000");
 
   const puppeteer = await import("puppeteer");
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_PATH ||
+    undefined;
   const browser = await puppeteer.default.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--ignore-certificate-errors"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--ignore-certificate-errors",
+      "--disable-dev-shm-usage",
+    ],
+    ...(executablePath ? { executablePath } : {}),
     headless: true,
     ignoreHTTPSErrors: true,
   });
