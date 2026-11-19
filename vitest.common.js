@@ -82,7 +82,7 @@ export function createTestConfig(testType) {
       exclude,
       fileParallelism: false,
       globalSetup: path.join(testsRoot, `global-setup.${testFileExtension}`),
-      hookTimeout: 120000,
+      hookTimeout: 300000,
       include: [includePattern],
       reporters: ["dot", new ConformanceReporter(testType)],
       setupFiles: [path.join(testsRoot, `setup-tls.${testFileExtension}`)],

@@ -125,12 +125,18 @@ export class AuthorizeDefaultStep extends StepFlow {
     this.log.debug(`Starting callback server on ${redirectUri}`);
     const callbackPromise = startCallbackServer(callbackPort);
 
-    this.log.info(`Opening browser at: ${authorizeUrl}`);
-    openBrowser(authorizeUrl);
+    const headless = isTruthyEnv(process.env.CONFIG_AUTHORIZE_HEADLESS);
+    if (headless) {
+      this.log.info(`Completing authorization headlessly at: ${authorizeUrl}`);
+      await completeAuthorizeHeadless(authorizeUrl, this.log);
+    } else {
+      this.log.info(`Opening browser at: ${authorizeUrl}`);
+      openBrowser(authorizeUrl);
+      this.log.info(
+        "Waiting for the authorization callback... Complete the authentication flow in your browser.",
+      );
+    }
 
-    this.log.info(
-      "Waiting for the authorization callback... Complete the authentication flow in your browser.",
-    );
     const authorizeResponse = await callbackPromise;
 
     this.log.debug(
@@ -455,6 +461,100 @@ export class AuthorizeDefaultStep extends StepFlow {
     }
 
     return state;
+  }
+}
+
+function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+async function completeAuthorizeHeadless(
+  authorizeUrl: string,
+  log: { debug: (...args: unknown[]) => void; info: (...args: unknown[]) => void },
+): Promise<void> {
+  const username = process.env.CONFIG_IDP_USERNAME || "user";
+  const password = process.env.CONFIG_IDP_PASSWORD || "wct-demo";
+  const timeoutMs = Number(process.env.CONFIG_AUTHORIZE_HEADLESS_TIMEOUT_MS || "120000");
+
+  const puppeteer = await import("puppeteer");
+  const browser = await puppeteer.default.launch({
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--ignore-certificate-errors"],
+    headless: true,
+    ignoreHTTPSErrors: true,
+  });
+
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(timeoutMs);
+    await page.goto(authorizeUrl, { waitUntil: "domcontentloaded" });
+
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const currentUrl = page.url();
+      log.debug(`Headless authorize at: ${currentUrl}`);
+
+      if (
+        currentUrl.startsWith("http://localhost:") ||
+        currentUrl.startsWith("http://127.0.0.1:")
+      ) {
+        log.info("Headless authorize reached local callback URL");
+        return;
+      }
+
+      const usernameInput = await page.$('input[name="username"], input#id_username, input[type="text"]');
+      const passwordInput = await page.$('input[name="password"], input#id_password, input[type="password"]');
+      if (usernameInput && passwordInput) {
+        await usernameInput.click({ clickCount: 3 });
+        await usernameInput.type(username, { delay: 10 });
+        await passwordInput.click({ clickCount: 3 });
+        await passwordInput.type(password, { delay: 10 });
+        const submit =
+          (await page.$('button#submit, button[type="submit"], input[type="submit"]')) ??
+          null;
+        if (submit) {
+          await Promise.all([
+            page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+            submit.click(),
+          ]);
+        } else {
+          await page.keyboard.press("Enter");
+          await page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+        }
+        continue;
+      }
+
+      const consent = await page.$('button#confirm, button[name="confirm"], button#agree, a#confirm');
+      if (consent) {
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+          consent.click(),
+        ]);
+        continue;
+      }
+
+      const cieLink = await page.$(
+        'a[href*="cie"], button[data-idp*="cie"], a[href*="Cie"], img[alt*="CIE"]',
+      );
+      if (cieLink) {
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+          cieLink.click(),
+        ]);
+        continue;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new Error(
+      `Headless authorize timed out after ${timeoutMs}ms at ${page.url()}`,
+    );
+  } finally {
+    await browser.close();
   }
 }
 
