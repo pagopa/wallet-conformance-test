@@ -208,13 +208,36 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       );
       log.info("VP Token built successfully from DCQL query.");
 
+      const encryptedResponseEncValues =
+        (requestObject.client_metadata
+          ?.encrypted_response_enc_values_supported as string[] | undefined) ??
+        (options.verifierMetadata
+          ?.encrypted_response_enc_values_supported as string[] | undefined) ??
+        (options.verifierMetadata?.id_token_encrypted_response_enc as
+          | string[]
+          | undefined);
+
+      // Key management alg (ECDH-ES), not content encryption (A128GCM).
+      const authorizationEncryptedResponseAlg =
+        options.verifierMetadata?.authorization_encrypted_response_alg ||
+        (Array.isArray(
+          options.verifierMetadata?.id_token_encrypted_response_alg,
+        )
+          ? options.verifierMetadata.id_token_encrypted_response_alg[0]
+          : undefined) ||
+        (typeof verifierEncryptionPublicJwk?.alg === "string"
+          ? verifierEncryptionPublicJwk.alg
+          : undefined) ||
+        "ECDH-ES";
+
+      const authorizationEncryptedResponseEnc =
+        options.verifierMetadata?.authorization_encrypted_response_enc ||
+        encryptedResponseEncValues?.[0] ||
+        "A128GCM";
+
       const authorizationResponse = await createAuthorizationResponse({
-        authorization_encrypted_response_alg:
-          options.verifierMetadata?.authorization_encrypted_response_alg ||
-          undefined,
-        authorization_encrypted_response_enc:
-          options.verifierMetadata?.authorization_encrypted_response_enc ||
-          undefined,
+        authorization_encrypted_response_alg: authorizationEncryptedResponseAlg,
+        authorization_encrypted_response_enc: authorizationEncryptedResponseEnc,
         callbacks: {
           ...partialCallbacksWithTrustAnchorUrls(
             this.config.trust.federation_trust_anchors,
@@ -224,9 +247,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         config: this.ioWalletSdkConfig,
         requestObject,
         rpJwks: {
-          encrypted_response_enc_values_supported: options.verifierMetadata
-            ?.encrypted_response_enc_values_supported as string[] | undefined,
-          jwks: options.verifierMetadata?.jwks ?? { keys: [] },
+          encrypted_response_enc_values_supported: encryptedResponseEncValues,
+          jwks: verifierJwks ?? { keys: [] },
         },
         vp_token,
       } as CreateAuthorizationResponseVersionedOptions);
