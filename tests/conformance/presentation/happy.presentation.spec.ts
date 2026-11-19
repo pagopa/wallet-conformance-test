@@ -228,7 +228,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       const authorizationRequestUrl = new URL(qrCodePayload);
       expect(authorizationRequestUrl.hash).toBe("");
-      expect(["haip:", "openid4vp:", "https:"]).toContain(
+      expect(["haip:", "haip-vp:", "openid4vp:", "https:"]).toContain(
         authorizationRequestUrl.protocol,
       );
       log.debug("  ✅ QR-Code payload is a valid authorization request URL");
@@ -318,12 +318,15 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       }
 
       // The client_id should match the issuer from the entity statement
+      // (both may carry an openid_federation: prefix — compare the bare URI).
       log.debug(`  Expected: ${issuer}`);
       log.debug(`  Actual: ${parsedQrCode.clientId}`);
       const rawClientId = parsedQrCode.clientId;
       const extractedClientId = extractClientIdPrefix(rawClientId).clientId;
-      log.debug(`  Extracted client_id prefix: ${extractedClientId}`);
-      expect(extractedClientId).toBe(issuer);
+      const expectedIssuer = extractClientIdPrefix(issuer).clientId;
+      log.debug(`  Extracted client_id: ${extractedClientId}`);
+      log.debug(`  Extracted issuer: ${expectedIssuer}`);
+      expect(extractedClientId).toBe(expectedIssuer);
       log.debug("  ✅ client_id matches entity statement issuer");
 
       log.debug("→ Checking request_uri format and domain validity...");
@@ -1703,7 +1706,7 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
       const qrCodePayload = readQrCodePayload();
       expect(qrCodePayload).toBeTruthy();
       const authorizationRequestUrl = new URL(qrCodePayload);
-      expect(["haip:", "openid4vp:", "https:"]).toContain(
+      expect(["haip:", "haip-vp:", "openid4vp:", "https:"]).toContain(
         authorizationRequestUrl.protocol,
       );
       const hasRequest = authorizationRequestUrl.searchParams.has("request");
