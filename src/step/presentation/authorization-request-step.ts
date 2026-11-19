@@ -218,20 +218,26 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
           | undefined);
 
       // Key management alg (ECDH-ES), not content encryption (A128GCM).
+      // Metadata may expose these as string[] (values_supported style).
+      const pickAlg = (value: unknown): string | undefined => {
+        if (typeof value === "string" && value.length > 0) return value;
+        if (Array.isArray(value)) {
+          const first = value.find(
+            (item) => typeof item === "string" && item.length > 0,
+          );
+          return typeof first === "string" ? first : undefined;
+        }
+        return undefined;
+      };
+
       const authorizationEncryptedResponseAlg =
-        options.verifierMetadata?.authorization_encrypted_response_alg ||
-        (Array.isArray(
-          options.verifierMetadata?.id_token_encrypted_response_alg,
-        )
-          ? options.verifierMetadata.id_token_encrypted_response_alg[0]
-          : undefined) ||
-        (typeof verifierEncryptionPublicJwk?.alg === "string"
-          ? verifierEncryptionPublicJwk.alg
-          : undefined) ||
+        pickAlg(options.verifierMetadata?.authorization_encrypted_response_alg) ||
+        pickAlg(options.verifierMetadata?.id_token_encrypted_response_alg) ||
+        pickAlg(verifierEncryptionPublicJwk?.alg) ||
         "ECDH-ES";
 
       const authorizationEncryptedResponseEnc =
-        options.verifierMetadata?.authorization_encrypted_response_enc ||
+        pickAlg(options.verifierMetadata?.authorization_encrypted_response_enc) ||
         encryptedResponseEncValues?.[0] ||
         "A128GCM";
 
