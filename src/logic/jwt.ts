@@ -128,7 +128,12 @@ export const verifyJwt: VerifyJwtCallback = createVerifyJwtCallback();
  */
 export function getEncryptJweCallback(): EncryptJweCallback {
   return async (jweEncryptor: JweEncryptor, data: string) => {
-    const key = await importJWK(jweEncryptor.publicJwk, jweEncryptor.alg);
+    // jose rejects importJWK when the JWK already carries alg (e.g. ECDH-ES
+    // from RP client_metadata). Pass the algorithm only as the second argument.
+    const { alg: _ignoredAlg, ...publicJwk } = jweEncryptor.publicJwk as JWK & {
+      alg?: string;
+    };
+    const key = await importJWK(publicJwk, jweEncryptor.alg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
