@@ -946,9 +946,12 @@ describe(`[${testConfig.name}] Credential Presentation Tests`, () => {
 
       log.debug("→ Checking JWE protected header...");
       const protectedHeader = decodeProtectedHeader(responseJwe);
-      expect(protectedHeader.alg).toBe(
-        verifierMetadata.authorization_encrypted_response_alg ?? "ECDH-ES",
-      );
+      const expectedAlgMeta =
+        verifierMetadata.authorization_encrypted_response_alg ?? "ECDH-ES";
+      const expectedAlg = Array.isArray(expectedAlgMeta)
+        ? expectedAlgMeta[0]
+        : expectedAlgMeta;
+      expect(protectedHeader.alg).toBe(expectedAlg);
       expect(protectedHeader.kid).toBe(encryptionJwk.kid);
       log.debug(`  alg: ${protectedHeader.alg}`);
       log.debug(`  enc: ${protectedHeader.enc}`);
