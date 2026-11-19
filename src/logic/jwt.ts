@@ -148,22 +148,28 @@ export function getEncryptJweCallback(): EncryptJweCallback {
       (isContentEncAlg ? requestedAlg : undefined) ||
       "A128GCM";
     log.info(
-      `JWE encrypt requestedAlg=${requestedAlg} alg=${keyManagementAlg} enc=${contentEnc} kid=${sourceJwk.kid}`,
+      `JWE encrypt requestedAlg=${requestedAlg} alg=${keyManagementAlg} enc=${contentEnc} kid=${sourceJwk.kid} jwk=${JSON.stringify(publicJwk)}`,
     );
-    const key = await importJWK(publicJwk, keyManagementAlg);
+    try {
+      const key = await importJWK(publicJwk, keyManagementAlg);
 
-    const plaintext = new TextEncoder().encode(data);
-    const jwe = await new CompactEncrypt(plaintext)
-      .setProtectedHeader({
-        alg: keyManagementAlg,
-        enc: contentEnc,
-        kid: jweEncryptor.publicJwk.kid,
-      })
-      .encrypt(key);
+      const plaintext = new TextEncoder().encode(data);
+      const jwe = await new CompactEncrypt(plaintext)
+        .setProtectedHeader({
+          alg: keyManagementAlg,
+          enc: contentEnc,
+          kid: jweEncryptor.publicJwk.kid,
+        })
+        .encrypt(key);
 
-    return {
-      encryptionJwk: jweEncryptor.publicJwk,
-      jwe: jwe,
-    };
+      return {
+        encryptionJwk: jweEncryptor.publicJwk,
+        jwe: jwe,
+      };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      log.error(`JWE encrypt failed: ${reason}`);
+      throw error;
+    }
   };
 }
