@@ -131,15 +131,14 @@ export function getEncryptJweCallback(): EncryptJweCallback {
     // jose rejects importJWK when the JWK already carries alg (e.g. ECDH-ES
     // from RP client_metadata). Pass the algorithm only as the second argument.
     const sourceJwk = jweEncryptor.publicJwk as JWK & { alg?: string };
-    const { alg: jwkAlg, ...publicJwk } = sourceJwk;
-    const requestedAlg = jweEncryptor.alg || jwkAlg;
+    const requestedAlg = jweEncryptor.alg || sourceJwk.alg;
     // Key management alg must not be a content-encryption alg (A128GCM/A256GCM).
     const isContentEncAlg =
       requestedAlg === "A128GCM" ||
       requestedAlg === "A192GCM" ||
       requestedAlg === "A256GCM";
     const keyManagementAlg = isContentEncAlg || !requestedAlg
-      ? publicJwk.kty === "RSA"
+      ? sourceJwk.kty === "RSA"
         ? "RSA-OAEP-256"
         : "ECDH-ES"
       : requestedAlg;
@@ -147,6 +146,23 @@ export function getEncryptJweCallback(): EncryptJweCallback {
       jweEncryptor.enc ||
       (isContentEncAlg ? requestedAlg : undefined) ||
       "A128GCM";
+    // Pass only the members jose needs. Stray fields (use/alg/key_ops) can
+    // make importJWK reject ECDH-ES under jose@6 in the vitest runtime.
+    const publicJwk: JWK =
+      sourceJwk.kty === "RSA"
+        ? {
+            e: sourceJwk.e,
+            kid: sourceJwk.kid,
+            kty: "RSA",
+            n: sourceJwk.n,
+          }
+        : {
+            crv: sourceJwk.crv,
+            kid: sourceJwk.kid,
+            kty: "EC",
+            x: sourceJwk.x,
+            y: sourceJwk.y,
+          };
     log.info(
       `JWE encrypt requestedAlg=${requestedAlg} alg=${keyManagementAlg} enc=${contentEnc} kid=${sourceJwk.kid} jwk=${JSON.stringify(publicJwk)}`,
     );
@@ -158,7 +174,7 @@ export function getEncryptJweCallback(): EncryptJweCallback {
         .setProtectedHeader({
           alg: keyManagementAlg,
           enc: contentEnc,
-          kid: jweEncryptor.publicJwk.kid,
+          kid: sourceJwk.kid,
         })
         .encrypt(key);
 
