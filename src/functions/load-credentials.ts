@@ -2,7 +2,8 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import cbor from "cbor";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
@@ -89,7 +90,12 @@ export async function loadCredentialsForPresentation(
     return createMockCredentialsWithKeys(config);
   }
 
-  return Promise.all(
+  const credentialsDir = join(
+    config.wallet.credentials_storage_path,
+    config.wallet.wallet_version,
+  );
+
+  const loaded = await Promise.all(
     Object.entries(storedCredentials).map(async ([key, credential]) => {
       const isExpired =
         credential.typ === "dc+sd-jwt"
@@ -97,17 +103,34 @@ export async function loadCredentialsForPresentation(
           : isCredentialMdocExpired(credential.parsed);
       if (isExpired) {
         log.warn(
-          `Credential '${key}' is expired, it will not be ignored but you need to reissuance it.`,
+          `Credential '${key}' is expired; prefer a re-issued credential for presentation.`,
         );
       }
-      return toCredentialWithKey(
-        key,
-        credential.compact,
-        credential.typ,
-        config.wallet.backup_storage_path,
-      );
+      let mtimeMs = 0;
+      try {
+        mtimeMs = statSync(join(credentialsDir, key)).mtimeMs;
+      } catch {
+        mtimeMs = 0;
+      }
+      return {
+        credential: await toCredentialWithKey(
+          key,
+          credential.compact,
+          credential.typ,
+          config.wallet.backup_storage_path,
+        ),
+        isExpired,
+        mtimeMs,
+      };
     }),
   );
+
+  // Prefer non-expired, then newest (reissuance revokes older status-list idxs).
+  const ranked = [...loaded].sort((a, b) => {
+    if (a.isExpired !== b.isExpired) return a.isExpired ? 1 : -1;
+    return b.mtimeMs - a.mtimeMs;
+  });
+  return ranked.map((item) => item.credential);
 }
 
 /**

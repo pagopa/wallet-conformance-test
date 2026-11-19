@@ -145,15 +145,10 @@ const buildAttestationOptions = async (
         trust,
         providerKeyPair,
       );
+      // IT-Wallet 1.4.6+ removed status from Wallet Instance Attestation.
       const attestationOptions: WalletAttestationOptions = {
         ...commonOptions,
         signer: { ...signerBase, method: "x5c", x5c },
-        status: {
-          status_list: {
-            idx: 0,
-            uri: appendWalletProviderPath(wpBaseUrl, "status-list"),
-          },
-        },
       };
       return attestationOptions;
     }

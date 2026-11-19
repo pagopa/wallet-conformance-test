@@ -128,11 +128,45 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       log.debug("Parsed QR Code:", JSON.stringify(parsedQrCode, null, 2));
       log.debug("Request Object JWT:", requestObjectJwt);
 
+      const federationVerifyJwt = createVerifyJwtCallback({
+        trustAnchorUrls: this.config.trust.federation_trust_anchors,
+      });
+      const metadataJwks = options.verifierMetadata?.jwks?.keys ?? [];
       const parsedAuthorizeRequest = await parseAuthorizeRequest({
         callbacks: {
-          verifyJwt: createVerifyJwtCallback({
-            trustAnchorUrls: this.config.trust.federation_trust_anchors,
-          }),
+          verifyJwt: async (signer, jwt) => {
+            const federationResult = await federationVerifyJwt(signer, jwt);
+            if (federationResult.verified) {
+              return federationResult;
+            }
+
+            // Demo stacks often expose an HTTP trust anchor. When verify is
+            // disabled, fall back to JWKS already retrieved from verifier metadata.
+            if (
+              this.config.trust_anchor.verify !== false ||
+              metadataJwks.length === 0 ||
+              !("kid" in signer) ||
+              typeof signer.kid !== "string"
+            ) {
+              return federationResult;
+            }
+
+            const metadataKey = metadataJwks.find(
+              (key) => key.kid === signer.kid,
+            );
+            if (!metadataKey) {
+              return federationResult;
+            }
+
+            return createVerifyJwtCallback()(
+              {
+                alg: signer.alg,
+                method: "jwk",
+                publicJwk: metadataKey,
+              } as Parameters<typeof federationVerifyJwt>[0],
+              jwt,
+            );
+          },
         },
         config: this.ioWalletSdkConfig,
         requestObjectJwt,
@@ -174,13 +208,42 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
       );
       log.info("VP Token built successfully from DCQL query.");
 
+      const encryptedResponseEncValues =
+        (requestObject.client_metadata
+          ?.encrypted_response_enc_values_supported as string[] | undefined) ??
+        (options.verifierMetadata
+          ?.encrypted_response_enc_values_supported as string[] | undefined) ??
+        (options.verifierMetadata?.id_token_encrypted_response_enc as
+          | string[]
+          | undefined);
+
+      // Key management alg (ECDH-ES), not content encryption (A128GCM).
+      // Metadata may expose these as string[] (values_supported style).
+      const pickAlg = (value: unknown): string | undefined => {
+        if (typeof value === "string" && value.length > 0) return value;
+        if (Array.isArray(value)) {
+          const first = value.find(
+            (item) => typeof item === "string" && item.length > 0,
+          );
+          return typeof first === "string" ? first : undefined;
+        }
+        return undefined;
+      };
+
+      const authorizationEncryptedResponseAlg =
+        pickAlg(options.verifierMetadata?.authorization_encrypted_response_alg) ||
+        pickAlg(options.verifierMetadata?.id_token_encrypted_response_alg) ||
+        pickAlg(verifierEncryptionPublicJwk?.alg) ||
+        "ECDH-ES";
+
+      const authorizationEncryptedResponseEnc =
+        pickAlg(options.verifierMetadata?.authorization_encrypted_response_enc) ||
+        encryptedResponseEncValues?.[0] ||
+        "A128GCM";
+
       const authorizationResponse = await createAuthorizationResponse({
-        authorization_encrypted_response_alg:
-          options.verifierMetadata?.authorization_encrypted_response_alg ||
-          undefined,
-        authorization_encrypted_response_enc:
-          options.verifierMetadata?.authorization_encrypted_response_enc ||
-          undefined,
+        authorization_encrypted_response_alg: authorizationEncryptedResponseAlg,
+        authorization_encrypted_response_enc: authorizationEncryptedResponseEnc,
         callbacks: {
           ...partialCallbacksWithTrustAnchorUrls(
             this.config.trust.federation_trust_anchors,
@@ -190,9 +253,8 @@ export class AuthorizationRequestDefaultStep extends StepFlow {
         config: this.ioWalletSdkConfig,
         requestObject,
         rpJwks: {
-          encrypted_response_enc_values_supported: options.verifierMetadata
-            ?.encrypted_response_enc_values_supported as string[] | undefined,
-          jwks: options.verifierMetadata?.jwks ?? { keys: [] },
+          encrypted_response_enc_values_supported: encryptedResponseEncValues,
+          jwks: verifierJwks ?? { keys: [] },
         },
         vp_token,
       } as CreateAuthorizationResponseVersionedOptions);

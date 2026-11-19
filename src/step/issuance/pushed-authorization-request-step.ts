@@ -6,11 +6,20 @@ import {
   fetchPushedAuthorizationResponseOptions,
 } from "@pagopa/io-wallet-oauth2";
 import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
+import { randomBytes } from "node:crypto";
 
 import { fetchWithConfig, partialCallbacks, signJwtCallback } from "@/logic";
 import { getCallbackRedirectUri } from "@/logic/constants";
 import { StepFlow, StepResponse } from "@/step";
 import { AttestationResponse } from "@/types";
+
+/**
+ * IT-Wallet 1.4.x PAR `state`: random alphanumeric string, minimum length 32.
+ * Special characters (including UUID hyphens) are not allowed.
+ */
+export function createParState(): string {
+  return randomBytes(16).toString("hex");
+}
 
 export type IssuanceResponseMode = "direct_post.jwt" | "form_post.jwt";
 
@@ -75,9 +84,52 @@ export interface PushedAuthorizationRequestStepOptions {
   pushedAuthorizationRequestEndpoint: string;
 
   /**
+   * OAuth scope from credential configuration metadata (catalog credential_type).
+   * IT-Wallet requires both scope and authorization_details in the PAR.
+   */
+  scope?: string;
+
+  /**
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
    */
   walletAttestation: Omit<AttestationResponse, "created">;
+}
+
+/**
+ * Resolve space-separated PAR scope values from credential_configurations_supported.
+ */
+export function resolveParScopeFromCredentialConfigurations(
+  credentialConfigurationIds: string[],
+  credentialConfigurationsSupported:
+    | Record<string, { scope?: string } | undefined>
+    | undefined,
+): string {
+  if (!credentialConfigurationsSupported) {
+    throw new Error(
+      "Cannot resolve PAR scope: credential_configurations_supported is missing from issuer metadata",
+    );
+  }
+
+  const scopes: string[] = [];
+  for (const id of credentialConfigurationIds) {
+    const scope = credentialConfigurationsSupported[id]?.scope;
+    if (!scope) {
+      throw new Error(
+        `Cannot resolve PAR scope: credential configuration '${id}' has no scope in issuer metadata`,
+      );
+    }
+    if (!scopes.includes(scope)) {
+      scopes.push(scope);
+    }
+  }
+
+  if (scopes.length === 0) {
+    throw new Error(
+      "Cannot resolve PAR scope: no credential configuration ids were provided",
+    );
+  }
+
+  return scopes.join(" ");
 }
 
 /**
@@ -107,7 +159,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           signJwt: signJwtCallback([unitKey.privateKey]),
         };
 
-        const state = crypto.randomUUID();
+        const state = createParState();
         const createParOptions = {
           audience: options.baseUrl,
           authorization_details: options.credentialConfigurationIds.map(
@@ -137,6 +189,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           redirectUri: getCallbackRedirectUri(
             this.config.issuance.callback_port,
           ),
+          ...(options.scope !== undefined ? { scope: options.scope } : {}),
           state,
         };
 
@@ -149,6 +202,10 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           ...createParOptionsWithVersionDefaults,
           ...options.createParOverrides,
         } as CreatePushedAuthorizationRequestOptions;
+        const effectiveState =
+          typeof finalParOptions.state === "string" && finalParOptions.state
+            ? finalParOptions.state
+            : state;
         const effectiveResponseMode =
           this.resolveEffectiveResponseMode(finalParOptions);
 
@@ -197,7 +254,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           codeVerifier,
           redirectUri: finalParOptions.redirectUri,
           responseMode: effectiveResponseMode,
-          state,
+          state: effectiveState,
         };
       },
     );

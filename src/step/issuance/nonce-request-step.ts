@@ -37,15 +37,34 @@ export class NonceRequestDefaultStep extends StepFlow {
         options.nonceEndpoint,
         this.config.network,
         {
+          // OpenID4VCI: POST with empty body and no Content-Type.
+          body: undefined,
+          headers: {
+            "Content-Length": "0",
+          },
           method: "POST",
         },
       );
+
+      if (!fetchNonce.response.ok) {
+        const body = await fetchNonce.response.text();
+        throw new Error(
+          `Nonce endpoint returned HTTP ${fetchNonce.response.status}: ${body}`,
+        );
+      }
+
+      const nonce = (await fetchNonce.response.json()) as NonceResponsePayload;
+      if (typeof nonce.c_nonce !== "string" || nonce.c_nonce.length === 0) {
+        throw new Error(
+          `Nonce response missing c_nonce: ${JSON.stringify(nonce)}`,
+        );
+      }
 
       return {
         attempts: fetchNonce.attempts,
         cacheControl: fetchNonce.response.headers.get("Cache-Control"),
         contentType: fetchNonce.response.headers.get("Content-Type"),
-        nonce: await fetchNonce.response.json(),
+        nonce,
       };
     });
   }

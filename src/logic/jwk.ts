@@ -8,6 +8,7 @@ import {
   jsonWebKeySchema,
   jsonWebKeySetSchema,
 } from "@pagopa/io-wallet-oid-federation";
+import { extractClientIdPrefix } from "@pagopa/io-wallet-oid4vp";
 import { parseWithErrorHandling } from "@pagopa/io-wallet-utils";
 import * as x509 from "@peculiar/x509";
 import {
@@ -23,6 +24,11 @@ import { KeyPair, KeyPairJwk } from "@/types";
 
 import { loadCertificate } from "./pem";
 import { buildCertPath, partialCallbacksWithTrustAnchorUrls } from "./utils";
+
+function resolveFederationEntityId(issuer: string): string {
+  const { clientId } = extractClientIdPrefix(issuer);
+  return clientId;
+}
 
 export interface CreateKeysOptions {
   /**
@@ -265,8 +271,9 @@ async function jwkFromFederation(
       trustChain ??
       (await (() => {
         if (!payload?.iss) throw new Error("missing iss in payload");
+        const entityId = resolveFederationEntityId(String(payload.iss));
         const trustedAnchors = toNonEmptyTrustAnchorUrls(trustAnchorUrls);
-        return fetchAndValidateTrustChain(payload.iss, {
+        return fetchAndValidateTrustChain(entityId, {
           callbacks: {
             ...partialCallbacksWithTrustAnchorUrls(trustAnchorUrls),
             fetch,

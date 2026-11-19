@@ -14,6 +14,15 @@ import { createLogger } from "./logs";
 
 const log = createLogger().withTag("jwt");
 
+function firstString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (Array.isArray(value)) {
+    const first = value.find((item) => typeof item === "string" && item.length > 0);
+    return typeof first === "string" ? first : undefined;
+  }
+  return undefined;
+}
+
 export interface VerifyJwtCallbackOptions {
   trustAnchorUrls?: string[];
 }
@@ -128,14 +137,55 @@ export const verifyJwt: VerifyJwtCallback = createVerifyJwtCallback();
  */
 export function getEncryptJweCallback(): EncryptJweCallback {
   return async (jweEncryptor: JweEncryptor, data: string) => {
-    const key = await importJWK(jweEncryptor.publicJwk, jweEncryptor.alg);
+    // jose rejects importJWK when the JWK already carries alg (e.g. ECDH-ES
+    // from RP client_metadata). Pass the algorithm only as the second argument.
+    // Verifier metadata may expose alg as a string[] (values_supported style).
+    const sourceJwk = jweEncryptor.publicJwk as JWK & { alg?: string };
+    const requestedAlg =
+      firstString(jweEncryptor.alg) ?? firstString(sourceJwk.alg);
+    // Key management alg must not be a content-encryption alg (A128GCM/A256GCM).
+    const isContentEncAlg =
+      requestedAlg === "A128GCM" ||
+      requestedAlg === "A192GCM" ||
+      requestedAlg === "A256GCM";
+    const keyManagementAlg =
+      isContentEncAlg || !requestedAlg
+        ? sourceJwk.kty === "RSA"
+          ? "RSA-OAEP-256"
+          : "ECDH-ES"
+        : requestedAlg;
+    const contentEnc =
+      firstString(jweEncryptor.enc) ||
+      (isContentEncAlg ? requestedAlg : undefined) ||
+      "A128GCM";
+    // Pass only the members jose needs. Stray fields (use/alg/key_ops) are
+    // stripped so importJWK receives a clean EC/RSA public key.
+    const publicJwk: JWK =
+      sourceJwk.kty === "RSA"
+        ? {
+            e: sourceJwk.e,
+            kid: sourceJwk.kid,
+            kty: "RSA",
+            n: sourceJwk.n,
+          }
+        : {
+            crv: sourceJwk.crv,
+            kid: sourceJwk.kid,
+            kty: "EC",
+            x: sourceJwk.x,
+            y: sourceJwk.y,
+          };
+    log.info(
+      `JWE encrypt alg=${keyManagementAlg} enc=${contentEnc} kid=${sourceJwk.kid}`,
+    );
+    const key = await importJWK(publicJwk, keyManagementAlg);
 
     const plaintext = new TextEncoder().encode(data);
     const jwe = await new CompactEncrypt(plaintext)
       .setProtectedHeader({
-        alg: jweEncryptor.alg,
-        enc: jweEncryptor.enc,
-        kid: jweEncryptor.publicJwk.kid,
+        alg: keyManagementAlg,
+        enc: contentEnc,
+        kid: sourceJwk.kid,
       })
       .encrypt(key);
 

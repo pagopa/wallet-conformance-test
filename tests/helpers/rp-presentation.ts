@@ -97,19 +97,14 @@ export function isCompactJwt(value: string): boolean {
 export function normalizePresentationArray(
   id: string,
   presentationOrArray: string | string[] | undefined,
-  walletVersion: ItWalletSpecsVersion,
+  _walletVersion: ItWalletSpecsVersion,
 ): string[] {
   if (!presentationOrArray) {
     throw new Error(`vp_token.${id} is missing`);
   }
-  if (
-    (walletVersion === ItWalletSpecsVersion.V1_3 ||
-      walletVersion === ItWalletSpecsVersion.V1_4) &&
-    !Array.isArray(presentationOrArray)
-  ) {
-    throw new Error(`vp_token.${id} must be a presentation array`);
-  }
 
+  // OpenID4VP DCQL: value is a string unless the credential query set
+  // `multiple: true`, in which case it is a non-empty string array.
   const presentations = Array.isArray(presentationOrArray)
     ? presentationOrArray
     : [presentationOrArray];

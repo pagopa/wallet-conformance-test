@@ -39,7 +39,10 @@ import {
 } from "@/logic";
 import { WalletIssuanceOrchestratorFlow } from "@/orchestrator";
 import { PushedAuthorizationRequestDefaultStep } from "@/step/issuance";
-import { PushedAuthorizationRequestResponse } from "@/step/issuance/pushed-authorization-request-step";
+import {
+  PushedAuthorizationRequestResponse,
+  resolveParScopeFromCredentialConfigurations,
+} from "@/step/issuance/pushed-authorization-request-step";
 import { AttestationResponse } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -61,6 +64,7 @@ testConfigs.forEach((testConfig) => {
     let pushedAuthorizationRequestEndpoint: string;
     let authorizationServer: string;
     let credentialIssuer: string;
+    let catalogScope: string;
     let ioWalletSdkConfig: IoWalletSdkConfig;
 
     // -----------------------------------------------------------------------
@@ -76,6 +80,13 @@ testConfigs.forEach((testConfig) => {
       pushedAuthorizationRequestEndpoint =
         ctx.pushedAuthorizationRequestEndpoint;
       credentialIssuer = ctx.credentialIssuer;
+      catalogScope = resolveParScopeFromCredentialConfigurations(
+        ctx.credentialConfigurationIds,
+        ctx.fetchMetadataResponse.response?.entityStatementClaims?.metadata
+          ?.openid_credential_issuer?.credential_configurations_supported as
+          | Record<string, { scope?: string } | undefined>
+          | undefined,
+      );
 
       ioWalletSdkConfig = new IoWalletSdkConfig({
         itWalletSpecsVersion: orchestrator.getConfig().wallet.wallet_version,
@@ -109,6 +120,7 @@ testConfigs.forEach((testConfig) => {
         credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: freshPop,
         pushedAuthorizationRequestEndpoint,
+        scope: catalogScope,
         walletAttestation: attestationOverride ?? walletAttestationResponse,
       });
     }
@@ -329,11 +341,11 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.debug(
-          "→ Sending PAR request with scope='openid' alongside authorization_details...",
+          `→ Sending PAR request with scope='${catalogScope}' alongside authorization_details...`,
         );
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            scope: "openid",
+            scope: catalogScope,
           }),
         );
 
@@ -362,11 +374,11 @@ testConfigs.forEach((testConfig) => {
       let testSuccess = false;
       try {
         log.debug(
-          `→ Sending PAR with scope='${testConfig.credentialConfigurationId}' matching authorization_details...`,
+          `→ Sending PAR with scope='${catalogScope}' matching authorization_details...`,
         );
         const result = await runParStep(
           withParOverrides(testConfig.pushedAuthorizationRequestStepClass, {
-            scope: testConfig.credentialConfigurationId,
+            scope: catalogScope,
           }),
         );
 
@@ -783,6 +795,7 @@ testConfigs.forEach((testConfig) => {
         credentialConfigurationIds: [testConfig.credentialConfigurationId],
         popAttestation: customPopAttestation,
         pushedAuthorizationRequestEndpoint,
+        scope: catalogScope,
         walletAttestation: walletAttestationResponse,
       });
     }

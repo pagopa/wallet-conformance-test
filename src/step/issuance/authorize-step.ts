@@ -125,12 +125,18 @@ export class AuthorizeDefaultStep extends StepFlow {
     this.log.debug(`Starting callback server on ${redirectUri}`);
     const callbackPromise = startCallbackServer(callbackPort);
 
-    this.log.info(`Opening browser at: ${authorizeUrl}`);
-    openBrowser(authorizeUrl);
+    const headless = isTruthyEnv(process.env.CONFIG_AUTHORIZE_HEADLESS);
+    if (headless) {
+      this.log.info(`Completing authorization headlessly at: ${authorizeUrl}`);
+      await completeAuthorizeHeadless(authorizeUrl, this.log);
+    } else {
+      this.log.info(`Opening browser at: ${authorizeUrl}`);
+      openBrowser(authorizeUrl);
+      this.log.info(
+        "Waiting for the authorization callback... Complete the authentication flow in your browser.",
+      );
+    }
 
-    this.log.info(
-      "Waiting for the authorization callback... Complete the authentication flow in your browser.",
-    );
     const authorizeResponse = await callbackPromise;
 
     this.log.debug(
@@ -455,6 +461,174 @@ export class AuthorizeDefaultStep extends StepFlow {
     }
 
     return state;
+  }
+}
+
+function isTruthyEnv(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+async function clickAndWaitForNavigation(
+  page: {
+    waitForNavigation: (options: {
+      waitUntil: "domcontentloaded";
+    }) => Promise<unknown>;
+    evaluate: (
+      fn: (el: Element) => void,
+      el: unknown,
+    ) => Promise<unknown>;
+  },
+  element: unknown,
+): Promise<void> {
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+    // DOM click avoids Puppeteer "not clickable" on covered/hidden nodes.
+    page.evaluate((el) => {
+      (el as HTMLElement).click();
+    }, element),
+  ]);
+}
+
+async function completeAuthorizeHeadless(
+  authorizeUrl: string,
+  log: { debug: (...args: unknown[]) => void; info: (...args: unknown[]) => void },
+): Promise<void> {
+  const username = process.env.CONFIG_IDP_USERNAME || "user";
+  const password = process.env.CONFIG_IDP_PASSWORD || "wct-demo";
+  const timeoutMs = Number(process.env.CONFIG_AUTHORIZE_HEADLESS_TIMEOUT_MS || "120000");
+
+  const puppeteer = await import("puppeteer");
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.CHROME_PATH ||
+    undefined;
+  const browser = await puppeteer.default.launch({
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--ignore-certificate-errors",
+      "--disable-dev-shm-usage",
+    ],
+    ...(executablePath ? { executablePath } : {}),
+    headless: true,
+    ignoreHTTPSErrors: true,
+  });
+
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(timeoutMs);
+    await page.goto(authorizeUrl, { waitUntil: "domcontentloaded" });
+
+    const deadline = Date.now() + timeoutMs;
+    let lastActionAt = 0;
+    while (Date.now() < deadline) {
+      const currentUrl = page.url();
+      log.debug(`Headless authorize at: ${currentUrl}`);
+
+      if (
+        currentUrl.startsWith("http://localhost:") ||
+        currentUrl.startsWith("http://127.0.0.1:")
+      ) {
+        log.info("Headless authorize reached local callback URL");
+        return;
+      }
+
+      const usernameSelector =
+        'input#id_username, input[name="username"], input[type="text"]';
+      const passwordSelector =
+        'input#id_password, input[name="password"], input[type="password"]';
+      const usernameInput = await page.$(usernameSelector);
+      const passwordInput = await page.$(passwordSelector);
+      if (usernameInput && passwordInput) {
+        await page.evaluate(
+          (userSel, passSel, user, pass) => {
+            const userEl = document.querySelector(userSel) as HTMLInputElement | null;
+            const passEl = document.querySelector(passSel) as HTMLInputElement | null;
+            if (!userEl || !passEl) {
+              return;
+            }
+            userEl.focus();
+            userEl.value = user;
+            userEl.dispatchEvent(new Event("input", { bubbles: true }));
+            passEl.focus();
+            passEl.value = pass;
+            passEl.dispatchEvent(new Event("input", { bubbles: true }));
+          },
+          usernameSelector,
+          passwordSelector,
+          username,
+          password,
+        );
+        const submit =
+          (await page.$('button#submit, button[type="submit"], input[type="submit"]')) ??
+          null;
+        if (submit) {
+          await clickAndWaitForNavigation(page, submit);
+        } else {
+          await page.keyboard.press("Enter");
+          await page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined);
+        }
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      const consent = await page.$(
+        'button#confirm, button[name="confirm"], button#agree, a#confirm, button[name="confirm_access"]',
+      );
+      if (consent) {
+        await clickAndWaitForNavigation(page, consent);
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      // Prefer the demo CIE OIDC IdP over production CIE SAML2 (both may appear
+      // in the SATOSA disco dropdown as anchors whose href contains "cie").
+      const cieOidcLink = await page.$('a[href*="cie-provider.example.org"]');
+      if (cieOidcLink) {
+        const href = await page.evaluate(
+          (el) => (el as HTMLAnchorElement).href,
+          cieOidcLink,
+        );
+        log.info(`Headless authorize selecting CIE OIDC: ${href}`);
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+          page.goto(href, { waitUntil: "domcontentloaded" }),
+        ]);
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      const cieButton = await page.$("button.eid-card-btn-cie");
+      if (cieButton) {
+        log.info("Headless authorize opening CIE card");
+        await clickAndWaitForNavigation(page, cieButton);
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      // Avoid busy-looping the same idle page: wait for disco cards if present.
+      if (Date.now() - lastActionAt > 2000) {
+        await page
+          .waitForSelector(
+            'button.eid-card-btn-cie, a[href*="cie-provider.example.org"], input#id_username, input#id_password',
+            { timeout: 2000 },
+          )
+          .catch(() => undefined);
+        lastActionAt = Date.now();
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    throw new Error(
+      `Headless authorize timed out after ${timeoutMs}ms at ${page.url()}`,
+    );
+  } finally {
+    await browser.close();
   }
 }
 
