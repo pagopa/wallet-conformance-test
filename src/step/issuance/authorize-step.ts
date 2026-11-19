@@ -472,6 +472,27 @@ function isTruthyEnv(value: string | undefined): boolean {
   return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
+async function clickAndWaitForNavigation(
+  page: {
+    waitForNavigation: (options: {
+      waitUntil: "domcontentloaded";
+    }) => Promise<unknown>;
+    evaluate: (
+      fn: (el: Element) => void,
+      el: unknown,
+    ) => Promise<unknown>;
+  },
+  element: unknown,
+): Promise<void> {
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+    // DOM click avoids Puppeteer "not clickable" on covered/hidden nodes.
+    page.evaluate((el) => {
+      (el as HTMLElement).click();
+    }, element),
+  ]);
+}
+
 async function completeAuthorizeHeadless(
   authorizeUrl: string,
   log: { debug: (...args: unknown[]) => void; info: (...args: unknown[]) => void },
@@ -503,6 +524,7 @@ async function completeAuthorizeHeadless(
     await page.goto(authorizeUrl, { waitUntil: "domcontentloaded" });
 
     const deadline = Date.now() + timeoutMs;
+    let lastActionAt = 0;
     while (Date.now() < deadline) {
       const currentUrl = page.url();
       log.debug(`Headless authorize at: ${currentUrl}`);
@@ -515,49 +537,91 @@ async function completeAuthorizeHeadless(
         return;
       }
 
-      const usernameInput = await page.$('input[name="username"], input#id_username, input[type="text"]');
-      const passwordInput = await page.$('input[name="password"], input#id_password, input[type="password"]');
+      const usernameSelector =
+        'input#id_username, input[name="username"], input[type="text"]';
+      const passwordSelector =
+        'input#id_password, input[name="password"], input[type="password"]';
+      const usernameInput = await page.$(usernameSelector);
+      const passwordInput = await page.$(passwordSelector);
       if (usernameInput && passwordInput) {
-        await usernameInput.click({ clickCount: 3 });
-        await usernameInput.type(username, { delay: 10 });
-        await passwordInput.click({ clickCount: 3 });
-        await passwordInput.type(password, { delay: 10 });
+        await page.evaluate(
+          (userSel, passSel, user, pass) => {
+            const userEl = document.querySelector(userSel) as HTMLInputElement | null;
+            const passEl = document.querySelector(passSel) as HTMLInputElement | null;
+            if (!userEl || !passEl) {
+              return;
+            }
+            userEl.focus();
+            userEl.value = user;
+            userEl.dispatchEvent(new Event("input", { bubbles: true }));
+            passEl.focus();
+            passEl.value = pass;
+            passEl.dispatchEvent(new Event("input", { bubbles: true }));
+          },
+          usernameSelector,
+          passwordSelector,
+          username,
+          password,
+        );
         const submit =
           (await page.$('button#submit, button[type="submit"], input[type="submit"]')) ??
           null;
         if (submit) {
-          await Promise.all([
-            page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
-            submit.click(),
-          ]);
+          await clickAndWaitForNavigation(page, submit);
         } else {
           await page.keyboard.press("Enter");
           await page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined);
         }
+        lastActionAt = Date.now();
         continue;
       }
 
-      const consent = await page.$('button#confirm, button[name="confirm"], button#agree, a#confirm');
-      if (consent) {
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
-          consent.click(),
-        ]);
-        continue;
-      }
-
-      const cieLink = await page.$(
-        'a[href*="cie"], button[data-idp*="cie"], a[href*="Cie"], img[alt*="CIE"]',
+      const consent = await page.$(
+        'button#confirm, button[name="confirm"], button#agree, a#confirm, button[name="confirm_access"]',
       );
-      if (cieLink) {
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
-          cieLink.click(),
-        ]);
+      if (consent) {
+        await clickAndWaitForNavigation(page, consent);
+        lastActionAt = Date.now();
         continue;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Prefer the demo CIE OIDC IdP over production CIE SAML2 (both may appear
+      // in the SATOSA disco dropdown as anchors whose href contains "cie").
+      const cieOidcLink = await page.$('a[href*="cie-provider.example.org"]');
+      if (cieOidcLink) {
+        const href = await page.evaluate(
+          (el) => (el as HTMLAnchorElement).href,
+          cieOidcLink,
+        );
+        log.info(`Headless authorize selecting CIE OIDC: ${href}`);
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => undefined),
+          page.goto(href, { waitUntil: "domcontentloaded" }),
+        ]);
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      const cieButton = await page.$("button.eid-card-btn-cie");
+      if (cieButton) {
+        log.info("Headless authorize opening CIE card");
+        await clickAndWaitForNavigation(page, cieButton);
+        lastActionAt = Date.now();
+        continue;
+      }
+
+      // Avoid busy-looping the same idle page: wait for disco cards if present.
+      if (Date.now() - lastActionAt > 2000) {
+        await page
+          .waitForSelector(
+            'button.eid-card-btn-cie, a[href*="cie-provider.example.org"], input#id_username, input#id_password',
+            { timeout: 2000 },
+          )
+          .catch(() => undefined);
+        lastActionAt = Date.now();
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
 
     throw new Error(
