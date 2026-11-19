@@ -89,7 +89,7 @@ export async function loadCredentialsForPresentation(
     return createMockCredentialsWithKeys(config);
   }
 
-  return Promise.all(
+  const loaded = await Promise.all(
     Object.entries(storedCredentials).map(async ([key, credential]) => {
       const isExpired =
         credential.typ === "dc+sd-jwt"
@@ -97,17 +97,25 @@ export async function loadCredentialsForPresentation(
           : isCredentialMdocExpired(credential.parsed);
       if (isExpired) {
         log.warn(
-          `Credential '${key}' is expired, it will not be ignored but you need to reissuance it.`,
+          `Credential '${key}' is expired; prefer a re-issued credential for presentation.`,
         );
       }
-      return toCredentialWithKey(
-        key,
-        credential.compact,
-        credential.typ,
-        config.wallet.backup_storage_path,
-      );
+      return {
+        credential: await toCredentialWithKey(
+          key,
+          credential.compact,
+          credential.typ,
+          config.wallet.backup_storage_path,
+        ),
+        isExpired,
+      };
     }),
   );
+
+  // Prefer non-expired credentials so DCQL `multiple: false` selects a usable one.
+  const usable = loaded.filter((item) => !item.isExpired).map((item) => item.credential);
+  if (usable.length > 0) return usable;
+  return loaded.map((item) => item.credential);
 }
 
 /**

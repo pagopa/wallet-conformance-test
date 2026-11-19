@@ -13,7 +13,7 @@ export async function prepareCredentials(
   credentialQueryId: string,
   credentials: CredentialWithKey[],
   options: Omit<VpTokenOptions, "credential" | "dpopJwk">,
-): Promise<Record<string, [string, ...string[]]>> {
+): Promise<Record<string, [string, ...string[]] | string>> {
   if (validCredentials.length < 1)
     throw new Error(
       `No valid credentials found for credential_query_id ${credentialQueryId}`,
@@ -26,7 +26,14 @@ export async function prepareCredentials(
       `Credential query missing for credential_query_id ${credentialQueryId}`,
     );
 
-  for (const validCredential of validCredentials) {
+  // OpenID4VP DCQL: when `multiple` is absent/false, vp_token[id] MUST be a
+  // single string. Only `multiple: true` allows a non-empty string array.
+  const allowMultiple = queryCredential.multiple === true;
+  const credentialsToPresent = allowMultiple
+    ? validCredentials
+    : validCredentials.slice(0, 1);
+
+  for (const validCredential of credentialsToPresent) {
     const credentialIndex = validCredential.input_credential_index;
     const credential = credentials[credentialIndex];
     if (!credential)
@@ -70,7 +77,16 @@ export async function prepareCredentials(
     );
   }
 
+  const [first, ...rest] = accumulator;
+  if (!first) {
+    throw new Error(
+      `No vp_token could be produced for credential_query_id ${credentialQueryId}: all credentials produced empty tokens`,
+    );
+  }
+
   return {
-    [credentialQueryId]: accumulator as [string, ...string[]],
+    [credentialQueryId]: allowMultiple
+      ? ([first, ...rest] as [string, ...string[]])
+      : first,
   };
 }
