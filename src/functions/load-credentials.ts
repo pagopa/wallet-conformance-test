@@ -2,7 +2,8 @@ import { ItWalletSpecsVersion } from "@pagopa/io-wallet-utils";
 import { SDJwt } from "@sd-jwt/core";
 import { digest } from "@sd-jwt/crypto-nodejs";
 import cbor from "cbor";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 import { buildJwksPath, ensureDir, loadJwks, parseMdoc } from "@/logic";
 import { getLocalCiBaseUrl } from "@/servers/ci-server";
@@ -89,6 +90,11 @@ export async function loadCredentialsForPresentation(
     return createMockCredentialsWithKeys(config);
   }
 
+  const credentialsDir = join(
+    config.wallet.credentials_storage_path,
+    config.wallet.wallet_version,
+  );
+
   const loaded = await Promise.all(
     Object.entries(storedCredentials).map(async ([key, credential]) => {
       const isExpired =
@@ -100,6 +106,12 @@ export async function loadCredentialsForPresentation(
           `Credential '${key}' is expired; prefer a re-issued credential for presentation.`,
         );
       }
+      let mtimeMs = 0;
+      try {
+        mtimeMs = statSync(join(credentialsDir, key)).mtimeMs;
+      } catch {
+        mtimeMs = 0;
+      }
       return {
         credential: await toCredentialWithKey(
           key,
@@ -108,14 +120,17 @@ export async function loadCredentialsForPresentation(
           config.wallet.backup_storage_path,
         ),
         isExpired,
+        mtimeMs,
       };
     }),
   );
 
-  // Prefer non-expired credentials so DCQL `multiple: false` selects a usable one.
-  const usable = loaded.filter((item) => !item.isExpired).map((item) => item.credential);
-  if (usable.length > 0) return usable;
-  return loaded.map((item) => item.credential);
+  // Prefer non-expired, then newest (reissuance revokes older status-list idxs).
+  const ranked = [...loaded].sort((a, b) => {
+    if (a.isExpired !== b.isExpired) return a.isExpired ? 1 : -1;
+    return b.mtimeMs - a.mtimeMs;
+  });
+  return ranked.map((item) => item.credential);
 }
 
 /**
