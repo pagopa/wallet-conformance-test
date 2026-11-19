@@ -84,9 +84,52 @@ export interface PushedAuthorizationRequestStepOptions {
   pushedAuthorizationRequestEndpoint: string;
 
   /**
+   * OAuth scope from credential configuration metadata (catalog credential_type).
+   * IT-Wallet requires both scope and authorization_details in the PAR.
+   */
+  scope?: string;
+
+  /**
    * Wallet Attestation used to authenticate the client, it will be loaded from the configuration
    */
   walletAttestation: Omit<AttestationResponse, "created">;
+}
+
+/**
+ * Resolve space-separated PAR scope values from credential_configurations_supported.
+ */
+export function resolveParScopeFromCredentialConfigurations(
+  credentialConfigurationIds: string[],
+  credentialConfigurationsSupported:
+    | Record<string, { scope?: string } | undefined>
+    | undefined,
+): string {
+  if (!credentialConfigurationsSupported) {
+    throw new Error(
+      "Cannot resolve PAR scope: credential_configurations_supported is missing from issuer metadata",
+    );
+  }
+
+  const scopes: string[] = [];
+  for (const id of credentialConfigurationIds) {
+    const scope = credentialConfigurationsSupported[id]?.scope;
+    if (!scope) {
+      throw new Error(
+        `Cannot resolve PAR scope: credential configuration '${id}' has no scope in issuer metadata`,
+      );
+    }
+    if (!scopes.includes(scope)) {
+      scopes.push(scope);
+    }
+  }
+
+  if (scopes.length === 0) {
+    throw new Error(
+      "Cannot resolve PAR scope: no credential configuration ids were provided",
+    );
+  }
+
+  return scopes.join(" ");
 }
 
 /**
@@ -146,6 +189,7 @@ export class PushedAuthorizationRequestDefaultStep extends StepFlow {
           redirectUri: getCallbackRedirectUri(
             this.config.issuance.callback_port,
           ),
+          ...(options.scope !== undefined ? { scope: options.scope } : {}),
           state,
         };
 

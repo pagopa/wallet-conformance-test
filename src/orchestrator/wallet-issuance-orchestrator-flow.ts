@@ -51,6 +51,7 @@ import {
   NotificationRequestResponse,
   PushedAuthorizationRequestDefaultStep,
   PushedAuthorizationRequestResponse,
+  resolveParScopeFromCredentialConfigurations,
   TokenRequestDefaultStep,
   TokenRequestResponse,
 } from "@/step/issuance";
@@ -637,12 +638,20 @@ export class WalletIssuanceOrchestratorFlow {
       );
     }
 
+    const scope = resolveParScopeFromCredentialConfigurations(
+      credentialConfigurationIds,
+      credentialConfigsSupported as
+        | Record<string, { scope?: string } | undefined>
+        | undefined,
+    );
+
     const pushedAuthorizationRequestResponse =
       await this.pushedAuthorizationRequestStep.run({
         baseUrl: credentialIssuer,
         credentialConfigurationIds,
         popAttestation,
         pushedAuthorizationRequestEndpoint,
+        scope,
         walletAttestation: walletAttestationResponse,
       });
     this._pushedAuthorizationRequestResponse =
